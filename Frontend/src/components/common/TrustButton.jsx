@@ -28,7 +28,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
         };
 
         const response = await axios.get(
-          `http://localhost:5000/api/stores/${storeId}/trust-status`,
+          `${import.meta.env.VITE_API_URL}/api/stores/${storeId}/trust-status`,
           config
         );
 
@@ -62,7 +62,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
       if (isTrusted) {
         // Untrust the store
         const response = await axios.delete(
-          `http://localhost:5000/api/stores/${storeId}/trust`,
+          `${import.meta.env.VITE_API_URL}/api/stores/${storeId}/trust`,
           config
         );
 
@@ -77,7 +77,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
       } else {
         // Trust the store
         const response = await axios.post(
-          `http://localhost:5000/api/stores/${storeId}/trust`,
+          `${import.meta.env.VITE_API_URL}/api/stores/${storeId}/trust`,
           {},
           config
         );
