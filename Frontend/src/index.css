@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+/* ====================
+   Global Reset & Base
+==================== */
+body {
+    font-family: 'Inter', 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ====================
+   Custom Properties
+==================== */
+:root {
+    /* Backgrounds */
+    --color-bg: #F4F6F8; /* Light neutral background */
+    --color-surface: #FFFFFF; /* Card / container background */
+
+    /* Text */
+    --color-text-primary: #1F2937; /* Rich dark gray */
+    --color-text-secondary: #6B7280; /* Medium gray for secondary text */
+
+    /* Primary Accent */
+    --color-primary: #4F46E5; /* Indigo – premium modern vibe */
+    --color-primary-hover: #4338CA;
+
+    /* Secondary Accent */
+    --color-secondary: #EC4899; /* Vibrant pink-magenta */
+    --color-secondary-hover: #DB2777;
+
+    /* Status Colors */
+    --color-success: #22C55E; /* Fresh green */
+    --color-error: #EF4444; /* Warm red */
+    --color-warning: #F59E0B; /* Golden amber */
+
+    /* Borders & Shadows */
+    --color-border: #E5E7EB;
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* ====================
+   Scrollbars
+==================== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #9CA3AF; /* Lighter gray for modern feel */
+    border-radius: 10px;
+}
+
+.filter-sb::-webkit-scrollbar {
+    display: none;
+}
+
+/* ====================
+   Typography
+==================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-text-primary);
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ====================
+   Links
+==================== */
+a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--color-error);
+}
+
+/* ====================
+   Buttons
+==================== */
+.button {
+    border-radius: 8px;
+    font-weight: 500;
+    background-color: var(--color-primary);
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+.button:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* ====================
+   Inputs & Forms
+==================== */
+input,
+select,
+textarea {
+    font-family: inherit;
+    border: 2px solid lightgray;
+    border-radius: 6px;
+    padding: 10px;
+    outline: none;
+    transition: border 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--color-primary);
+}
+
+/* ====================
+   Containers
+==================== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* ====================
+   Cards
+==================== */
+.card {
+    background: var(--color-surface);
+    border-radius: 16px;
+    box-shadow: var(--shadow-soft);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* ====================
+   Wishlist Heart Icon
+==================== */
+.heart-icon {
+    font-size: 20px;
+    color: #9CA3AF;
+    transition: color 0.3s ease;
+}
+
+.heart-icon.active {
+    color: var(--color-error);
+}
+
+/* ====================
+   Animations
+==================== */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====================
+   Product Hover Image
+==================== */
+.prod-sec-img {
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.34s ease;
+    background-color: white;
+}
+
+.prod-card:hover .prod-sec-img {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* ====================
+   Full Height Utility
+==================== */
+.height,
+.h {
+    min-height: calc(100vh - 80px);
+}
+

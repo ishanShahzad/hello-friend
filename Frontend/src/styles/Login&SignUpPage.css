@@ -1,0 +1,508 @@
+.login-signup-form main {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    background-color: gray;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 55%;
+    height: 90%;
+    background-color: white;
+    border-radius: 20px;
+    box-shadow: 0px 0px 15px 2px gray;
+    overflow: hidden;
+    position: relative;
+}
+
+.login-signup-form ul {
+    align-self: flex-start;
+    margin-left: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.slider {
+    width: 100%;
+    height: 100%;
+    /* background-color: darkolivegreen; */
+    /* background: linear-gradient(135deg, skyblue, blue); */
+    background-color: darkolivegreen;
+    border-radius: 70px;
+    box-shadow: 0px 0px 5px 2px gray;
+    /* margin-left: -5  0%; */
+    position: absolute;
+    top: 0;
+    left: -50%;
+    transition: 0.34s linear;
+    z-index: 2;
+}
+
+.logIn-active {
+    animation: login 1s linear forwards;
+}
+
+@keyframes login {
+    0% {
+        width: 100%;
+    }
+
+    50% {
+        width: 200%;
+    }
+
+    100% {
+        left: 50%;
+        width: 100%;
+    }
+}
+
+.signUp-active {
+    animation: signup 1s linear forwards;
+}
+
+@keyframes signup {
+    0% {
+        width: 100%;
+        left: 50%;
+    }
+
+    50% {
+        width: 200%;
+    }
+
+    100% {
+        width: 100%;
+        left: -50%;
+    }
+}
+
+.headd {
+    width: 50%;
+    height: 100%;
+    /* border: 2px solid; */
+    position: absolute;
+    left: -50%;
+    /* right: 0; */
+    /* background-color: brown; */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: 0.34s;
+    gap: 15px;
+    z-index: 3;
+}
+
+.head1 {
+    width: 50%;
+    height: 100%;
+    /* border: 2px solid; */
+    position: absolute;
+    right: -50%;
+    /* right: 0; */
+    /* background-color: brown; */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: 0.34s;
+    gap: 15px;
+    z-index: 3;
+}
+
+.head- {
+    animation: head 1s linear forwards;
+}
+
+@keyframes head {
+    0% {
+        left: -50%;
+    }
+
+    50% {
+        left: -50%;
+    }
+
+    100% {
+        left: 0%;
+    }
+}
+
+.head-1 {
+    animation: head1 1s linear forwards;
+}
+
+@keyframes head1 {
+    0% {
+        right: -50%;
+    }
+
+    50% {
+        right: -50%;
+    }
+
+    100% {
+        right: 0%;
+    }
+}
+
+.logIn-btn {
+    width: 120px;
+    height: 40px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: darkolivegreen;
+    color: white;
+    font-size: medium;
+    font-weight: bold;
+    border: 2px solid white;
+    transition: 0.34s;
+}
+
+.signUp-btn {
+    width: 120px;
+    height: 40px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: darkolivegreen;
+    color: white;
+    font-size: medium;
+    font-weight: bold;
+    border: 2px solid white;
+    transition: 0.34s;
+}
+
+.p,
+.h2 {
+    color: white;
+}
+
+/* * {
+    border: 1px solid;
+} */
+
+.signUp-main {
+    width: 50%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0%;
+    /* border: 2px solid; */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 20px;
+    z-index: 1;
+    transition: 0.34s;
+    visibility: hidden;
+}
+
+.signUp-form-active {
+    animation: form1 1s linear forwards;
+}
+
+@keyframes form1 {
+    0% {
+        left: 0%;
+    }
+
+    50% {
+        left: 0%;
+        visibility: hidden;
+
+    }
+
+    100% {
+        left: 50%;
+        visibility: visible;
+    }
+}
+
+.logIn-main {
+    width: 50%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    /* border: 2px solid; */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 20px;
+    gap: 20px;
+    z-index: 1;
+    transition: 0.34s;
+    visibility: hidden;
+}
+
+.logIn-form-active {
+    animation: form 1s linear forwards;
+}
+
+@keyframes form {
+    0% {
+        left: 50%;
+    }
+
+    50% {
+        left: 50%;
+        visibility: hidden;
+
+    }
+
+    100% {
+        left: 0%;
+        visibility: visible;
+    }
+}
+
+.login-signup-form input {
+    width: 100%;
+    height: 40px;
+    font-size: medium;
+    padding-left: 10px;
+    padding-right: 20px;
+}
+
+.login-signup-form form {
+    width: 100%;
+    height: max-content;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* gap: 10px; */
+}
+
+.same {
+    width: 100%;
+    height: 40px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: medium;
+    background-color: darkolivegreen;
+    color: white;
+    border: none;
+    font-weight: bold;
+}
+
+.btn:hover {
+    background-color: white;
+    color: darkolivegreen;
+}
+
+.login-signup-form .div {
+    width: 100%;
+    position: relative;
+}
+
+.login-signup-form .div .fa-solid {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: rgb(51, 46, 46);
+}
+
+/* 1120px */
+@media screen and (max-width: 1120px) {
+    .container {
+        width: 80%;
+    }
+}
+
+@media screen and (max-width: 760px) {
+    .container {
+        width: 90%;
+    }
+}
+
+@media screen and (max-width: 650px) {
+    .container {
+        width: 90%;
+    }
+
+    .signUp-main ul li {
+        font-size: small;
+        margin-left: -10px;
+    }
+
+    .login-signup-form input {
+        height: 35px;
+        font-size: 15px;
+    }
+
+    .div i {
+        font-size: medium;
+    }
+
+    .login-signup-form h2 {
+        font-size: 20px;
+    }
+
+    .login-signup-form p {
+        font-size: small;
+    }
+
+
+    .slider {
+        height: 100%;
+        left: 0%;
+        top: -70%;
+    }
+
+    .headd {
+        width: 100%;
+        height: 30%;
+        border-top-left-radius: 0px;
+        border-top-right-radius: 0px;
+        top: -50%;
+        left: 0%;
+        /* background-color: darkolivegreen; */
+    }
+
+    .head1 {
+        height: 30%;
+        width: 100%;
+        top: 100%;
+        left: 0;
+        /* background-color: darkolivegreen; */
+    }
+
+    .head- {
+        animation: head 1s linear forwards;
+    }
+
+    @keyframes head {
+        0% {
+            top: -50%;
+        }
+
+        50% {
+            top: -50%;
+        }
+
+        100% {
+            top: 0%;
+        }
+    }
+
+    .logIn-active {
+        animation: login 1s linear forwards;
+    }
+
+    @keyframes login {
+        0% {
+            top: -50%;
+            height: 100%;
+        }
+
+        50% {
+            height: 200%;
+        }
+
+        100% {
+            top: 70%;
+            height: 100%;
+        }
+    }
+
+
+    .head-1 {
+        animation: head1 1s linear forwards;
+    }
+
+
+    @keyframes head1 {
+        0% {
+            top: 100%;
+        }
+
+        100% {
+            top: 70%;
+        }
+    }
+
+    .signUp-active {
+        animation: signup 1s linear forwards;
+    }
+
+    @keyframes signup {
+        0% {
+            height: 100%;
+            top: 70%;
+        }
+
+        50% {
+            height: 200%;
+        }
+
+        100% {
+            height: 100%;
+            top: -70%;
+        }
+    }
+
+    .signUp-main {
+        width: 100%;
+        height: 70%;
+        top: 100%;
+        /* border: 2px solid; */
+    }
+
+    .signUp-form-active {
+        animation: form1 1s linear forwards;
+    }
+
+    @keyframes form1 {
+        0% {
+            top: 0%;
+        }
+
+        50% {
+            top: 0%;
+            visibility: hidden;
+
+        }
+
+        100% {
+            top: 30%;
+            visibility: visible;
+        }
+    }
+
+    .logIn-main {
+        width: 100%;
+        height: 70%;
+        position: absolute;
+        top: -100%;
+        left: 0%;
+        /* border: 2px solid; */
+    }
+
+    .logIn-form-active {
+        animation: form 1s linear forwards;
+    }
+
+    @keyframes form {
+        0% {
+            top: -100%;
+        }
+
+        50% {
+            top: 50%;
+            visibility: hidden;
+        }
+
+        100% {
+            top: 0%;
+            visibility: visible;
+        }
+    }
+}
