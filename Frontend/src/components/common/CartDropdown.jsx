@@ -30,7 +30,7 @@ const CartDropdown = () => {
   const navigate = useNavigate()
 
   const handleGoToCheckout = () => {
-    if (cartItems.cart.length == 0) return toast.error('No items in the cart')
+    if (!cartItems?.cart || cartItems.cart.length == 0) return toast.error('No items in the cart')
   }
 
   // Get spin discount from localStorage
@@ -98,7 +98,7 @@ const CartDropdown = () => {
             <div className="p-4 border-b font-semibold border-[lightgray] text-gray-800">Your Cart</div>
             <div className=" h-[70%] overflow-y-auto divide-y-[1px] divide-[lightgray]">
               {
-                !currentUser || cartItems.cart.length == 0 ? (
+                !currentUser || !cartItems?.cart || cartItems.cart.length == 0 ? (
                   <p className="text-[gray] ml-4 mt-2">
                     No items in the cart
                   </p>

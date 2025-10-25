@@ -41,11 +41,11 @@ const ProductCard = ({
 
   const isInWishlist = wishlistItems?.some((item) => item._id === _id);
   const isInCart = cartItems?.cart?.some((item) => item.product._id === _id);
-  
+
   // Determine which price to show
   const displayPrice = hasSpinDiscount ? spinDiscountedPrice : (discountedPrice || price);
   const originalDisplayPrice = hasSpinDiscount ? price : (discountedPrice ? price : null);
-  
+
   const discountPercentage = originalDisplayPrice && displayPrice < originalDisplayPrice
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100)
     : 0;
@@ -484,7 +484,7 @@ const ProductCard = ({
                   transition={{ duration: 0.3 }}
                   className=" flex items-center justify-center text-sm gap-2"
                 >
-                  <span className="animate-spin"> <Loader2 /> </span> 
+                  <span className="animate-spin"> <Loader2 /> </span>
                   <span>{isInCart ? 'Removing...' : 'Adding...'}</span>
                 </motion.span>
               ) :
