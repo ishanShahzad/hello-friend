@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Gift, Users, Clock, Trophy } from 'lucide-react';
-import axios from 'axios';
+import { X, Gift, Sparkles, Trophy, Zap, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export default function SpinWheel({ onSpinComplete, onClose }) {
@@ -56,134 +55,403 @@ export default function SpinWheel({ onSpinComplete, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-gradient-to-br from-black/80 via-purple-900/50 to-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
     >
+      {/* Animated background particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-white/20 rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              y: [0, -30, 0],
+              opacity: [0.2, 0.5, 0.2],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+      </div>
+
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 rounded-3xl shadow-2xl p-8 max-w-2xl w-full relative"
+        initial={{ scale: 0.8, opacity: 0, y: 50 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.8, opacity: 0, y: 50 }}
+        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+        className="bg-white rounded-3xl shadow-2xl p-8 max-w-3xl w-full relative overflow-hidden"
       >
-        <button
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500"></div>
+        
+        {/* Close button */}
+        <motion.button
           onClick={onClose}
-          className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+          whileHover={{ scale: 1.1, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
         >
-          <X size={24} />
-        </button>
+          <X size={20} className="text-gray-600" />
+        </motion.button>
 
-        <h1 className="text-4xl font-bold text-center mb-2 text-white">🎉 Spin to Win! 🎉</h1>
-        <p className="text-center text-white/80 mb-6">Try your luck and win amazing discounts!</p>
+        {/* Header */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-center mb-8"
+        >
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+            className="inline-block mb-3"
+          >
+            <Gift size={48} className="text-purple-600" />
+          </motion.div>
+          <h1 className="text-5xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent mb-2">
+            SPIN & WIN!
+          </h1>
+          <p className="text-gray-600 text-lg font-medium">
+            Get exclusive discounts up to <span className="text-purple-600 font-bold">100% OFF!</span>
+          </p>
+        </motion.div>
 
+        {/* Wheel Container */}
         <div className="relative flex flex-col items-center justify-center mb-8">
+          {/* Glow effect behind wheel */}
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+            }}
+            className="absolute w-96 h-96 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-3xl"
+          />
+
           {/* Pointer */}
-          <div
+          <motion.div
+            animate={isSpinning ? { y: [0, -5, 0] } : {}}
+            transition={{ duration: 0.3, repeat: isSpinning ? Infinity : 0 }}
             className="relative z-20 w-0 h-0 mb-2"
             style={{
-              borderLeft: '20px solid transparent',
-              borderRight: '20px solid transparent',
-              borderTop: '40px solid #dc2626',
-              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))',
+              borderLeft: '24px solid transparent',
+              borderRight: '24px solid transparent',
+              borderTop: '48px solid #dc2626',
+              filter: 'drop-shadow(0 6px 12px rgba(220, 38, 38, 0.5))',
             }}
-          ></div>
+          />
 
-          {/* Wheel */}
-          <div className="relative w-96 h-96 max-w-full">
-            <div
-              className="absolute inset-0 rounded-full shadow-2xl"
-              style={{
-                transform: `rotate(${rotation}deg)`,
-                transition: isSpinning
-                  ? 'transform 5000ms cubic-bezier(0.17, 0.67, 0.12, 0.99)'
-                  : 'none',
-              }}
+          {/* Wheel with border glow */}
+          <div className="relative">
+            <motion.div
+              animate={isSpinning ? {
+                boxShadow: [
+                  '0 0 20px rgba(168, 85, 247, 0.4)',
+                  '0 0 40px rgba(236, 72, 153, 0.6)',
+                  '0 0 20px rgba(168, 85, 247, 0.4)',
+                ]
+              } : {}}
+              transition={{ duration: 0.5, repeat: isSpinning ? Infinity : 0 }}
+              className="relative w-96 h-96 max-w-full rounded-full"
             >
-              <svg viewBox="0 0 200 200" className="w-full h-full">
-                {segments.map((segment, index) => {
-                  const angle = (360 / segments.length) * index;
-                  const nextAngle = (360 / segments.length) * (index + 1);
+              <div
+                className="absolute inset-0 rounded-full shadow-2xl border-8 border-white"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: isSpinning
+                    ? 'transform 5000ms cubic-bezier(0.17, 0.67, 0.12, 0.99)'
+                    : 'none',
+                }}
+              >
+                <svg viewBox="0 0 200 200" className="w-full h-full">
+                  {segments.map((segment, index) => {
+                    const angle = (360 / segments.length) * index;
+                    const nextAngle = (360 / segments.length) * (index + 1);
 
-                  const x1 = 100 + 100 * Math.cos(((angle - 90) * Math.PI) / 180);
-                  const y1 = 100 + 100 * Math.sin(((angle - 90) * Math.PI) / 180);
-                  const x2 = 100 + 100 * Math.cos(((nextAngle - 90) * Math.PI) / 180);
-                  const y2 = 100 + 100 * Math.sin(((nextAngle - 90) * Math.PI) / 180);
+                    const x1 = 100 + 100 * Math.cos(((angle - 90) * Math.PI) / 180);
+                    const y1 = 100 + 100 * Math.sin(((angle - 90) * Math.PI) / 180);
+                    const x2 = 100 + 100 * Math.cos(((nextAngle - 90) * Math.PI) / 180);
+                    const y2 = 100 + 100 * Math.sin(((nextAngle - 90) * Math.PI) / 180);
 
-                  const largeArc = nextAngle - angle > 180 ? 1 : 0;
-                  const pathData = `M 100 100 L ${x1} ${y1} A 100 100 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                    const largeArc = nextAngle - angle > 180 ? 1 : 0;
+                    const pathData = `M 100 100 L ${x1} ${y1} A 100 100 0 ${largeArc} 1 ${x2} ${y2} Z`;
 
-                  const textAngle = angle + (360 / segments.length) / 2;
-                  const textX = 100 + 60 * Math.cos(((textAngle - 90) * Math.PI) / 180);
-                  const textY = 100 + 60 * Math.sin(((textAngle - 90) * Math.PI) / 180);
+                    const textAngle = angle + (360 / segments.length) / 2;
+                    const textX = 100 + 65 * Math.cos(((textAngle - 90) * Math.PI) / 180);
+                    const textY = 100 + 65 * Math.sin(((textAngle - 90) * Math.PI) / 180);
 
-                  return (
-                    <g key={index}>
-                      <path d={pathData} fill={segment.color} stroke="white" strokeWidth="3" />
-                      <text
-                        x={textX}
-                        y={textY}
-                        fill="white"
-                        fontSize="9"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                        transform={`rotate(${textAngle}, ${textX}, ${textY})`}
-                      >
-                        {segment.label.split(' ').map((word, i) => (
-                          <tspan key={i} x={textX} dy={i === 0 ? 0 : 10}>
-                            {word}
-                          </tspan>
-                        ))}
-                      </text>
-                    </g>
-                  );
-                })}
-                <circle cx="100" cy="100" r="15" fill="white" stroke="#374151" strokeWidth="3" />
-              </svg>
-            </div>
+                    return (
+                      <g key={index}>
+                        <path d={pathData} fill={segment.color} stroke="white" strokeWidth="4" />
+                        <text
+                          x={textX}
+                          y={textY}
+                          fill="white"
+                          fontSize="10"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          transform={`rotate(${textAngle}, ${textX}, ${textY})`}
+                        >
+                          {segment.label.split(' ').map((word, i) => (
+                            <tspan key={i} x={textX} dy={i === 0 ? 0 : 11}>
+                              {word}
+                            </tspan>
+                          ))}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {/* Center circle with gradient */}
+                  <defs>
+                    <radialGradient id="centerGradient">
+                      <stop offset="0%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#f59e0b" />
+                    </radialGradient>
+                  </defs>
+                  <circle cx="100" cy="100" r="20" fill="url(#centerGradient)" stroke="white" strokeWidth="4" />
+                  <circle cx="100" cy="100" r="8" fill="white" />
+                </svg>
+              </div>
+            </motion.div>
           </div>
 
+          {/* Spin Button */}
           <motion.button
             onClick={spin}
             disabled={isSpinning || showCongrats}
-            whileHover={!isSpinning && !showCongrats ? { scale: 1.05 } : {}}
+            whileHover={!isSpinning && !showCongrats ? { scale: 1.08, y: -5 } : {}}
             whileTap={!isSpinning && !showCongrats ? { scale: 0.95 } : {}}
-            className="mt-6 px-12 py-4 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-xl shadow-xl hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="mt-8 px-16 py-5 rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 text-white font-black text-2xl shadow-2xl hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all relative overflow-hidden group"
           >
-            {isSpinning ? 'SPINNING...' : showCongrats ? 'PRIZE WON!' : 'SPIN NOW'}
+            {/* Button shine effect */}
+            <motion.div
+              animate={!isSpinning && !showCongrats ? {
+                x: ['-100%', '200%'],
+              } : {}}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 1,
+              }}
+              className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+            />
+            
+            <span className="relative z-10 flex items-center gap-3">
+              {isSpinning ? (
+                <>
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Sparkles size={24} />
+                  </motion.span>
+                  SPINNING...
+                </>
+              ) : showCongrats ? (
+                <>
+                  <Trophy size={24} />
+                  PRIZE WON!
+                </>
+              ) : (
+                <>
+                  <Zap size={24} fill="currentColor" />
+                  SPIN NOW
+                  <Zap size={24} fill="currentColor" />
+                </>
+              )}
+            </span>
           </motion.button>
         </div>
 
+        {/* Congratulations Section */}
         <AnimatePresence>
           {showCongrats && result && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mt-8 p-6 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl text-center shadow-lg"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -20 }}
+              transition={{ type: "spring", damping: 15, stiffness: 300 }}
+              className="relative"
             >
-              <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-                <Trophy size={28} /> Congratulations! <Trophy size={28} />
-              </h2>
-              <p className="text-3xl font-extrabold text-white mb-3">{result.label}</p>
-              <p className="text-white/90 text-sm">
-                You can now select up to 3 products at this special price!
-              </p>
+              {/* Confetti effect */}
+              <div className="absolute inset-0 pointer-events-none">
+                {[...Array(30)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-3 h-3 rounded-full"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      backgroundColor: ['#ef4444', '#10b981', '#3b82f6', '#eab308', '#a855f7', '#ec4899'][i % 6],
+                    }}
+                    animate={{
+                      x: [0, (Math.random() - 0.5) * 400],
+                      y: [0, (Math.random() - 0.5) * 400],
+                      opacity: [1, 0],
+                      scale: [1, 0],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      ease: "easeOut",
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-600 rounded-2xl p-8 text-center shadow-2xl relative overflow-hidden">
+                {/* Animated background pattern */}
+                <motion.div
+                  animate={{
+                    backgroundPosition: ['0% 0%', '100% 100%'],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                  }}
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                    backgroundSize: '30px 30px',
+                  }}
+                />
+
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute top-4 right-4"
+                >
+                  <Star size={32} className="text-white/30" fill="currentColor" />
+                </motion.div>
+
+                <motion.div
+                  animate={{ rotate: [360, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute bottom-4 left-4"
+                >
+                  <Sparkles size={28} className="text-white/30" />
+                </motion.div>
+
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", damping: 10, stiffness: 200, delay: 0.2 }}
+                  className="relative z-10"
+                >
+                  <Trophy size={64} className="text-white mx-auto mb-4 drop-shadow-lg" />
+                  <h2 className="text-4xl font-black text-white mb-3 drop-shadow-lg">
+                    🎊 CONGRATULATIONS! 🎊
+                  </h2>
+                  <motion.p
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", damping: 10, stiffness: 200, delay: 0.4 }}
+                    className="text-6xl font-black text-white mb-4 drop-shadow-lg"
+                  >
+                    {result.label}
+                  </motion.p>
+                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 mb-4">
+                    <p className="text-white text-lg font-semibold mb-2">
+                      🎁 Your Exclusive Offer:
+                    </p>
+                    <p className="text-white/90 text-sm">
+                      Select up to <span className="font-bold text-xl">3 products</span> at this special price!
+                    </p>
+                  </div>
+                  <motion.button
+                    onClick={onClose}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white text-purple-600 font-bold text-lg px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Start Shopping! 🛍️
+                  </motion.button>
+                </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Initial message */}
         {!result && !isSpinning && (
-          <div className="mt-8 text-center text-white/80">
-            <p className="text-lg font-medium flex items-center justify-center gap-2">
-              <Gift size={20} /> Click SPIN to try your luck!
-            </p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center"
+          >
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <Sparkles className="text-purple-600" size={24} />
+                <p className="text-xl font-bold text-gray-800">Ready to Win Big?</p>
+                <Sparkles className="text-pink-600" size={24} />
+              </div>
+              <p className="text-gray-600 mb-2">
+                🎯 <span className="font-semibold">6 amazing prizes</span> waiting for you!
+              </p>
+              <p className="text-sm text-gray-500">
+                Click the button above to spin the wheel and discover your discount!
+              </p>
+            </div>
+          </motion.div>
         )}
 
+        {/* Spinning message */}
         {isSpinning && (
-          <div className="mt-8 text-center text-white/80">
-            <p className="text-lg font-medium animate-pulse flex items-center justify-center gap-2">
-              <Clock size={20} className="animate-spin" /> Spinning... Good luck! 🍀
-            </p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="inline-block mb-3"
+              >
+                <Sparkles size={40} className="text-purple-600" />
+              </motion.div>
+              <p className="text-2xl font-bold text-gray-800 mb-2 animate-pulse">
+                🍀 Spinning... Good Luck! 🍀
+              </p>
+              <p className="text-gray-600 text-sm">
+                Your prize is being selected...
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Features */}
+        {!showCongrats && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 grid grid-cols-3 gap-4"
+          >
+            <div className="text-center p-3 bg-purple-50 rounded-xl">
+              <div className="text-2xl mb-1">🎁</div>
+              <p className="text-xs font-semibold text-gray-700">Up to 100% OFF</p>
+            </div>
+            <div className="text-center p-3 bg-pink-50 rounded-xl">
+              <div className="text-2xl mb-1">⚡</div>
+              <p className="text-xs font-semibold text-gray-700">Instant Discount</p>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-xl">
+              <div className="text-2xl mb-1">🎯</div>
+              <p className="text-xs font-semibold text-gray-700">3 Products</p>
+            </div>
+          </motion.div>
         )}
       </motion.div>
     </motion.div>
