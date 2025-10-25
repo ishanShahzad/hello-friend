@@ -270,7 +270,7 @@ function Products() {
                 <div className='flex flex-col gap-1'>
                   <h2 className='text-md font-semibold mb-1'>CATEGORIES</h2>
                   {
-                    categories.length === 0
+                    !categories || categories.length === 0
                       ? <p className='text-gray-500'>No categories available.</p>
                       : categories.map(category => (
                         <label key={category} className='flex gap-2 items-center cursor-pointer py-1'>
@@ -285,7 +285,7 @@ function Products() {
                 <div className='flex flex-col gap-1'>
                   <h2 className='text-md font-semibold mb-1'>BRANDS</h2>
                   {
-                    brands.length === 0
+                    !brands || brands.length === 0
                       ? <p className='text-gray-500'>No brands available.</p>
                       : brands.map(brand => (
                         <label key={brand} className='flex gap-2 items-center cursor-pointer py-1'>
@@ -364,7 +364,7 @@ function Products() {
         <div className='flex flex-col gap-1'>
           <h2 className='text-md font-semibold mb-1'>CATEGORIES</h2>
           {
-            categories.length === 0
+            !categories || categories.length === 0
               ? <p className='text-gray-500'>No categories available.</p>
               : categories.map(category => (
                 <label key={category} className='flex gap-2 items-center cursor-pointer py-1'>
@@ -379,7 +379,7 @@ function Products() {
         <div className='flex flex-col gap-1'>
           <h2 className='text-md font-semibold mb-1'>BRANDS</h2>
           {
-            brands.length === 0
+            !brands || brands.length === 0
               ? <p className='text-gray-500'>No brands available.</p>
               : brands.map(brand => (
                 <label key={brand} className='flex gap-2 items-center cursor-pointer py-1'>
