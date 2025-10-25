@@ -24,7 +24,7 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
             const productIds = selectedProducts.map(p => p._id);
 
             const res = await axios.post(
-                '${import.meta.env.VITE_API_URL}api/products/bulk-discount',
+                `${import.meta.env.VITE_API_URL}api/products/bulk-discount`,
                 {
                     productIds,
                     discountType,
@@ -60,7 +60,7 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
             const productIds = selectedProducts.map(p => p._id);
 
             const res = await axios.post(
-                '${import.meta.env.VITE_API_URL}api/products/bulk-price-update',
+                `${import.meta.env.VITE_API_URL}api/products/bulk-price-update`,
                 {
                     productIds,
                     updateType: priceUpdateType,
@@ -91,7 +91,7 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
             const productIds = selectedProducts.map(p => p._id);
 
             const res = await axios.post(
-                '${import.meta.env.VITE_API_URL}api/products/remove-discount',
+                `${import.meta.env.VITE_API_URL}api/products/remove-discount`,
                 { productIds },
                 {
                     headers: {

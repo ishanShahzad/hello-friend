@@ -67,7 +67,7 @@ const AccountOverview = () => {
     const fetchUser = async () => {
         try {
             const token = localStorage.getItem('jwtToken')
-            const res = await axios.get('${import.meta.env.VITE_API_URL}api/user/single',
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`

@@ -218,7 +218,7 @@ export default function Checkout() {
       const stripe = await stripePromise
       const token = localStorage.getItem("jwtToken");
       const res = await axios.post(
-        "${import.meta.env.VITE_API_URL}api/order/place",
+        `${import.meta.env.VITE_API_URL}api/order/place`,
         { order },
         {
           headers: {
@@ -242,7 +242,7 @@ export default function Checkout() {
           localStorage.removeItem('spinSelectedProducts');
           
           // Clear cart in background
-          axios.delete('${import.meta.env.VITE_API_URL}api/cart/clear', {
+          axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
             headers: { Authorization: `Bearer ${token}` }
           }).then(() => {
             fetchCart(); // Refresh cart state
@@ -281,7 +281,7 @@ export default function Checkout() {
   //       // Simulate API call
 
   //       // Clear cart after order placement
-  //       const clearCartRes = await axios.delete('${import.meta.env.VITE_API_URL}api/cart/clear',
+  //       const clearCartRes = await axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`,
   //         {
   //           headers: {
   //             Authorization: `Bearer ${token}`

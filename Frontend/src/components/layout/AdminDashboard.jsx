@@ -73,7 +73,7 @@ const AdminDashboard = () => {
 
     const fetchFilters = async () => {
         try {
-            const res = await axios.get('${import.meta.env.VITE_API_URL}api/products/get-filters')
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-filters`)
             setCategories(res.data.categories)
         } catch (error) {
             console.error(error)

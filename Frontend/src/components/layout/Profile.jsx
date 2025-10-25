@@ -91,7 +91,7 @@ const UserProfile = () => {
     try {
       setLoading(true)
       const token = localStorage.getItem('jwtToken')
-      const res = await axios.get('${import.meta.env.VITE_API_URL}api/user/single',
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -131,7 +131,7 @@ const UserProfile = () => {
         // Call the API to upload the image
         const token = localStorage.getItem('jwtToken')
         const res = await axios.post(
-          '${import.meta.env.VITE_API_URL}api/upload/profile-image',
+          `${import.meta.env.VITE_API_URL}api/upload/profile-image`,
           formData,
           {
             headers: {
@@ -159,7 +159,7 @@ const UserProfile = () => {
     if (userData.username === formData.username) return toast.error('Username is same as before!')
     try {
       const token = localStorage.getItem('jwtToken')
-      const res = await axios.patch('${import.meta.env.VITE_API_URL}api/user/update',
+      const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/update`,
         {
           username: formData.username,
         },
@@ -200,7 +200,7 @@ const UserProfile = () => {
 
     try {
       const token = localStorage.getItem('jwtToken')
-      const res = await axios.patch('${import.meta.env.VITE_API_URL}api/password/change',
+      const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/password/change`,
         {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,
