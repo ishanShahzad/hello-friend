@@ -370,7 +370,7 @@ export default function Checkout() {
                     </h2>
 
                     {
-                      cartItems.cart.length === 0 ? (
+                      !cartItems?.cart || cartItems.cart.length === 0 ? (
                         <div className="text-center py-8">
                           <p className="text-gray-500">Your cart is empty</p>
                           <button
@@ -464,7 +464,7 @@ export default function Checkout() {
                     </h2>
 
                     {
-                      cartItems.cart.length >= 1 ? (
+                      cartItems?.cart && cartItems.cart.length >= 1 ? (
                         <>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <InputField
@@ -671,7 +671,7 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={handleSubmit(onPlaceOrder)}
-                    disabled={isSubmitting || isProcessing || cartItems.cart.length == 0}
+                    disabled={isSubmitting || isProcessing || !cartItems?.cart || cartItems.cart.length == 0}
                     className="px-6 py-3 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                   >
                     {isProcessing ? (
@@ -695,8 +695,8 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={nextStep}
-                    disabled={cartItems.cart.length == 0}
-                    className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 ${cartItems.cart.length === 0
+                    disabled={!cartItems?.cart || cartItems.cart.length == 0}
+                    className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 ${!cartItems?.cart || cartItems.cart.length === 0
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                       : "bg-blue-600 text-white hover:bg-blue-700"
                       } transition-colors`}
