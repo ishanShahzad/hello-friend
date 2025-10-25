@@ -50,7 +50,7 @@ export default function SpinBanner({ spinResult, selectedCount = 0 }) {
               {spinResult.isWinner !== null
                 ? spinResult.isWinner
                   ? 'Congratulations! You won! Check your orders.'
-                  : 'Better luck next time! Try again tomorrow.'
+                  : 'Better luck! Come tommorow to see if you have won... and you can everyday spin the wheel to win discounts!!'
                 : 'Results will be announced soon. Come back to see if you won!'}
             </p>
           </div>
