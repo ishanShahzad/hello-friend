@@ -204,6 +204,7 @@ const UserManagement = () => {
   const totalUsers = allUsers.length;
   const activeUsers = allUsers.filter(user => user.status === 'active').length;
   const adminUsers = allUsers.filter(user => user.role === 'admin').length;
+  const sellerUsers = allUsers.filter(user => user.role === 'seller').length;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 mt-8">
@@ -219,7 +220,7 @@ const UserManagement = () => {
         </motion.h1>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <motion.div
             className="bg-white rounded-xl shadow-sm p-6 flex justify-between items-center"
             initial={{ opacity: 0, y: 20 }}
@@ -257,7 +258,22 @@ const UserManagement = () => {
             transition={{ duration: 0.4, delay: 0.3 }}
           >
             <div>
-              <h3 className="text-lg font-medium text-gray-600">Admin Users</h3>
+              <h3 className="text-lg font-medium text-gray-600">Sellers</h3>
+              <p className="text-3xl font-bold text-emerald-600">{sellerUsers}</p>
+            </div>
+            <div className="bg-emerald-100 p-3 rounded-full">
+              <Shield className="w-8 h-8 text-emerald-600" />
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="bg-white rounded-xl shadow-sm p-6 flex justify-between items-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <div>
+              <h3 className="text-lg font-medium text-gray-600">Admins</h3>
               <p className="text-3xl font-bold text-purple-600">{adminUsers}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-full">
@@ -374,7 +390,11 @@ const UserManagement = () => {
                                   <div className="text-sm text-gray-900">{user.email}</div>
                                 </td>
                                 <td className="py-4 px-6 whitespace-nowrap">
-                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                                    user.role === 'seller' ? 'bg-green-100 text-green-800' : 
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
                                     {user.role}
                                   </span>
                                 </td>
@@ -398,8 +418,16 @@ const UserManagement = () => {
                                           </button>
                                           <button
                                             onClick={() => handleChangeRole(user)}
-                                            className={`p-2 rounded-lg ${user.role === 'admin' ? 'text-gray-600 hover:bg-gray-100' : 'text-purple-600 hover:bg-purple-100'}`}
-                                            title={user.role === 'admin' ? 'Make User' : 'Make Admin'}
+                                            className={`p-2 rounded-lg ${
+                                              user.role === 'admin' ? 'text-gray-600 hover:bg-gray-100' : 
+                                              user.role === 'seller' ? 'text-purple-600 hover:bg-purple-100' :
+                                              'text-green-600 hover:bg-green-100'
+                                            }`}
+                                            title={
+                                              user.role === 'admin' ? 'Change to User' : 
+                                              user.role === 'seller' ? 'Change to Admin' :
+                                              'Change to Seller'
+                                            }
                                           >
                                             {user.role === 'admin' ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                                           </button>
@@ -574,7 +602,11 @@ const UserManagement = () => {
             >
               <h3 className="text-lg font-medium text-gray-900 mb-4">Change User Role</h3>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to change {selectedUser.username}'s role to {selectedUser.role === 'admin' ? 'user' : 'admin'}?
+                Are you sure you want to change {selectedUser.username}'s role to {
+                  selectedUser.role === 'user' ? 'seller' : 
+                  selectedUser.role === 'seller' ? 'admin' : 
+                  'user'
+                }?
               </p>
               <div className="flex justify-end space-x-3">
                 <button

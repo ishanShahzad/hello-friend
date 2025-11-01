@@ -30,7 +30,8 @@ const productSchema = mongoose.Schema(
         rating: { type: Number, default: 0 },
         numReviews: { type: Number, default: 0 },
         isFeatured: { type: Boolean, default: false }, 
-        tags: [String], 
+        tags: [String],
+        seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Track who created the product
         
     },
     {

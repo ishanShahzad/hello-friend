@@ -53,7 +53,7 @@ const ProductCard = ({
   // Handle wishlist toggle
   const handleWishlistToggle = () => {
     if (!currentUser) {
-      navigate('/auth');
+      navigate('/login');
       return;
     }
     if (isInWishlist) {
@@ -66,7 +66,7 @@ const ProductCard = ({
   // Handle add to cart with login check
   const handleAddToCartClick = () => {
     if (!currentUser) {
-      navigate('/auth');
+      navigate('/login');
       return;
     }
     handleAddToCart(_id);

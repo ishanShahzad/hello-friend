@@ -32,7 +32,7 @@ const ResetPassword = () => {
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/password/reset/${token}`, { password });
             toast.success(res.data.msg || 'Password reset successful');
-            setTimeout(() => navigate('/auth'), 2000);
+            setTimeout(() => navigate('/login'), 2000);
         } catch (err) {
             toast.error(err.response?.data?.msg || 'Reset failed');
         } finally {
@@ -93,7 +93,7 @@ const ResetPassword = () => {
                 </form>
 
                 <p className="text-sm text-center text-[var(--color-text-secondary)] mt-6">
-                    <Link to={'/auth'} className="text-[var(--color-error)] hover:underline">
+                    <Link to={'/login'} className="text-[var(--color-error)] hover:underline">
                         Back to Login
                     </Link>
                 </p>

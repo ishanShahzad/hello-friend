@@ -11,9 +11,10 @@ import axios from 'axios';
 import { toast } from 'react-toastify'
 import { Link } from 'react-router-dom';
 import Loader from '../common/Loader';
+import { useAuth } from '../../contexts/AuthContext';
 
 const OrderManagement = () => {
-
+    const { currentUser } = useAuth();
 
     const fetchOrders = async () => {
 
@@ -112,6 +113,7 @@ const OrderManagement = () => {
                 getStatusIcon={getStatusIcon}
                 getStatusColor={getStatusColor}
                 loading={loading}
+                currentUser={currentUser}
             />
             {/* {selectedOrder ? (
                 <OrderDetail
@@ -140,7 +142,8 @@ const OrderList = ({
     onDateRangeChange,
     getStatusIcon,
     getStatusColor,
-    loading
+    loading,
+    currentUser
 }) => {
     return (
         <motion.div
@@ -302,7 +305,7 @@ const OrderList = ({
                                         ${order.orderSummary.totalAmount.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <Link to={`/admin-dashboard/order/${order._id}`}>
+                                        <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
                                             <button
                                                 // onClick={() => onSelectOrder(order)}
                                                 className="text-blue-600 hover:text-blue-900"

@@ -119,18 +119,31 @@ exports.addReview = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
     console.log(req.user);
-    const { role } = req.user
+    const { role, id: userId } = req.user
     const { id } = req.params
     console.log('delete product id:::', req.params.id);
-    if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to delete product' })
+    
+    if (role !== 'admin' && role !== 'seller') {
+        return res.status(403).json({ msg: 'Unauthorized to delete product' })
+    }
 
     try {
-        const product = await Product.findByIdAndDelete({ _id: id })
+        const product = await Product.findById(id)
+        
+        if (!product) {
+            return res.status(404).json({ msg: 'Product not found' })
+        }
+        
+        // Sellers can only delete their own products
+        if (role === 'seller' && product.seller?.toString() !== userId) {
+            return res.status(403).json({ msg: 'You can only delete your own products' })
+        }
+        
+        await Product.findByIdAndDelete({ _id: id })
         console.log('product:::', product);
         res.status(200).json({ msg: 'Product deleted successfully' })
     } catch (error) {
         console.error(error.message);
-
         res.status(500).json({ msg: 'Server error while deleting product' })
     }
 
@@ -138,13 +151,26 @@ exports.deleteProduct = async (req, res) => {
 
 exports.editProduct = async (req, res) => {
     try {
-
         const { id } = req.params
         const { product } = req.body
-        const { role } = req.user
+        const { role, id: userId } = req.user
         console.log(role);
 
-        if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to edit product' })
+        if (role !== 'admin' && role !== 'seller') {
+            return res.status(403).json({ msg: 'Unauthorized to edit product' })
+        }
+        
+        const existingProduct = await Product.findById(id)
+        
+        if (!existingProduct) {
+            return res.status(404).json({ msg: 'Product not found' })
+        }
+        
+        // Sellers can only edit their own products
+        if (role === 'seller' && existingProduct.seller?.toString() !== userId) {
+            return res.status(403).json({ msg: 'You can only edit your own products' })
+        }
+        
         console.log(req.body);
         const updatedProduct = await Product.findByIdAndUpdate(id,
             { $set: product },
@@ -161,17 +187,26 @@ exports.editProduct = async (req, res) => {
 
 exports.addProduct = async (req, res) => {
     const { product } = req.body
-    const { role } = req.user
-    console.log(role);
+    const { role, id: userId } = req.user
+    console.log('=== ADD PRODUCT DEBUG ===');
+    console.log('User role:', role);
+    console.log('User ID:', userId);
+    console.log('Product data:', product);
 
     try {
-        if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to edit product' })
-        console.log(req.body);
-        const newProduct = new Product(product)
+        if (role !== 'admin' && role !== 'seller') {
+            console.log('Authorization failed - role is:', role);
+            return res.status(403).json({ msg: 'Unauthorized to add product' })
+        }
+        
+        const newProduct = new Product({
+            ...product,
+            seller: role === 'seller' ? userId : null // Only set seller for seller role
+        })
+        console.log('New product object:', newProduct);
         await newProduct.save()
-        // console.log('newProduct:::', newProduct);
+        console.log('Product saved successfully');
         res.status(200).json({ msg: 'Product added successfully.' })
-
 
     } catch (error) {
         console.error(error.message);
@@ -180,11 +215,13 @@ exports.addProduct = async (req, res) => {
 }
 
 exports.bulkDiscount = async (req, res) => {
-    const { role } = req.user
+    const { role, id: userId } = req.user
     const { productIds, discountType, discountValue } = req.body
 
     try {
-        if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to apply bulk discount' })
+        if (role !== 'admin' && role !== 'seller') {
+            return res.status(403).json({ msg: 'Unauthorized to apply bulk discount' })
+        }
 
         // Validate input
         if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
@@ -199,11 +236,17 @@ exports.bulkDiscount = async (req, res) => {
             return res.status(400).json({ msg: 'Valid discount value is required' })
         }
 
+        // Build query - sellers can only update their own products
+        const query = { _id: { $in: productIds } }
+        if (role === 'seller') {
+            query.seller = userId
+        }
+
         // Fetch all products to update
-        const products = await Product.find({ _id: { $in: productIds } })
+        const products = await Product.find(query)
 
         if (products.length === 0) {
-            return res.status(404).json({ msg: 'No products found' })
+            return res.status(404).json({ msg: 'No products found or you do not have permission to update these products' })
         }
 
         // Apply discount to each product
@@ -237,11 +280,13 @@ exports.bulkDiscount = async (req, res) => {
 }
 
 exports.bulkPriceUpdate = async (req, res) => {
-    const { role } = req.user
+    const { role, id: userId } = req.user
     const { productIds, updateType, value } = req.body
 
     try {
-        if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to update bulk prices' })
+        if (role !== 'admin' && role !== 'seller') {
+            return res.status(403).json({ msg: 'Unauthorized to update bulk prices' })
+        }
 
         // Validate input
         if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
@@ -256,11 +301,17 @@ exports.bulkPriceUpdate = async (req, res) => {
             return res.status(400).json({ msg: 'Value is required' })
         }
 
+        // Build query - sellers can only update their own products
+        const query = { _id: { $in: productIds } }
+        if (role === 'seller') {
+            query.seller = userId
+        }
+
         // Fetch all products to update
-        const products = await Product.find({ _id: { $in: productIds } })
+        const products = await Product.find(query)
 
         if (products.length === 0) {
-            return res.status(404).json({ msg: 'No products found' })
+            return res.status(404).json({ msg: 'No products found or you do not have permission to update these products' })
         }
 
         // Update price for each product
@@ -303,20 +354,28 @@ exports.bulkPriceUpdate = async (req, res) => {
 }
 
 exports.removeDiscount = async (req, res) => {
-    const { role } = req.user
+    const { role, id: userId } = req.user
     const { productIds } = req.body
 
     try {
-        if (role !== 'admin') return res.status(403).json({ msg: 'Unauthorized to remove discounts' })
+        if (role !== 'admin' && role !== 'seller') {
+            return res.status(403).json({ msg: 'Unauthorized to remove discounts' })
+        }
 
         // Validate input
         if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
             return res.status(400).json({ msg: 'Product IDs array is required' })
         }
 
+        // Build query - sellers can only update their own products
+        const query = { _id: { $in: productIds } }
+        if (role === 'seller') {
+            query.seller = userId
+        }
+
         // Update all products to remove discount
         const result = await Product.updateMany(
-            { _id: { $in: productIds } },
+            query,
             { $set: { discountedPrice: 0 } }
         )
 
@@ -328,5 +387,43 @@ exports.removeDiscount = async (req, res) => {
     } catch (error) {
         console.error('Error while removing discounts:::', error.message);
         res.status(500).json({ msg: 'Server error while removing discounts.' })
+    }
+}
+
+// Get seller's products
+exports.getSellerProducts = async (req, res) => {
+    const { role, id: userId } = req.user
+    const { categories, brands, priceRange, search } = { ...req.query }
+
+    try {
+        if (role !== 'seller') {
+            return res.status(403).json({ msg: 'Only sellers can access this endpoint' })
+        }
+
+        let query = { seller: userId }
+        
+        if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
+        if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
+        if (priceRange) {
+            const [min, max] = priceRange.split(',')
+            query.price = { $gte: Number(min), $lte: Number(max) }
+        }
+
+        let products = await Product.find(query)
+
+        if (search) {
+            const fuse = new Fuse(products, {
+                threshold: 0.4,
+                keys: ['name', 'description', 'brand', 'tags', 'category']
+            })
+
+            const results = fuse.search(search)
+            products = results.map(r => r.item)
+        }
+
+        res.status(200).json({ msg: 'Fetched seller products successfully.', products: products })
+    } catch (error) {
+        console.error('Server error while fetching seller products:::', error.message);
+        res.status(500).json({ msg: 'Server error while fetching seller products.' })
     }
 }

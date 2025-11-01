@@ -14,9 +14,11 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import Loader from "../common/Loader";
+import { useAuth } from "../../contexts/AuthContext";
 
 
 const OrderDetail = () => {
+    const { currentUser } = useAuth();
 
     const [order, setOrder] = useState(null)
 
@@ -141,7 +143,7 @@ const OrderDetail = () => {
             {/* Header */}
             <div className="p-6 mt-6 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Link to={'/admin-dashboard/order-management'}>
+                    <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order-management`}>
                         <button className="p-2 rounded-lg hover:bg-gray-100">
                             <ArrowLeft className="w-5 h-5" />
                         </button>
@@ -326,15 +328,18 @@ const OrderDetail = () => {
                                 ) : order?.orderStatus === 'delivered' ? (<h1>
                                     Order has been delivered
                                 </h1>) : (
-                                    <div className="pt-4 border-t border-gray-200">
-                                        <button
-                                            onClick={() => setShowCancelConfirm(true)}
-                                            className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 flex items-center space-x-2"
-                                        >
-                                            <XCircle className="w-4 h-4" />
-                                            <span>Cancel Order</span>
-                                        </button>
-                                    </div>
+                                    // Only show cancel button for admin and users, not sellers
+                                    currentUser?.role !== 'seller' && (
+                                        <div className="pt-4 border-t border-gray-200">
+                                            <button
+                                                onClick={() => setShowCancelConfirm(true)}
+                                                className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 flex items-center space-x-2"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                                <span>Cancel Order</span>
+                                            </button>
+                                        </div>
+                                    )
                                 )}
                         </div>
                     </div>

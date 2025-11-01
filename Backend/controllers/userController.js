@@ -43,13 +43,27 @@ exports.toggleBlockUser = async (req, res) => {
 exports.toggleAdminUser = async (req, res) => {
     const { role } = req.user
     const { id } = req.params
+    const { newRole } = req.body // Accept specific role from request
     if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only.' })
     try {
         const user = await User.findById(id)
 
-        if (!user) res.status(404).json({ msg: "User not found." })
+        if (!user) return res.status(404).json({ msg: "User not found." })
 
-        user.role = user.role === 'admin' ? 'user' : 'admin'
+        // If newRole is provided, use it; otherwise cycle through roles
+        if (newRole && ['user', 'admin', 'seller'].includes(newRole)) {
+            user.role = newRole
+        } else {
+            // Cycle: user -> seller -> admin -> user
+            if (user.role === 'user') {
+                user.role = 'seller'
+            } else if (user.role === 'seller') {
+                user.role = 'admin'
+            } else {
+                user.role = 'user'
+            }
+        }
+        
         await user.save()
         res.status(200).json({ msg: `${user.username}'s role updated to ${user.role}.` })
     } catch (error) {

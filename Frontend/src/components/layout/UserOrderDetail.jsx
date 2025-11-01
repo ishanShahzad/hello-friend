@@ -343,6 +343,19 @@ const OrderDetail = () => {
                                 </span>
                             </div>
                         </div>
+                        
+                        {/* Cancel Order Button - Only show if order is not cancelled or delivered */}
+                        {order?.orderStatus !== 'cancelled' && order?.orderStatus !== 'delivered' && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                <button
+                                    onClick={() => setShowCancelConfirm(true)}
+                                    className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 flex items-center justify-center space-x-2"
+                                >
+                                    <XCircle className="w-4 h-4" />
+                                    <span>Cancel Order</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Payment */}

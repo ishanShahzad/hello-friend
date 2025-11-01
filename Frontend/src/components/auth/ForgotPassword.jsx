@@ -71,7 +71,7 @@ const ForgotPassword = () => {
         <p className="text-sm text-center text-[var(--color-text-secondary)] mt-6">
           Remember your password?{' '}
           <Link
-            to={'/auth'}
+            to={'/login'}
             className="text-[var(--color-error)] hover:underline">
             Login
           </Link>

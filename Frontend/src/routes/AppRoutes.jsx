@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
-import LoginSignUpPage from '../components/auth/loginSignupForm'
+import Login from '../components/auth/Login'
+import SignUp from '../components/auth/SignUp'
 import MainLayoutPage from '../pages/MainLayoutPage'
 import Products from '../components/Products'
 import ProductDetailPage from '../pages/ProductDetailPage'
@@ -9,6 +10,7 @@ import ForgotPassword from '../components/auth/ForgotPassword'
 import ResetPassword from '../components/auth/ResetPassword'
 import Checkout from '../components/layout/Checkout'
 import AdminDashboard from '../components/layout/AdminDashboard'
+import SellerDashboard from '../components/layout/SellerDashboard'
 import ProtectedRoute from '../components/common/ProtectedRoute'
 import Unauthorized from '../components/layout/Unauthorized'
 import OrderManagement from '../components/layout/orders'
@@ -50,7 +52,8 @@ function AppRoutes() {
 
                     <Route path={'/unauthorized'} element={<Unauthorized onBack={() => { navigate(-1) }} />} />
                 </Route>
-                <Route path='/auth' element={<LoginSignUpPage />} />
+                <Route path='/login' element={<Login />} />
+                <Route path='/signup' element={<SignUp />} />
 
                 <Route path={'/success'} element={
                     <ProtectedRoute >
@@ -119,7 +122,7 @@ function AppRoutes() {
                         </ProtectedRoute>
                     } />
                     <Route path='/admin-dashboard/order/:id' element={
-                        <ProtectedRoute role={'admin'}>
+                        <ProtectedRoute role={['admin', 'seller']}>
                             <OrderDetail />
                         </ProtectedRoute>
                     } />
@@ -128,6 +131,30 @@ function AppRoutes() {
                             <UserManagement />
                         </ProtectedRoute>
                     } />
+                </Route>
+
+                {/* SELLER DASHBOARD */}
+                <Route path={'/seller-dashboard'} element={
+                    <ProtectedRoute role={'seller'}>
+                        <SellerDashboard />
+                    </ProtectedRoute>}>
+
+                    <Route path='/seller-dashboard/store-overview' element={
+                        <ProtectedRoute role={'seller'}>
+                            <StoreOverview />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/product-management' element={
+                        <ProtectedRoute role={'seller'}>
+                            <ProductManagement />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/order-management' element={
+                        <ProtectedRoute role={'seller'}>
+                            <OrderManagement />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/order/:id' element={<OrderDetail />} />
                 </Route>
             </Routes>
         </>

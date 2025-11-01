@@ -9,7 +9,7 @@ const userSchema = mongoose.Schema({
     avatar: { type: String, default: 'https://res.cloudinary.com/dus5sac8g/image/upload/v1756983317/Profile_Picture_dxq4w8.jpg' },
     email: { type: String, required: true }, 
     password: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin', 'seller'], default: 'user' },
     status: { type: String, enum: ['active', 'blocked'], default: 'active' },
     wishlist: [
         { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true }

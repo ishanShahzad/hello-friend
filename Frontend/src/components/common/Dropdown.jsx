@@ -43,6 +43,8 @@ const NavDropdown = () => {
             >
                 {currentUser?.role === "admin" ? (
                     <Crown color="gold" />
+                ) : currentUser?.role === "seller" ? (
+                    <Crown color="#10b981" />
                 ) : (
                     <User className="text-white" />
                 )}

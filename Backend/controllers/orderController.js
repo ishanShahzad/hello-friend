@@ -40,7 +40,8 @@ exports.placeOrder = async (req, res) => {
         console.log('db product items:::', orderItems);
 
         const subtotal = orderItems.reduce((acc, item, idx) => {
-            return item.discountedPrice !== 0 ? acc + item.discountedPrice * productQtys[idx] : acc + item.price * productQtys[idx]
+            const itemPrice = (item.discountedPrice && item.discountedPrice > 0) ? item.discountedPrice : item.price
+            return acc + itemPrice * productQtys[idx]
         }, 0)
 
         console.log(subtotal);
@@ -73,7 +74,7 @@ exports.placeOrder = async (req, res) => {
                 productId: item._id,
                 name: item.name,
                 image: item.image,
-                price: item.discountedPrice !== 0 ? item.discountedPrice : item.price,
+                price: (item.discountedPrice && item.discountedPrice > 0) ? item.discountedPrice : item.price,
                 quantity: productQtys[idx],
             })),
 
@@ -113,10 +114,16 @@ exports.placeOrder = async (req, res) => {
         // const domainURL = process.env.FRONTEND_URL || 'http://localhost:5173'
 
         if (newOrder.paymentMethod === 'cash_on_delivery') {
+            // Reduce stock for cash on delivery orders
+            for (const item of newOrder.orderItems) {
+                await Product.findByIdAndUpdate(
+                    item.productId,
+                    { $inc: { stock: -item.quantity } }
+                );
+            }
+            
             return res.status(200).json({
                 msg: 'Order placed successfully',
-                // id: session.id,
-                // url: session.url,
             });
         }
 
@@ -186,9 +193,12 @@ exports.placeOrder = async (req, res) => {
 
 
 exports.getOrders = async (req, res) => {
-    // const { query: filter } = req
+    const { role, id: userId } = req.user
     const { search, paymentStatus, status, startDate, endDate } = { ...req.query }
-    // console.log(startDate, endDate);
+    
+    console.log('=== GET ORDERS DEBUG ===');
+    console.log('User role:', role);
+    console.log('User ID:', userId);
 
     let query = {}
     if (search) {
@@ -206,18 +216,76 @@ exports.getOrders = async (req, res) => {
         query.isPaid = paymentStatus === 'paid' ? true : false
     }
 
-
     try {
-        // console.log(query);
-        const orders = await Order.find(query)
-        // console.log(orders);
+        let orders
+
+        // If seller, only show orders containing their products
+        if (role === 'seller') {
+            console.log('Filtering orders for seller...');
+            // First, get all seller's product IDs
+            const sellerProducts = await Product.find({ seller: userId }).select('_id')
+            const sellerProductIds = sellerProducts.map(p => p._id.toString())
+            console.log('Seller product IDs:', sellerProductIds);
+
+            // If seller has no products, return empty array
+            if (sellerProductIds.length === 0) {
+                console.log('Seller has no products - returning empty orders');
+                orders = []
+            } else {
+                // Find orders that contain at least one of seller's products
+                const allOrders = await Order.find(query)
+                console.log('Total orders found:', allOrders.length);
+                
+                // Filter and modify orders to show only seller's portion
+                orders = allOrders
+                    .filter(order => {
+                        const hasSellerProduct = order.orderItems.some(item => 
+                            sellerProductIds.includes(item.productId.toString())
+                        )
+                        return hasSellerProduct
+                    })
+                    .map(order => {
+                        // Filter order items to only seller's products
+                        const sellerOrderItems = order.orderItems.filter(item => 
+                            sellerProductIds.includes(item.productId.toString())
+                        )
+                        
+                        // Calculate seller's portion
+                        const sellerSubtotal = sellerOrderItems.reduce((sum, item) => 
+                            sum + (item.price * item.quantity), 0
+                        )
+                        
+                        const totalOrderValue = order.orderSummary.subtotal
+                        const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0
+                        const sellerShipping = order.orderSummary.shippingCost * sellerProportion
+                        const sellerTax = order.orderSummary.tax * sellerProportion
+                        const sellerTotal = sellerSubtotal + sellerShipping + sellerTax
+                        
+                        // Return modified order with seller's portion
+                        return {
+                            ...order.toObject(),
+                            orderItems: sellerOrderItems,
+                            orderSummary: {
+                                subtotal: Math.round(sellerSubtotal * 100) / 100,
+                                shippingCost: Math.round(sellerShipping * 100) / 100,
+                                tax: Math.round(sellerTax * 100) / 100,
+                                totalAmount: Math.round(sellerTotal * 100) / 100
+                            }
+                        }
+                    })
+                console.log('Orders with seller products:', orders.length);
+            }
+        } else {
+            console.log('Admin - showing all orders');
+            // Admin sees all orders
+            orders = await Order.find(query)
+        }
 
         res.status(200).json({ msg: 'Orders fetched successfully', orders: orders })
 
     } catch (error) {
         console.error("Error fetching Order:", error);
         return res.status(500).json({ msg: "Server error while fetching orders" });
-
     }
 }
 
@@ -258,9 +326,34 @@ exports.getUserOrders = async (req, res) => {
 exports.updateStatus = async (req, res) => {
     const { id: _id } = req.params
     const { newStatus } = req.body
-    // console.log(id);
+    const { role, id: userId } = req.user
 
     try {
+        const existingOrder = await Order.findById(_id)
+        
+        if (!existingOrder) {
+            return res.status(404).json({ msg: 'Order not found' })
+        }
+
+        // If seller, check if order contains their products
+        if (role === 'seller') {
+            const sellerProducts = await Product.find({ seller: userId }).select('_id')
+            const sellerProductIds = sellerProducts.map(p => p._id.toString())
+            
+            const hasSellerProduct = existingOrder.orderItems.some(item => 
+                sellerProductIds.includes(item.productId.toString())
+            )
+            
+            if (!hasSellerProduct) {
+                return res.status(403).json({ msg: 'You can only update orders containing your products' })
+            }
+            
+            // Sellers cannot cancel orders - only admin and customers can
+            if (newStatus === 'cancelled') {
+                return res.status(403).json({ msg: 'Only customers and admins can cancel orders. You can update the status to other values.' })
+            }
+        }
+
         let order
         if (newStatus !== 'delivered') {
             order = await Order.findByIdAndUpdate(_id, { $set: { orderStatus: newStatus } })
@@ -275,7 +368,6 @@ exports.updateStatus = async (req, res) => {
                 },
             )
         }
-        // console.log(order);
 
         await order.save()
 
@@ -283,7 +375,6 @@ exports.updateStatus = async (req, res) => {
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ msg: 'Server error while updating status' })
-
     }
 }
 
@@ -291,26 +382,96 @@ exports.updateStatus = async (req, res) => {
 
 exports.getOrderDetail = async (req, res) => {
     const { id } = req.params
+    const { role, id: userId } = req.user
+    
+    console.log('=== GET ORDER DETAIL DEBUG ===');
+    console.log('Order ID:', id);
+    console.log('User role:', role);
+    console.log('User ID:', userId);
+    
     try {
         const order = await Order.findOne({ _id: id })
+        
+        if (!order) {
+            console.log('Order not found');
+            return res.status(404).json({ msg: 'Order not found' })
+        }
+
+        console.log('Order found:', order.orderId);
+        console.log('Order items:', order.orderItems.map(i => ({ productId: i.productId, name: i.name })));
+
+        // If seller, filter order items to show only their products
+        if (role === 'seller') {
+            const sellerProducts = await Product.find({ seller: userId }).select('_id')
+            const sellerProductIds = sellerProducts.map(p => p._id.toString())
+            
+            console.log('Seller product IDs:', sellerProductIds);
+            console.log('Order product IDs:', order.orderItems.map(i => i.productId.toString()));
+            
+            // Filter order items to only include seller's products
+            const sellerOrderItems = order.orderItems.filter(item => 
+                sellerProductIds.includes(item.productId.toString())
+            )
+            
+            console.log('Seller order items:', sellerOrderItems.length);
+            
+            if (sellerOrderItems.length === 0) {
+                console.log('Access denied - order does not contain seller products');
+                return res.status(403).json({ msg: 'You can only view orders containing your products' })
+            }
+            
+            // Create a modified order object with only seller's items
+            const sellerSubtotal = sellerOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            
+            // Calculate proportional shipping and tax based on seller's portion
+            const totalOrderValue = order.orderSummary.subtotal
+            const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0
+            const sellerShipping = order.orderSummary.shippingCost * sellerProportion
+            const sellerTax = order.orderSummary.tax * sellerProportion
+            const sellerTotal = sellerSubtotal + sellerShipping + sellerTax
+            
+            const filteredOrder = {
+                ...order.toObject(),
+                orderItems: sellerOrderItems,
+                // Show only seller's portion of the order
+                orderSummary: {
+                    subtotal: Math.round(sellerSubtotal * 100) / 100,
+                    shippingCost: Math.round(sellerShipping * 100) / 100,
+                    tax: Math.round(sellerTax * 100) / 100,
+                    totalAmount: Math.round(sellerTotal * 100) / 100,
+                    // Keep original for reference (optional)
+                    _originalTotal: order.orderSummary.totalAmount
+                }
+            }
+            
+            return res.status(200).json({ msg: 'Order fetched successfully.', order: filteredOrder })
+        }
+
         res.status(200).json({ msg: 'Order fetched successfully.', order: order })
     } catch (error) {
         console.error(error);
-        res.status(500).json({ msg: 'Server error while fetching order detail', order: order })
+        res.status(500).json({ msg: 'Server error while fetching order detail' })
     }
 }
 
 
 exports.cancelOrder = async (req, res) => {
     const { id: _id } = req.params
+    const { role } = req.user
+    
     try {
+        // Only admin and customers can cancel orders, not sellers
+        if (role === 'seller') {
+            return res.status(403).json({ msg: 'Sellers cannot cancel orders. Only customers and admins can cancel orders.' })
+        }
+        
         const order = await Order.findByIdAndUpdate(_id, { $set: { orderStatus: 'cancelled' } })
         if (!order) return res.status(404).json({ msg: 'Order not found' })
         console.log(order);
-        res.status(200).json({ msg: 'Order fetched successfully.', order: order })
+        res.status(200).json({ msg: 'Order cancelled successfully.', order: order })
     } catch (error) {
         console.error(error);
-        res.status(500).json({ msg: 'Server error while fetching order detail', order: order })
+        res.status(500).json({ msg: 'Server error while cancelling order' })
     }
 }
 

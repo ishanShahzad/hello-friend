@@ -78,6 +78,23 @@ function Navbar() {
 
                             )
                         }
+                        {
+                            currentUser.role == 'seller' && (
+                                <Link to={'/seller-dashboard/store-overview'}>
+                                    <motion.button
+
+                                        initial={{ scale: 1 }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="rounded bg-green-700 px-3 py-2 font-semibold cursor-pointer"
+                                    >
+                                        Seller Dashboard
+                                    </motion.button>
+                                </Link>
+
+                            )
+                        }
                         <NavDropdown />
                     </div>
                 )}
@@ -105,7 +122,7 @@ function Navbar() {
 
                 </>
                 {!currentUser && (
-                    <Link to="/auth">
+                    <Link to="/login">
                         <button className="w-max bg-gradient-to-r from-indigo-500 to-purple-500 
               hover:from-indigo-600 hover:to-purple-600 
               text-white px-4 py-2 rounded-lg font-semibold 
