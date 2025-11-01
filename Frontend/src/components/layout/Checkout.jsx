@@ -171,14 +171,26 @@ export default function Checkout() {
     console.log("cartItems::::", cartItems);
 
 
+    // Get spin discount info
+    const spinResult = getSpinDiscount();
+    const spinSelectedProducts = JSON.parse(localStorage.getItem('spinSelectedProducts') || '[]');
+    
     const order = {
-      orderItems: cartItems.cart.map((item) => ({
-        id: item.product._id,
-        name: item.product.name,
-        image: item.product.image,
-        price: getDiscountedPrice(item.product), // Use spin discounted price
-        quantity: item.qty,
-      })),
+      orderItems: cartItems.cart.map((item) => {
+        const discountedPrice = getDiscountedPrice(item.product);
+        const originalPrice = item.product.discountedPrice || item.product.price;
+        const hasSpinDiscount = spinResult && !spinResult.hasCheckedOut && spinSelectedProducts.includes(item.product._id);
+        
+        return {
+          id: item.product._id,
+          name: item.product.name,
+          image: item.product.image,
+          price: discountedPrice, // Use spin discounted price
+          originalPrice: hasSpinDiscount ? originalPrice : undefined, // Store original price if spin discount applied
+          hasSpinDiscount: hasSpinDiscount, // Flag for spin discount
+          quantity: item.qty,
+        };
+      }),
 
       shippingInfo: {
         fullName: data.fullName,
@@ -210,6 +222,17 @@ export default function Checkout() {
           ? "stripe"
           : "cash_on_delivery",
     };
+    
+    // Add spin discount info if applicable
+    if (spinResult && !spinResult.hasCheckedOut && spinSelectedProducts.length > 0) {
+      order.spinDiscount = {
+        applied: true,
+        type: spinResult.type,
+        value: spinResult.value,
+        label: spinResult.label
+      };
+    }
+    
     if (data.instructions !== '') order.instructions = data.instructions
 
     console.log("Order Object:", order);

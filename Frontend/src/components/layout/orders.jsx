@@ -270,7 +270,14 @@ const OrderList = ({
                                     className="hover:bg-gray-50"
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {order.orderId}
+                                        <div className="flex flex-col gap-1">
+                                            <span>{order.orderId}</span>
+                                            {order.spinDiscount?.applied && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-200 w-fit">
+                                                    🎉 Spin Discount
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {order.shippingInfo.fullName}
@@ -333,8 +340,15 @@ const OrderList = ({
                             transition={{ duration: 0.2 }}
                             className="border rounded-lg p-4 bg-white shadow-sm"
                         >
-                            <div className="flex justify-between">
-                                <h2 className="font-semibold text-gray-800">{order.orderId}</h2>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="font-semibold text-gray-800">{order.orderId}</h2>
+                                    {order.spinDiscount?.applied && (
+                                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-200">
+                                            🎉 Spin Discount
+                                        </span>
+                                    )}
+                                </div>
                                 <span
                                     className={`px-2 py-1 text-xs rounded-full ${order.isPaid
                                         ? "bg-green-100 text-green-800"

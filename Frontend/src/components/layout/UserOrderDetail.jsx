@@ -195,6 +195,11 @@ const OrderDetail = () => {
                     >
                         {order?.isPaid ? "Paid" : "Unpaid"}
                     </span>
+                    {order?.spinDiscount?.applied && (
+                        <span className="px-3 py-1 text-sm rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold flex items-center gap-1">
+                            🎉 Spin Discount: {order.spinDiscount.label}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -293,11 +298,21 @@ const OrderDetail = () => {
                                         <p className="text-sm text-gray-500">
                                             Quantity: {item.quantity}
                                         </p>
+                                        {item.hasSpinDiscount && (
+                                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-xs font-semibold rounded-full border border-purple-200">
+                                                🎉 Spin Discount Applied
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-right">
                                         <p className="text-md font-medium text-gray-800">
                                             ${item.price.toLocaleString()}
                                         </p>
+                                        {item.hasSpinDiscount && item.originalPrice && (
+                                            <p className="text-xs text-gray-400 line-through">
+                                                ${item.originalPrice.toLocaleString()}
+                                            </p>
+                                        )}
                                         <p className="text-sm text-gray-500">
                                             Subtotal: $
                                             {(

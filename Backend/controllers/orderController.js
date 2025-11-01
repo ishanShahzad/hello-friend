@@ -39,9 +39,9 @@ exports.placeOrder = async (req, res) => {
         const orderItems = await Product.find({ _id: { $in: productIds } })
         console.log('db product items:::', orderItems);
 
-        const subtotal = orderItems.reduce((acc, item, idx) => {
-            const itemPrice = (item.discountedPrice && item.discountedPrice > 0) ? item.discountedPrice : item.price
-            return acc + itemPrice * productQtys[idx]
+        // Use prices from frontend (includes spin discounts)
+        const subtotal = order.orderItems.reduce((acc, item) => {
+            return acc + item.price * item.quantity
         }, 0)
 
         console.log(subtotal);
@@ -69,13 +69,15 @@ exports.placeOrder = async (req, res) => {
             user: userId,
             orderId: `ORD-${Date.now()}`,
 
-            // ✅ orderItems already matches schema from frontend
-            orderItems: orderItems.map((item, idx) => ({
-                productId: item._id,
+            // Use order items from frontend with spin discount prices
+            orderItems: order.orderItems.map((item) => ({
+                productId: item.id,
                 name: item.name,
                 image: item.image,
-                price: (item.discountedPrice && item.discountedPrice > 0) ? item.discountedPrice : item.price,
-                quantity: productQtys[idx],
+                price: item.price, // Already discounted price from frontend
+                originalPrice: item.originalPrice, // Original price before spin discount
+                hasSpinDiscount: item.hasSpinDiscount || false, // Spin discount flag
+                quantity: item.quantity,
             })),
 
             shippingInfo: {
@@ -105,6 +107,17 @@ exports.placeOrder = async (req, res) => {
             // ✅ Schema expects just string ("stripe" | "cash_on_delivery")
             paymentMethod: order.paymentMethod,
         });
+        
+        // Add spin discount info if provided
+        if (order.spinDiscount && order.spinDiscount.applied) {
+            newOrder.spinDiscount = {
+                applied: true,
+                type: order.spinDiscount.type,
+                value: order.spinDiscount.value,
+                label: order.spinDiscount.label
+            };
+        }
+        
         if (order.instructions && order.instructions !== '') newOrder.instructions = order.instructions
 
         await newOrder.save();
