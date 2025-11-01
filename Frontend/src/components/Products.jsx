@@ -98,7 +98,7 @@ function Products() {
       }
     }
 
-    // Show spin wheel if no active spin
+    // Auto-show spin wheel if no active spin (user can close it)
     setShowSpinWheel(true);
   };
 
@@ -431,7 +431,14 @@ function Products() {
 
       {/* Product Grid */}
       <main className='flex-1 p-4 lg:p-6'>
-        {/* Spin Banner */}
+        {/* Spin Banner - Always show */}
+        {!spinResult && (
+          <SpinBanner 
+            spinResult={null}
+            onOpenSpinner={() => setShowSpinWheel(true)}
+          />
+        )}
+        
         {spinResult && !spinResult.hasCheckedOut && (
           <SpinBanner 
             spinResult={spinResult} 
