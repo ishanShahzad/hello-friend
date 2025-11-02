@@ -1,4 +1,5 @@
 const User = require('../models/User')
+
 exports.profileImage = async (req, res) => {
     try {
         if (!req.file) {
@@ -19,6 +20,24 @@ exports.profileImage = async (req, res) => {
 
         res.json({
             message: 'Image uploaded successfully',
+            imageUrl: req.file.path, // This is the Cloudinary URL 
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ msg: 'Server error during upload' });
+    }
+}
+
+exports.productImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ msg: 'No file uploaded' });
+        }
+
+        console.log('Product image uploaded:', req.file);
+
+        res.json({
+            message: 'Product image uploaded successfully',
             imageUrl: req.file.path, // This is the Cloudinary URL 
         });
     } catch (error) {

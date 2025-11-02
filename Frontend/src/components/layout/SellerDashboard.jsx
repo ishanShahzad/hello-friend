@@ -12,6 +12,7 @@ import {
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 
 const SellerDashboard = () => {
     const [isMobile, setIsMobile] = useState(false);
@@ -37,6 +38,7 @@ const SellerDashboard = () => {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [uploadingImages, setUploadingImages] = useState(false);
 
     const fetchFilters = async () => {
         try {
@@ -111,6 +113,38 @@ const SellerDashboard = () => {
         console.log('Editing product:', editingProduct);
         console.log('Has _id?', !!editingProduct._id);
         
+        setUploadingImages(true);
+        try {
+            // Upload main image if it's a file
+            if (editingProduct.imageFile) {
+                const imageUrl = await uploadImageToCloudinary(editingProduct.imageFile);
+                editingProduct.image = imageUrl;
+                delete editingProduct.imageFile;
+            }
+
+            // Upload additional images if they are files
+            if (editingProduct.imageFiles && editingProduct.imageFiles.length > 0) {
+                const uploadedUrls = await Promise.all(
+                    editingProduct.imageFiles.map(file => uploadImageToCloudinary(file))
+                );
+                
+                // Replace file previews with actual URLs
+                const existingImages = editingProduct.images.filter(img => !img.isFile);
+                const newImages = uploadedUrls.map(url => ({ url }));
+                editingProduct.images = [...existingImages, ...newImages];
+                delete editingProduct.imageFiles;
+            }
+
+            // Clean up any isFile flags
+            if (editingProduct.images) {
+                editingProduct.images = editingProduct.images.map(img => ({ url: img.url }));
+            }
+        } catch (error) {
+            setUploadingImages(false);
+            toast.error(error.message || 'Failed to upload images');
+            return;
+        }
+        
         if (editingProduct._id) {
             try {
                 const token = localStorage.getItem('jwtToken');
@@ -148,6 +182,7 @@ const SellerDashboard = () => {
                 toast.error(error.response?.data?.msg || 'Failed to add product');
             }
         }
+        setUploadingImages(false);
         setIsFormOpen(false);
         setEditingProduct(null);
     };
@@ -221,6 +256,7 @@ const SellerDashboard = () => {
                             setIsFormOpen(false);
                             setEditingProduct(null);
                         }}
+                        uploadingImages={uploadingImages}
                     />
                 )}
             </AnimatePresence>
@@ -358,7 +394,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
 
 // Product Form Component (reused from Admin with green theme)
-const ProductForm = ({ product, setProduct, onSave, onClose }) => {
+const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) => {
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
 
@@ -446,9 +482,10 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                             <input
                                 type="text"
                                 required
+                                disabled={uploadingImages}
                                 value={product.name}
                                 onChange={(e) => setProduct({ ...product, name: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter product name"
                             />
                         </div>
@@ -460,9 +497,10 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                             <input
                                 type="text"
                                 required
+                                disabled={uploadingImages}
                                 value={product.brand}
                                 onChange={(e) => setProduct({ ...product, brand: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter brand name"
                             />
                         </div>
@@ -474,11 +512,12 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                             <input
                                 type="text"
                                 required
+                                disabled={uploadingImages}
                                 value={product.category}
                                 onChange={(e) =>
                                     setProduct({ ...product, category: e.target.value })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter category"
                             />
                         </div>
@@ -491,11 +530,12 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                 type="number"
                                 min={0}
                                 required
+                                disabled={uploadingImages}
                                 value={product.stock}
                                 onChange={(e) =>
                                     setProduct({ ...product, stock: Math.round(e.target.value) || 0 })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter stock quantity"
                             />
                         </div>
@@ -509,6 +549,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                 min="0"
                                 step="0.01"
                                 required
+                                disabled={uploadingImages}
                                 value={product.price}
                                 onChange={(e) =>
                                     setProduct({
@@ -516,7 +557,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                         price: parseFloat(e.target.value) || 0,
                                     })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter price"
                             />
                         </div>
@@ -529,6 +570,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                 type="number"
                                 min="0"
                                 step="0.01"
+                                disabled={uploadingImages}
                                 value={product.discountedPrice}
                                 onChange={(e) =>
                                     setProduct({
@@ -536,7 +578,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                         discountedPrice: parseFloat(e.target.value) || 0,
                                     })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="Enter discounted price (optional)"
                             />
                         </div>
@@ -548,28 +590,88 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                         </label>
                         <textarea
                             required
+                            disabled={uploadingImages}
                             value={product.description}
                             onChange={(e) =>
                                 setProduct({ ...product, description: e.target.value })
                             }
                             rows={3}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             placeholder="Enter product description"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Main Image URL *
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Main Image *
                         </label>
-                        <input
-                            type="text"
-                            required
-                            value={product.image}
-                            onChange={(e) => setProduct({ ...product, image: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            placeholder="Enter main image URL"
-                        />
+                        
+                        {/* Tab Selection */}
+                        <div className="flex gap-2 mb-3">
+                            <button
+                                type="button"
+                                disabled={uploadingImages}
+                                onClick={() => setProduct({ ...product, imageInputType: 'url' })}
+                                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    (product.imageInputType || 'url') === 'url'
+                                        ? 'bg-green-100 text-green-700 border-2 border-green-500'
+                                        : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                                }`}
+                            >
+                                URL
+                            </button>
+                            <button
+                                type="button"
+                                disabled={uploadingImages}
+                                onClick={() => setProduct({ ...product, imageInputType: 'file' })}
+                                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    product.imageInputType === 'file'
+                                        ? 'bg-green-100 text-green-700 border-2 border-green-500'
+                                        : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                                }`}
+                            >
+                                Upload File
+                            </button>
+                        </div>
+
+                        {/* URL Input */}
+                        {(product.imageInputType || 'url') === 'url' && (
+                            <input
+                                type="text"
+                                required={!product.image}
+                                disabled={uploadingImages}
+                                value={product.image || ''}
+                                onChange={(e) => setProduct({ ...product, image: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                placeholder="Enter main image URL"
+                            />
+                        )}
+
+                        {/* File Upload */}
+                        {product.imageInputType === 'file' && (
+                            <div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    disabled={uploadingImages}
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            if (file.size > 5 * 1024 * 1024) {
+                                                alert('File size should be less than 5MB');
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                            // Store file object for later upload
+                                            setProduct({ ...product, imageFile: file, image: URL.createObjectURL(file) });
+                                        }
+                                    }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Max file size: 5MB (will upload when you save)</p>
+                            </div>
+                        )}
+
                         {product.image && (
                             <div className="mt-2">
                                 <img
@@ -582,29 +684,93 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                     </div>
 
                     <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Additional Images
-                            </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Additional Images
+                        </label>
+                        
+                        {/* Tab Selection for Additional Images */}
+                        <div className="flex gap-2 mb-3">
+                            <button
+                                type="button"
+                                disabled={uploadingImages}
+                                onClick={() => setProduct({ ...product, additionalImageInputType: 'url' })}
+                                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    (product.additionalImageInputType || 'url') === 'url'
+                                        ? 'bg-green-100 text-green-700 border-2 border-green-500'
+                                        : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                                }`}
+                            >
+                                URL
+                            </button>
+                            <button
+                                type="button"
+                                disabled={uploadingImages}
+                                onClick={() => setProduct({ ...product, additionalImageInputType: 'file' })}
+                                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    product.additionalImageInputType === 'file'
+                                        ? 'bg-green-100 text-green-700 border-2 border-green-500'
+                                        : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                                }`}
+                            >
+                                Upload File
+                            </button>
+                        </div>
+
+                        {/* URL Input */}
+                        {(product.additionalImageInputType || 'url') === 'url' && (
                             <div className="flex space-x-2">
                                 <input
                                     type="text"
+                                    disabled={uploadingImages}
                                     value={newImage}
                                     onChange={(e) => setNewImage(e.target.value)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="Enter image URL"
                                 />
                                 <motion.button
                                     type='button'
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    disabled={uploadingImages}
+                                    whileHover={!uploadingImages ? { scale: 1.05 } : {}}
+                                    whileTap={!uploadingImages ? { scale: 0.95 } : {}}
                                     onClick={handleAddImage}
-                                    className="bg-green-700 text-white px-3 py-2 rounded-lg"
+                                    className="bg-green-700 text-white px-3 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Add
                                 </motion.button>
                             </div>
-                        </div>
+                        )}
+
+                        {/* File Upload */}
+                        {product.additionalImageInputType === 'file' && (
+                            <div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    disabled={uploadingImages}
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            if (file.size > 5 * 1024 * 1024) {
+                                                alert('File size should be less than 5MB');
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                            // Store file object and create preview
+                                            const imageFiles = product.imageFiles || [];
+                                            imageFiles.push(file);
+                                            setProduct({
+                                                ...product,
+                                                imageFiles: imageFiles,
+                                                images: [...product.images, { url: URL.createObjectURL(file), isFile: true }],
+                                            });
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Max file size: 5MB (will upload when you save)</p>
+                            </div>
+                        )}
 
                         {product.images.length > 0 && (
                             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -618,16 +784,18 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                         <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-2 transition-opacity rounded-lg">
                                             <button
                                                 type="button"
+                                                disabled={uploadingImages}
                                                 onClick={() => handleSetMainImage(img.url)}
-                                                className="p-1 bg-white rounded-full text-green-700"
+                                                className="p-1 bg-white rounded-full text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Set as main image"
                                             >
                                                 <Star size={16} />
                                             </button>
                                             <button
                                                 type="button"
+                                                disabled={uploadingImages}
                                                 onClick={() => handleRemoveImage(index)}
-                                                className="p-1 bg-white rounded-full text-red-600"
+                                                className="p-1 bg-white rounded-full text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Remove image"
                                             >
                                                 <X size={16} />
@@ -652,17 +820,19 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                             <div className="flex space-x-2">
                                 <input
                                     type="text"
+                                    disabled={uploadingImages}
                                     value={newTag}
                                     onChange={(e) => setNewTag(e.target.value)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="Enter tag"
                                 />
                                 <motion.button
                                     type='button'
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    disabled={uploadingImages}
+                                    whileHover={!uploadingImages ? { scale: 1.05 } : {}}
+                                    whileTap={!uploadingImages ? { scale: 0.95 } : {}}
                                     onClick={handleAddTag}
-                                    className="bg-green-700 text-white px-3 py-2 rounded-lg"
+                                    className="bg-green-700 text-white px-3 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Add
                                 </motion.button>
@@ -679,8 +849,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                                         {tag}
                                         <button
                                             type="button"
+                                            disabled={uploadingImages}
                                             onClick={() => handleRemoveTag(tag)}
-                                            className="ml-1.5 rounded-full flex-shrink-0 text-green-700 hover:text-green-900"
+                                            className="ml-1.5 rounded-full flex-shrink-0 text-green-700 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <X size={14} />
                                         </button>
@@ -694,11 +865,12 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                         <input
                             id="featured"
                             type="checkbox"
+                            disabled={uploadingImages}
                             checked={product.isFeatured}
                             onChange={(e) =>
                                 setProduct({ ...product, isFeatured: e.target.checked })
                             }
-                            className="h-4 w-4 text-green-700 focus:ring-green-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-green-700 focus:ring-green-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <label htmlFor="featured" className="ml-2 block text-sm text-gray-900">
                             Feature this product on homepage
@@ -709,17 +881,25 @@ const ProductForm = ({ product, setProduct, onSave, onClose }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            disabled={uploadingImages}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
                         <motion.button
                             type="submit"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+                            disabled={uploadingImages}
+                            whileHover={!uploadingImages ? { scale: 1.02 } : {}}
+                            whileTap={!uploadingImages ? { scale: 0.98 } : {}}
+                            className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            {product._id ? "Update Product" : "Create Product"}
+                            {uploadingImages && (
+                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            )}
+                            {uploadingImages ? 'Uploading...' : (product._id ? "Update Product" : "Create Product")}
                         </motion.button>
                     </div>
                 </form>
