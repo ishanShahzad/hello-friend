@@ -8,6 +8,7 @@ import {
     LayoutPanelLeft,
     ShoppingBag,
     Star,
+    Store,
 } from 'lucide-react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
@@ -273,6 +274,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         { id: 'overview', label: 'Store Overview', icon: <BarChart3 size={20} />, link: '/seller-dashboard/store-overview' },
         { id: 'products', label: 'Product Management', icon: <Package size={20} />, link: '/seller-dashboard/product-management' },
         { id: 'orders', label: 'Order Management', icon: <ShoppingBag size={20} />, link: '/seller-dashboard/order-management' },
+        { id: 'store', label: 'Store Settings', icon: <Store size={20} />, link: '/seller-dashboard/store-settings' },
     ];
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);

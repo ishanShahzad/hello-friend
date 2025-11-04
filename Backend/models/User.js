@@ -45,7 +45,17 @@ userSchema.methods.getResetPasswordToken = function () {
     return resetToken
 }
 
+// Virtual field for store relationship
+userSchema.virtual('store', {
+    ref: 'Store',
+    localField: '_id',
+    foreignField: 'seller',
+    justOne: true
+});
 
+// Ensure virtuals are included when converting to JSON
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 
 
 module.exports = mongoose.model('User', userSchema)

@@ -49,12 +49,17 @@ function Navbar() {
             ${isScrolled ? 'h-[60px] bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900' : 'h-[80px] bg-gradient-to-r from-gray-700 via-gray-800 to-gray-500'}
       text-white shadow-lg px-3 md:px-8 lg:px-12 border-b border-white/10`}>
 
-            {/* Left: Logo */}
-            <Link to="/" className="group">
-                <span className="font-bold text-lg md:text-xl lg:text-2xl bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent tracking-wide group-hover:from-sky-300 group-hover:to-blue-400 transition-all duration-300">
-                    genZ Winners
-                </span>
-            </Link>
+            {/* Left: Logo & Stores Link */}
+            <div className="flex items-center gap-6">
+                <Link to="/" className="group">
+                    <span className="font-bold text-lg md:text-xl lg:text-2xl bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent tracking-wide group-hover:from-sky-300 group-hover:to-blue-400 transition-all duration-300">
+                        genZ Winners
+                    </span>
+                </Link>
+                <Link to="/stores" className="hidden md:block text-white/90 hover:text-white font-medium transition-colors">
+                    Stores
+                </Link>
+            </div>
 
             {/* Center: Admin Dashboard + Dropdown (only if logged in) */}
             <div className="flex justify-center">

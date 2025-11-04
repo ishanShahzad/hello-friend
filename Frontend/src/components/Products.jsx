@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import axios from 'axios'
 import Loader from './common/Loader'
 import ProductCard from './common/ProductCard'
+import StoreSearch from './common/StoreSearch'
 import { PackageX, RefreshCw, Filter, X, Gift } from 'lucide-react'
 import ErrorPage from './layout/ErrorPage'
 import SpinWheel from './common/SpinWheel'
@@ -450,10 +451,24 @@ function Products() {
           <SpinBanner spinResult={spinResult} />
         )}
 
-        <div className='mb-6 flex justify-between items-center'>
-          <h1 className='text-2xl lg:text-3xl font-bold'>Products</h1>
-          <div className='text-sm text-gray-500'>
-            {products.length} {products.length === 1 ? 'product' : 'products'} found
+        {/* Store Search */}
+        <div className='mb-6 flex flex-col gap-4'>
+          <div className='flex items-center justify-center'>
+            <StoreSearch />
+          </div>
+          <div className='flex justify-between items-center'>
+            <div className='flex items-center gap-4'>
+              <h1 className='text-2xl lg:text-3xl font-bold'>Products</h1>
+              <Link to='/stores' className='text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors flex items-center gap-1'>
+                <span>Browse Stores</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+            <div className='text-sm text-gray-500'>
+              {products.length} {products.length === 1 ? 'product' : 'products'} found
+            </div>
           </div>
         </div>
 

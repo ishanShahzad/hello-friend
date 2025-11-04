@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Share, Clock, User, Shield, Truck, RotateCcw, Loader2 } from 'lucide-react';
 import Loader from '../components/common/Loader';
+import StoreInfo from '../components/common/StoreInfo';
 import { toast } from 'react-toastify';
 import { useGlobal } from '../contexts/GlobalContext';
 
@@ -27,6 +28,7 @@ function ProductDetailPage() {
     const [rating, setRating] = useState(5);
     const [imageLoading, setImageLoading] = useState(true);
     const [activeImageTab, setActiveImageTab] = useState(0);
+    const [storeData, setStoreData] = useState(null);
     const commentRef = useRef();
 
     const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
@@ -140,7 +142,19 @@ function ProductDetailPage() {
                 return arr[0] + width
             });
             setImageLoading(true);
-            // console.log();
+            
+            // Fetch seller's store data
+            if (res.data.product.seller) {
+                try {
+                    const storeRes = await axios.get(
+                        `${import.meta.env.VITE_API_URL}api/stores/seller/${res.data.product.seller}`
+                    );
+                    setStoreData(storeRes.data.store);
+                } catch (error) {
+                    // Store not found is okay - seller might not have configured one
+                    console.log('No store configured for this seller');
+                }
+            }
 
         } catch (err) {
             toast.error('Product not found');
@@ -524,6 +538,19 @@ function ProductDetailPage() {
                                 </motion.button>
 
 
+                            </motion.div>
+
+                            {/* Store Info */}
+                            <motion.div
+                                className="my-6"
+                                variants={fadeIn}
+                            >
+                                <StoreInfo
+                                    storeName={storeData?.storeName}
+                                    storeSlug={storeData?.storeSlug}
+                                    storeLogo={storeData?.logo}
+                                    sellerUsername={product.seller?.username}
+                                />
                             </motion.div>
 
                             <motion.div
