@@ -25,11 +25,11 @@ const StoreCard = ({ store, idx }) => {
             whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.3 } }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate(`/store/${store.storeSlug}`)}
-            className="bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden cursor-pointer transition-all group"
+            className="bg-white rounded-xl sm:rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden cursor-pointer transition-all group"
         >
             {/* Banner or Gradient */}
             {store.banner ? (
-                <div className="h-32 overflow-hidden relative">
+                <div className="h-24 sm:h-28 md:h-32 overflow-hidden relative">
                     <img
                         src={store.banner}
                         alt={store.storeName}
@@ -38,49 +38,51 @@ const StoreCard = ({ store, idx }) => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 </div>
             ) : (
-                <div className="h-32 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                <div className="h-24 sm:h-28 md:h-32 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 relative overflow-hidden">
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                 </div>
             )}
 
             {/* Store Info */}
-            <div className="p-5 relative">
+            <div className="p-3 sm:p-4 md:p-5 relative">
                 {/* Logo */}
-                <div className="-mt-14 mb-3">
+                <div className="-mt-10 sm:-mt-12 md:-mt-14 mb-2 sm:mb-2.5 md:mb-3">
                     {store.logo ? (
                         <img
                             src={store.logo}
                             alt={store.storeName}
-                            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-xl ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all"
+                            className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-full object-cover border-3 sm:border-4 border-white shadow-xl ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all"
                         />
                     ) : (
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center border-4 border-white shadow-xl ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all">
-                            <Store size={32} className="text-white" />
+                        <div className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center border-3 sm:border-4 border-white shadow-xl ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all">
+                            <Store size={24} className="sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" />
                         </div>
                     )}
                 </div>
 
                 {/* Store Name */}
-                <h3 className="font-bold text-lg text-gray-900 mb-2 truncate group-hover:text-blue-600 transition-colors">
+                <h3 className="font-bold text-sm sm:text-base md:text-lg text-gray-900 mb-1 sm:mb-1.5 md:mb-2 truncate group-hover:text-blue-600 transition-colors">
                     {store.storeName}
                 </h3>
 
                 {/* Description */}
                 {store.description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[40px] leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 md:mb-4 line-clamp-2 min-h-[32px] sm:min-h-[36px] md:min-h-[40px] leading-relaxed">
                         {store.description}
                     </p>
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 text-sm pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-1.5 text-blue-600 font-medium">
-                        <Package size={16} />
-                        <span>{store.productCount || 0} items</span>
+                <div className="flex items-center gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm pt-2 sm:pt-2.5 md:pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1 sm:gap-1.5 text-blue-600 font-medium">
+                        <Package size={12} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">{store.productCount || 0} items</span>
+                        <span className="sm:hidden">{store.productCount || 0}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-purple-600 font-medium">
-                        <Eye size={16} />
-                        <span>{store.views || 0} views</span>
+                    <div className="flex items-center gap-1 sm:gap-1.5 text-purple-600 font-medium">
+                        <Eye size={12} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">{store.views || 0} views</span>
+                        <span className="sm:hidden">{store.views || 0}</span>
                     </div>
                 </div>
             </div>
