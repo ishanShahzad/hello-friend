@@ -126,8 +126,14 @@ exports.verifyOTPAndRegister = async (req, res) => {
         }
 
         // Create user with data from OTP document
-        const newUser = new User(otpDoc.userData);
+        console.log('Creating user with userData:', otpDoc.userData);
+        
+        // Explicitly set isVerified to true since email was verified via OTP
+        const userData = { ...otpDoc.userData, isVerified: true };
+        const newUser = new User(userData);
         await newUser.save();
+        
+        console.log('User created with isVerified:', newUser.isVerified);
 
         // Delete OTP document
         await OTP.deleteOne({ _id: otpDoc._id });
