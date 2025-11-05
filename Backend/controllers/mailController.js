@@ -62,21 +62,27 @@ exports.sendEmail = async (data) => {
             console.log('📧 Sending email via Resend to:', to);
             console.log('📧 Resend from email:', fromEmail);
             
-            const response = await mailConfig.services.resend.emails.send({
-                from: `genZ Winners <${fromEmail}>`,
-                to: to,
-                subject: subject,
-                html: html
-            });
-            
-            console.log('✅ Email sent successfully via Resend');
-            console.log('📧 Resend email ID:', response.id);
-            
-            return {
-                success: true,
-                service: 'resend',
-                messageId: response.id
-            };
+            try {
+                const response = await mailConfig.services.resend.emails.send({
+                    from: `genZ Winners <${fromEmail}>`,
+                    to: to,
+                    subject: subject,
+                    html: html
+                });
+                
+                console.log('✅ Email sent successfully via Resend');
+                console.log('📧 Resend response:', JSON.stringify(response));
+                
+                return {
+                    success: true,
+                    service: 'resend',
+                    messageId: response.data?.id || response.id
+                };
+            } catch (resendError) {
+                console.error('❌ Resend API error:', resendError);
+                console.error('❌ Resend error details:', JSON.stringify(resendError.response?.data || resendError.message));
+                throw resendError;
+            }
         } 
         else if (serviceToUse === 'gmail') {
             // Use Gmail SMTP (local development)

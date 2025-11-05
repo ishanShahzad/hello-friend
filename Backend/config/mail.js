@@ -59,12 +59,9 @@ module.exports = {
     hasResend, 
     hasGmail,
     getNextService: () => {
-        // Priority: Alternate between SendGrid and Resend, fallback to Gmail
-        if (hasSendGrid && hasResend) {
-            // Round-robin between SendGrid and Resend
-            emailCounter++;
-            return emailCounter % 2 === 0 ? 'sendgrid' : 'resend';
-        } else if (hasSendGrid) {
+        // Priority: Use SendGrid only (Resend requires domain verification)
+        // TODO: Enable Resend after domain verification
+        if (hasSendGrid) {
             return 'sendgrid';
         } else if (hasResend) {
             return 'resend';
