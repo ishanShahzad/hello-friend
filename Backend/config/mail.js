@@ -1,36 +1,20 @@
 const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 require('dotenv').config();
 
-// Priority: SendGrid > Gmail SMTP
-// SendGrid works on Railway, Gmail SMTP only works locally
+// Priority: SendGrid API > Gmail SMTP
+// SendGrid API uses HTTP (works on Railway), Gmail SMTP only works locally
 const useSendGrid = process.env.SENDGRID_API_KEY;
 
 if (useSendGrid) {
-    // Use SendGrid SMTP with nodemailer (for production - works on Railway)
-    console.log('✅ Using SendGrid SMTP for email delivery');
+    // Use SendGrid HTTP API (works on Railway - no SMTP blocking)
+    console.log('✅ Using SendGrid HTTP API for email delivery');
     
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false,
-        auth: {
-            user: 'apikey', // This is always 'apikey' for SendGrid
-            pass: process.env.SENDGRID_API_KEY
-        }
-    });
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     
-    // VERIFICATION OF SMTP CONNECTION
-    transporter.verify((error, success) => {
-        if (error) {
-            console.log('❌ SendGrid SMTP error:', error.message);
-        } else {
-            console.log('✅ SendGrid SMTP ready');
-        }
-    });
-    
-    module.exports = transporter;
+    module.exports = { sendgrid: sgMail, useSendGrid: true };
 } else {
-    // Use Gmail SMTP (for local development only - doesn't work on Railway)
+    // Use Gmail SMTP (for local development only)
     console.log('⚠️  Using Gmail SMTP (local development only)');
     
     const transporter = nodemailer.createTransport({
@@ -58,5 +42,5 @@ if (useSendGrid) {
         }
     });
     
-    module.exports = transporter;
+    module.exports = { transporter, useSendGrid: false };
 }
