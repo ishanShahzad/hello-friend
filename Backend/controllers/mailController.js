@@ -1,8 +1,5 @@
 // Import the configured Nodemailer transporter
-const { default: transporter } = require("../config/mail");
-const crypto = require('crypto');
-const asyncHandler = require('express-async-handler');
-const User = require('../models/User');
+const transporter = require("../config/mail");
 
 /**
  * Send an email using Nodemailer
