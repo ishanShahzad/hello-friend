@@ -1,10 +1,11 @@
-// Import the configured Nodemailer transporter
+// Import the configured nodemailer transporter (SendGrid or Gmail SMTP)
 const transporter = require("../config/mail");
 
 /**
- * Send an email using Nodemailer
+ * Send an email using nodemailer
+ * Automatically uses SendGrid (production) or Gmail (local development)
  * 
- * Expected request body:
+ * Expected data:
  * {
  *   "to": "recipient@example.com",
  *   "subject": "Subject here",
@@ -16,15 +17,20 @@ exports.sendEmail = async (data) => {
     const { to, subject, text, html } = data;
 
     try {
+        // Determine from email based on which service is being used
+        const fromEmail = process.env.SENDGRID_API_KEY 
+            ? `genZ Winners <salmaniqbal2008@gmail.com>` // Use your verified sender email
+            : `"genZ Winners Support" <${process.env.EMAIL_USER}>`;
+        
         const mailOptions = {
-            from: `"genZ Winners Support" <${process.env.EMAIL_USER}>`, // sender address
-            to, // list of receivers
-            subject, // Subject line
-            text, // Plain text body (optional)
-            html, // HTML body (optional)
+            from: fromEmail,
+            to: to,
+            subject: subject,
+            text: text,
+            html: html
         };
 
-        // Send the email
+        console.log('Sending email to:', to);
         const info = await transporter.sendMail(mailOptions);
         
         console.log('✅ Email sent successfully to:', to);

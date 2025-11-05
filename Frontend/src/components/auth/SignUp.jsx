@@ -30,11 +30,9 @@ const GlassSignUpPage = () => {
     setLoading(true);
     
     try {
-      console.log('Sending OTP request...');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/send-otp`, form, {
         timeout: 30000 // 30 second timeout
       });
-      console.log('OTP response received:', res.data);
       toast.success(res.data.msg);
       setStep(2); // Move to OTP verification step
     } catch (error) {
@@ -63,19 +61,10 @@ const GlassSignUpPage = () => {
         otp: otp
       });
       
-      console.log('=== SIGNUP RESPONSE ===');
-      console.log('Response data:', res.data);
-      console.log('Token:', res.data.token);
-      console.log('User:', res.data.user);
-      
       // Store token and user data (same as login)
       localStorage.setItem("jwtToken", res.data.token);
       localStorage.setItem("currentUser", JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
-      
-      console.log('Stored in localStorage:');
-      console.log('jwtToken:', localStorage.getItem('jwtToken'));
-      console.log('currentUser:', localStorage.getItem('currentUser'));
       
       toast.success(res.data.msg);
       

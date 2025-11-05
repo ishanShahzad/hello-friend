@@ -81,8 +81,6 @@ exports.sendOTP = async (req, res) => {
 </html>
         `;
 
-        console.log('Attempting to send OTP email to:', email);
-        
         await sendEmail({
             to: email,
             subject: 'Verify Your Email - genZ Winners',
@@ -90,21 +88,18 @@ exports.sendOTP = async (req, res) => {
             html: html
         });
 
-        console.log('OTP email sent successfully');
-
         res.status(200).json({ 
             msg: 'OTP sent to your email. Please verify to complete registration.',
             email: email 
         });
     } catch (error) {
-        console.error('Send OTP error:', error);
-        console.error('Error stack:', error.stack);
+        console.error('Send OTP error:', error.message);
         
         // Delete the OTP document if email fails
         await OTP.deleteMany({ email });
         
         res.status(500).json({ 
-            msg: 'Failed to send OTP. Please check your email address and try again.',
+            msg: 'Failed to send OTP. Please try again.',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
@@ -146,12 +141,6 @@ exports.verifyOTPAndRegister = async (req, res) => {
         }
 
         const token = jwt.sign(payload, process.env.JWT_SECRET);
-
-        console.log('=== SIGNUP TOKEN GENERATION ===');
-        console.log('User registered successfully:', newUser);
-        console.log('Payload:', payload);
-        console.log('Generated token:', token);
-        console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
         
         res.status(200).json({ 
             msg: 'Email verified! Sign up successful.', 
@@ -166,38 +155,28 @@ exports.verifyOTPAndRegister = async (req, res) => {
 
 // Keep old register for backward compatibility (can be removed later)
 exports.registerr = async (req, res) => {
-    console.log('shazib', req.body);
     const { username, email, password } = req.body
 
     try {
-
         const existingUser = await User.findOne({ email })
         if (existingUser) {
-            console.log('existingUser:::', existingUser);
             return res.status(409).json({ msg: 'E-mail is already taken.' })
         }
 
         const newUser = new User({ ...req.body, role: 'user' });
         await newUser.save();
-        console.log(newUser);
         res.status(200).json({ msg: 'Sign up successfull.' })
     } catch (error) {
         console.error(error);
         res.status(409).json({ msg: 'sign up failed.' })
     }
-
-
-
 }
 
 exports.login = async (req, res) => {
-    console.log('shazib', req.body);
     const { email, password } = req.body
 
     try {
-
         const userFound = await User.findOne({ email })
-        console.log('userFound:', userFound);
         if (!userFound) return res.status(404).json({ msg: 'User not Found!' })
 
         if (userFound.status === 'blocked') return res.status(403).json({ msg: 'Your account is blocked. For further details contact support.' })
@@ -208,7 +187,6 @@ exports.login = async (req, res) => {
         }
 
         const isMatched = await bcrypt.compare(password, userFound.password)
-        console.log('isMatched:', isMatched);
         if (!isMatched) return res.status(401).json({ msg: 'Incorrect password!' })
 
         const payload = {
@@ -220,7 +198,6 @@ exports.login = async (req, res) => {
         }
 
         const token = jwt.sign(payload, process.env.JWT_SECRET)
-        console.log('token:', token);
 
         res.status(200).json({ msg: 'Log in successfull.', token: token, user: payload })
     } catch (error) {
