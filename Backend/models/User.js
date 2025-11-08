@@ -27,7 +27,10 @@ const userSchema = mongoose.Schema({
         hasCheckedOut: { type: Boolean, default: false }
     },
     spinTimestamp: { type: Number }, // Timestamp when user spun
-    spinSelectedProducts: [{ type: String }] // Product IDs selected for spin discount
+    spinSelectedProducts: [{ type: String }], // Product IDs selected for spin discount
+    
+    // Currency preference
+    currency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD' }
 })
 
 

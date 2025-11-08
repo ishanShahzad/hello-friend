@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowBigRightDash, CarIcon, CatIcon, ChevronRight, Cross, Loader2, Minus, MoveRight, Plus, ShoppingCart, SquareArrowRight, X } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Loader from '../common/Loader'
@@ -27,6 +28,7 @@ const CartDropdown = () => {
   const {
     currentUser
   } = useAuth()
+  const { formatPrice } = useCurrency()
   const navigate = useNavigate()
 
   const handleGoToCheckout = () => {
@@ -164,9 +166,9 @@ const CartDropdown = () => {
 
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="font-semibold text-gray-800">${getDiscountedPrice(product).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800">{formatPrice(getDiscountedPrice(product))}</span>
                   {getDiscountedPrice(product) < (discountedPrice || price) && (
-                    <span className="text-xs text-gray-500 line-through">${(discountedPrice || price).toFixed(2)}</span>
+                    <span className="text-xs text-gray-500 line-through">{formatPrice(discountedPrice || price)}</span>
                   )}
                 </div>
               </div>
@@ -178,12 +180,12 @@ const CartDropdown = () => {
             <div className="p-4 border-t border-[lightgray] flex justify-between items-center">
               <div className=" text-white w-max text-[15px] bg-[#b64141] px-4 py-2 rounded transition">
                 <span className="font-semibold">
-                  Subtotal: ${
+                  Subtotal: {formatPrice(
                     cartItems.cart.reduce((total, item) => {
                       const itemPrice = getDiscountedPrice(item.product);
                       return total + (itemPrice * item.qty);
-                    }, 0).toFixed(2)
-                  }
+                    }, 0)
+                  )}
                 </span>
               </div>
 

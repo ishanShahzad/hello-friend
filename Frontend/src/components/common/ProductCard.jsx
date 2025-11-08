@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, Eye, Star, Zap, ChevronRight, Sparkles, Loader, Loader2, X } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useState } from "react";
 
 const ProductCard = ({
@@ -33,6 +34,7 @@ const ProductCard = ({
   } = useGlobal();
 
   const { currentUser } = useAuth();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
 
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -424,7 +426,7 @@ const ProductCard = ({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 15 }}
               >
-                ${displayPrice.toFixed(2)}
+                {formatPrice(displayPrice)}
               </motion.span>
               <motion.span
                 className="text-xs sm:text-sm text-gray-500 line-through"
@@ -432,7 +434,7 @@ const ProductCard = ({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
               >
-                ${price.toFixed(2)}
+                {formatPrice(price)}
               </motion.span>
             </>
           ) : originalDisplayPrice ? (
@@ -443,7 +445,7 @@ const ProductCard = ({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 15 }}
               >
-                ${displayPrice.toFixed(2)}
+                {formatPrice(displayPrice)}
               </motion.span>
               <motion.span
                 className="text-xs sm:text-sm text-gray-500 line-through"
@@ -451,12 +453,12 @@ const ProductCard = ({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
               >
-                ${originalDisplayPrice.toFixed(2)}
+                {formatPrice(originalDisplayPrice)}
               </motion.span>
             </>
           ) : (
             <span className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
-              ${displayPrice.toFixed(2)}
+              {formatPrice(displayPrice)}
             </span>
           )}
         </div>

@@ -5,14 +5,17 @@ import App from './App.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { GlobalProvider } from './contexts/GlobalContext.jsx'
+import { CurrencyProvider } from './contexts/CurrencyContext.jsx'
 
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <AuthProvider>
-      <GlobalProvider>
-        <App />
-      </GlobalProvider>
+      <CurrencyProvider>
+        <GlobalProvider>
+          <App />
+        </GlobalProvider>
+      </CurrencyProvider>
     </AuthProvider>
   </BrowserRouter>
 )
