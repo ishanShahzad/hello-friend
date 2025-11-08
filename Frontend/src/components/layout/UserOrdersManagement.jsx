@@ -250,7 +250,21 @@ const UserOrdersManagement = () => {
                                                     <StatusBadge status={order.orderStatus} />
                                                     <div className="text-right">
                                                         <p className="text-lg font-semibold text-gray-900">
-                                                            {formatCurrency(order.orderSummary.totalAmount || order.orderSummary.subtotal || 0)}
+                                                            {(() => {
+                                                                // Recalculate total using actual shipping cost
+                                                                const subtotal = order.orderSummary.subtotal || 0;
+                                                                const tax = order.orderSummary.tax || 0;
+                                                                
+                                                                // Calculate actual shipping from sellerShipping array if available
+                                                                let actualShipping = order.orderSummary.shippingCost || 0;
+                                                                if (order.sellerShipping && order.sellerShipping.length > 0) {
+                                                                    actualShipping = order.sellerShipping.reduce((sum, sellerShip) => 
+                                                                        sum + (sellerShip.shippingMethod.price || 0), 0
+                                                                    );
+                                                                }
+                                                                
+                                                                return formatCurrency(subtotal + tax + actualShipping);
+                                                            })()}
                                                         </p>
                                                         <Link to={`/user-dashboard/order/detail/${order._id}`}>
                                                         <button className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center mt-1">

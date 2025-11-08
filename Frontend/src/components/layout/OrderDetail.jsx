@@ -266,15 +266,23 @@ const OrderDetail = () => {
                                 let displayShippingCost = order?.orderSummary.shippingCost || 0;
                                 let filteredShipping = order?.sellerShipping || [];
                                 
-                                if (currentUser?.role === 'seller' && order?.sellerShipping) {
-                                    // Filter to show only seller's shipping
-                                    filteredShipping = order.sellerShipping.filter(sellerShip => 
-                                        sellerShip.seller === currentUser.id || sellerShip.seller === currentUser._id
-                                    );
-                                    // Calculate only seller's shipping cost
-                                    displayShippingCost = filteredShipping.reduce((sum, sellerShip) => 
-                                        sum + (sellerShip.shippingMethod.price || 0), 0
-                                    );
+                                if (order?.sellerShipping && order.sellerShipping.length > 0) {
+                                    if (currentUser?.role === 'seller') {
+                                        // Filter to show only seller's shipping
+                                        filteredShipping = order.sellerShipping.filter(sellerShip => 
+                                            sellerShip.seller === currentUser.id || sellerShip.seller === currentUser._id
+                                        );
+                                        // Calculate only seller's shipping cost
+                                        displayShippingCost = filteredShipping.reduce((sum, sellerShip) => 
+                                            sum + (sellerShip.shippingMethod.price || 0), 0
+                                        );
+                                    } else {
+                                        // Admin sees all shipping costs
+                                        filteredShipping = order.sellerShipping;
+                                        displayShippingCost = order.sellerShipping.reduce((sum, sellerShip) => 
+                                            sum + (sellerShip.shippingMethod.price || 0), 0
+                                        );
+                                    }
                                 }
                                 
                                 return displayShippingCost > 0 || filteredShipping.length > 0 ? (
@@ -308,7 +316,32 @@ const OrderDetail = () => {
                             
                             <div className="flex justify-between pt-2 border-t">
                                 <span className="text-lg font-medium text-gray-800">Total Amount</span>
-                                <span className="text-lg font-bold text-gray-800">${(order?.orderSummary.totalAmount || order?.orderSummary.subtotal || 0).toFixed(2)}</span>
+                                <span className="text-lg font-bold text-gray-800">
+                                    ${(() => {
+                                        // Recalculate total using actual shipping cost
+                                        const subtotal = order?.orderSummary.subtotal || 0;
+                                        const tax = order?.orderSummary.tax || 0;
+                                        
+                                        // Calculate shipping based on user role
+                                        let actualShipping = order?.orderSummary.shippingCost || 0;
+                                        if (order?.sellerShipping && order.sellerShipping.length > 0) {
+                                            if (currentUser?.role === 'seller') {
+                                                // Seller sees only their shipping cost
+                                                const sellerShipping = order.sellerShipping.find(ss => 
+                                                    ss.seller === currentUser.id || ss.seller === currentUser._id
+                                                );
+                                                actualShipping = sellerShipping ? sellerShipping.shippingMethod.price : 0;
+                                            } else {
+                                                // Admin sees total shipping cost
+                                                actualShipping = order.sellerShipping.reduce((sum, sellerShip) => 
+                                                    sum + (sellerShip.shippingMethod.price || 0), 0
+                                                );
+                                            }
+                                        }
+                                        
+                                        return (subtotal + tax + actualShipping).toFixed(2);
+                                    })()}
+                                </span>
                             </div>
                         </div>
                     </div>

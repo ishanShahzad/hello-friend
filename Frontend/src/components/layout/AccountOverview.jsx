@@ -95,7 +95,18 @@ const AccountOverview = () => {
     const pendingOrders = orders.filter(order => order.orderStatus === 'pending').length
     const deliveredOrders = orders.filter(order => order.orderStatus === 'delivered').length
     const totalAmoutSpent = orders.reduce((acc, order) => {
-        if (order.isPaid == true) return acc + order.orderSummary.totalAmount
+        if (order.isPaid == true) {
+            // Recalculate total using actual shipping cost
+            const subtotal = order.orderSummary.subtotal || 0;
+            const tax = order.orderSummary.tax || 0;
+            let actualShipping = order.orderSummary.shippingCost || 0;
+            if (order.sellerShipping && order.sellerShipping.length > 0) {
+                actualShipping = order.sellerShipping.reduce((sum, sellerShip) => 
+                    sum + (sellerShip.shippingMethod.price || 0), 0
+                );
+            }
+            return acc + (subtotal + tax + actualShipping);
+        }
         return acc + 0
     }, 0)
 
@@ -117,7 +128,8 @@ const AccountOverview = () => {
             )
             console.log(res.data);
             setOrders(res.data?.orders)
-            setRecentOrders(res.data?.orders.slice(0, 3).reverse())
+            // Get the 3 most recent orders (reverse first, then take 3)
+            setRecentOrders(res.data?.orders.slice().reverse().slice(0, 3))
 
         } catch (error) {
             console.error(error);
@@ -329,7 +341,18 @@ const AccountOverview = () => {
                                                         {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
                                                     </span>
                                                     <p className="text-lg font-semibold text-gray-900 mt-1">
-                                                        {formatCurrency(order.orderSummary.totalAmount || order.orderSummary.subtotal || 0)}
+                                                        {(() => {
+                                                            // Recalculate total using actual shipping cost
+                                                            const subtotal = order.orderSummary.subtotal || 0;
+                                                            const tax = order.orderSummary.tax || 0;
+                                                            let actualShipping = order.orderSummary.shippingCost || 0;
+                                                            if (order.sellerShipping && order.sellerShipping.length > 0) {
+                                                                actualShipping = order.sellerShipping.reduce((sum, sellerShip) => 
+                                                                    sum + (sellerShip.shippingMethod.price || 0), 0
+                                                                );
+                                                            }
+                                                            return formatCurrency(subtotal + tax + actualShipping);
+                                                        })()}
                                                     </p>
                                                 </div>
                                             </div>

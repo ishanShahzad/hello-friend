@@ -50,8 +50,17 @@ exports.placeOrder = async (req, res) => {
 
         console.log(order.shippingMethod);
 
-        // Get shipping cost from order (already selected by user)
-        const shippingCost = order.shippingMethod.price || 0;
+        // Calculate total shipping cost from all sellers
+        let shippingCost = 0;
+        if (order.sellerShipping && Array.isArray(order.sellerShipping) && order.sellerShipping.length > 0) {
+            // Sum up shipping costs from all sellers
+            shippingCost = order.sellerShipping.reduce((sum, sellerShip) => {
+                return sum + (sellerShip.shippingMethod.price || 0);
+            }, 0);
+        } else {
+            // Fallback to single shipping method (backward compatibility)
+            shippingCost = order.shippingMethod.price || 0;
+        }
 
         // Fetch tax configuration and calculate tax
         let tax = 0;

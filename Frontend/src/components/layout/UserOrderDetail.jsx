@@ -339,30 +339,41 @@ const OrderDetail = () => {
                                 </span>
                             </div>
                             
-                            {(order?.orderSummary.shippingCost >= 0 || order?.sellerShipping?.length > 0) && (
-                                <div className="space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600 font-medium">
-                                            Shipping
-                                        </span>
-                                        <span className="text-gray-800">
-                                            ${(order?.orderSummary.shippingCost || 0).toFixed(2)}
-                                        </span>
-                                    </div>
-                                    {order?.sellerShipping && order.sellerShipping.length > 0 && (
-                                        <div className="pl-4 space-y-1">
-                                            {order.sellerShipping.map((sellerShip, index) => (
-                                                <div key={index} className="flex justify-between text-xs text-gray-500">
-                                                    <span className="capitalize">
-                                                        {sellerShip.shippingMethod.name} ({sellerShip.shippingMethod.estimatedDays} days)
-                                                    </span>
-                                                    <span>${sellerShip.shippingMethod.price.toFixed(2)}</span>
-                                                </div>
-                                            ))}
+                            {(() => {
+                                // Calculate actual shipping cost from sellerShipping array if available
+                                let actualShippingCost = order?.orderSummary.shippingCost || 0;
+                                
+                                if (order?.sellerShipping && order.sellerShipping.length > 0) {
+                                    actualShippingCost = order.sellerShipping.reduce((sum, sellerShip) => 
+                                        sum + (sellerShip.shippingMethod.price || 0), 0
+                                    );
+                                }
+                                
+                                return actualShippingCost >= 0 || order?.sellerShipping?.length > 0 ? (
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600 font-medium">
+                                                Shipping
+                                            </span>
+                                            <span className="text-gray-800">
+                                                ${actualShippingCost.toFixed(2)}
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                        {order?.sellerShipping && order.sellerShipping.length > 0 && (
+                                            <div className="pl-4 space-y-1">
+                                                {order.sellerShipping.map((sellerShip, index) => (
+                                                    <div key={index} className="flex justify-between text-xs text-gray-500">
+                                                        <span className="capitalize">
+                                                            {sellerShip.shippingMethod.name} ({sellerShip.shippingMethod.estimatedDays} days)
+                                                        </span>
+                                                        <span>${sellerShip.shippingMethod.price.toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null;
+                            })()}
                             
                             {order?.orderSummary.tax > 0 && (
                                 <div className="flex justify-between">
@@ -380,7 +391,21 @@ const OrderDetail = () => {
                                     Total Amount
                                 </span>
                                 <span className="text-lg font-bold text-gray-800">
-                                    ${(order?.orderSummary.totalAmount || order?.orderSummary.subtotal || 0).toFixed(2)}
+                                    ${(() => {
+                                        // Recalculate total using actual shipping cost
+                                        const subtotal = order?.orderSummary.subtotal || 0;
+                                        const tax = order?.orderSummary.tax || 0;
+                                        
+                                        // Calculate actual shipping from sellerShipping array if available
+                                        let actualShipping = order?.orderSummary.shippingCost || 0;
+                                        if (order?.sellerShipping && order.sellerShipping.length > 0) {
+                                            actualShipping = order.sellerShipping.reduce((sum, sellerShip) => 
+                                                sum + (sellerShip.shippingMethod.price || 0), 0
+                                            );
+                                        }
+                                        
+                                        return (subtotal + tax + actualShipping).toFixed(2);
+                                    })()}
                                 </span>
                             </div>
                         </div>
