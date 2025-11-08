@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Minus, Plus, CreditCard, DollarSign, Truck, MapPin, User, Mail, Phone, Home, Navigation, CreditCardIcon, X, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useGlobal } from "../../contexts/GlobalContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +27,8 @@ export default function Checkout() {
   const [expandedSellers, setExpandedSellers] = useState({}); // { sellerId: boolean }
 
 
+  const { formatPrice } = useCurrency();
+  
   const { cartItems, handleQtyInc, handleQtyDec, handleRemoveCartItem, isCartLoading,
     qtyUpdateId, fetchCart
   } = useGlobal();
@@ -592,9 +595,9 @@ export default function Checkout() {
                                       <p className="text-xs text-green-600 font-semibold">🎉 Spin Discount Applied!</p>
                                     )}
                                     <p className="">
-                                      <span className="font-bold text-gray-600">${itemPrice.toFixed(2)}</span>
+                                      <span className="font-bold text-gray-600">{formatPrice(itemPrice)}</span>
                                       {hasSpinDiscount && (
-                                        <span className="line-through text-gray-400 ml-2">${originalPrice.toFixed(2)}</span>
+                                        <span className="line-through text-gray-400 ml-2">{formatPrice(originalPrice)}</span>
                                       )}
                                     </p>
                                     <QuantitySelector
@@ -810,9 +813,9 @@ export default function Checkout() {
                                                           <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                          <span className="font-semibold text-sm">${(itemPrice * item.qty).toFixed(2)}</span>
+                                                          <span className="font-semibold text-sm">{formatPrice(itemPrice * item.qty)}</span>
                                                           {hasSpinDiscount && (
-                                                            <p className="text-xs text-gray-500 line-through">${(originalPrice * item.qty).toFixed(2)}</p>
+                                                            <p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>
                                                           )}
                                                         </div>
                                                         <button
@@ -905,7 +908,7 @@ export default function Checkout() {
                                               </div>
                                             </div>
                                             <span className="font-semibold">
-                                              ${method.cost.toFixed(2)}
+                                              {formatPrice(method.cost)}
                                             </span>
                                           </div>
                                         </motion.div>
@@ -1133,9 +1136,9 @@ export default function Checkout() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="font-semibold">${(itemPrice * item.qty).toFixed(2)}</span>
+                        <span className="font-semibold">{formatPrice(itemPrice * item.qty)}</span>
                         {hasSpinDiscount && (
-                          <p className="text-xs text-gray-500 line-through">${(originalPrice * item.qty).toFixed(2)}</p>
+                          <p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>
                         )}
                       </div>
                     </div>
@@ -1146,7 +1149,7 @@ export default function Checkout() {
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between text-gray-700">
                   <span>Subtotal</span>
-                  <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="font-medium">{formatPrice(subtotal)}</span>
                 </div>
                 
                 {/* Shipping breakdown by seller */}
@@ -1154,7 +1157,7 @@ export default function Checkout() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-gray-700 font-medium">
                       <span>Shipping</span>
-                      <span>${shippingCost.toFixed(2)}</span>
+                      <span>{formatPrice(shippingCost)}</span>
                     </div>
                     {Object.entries(selectedShippingPerSeller).map(([sellerId, method]) => {
                       const sellerInfo = sellerShippingMethods[sellerId];
@@ -1163,7 +1166,7 @@ export default function Checkout() {
                           <span className="capitalize">
                             {method.type} shipping
                           </span>
-                          <span>${method.cost.toFixed(2)}</span>
+                          <span>{formatPrice(method.cost)}</span>
                         </div>
                       );
                     })}
@@ -1175,13 +1178,13 @@ export default function Checkout() {
                     <span>
                       Tax {taxConfig?.type === 'percentage' && `(${taxConfig.value}%)`}
                     </span>
-                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <span className="font-medium">{formatPrice(tax)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between text-lg font-semibold border-t pt-3">
                   <span>Total</span>
-                  <span className="text-blue-600">${totalAmount.toFixed(2)}</span>
+                  <span className="text-blue-600">{formatPrice(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -1266,7 +1269,7 @@ const ShippingOption = React.forwardRef(({ value, title, price, days, selected, 
         <h4 className="font-medium">{title}</h4>
         <p className="text-sm text-gray-500 mt-1">{days}</p>
       </div>
-      <span className="font-semibold">${price.toFixed(2)}</span>
+      <span className="font-semibold">{formatPrice(price)}</span>
     </div>
   </label>
 ));
