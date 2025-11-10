@@ -12,6 +12,7 @@ import SpinWheel from './common/SpinWheel'
 import SpinBanner from './common/SpinBanner'
 import { toast } from 'react-toastify'
 import { useAuth } from '../contexts/AuthContext'
+import CurrencySelector from './common/CurrencySelector'
 
 
 function Products() {
@@ -609,8 +610,11 @@ function Products() {
                 </svg>
               </Link>
             </div>
-            <div className='text-xs sm:text-sm text-gray-500'>
-              {products.length} {products.length === 1 ? 'product' : 'products'} found
+            <div className='flex items-center gap-3'>
+              <div className='text-xs sm:text-sm text-gray-500'>
+                {products.length} {products.length === 1 ? 'product' : 'products'} found
+              </div>
+              <CurrencySelector />
             </div>
           </div>
         </div>

@@ -16,13 +16,12 @@ export default function CurrencySelector() {
     <div className="relative">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="flex items-center gap-1 px-2 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors"
       >
-        <DollarSign size={18} className="text-gray-600" />
-        <span className="font-medium text-gray-800">{currency}</span>
-        <ChevronDown size={16} className={`text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="font-medium text-gray-700">{currency}</span>
+        <ChevronDown size={14} className={`text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </motion.button>
 
       <AnimatePresence>
@@ -39,29 +38,25 @@ export default function CurrencySelector() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden"
+              className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 overflow-hidden"
             >
-              <div className="p-2">
-                <p className="text-xs text-gray-500 px-3 py-2 font-medium">Select Currency</p>
+              <div className="p-1">
                 {Object.entries(currencies).map(([code, info]) => (
                   <motion.button
                     key={code}
                     onClick={() => handleCurrencyChange(code)}
                     whileHover={{ backgroundColor: '#f3f4f6' }}
-                    className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                    className={`w-full text-left px-2 py-1.5 rounded transition-colors ${
                       currency === code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{info.symbol}</span>
-                        <div>
-                          <p className="font-medium text-sm">{code}</p>
-                          <p className="text-xs text-gray-500">{info.name}</p>
-                        </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{info.symbol}</span>
+                        <span className="font-medium text-xs">{code}</span>
                       </div>
                       {currency === code && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
                       )}
                     </div>
                   </motion.button>

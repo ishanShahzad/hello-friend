@@ -7,7 +7,6 @@ import { ShoppingCart, Heart } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import WishlistDropdown from "../common/Wishlist";
 import CartDropdown from "../common/CartDropdown";
-import CurrencySelector from "../common/CurrencySelector";
 
 function Navbar() {
     const { currentUser } = useAuth();
@@ -108,14 +107,9 @@ function Navbar() {
                 )}
             </div>
 
-            {/* Right: Currency, Cart & Wishlist OR Login/Signup */}
+            {/* Right: Cart & Wishlist OR Login/Signup */}
             <div className="flex justify-end gap-2 sm:gap-3 md:gap-4 items-center">
                 <>
-                    {/* Currency Selector */}
-                    <div className="hidden sm:block">
-                        <CurrencySelector />
-                    </div>
-                    
                     {/* Cart */}
                     <button
                         ref={cartBtn}
