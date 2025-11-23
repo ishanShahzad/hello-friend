@@ -27,6 +27,7 @@ import {
     LayoutPanelLeft,
     ShoppingBag,
     Users,
+    CheckCircle,
 } from 'lucide-react';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import axios from 'axios';
@@ -338,6 +339,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         { id: 'users', label: 'User Management', icon: <Users size={20} />, link: '/admin-dashboard/user-management' },
         { id: 'products', label: 'Product Management', icon: <Package size={20} />, link: '/admin-dashboard/product-management' },
         { id: 'orders', label: 'Order Management', icon: <ShoppingBag size={20} />, link: '/admin-dashboard/order-management' },
+        { id: 'verifications', label: 'Store Verifications', icon: <CheckCircle size={20} />, link: '/admin-dashboard/store-verifications' },
         { id: 'tax', label: 'Tax Configuration', icon: <DollarSign size={20} />, link: '/admin-dashboard/tax-configuration' },
     ];
 
@@ -543,7 +545,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}

@@ -30,6 +30,8 @@ import GoogleAuthSuccess from '../components/auth/GoogleAuthSuccess'
 import StoreSettings from '../components/layout/StoreSettings'
 import StorePage from '../pages/StorePage'
 import StoresListing from '../pages/StoresListing'
+import TrustedStoresPage from '../pages/TrustedStoresPage'
+import StoreVerifications from '../pages/admin/StoreVerifications'
 import { ToastContainer } from 'react-toastify'
 
 function AppRoutes() {
@@ -47,6 +49,11 @@ function AppRoutes() {
                     <Route path={'/reset-password/:token'} element={<ResetPassword />} />
                     <Route path='/store/:slug' element={<StorePage />} />
                     <Route path='/stores' element={<StoresListing />} />
+                    <Route path='/stores/trusted' element={
+                        <ProtectedRoute>
+                            <TrustedStoresPage />
+                        </ProtectedRoute>
+                    } />
 
 
                     {/* PROTECTED ROUTES - Checkout requires login */}
@@ -143,6 +150,11 @@ function AppRoutes() {
                     <Route path='/admin-dashboard/tax-configuration' element={
                         <ProtectedRoute role={'admin'}>
                             <TaxConfiguration />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/admin-dashboard/store-verifications' element={
+                        <ProtectedRoute role={'admin'}>
+                            <StoreVerifications />
                         </ProtectedRoute>
                     } />
                 </Route>

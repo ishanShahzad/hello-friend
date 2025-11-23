@@ -26,7 +26,7 @@ const generateUniqueSlug = async (storeName) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner } = req.body;
+        const { storeName, description, logo, banner, socialLinks } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -44,6 +44,14 @@ exports.createStore = async (req, res) => {
             return res.status(400).json({ msg: 'Store name cannot exceed 50 characters' });
         }
 
+        // Check if store name already exists (case-insensitive)
+        const duplicateStore = await Store.findOne({ 
+            storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') }
+        });
+        if (duplicateStore) {
+            return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
+        }
+
         // Generate unique slug
         const storeSlug = await generateUniqueSlug(storeName);
 
@@ -54,7 +62,8 @@ exports.createStore = async (req, res) => {
             storeSlug,
             description: description || '',
             logo: logo || '',
-            banner: banner || ''
+            banner: banner || '',
+            socialLinks: socialLinks || {}
         });
 
         await newStore.save();
@@ -80,6 +89,19 @@ exports.getMyStore = async (req, res) => {
             return res.status(404).json({ msg: 'You have not created a store yet' });
         }
 
+        // Ensure socialLinks exists (for backward compatibility with old stores)
+        if (!store.socialLinks) {
+            store.socialLinks = {
+                website: '',
+                facebook: '',
+                instagram: '',
+                twitter: '',
+                youtube: '',
+                tiktok: ''
+            };
+            await store.save();
+        }
+
         res.status(200).json({
             msg: 'Store fetched successfully',
             store
@@ -93,7 +115,7 @@ exports.getMyStore = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner } = req.body;
+        const { storeName, description, logo, banner, socialLinks } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -112,6 +134,17 @@ exports.updateStore = async (req, res) => {
                 return res.status(400).json({ msg: 'Store name cannot exceed 50 characters' });
             }
 
+            // Check if store name already exists (case-insensitive), excluding current store
+            if (storeName.trim().toLowerCase() !== store.storeName.toLowerCase()) {
+                const duplicateStore = await Store.findOne({ 
+                    storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') },
+                    _id: { $ne: store._id }
+                });
+                if (duplicateStore) {
+                    return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
+                }
+            }
+
             // Generate new slug if store name changed
             if (storeName !== store.storeName) {
                 store.storeSlug = await generateUniqueSlug(storeName);
@@ -124,8 +157,21 @@ exports.updateStore = async (req, res) => {
         if (description !== undefined) store.description = description;
         if (logo !== undefined) store.logo = logo;
         if (banner !== undefined) store.banner = banner;
+        if (socialLinks !== undefined) {
+            console.log('Updating socialLinks:', socialLinks);
+            store.socialLinks = {
+                website: socialLinks.website || '',
+                facebook: socialLinks.facebook || '',
+                instagram: socialLinks.instagram || '',
+                twitter: socialLinks.twitter || '',
+                youtube: socialLinks.youtube || '',
+                tiktok: socialLinks.tiktok || ''
+            };
+            store.markModified('socialLinks'); // Mark nested object as modified
+        }
 
         await store.save();
+        console.log('Store saved with socialLinks:', store.socialLinks);
 
         res.status(200).json({
             msg: 'Store updated successfully',
@@ -200,7 +246,7 @@ exports.getStoreSuggestions = async (req, res) => {
             storeName: { $regex: q, $options: 'i' },
             isActive: true
         })
-        .select('storeName storeSlug logo')
+        .select('storeName storeSlug logo trustCount verification')
         .limit(5);
 
         res.status(200).json({
@@ -240,6 +286,7 @@ exports.getStoreBySellerId = async (req, res) => {
         const { id } = req.params;
 
         const store = await Store.findOne({ seller: id, isActive: true })
+            .select('+verification')
             .populate('seller', 'username email avatar');
 
         if (!store) {
@@ -344,7 +391,8 @@ exports.getAllStores = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const stores = await Store.find({ isActive: true })
-            .populate('seller', 'username')
+            .populate('seller', 'username email')
+            .select('+verification')
             .sort(sortOption)
             .limit(parseInt(limit))
             .skip(skip);
@@ -433,6 +481,7 @@ exports.getStoreAnalytics = async (req, res) => {
                 views: store.views || 0,
                 productCount: productCount || 0,
                 totalSales: totalSales || 0,
+                trustCount: store.trustCount || 0,
                 storeName: store.storeName,
                 createdAt: store.createdAt
             }
@@ -440,5 +489,224 @@ exports.getStoreAnalytics = async (req, res) => {
     } catch (error) {
         console.error('Get store analytics error:', error);
         res.status(500).json({ msg: 'Server error while fetching analytics' });
+    }
+};
+
+
+// Apply for store verification (seller only)
+exports.applyForVerification = async (req, res) => {
+    try {
+        const { applicationMessage } = req.body;
+        const sellerId = req.user.id;
+
+        const store = await Store.findOne({ seller: sellerId });
+
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
+
+        if (store.verification.isVerified) {
+            return res.status(400).json({ msg: 'Your store is already verified' });
+        }
+
+        if (store.verification.status === 'pending') {
+            return res.status(400).json({ msg: 'You already have a pending verification application' });
+        }
+
+        store.verification.status = 'pending';
+        store.verification.appliedAt = new Date();
+        store.verification.applicationMessage = applicationMessage || '';
+        store.verification.rejectionReason = '';
+
+        await store.save();
+
+        res.status(200).json({
+            msg: 'Verification application submitted successfully',
+            store
+        });
+    } catch (error) {
+        console.error('Apply for verification error:', error);
+        res.status(500).json({ msg: 'Server error while applying for verification' });
+    }
+};
+
+// Get verification status (seller only)
+exports.getVerificationStatus = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+
+        const store = await Store.findOne({ seller: sellerId });
+
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
+
+        res.status(200).json({
+            msg: 'Verification status fetched successfully',
+            verification: store.verification
+        });
+    } catch (error) {
+        console.error('Get verification status error:', error);
+        res.status(500).json({ msg: 'Server error while fetching verification status' });
+    }
+};
+
+// Get all pending verification applications (admin only)
+exports.getPendingVerifications = async (req, res) => {
+    try {
+        const stores = await Store.find({ 'verification.status': 'pending' })
+            .populate('seller', 'username email')
+            .sort({ 'verification.appliedAt': -1 });
+
+        res.status(200).json({
+            msg: 'Pending verifications fetched successfully',
+            stores,
+            count: stores.length
+        });
+    } catch (error) {
+        console.error('Get pending verifications error:', error);
+        res.status(500).json({ msg: 'Server error while fetching pending verifications' });
+    }
+};
+
+// Approve store verification (admin only)
+exports.approveVerification = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const adminId = req.user.id;
+
+        const store = await Store.findById(storeId);
+
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
+
+        // Allow verification for both pending applications and direct admin verification
+        if (store.verification.isVerified) {
+            return res.status(400).json({ msg: 'Store is already verified' });
+        }
+
+        store.verification.isVerified = true;
+        store.verification.status = 'approved';
+        store.verification.reviewedAt = new Date();
+        store.verification.reviewedBy = adminId;
+        store.verification.rejectionReason = '';
+        
+        // If there was no application, set appliedAt to now
+        if (!store.verification.appliedAt) {
+            store.verification.appliedAt = new Date();
+        }
+
+        await store.save();
+
+        res.status(200).json({
+            msg: 'Store verification approved successfully',
+            store
+        });
+    } catch (error) {
+        console.error('Approve verification error:', error);
+        res.status(500).json({ msg: 'Server error while approving verification' });
+    }
+};
+
+// Reject store verification (admin only)
+exports.rejectVerification = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const { rejectionReason } = req.body;
+        const adminId = req.user.id;
+
+        const store = await Store.findById(storeId);
+
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
+
+        if (store.verification.status !== 'pending') {
+            return res.status(400).json({ msg: 'No pending verification application for this store' });
+        }
+
+        store.verification.isVerified = false;
+        store.verification.status = 'rejected';
+        store.verification.reviewedAt = new Date();
+        store.verification.reviewedBy = adminId;
+        store.verification.rejectionReason = rejectionReason || 'Application rejected';
+
+        await store.save();
+
+        res.status(200).json({
+            msg: 'Store verification rejected',
+            store
+        });
+    } catch (error) {
+        console.error('Reject verification error:', error);
+        res.status(500).json({ msg: 'Server error while rejecting verification' });
+    }
+};
+
+// Get all verified stores (admin only)
+exports.getVerifiedStores = async (req, res) => {
+    try {
+        const stores = await Store.find({
+            'verification.isVerified': true,
+            'verification.status': 'approved'
+        })
+        .populate('seller', 'username email')
+        .sort({ 'verification.reviewedAt': -1 });
+
+        // Get product count for each store
+        const Product = require('../models/Product');
+        const storesWithProductCount = await Promise.all(
+            stores.map(async (store) => {
+                const productCount = await Product.countDocuments({ seller: store.seller._id });
+                return {
+                    ...store.toObject(),
+                    productCount
+                };
+            })
+        );
+
+        res.status(200).json({
+            msg: 'Verified stores fetched successfully',
+            stores: storesWithProductCount
+        });
+    } catch (error) {
+        console.error('Get verified stores error:', error);
+        res.status(500).json({ msg: 'Server error while fetching verified stores' });
+    }
+};
+
+// Remove verification from a store (admin only)
+exports.removeVerification = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const { reason } = req.body;
+        const adminId = req.user.id;
+
+        const store = await Store.findById(storeId);
+
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
+
+        if (!store.verification.isVerified) {
+            return res.status(400).json({ msg: 'Store is not verified' });
+        }
+
+        store.verification.isVerified = false;
+        store.verification.status = 'none';
+        store.verification.reviewedAt = new Date();
+        store.verification.reviewedBy = adminId;
+        store.verification.rejectionReason = reason || 'Verification removed by admin';
+
+        await store.save();
+
+        res.status(200).json({
+            msg: 'Store verification removed successfully',
+            store
+        });
+    } catch (error) {
+        console.error('Remove verification error:', error);
+        res.status(500).json({ msg: 'Server error while removing verification' });
     }
 };

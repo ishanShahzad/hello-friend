@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Package, Eye } from 'lucide-react';
+import { Store, Package, Eye, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import TrustButton from './TrustButton';
+import VerifiedBadge from './VerifiedBadge';
 
 const StoreCard = ({ store, idx }) => {
     const navigate = useNavigate();
+    const [trustCount, setTrustCount] = useState(store.trustCount || 0);
+    const [isTrusted, setIsTrusted] = useState(false);
 
     const cardVariants = {
         hidden: { opacity: 0, y: 20 },
@@ -60,10 +65,33 @@ const StoreCard = ({ store, idx }) => {
                     )}
                 </div>
 
-                {/* Store Name */}
-                <h3 className="font-bold text-sm sm:text-base md:text-lg text-gray-900 mb-1 sm:mb-1.5 md:mb-2 truncate group-hover:text-blue-600 transition-colors">
-                    {store.storeName}
-                </h3>
+                {/* Store Name & Trust Button */}
+                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-1.5 md:mb-2">
+                    <h3 className="font-bold text-sm sm:text-base md:text-lg text-gray-900 truncate group-hover:text-blue-600 transition-colors flex-1 flex items-center gap-1.5">
+                        {store.storeName}
+                        {store.verification?.isVerified && (
+                            <VerifiedBadge size="sm" />
+                        )}
+                    </h3>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <TrustButton
+                            storeId={store._id}
+                            storeName={store.storeName}
+                            initialTrustCount={trustCount}
+                            initialIsTrusted={isTrusted}
+                            compact={true}
+                            onTrustChange={(newIsTrusted, newCount) => {
+                                setIsTrusted(newIsTrusted);
+                                setTrustCount(newCount);
+                            }}
+                        />
+                    </div>
+                </div>
+
+                {/* Trusters Count */}
+                <div className="text-xs text-gray-500 mb-2">
+                    <span>{trustCount} {trustCount === 1 ? 'truster' : 'trusters'}</span>
+                </div>
 
                 {/* Description */}
                 {store.description && (

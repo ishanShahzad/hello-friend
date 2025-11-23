@@ -545,6 +545,9 @@ function ProductDetailPage() {
                                     storeSlug={storeData?.storeSlug}
                                     storeLogo={storeData?.logo}
                                     sellerUsername={product.seller?.username}
+                                    storeId={storeData?._id}
+                                    trustCount={storeData?.trustCount}
+                                    verification={storeData?.verification}
                                 />
                             </motion.div>
 

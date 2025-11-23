@@ -12,7 +12,14 @@ const {
     getStoreProducts,
     getAllStores,
     incrementStoreView,
-    getStoreAnalytics
+    getStoreAnalytics,
+    applyForVerification,
+    getVerificationStatus,
+    getPendingVerifications,
+    getVerifiedStores,
+    approveVerification,
+    rejectVerification,
+    removeVerification
 } = require('../controllers/storeController');
 const verifyToken = require('../middleware/authMiddleware');
 
@@ -49,6 +56,17 @@ router.get('/my-store', verifyToken, isSellerAuth, getMyStore);
 router.put('/update', verifyToken, isSellerAuth, validateStoreData, updateStore);
 router.delete('/delete', verifyToken, isSellerAuth, deleteStore);
 router.get('/analytics', verifyToken, isSellerAuth, getStoreAnalytics);
+
+// Verification Routes (Seller)
+router.post('/verification/apply', verifyToken, isSellerAuth, applyForVerification);
+router.get('/verification/status', verifyToken, isSellerAuth, getVerificationStatus);
+
+// Verification Routes (Admin only)
+router.get('/verification/pending', verifyToken, getPendingVerifications);
+router.get('/verification/verified', verifyToken, getVerifiedStores);
+router.put('/verification/:storeId/approve', verifyToken, approveVerification);
+router.put('/verification/:storeId/reject', verifyToken, rejectVerification);
+router.put('/verification/:storeId/remove', verifyToken, removeVerification);
 
 // Public Store Routes - Order matters! Specific routes before dynamic params
 router.get('/search', searchStores);

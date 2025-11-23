@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Store, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Store, Loader2, ExternalLink, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import VerifiedBadge from './VerifiedBadge';
 
 const StoreSearch = () => {
     const [query, setQuery] = useState('');
@@ -155,8 +156,17 @@ const StoreSearch = () => {
                                                 </div>
                                             )}
                                             <div className="flex-1">
-                                                <p className="font-medium text-gray-800">{store.storeName}</p>
-                                                <p className="text-xs text-gray-500">/{store.storeSlug}</p>
+                                                <p className="font-medium text-gray-800 flex items-center gap-1.5">
+                                                    {store.storeName}
+                                                    {store.verification?.isVerified && (
+                                                        <VerifiedBadge size="sm" />
+                                                    )}
+                                                </p>
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span>/{store.storeSlug}</span>
+                                                    <span>•</span>
+                                                    <span>{store.trustCount || 0} {store.trustCount === 1 ? 'truster' : 'trusters'}</span>
+                                                </div>
                                             </div>
                                             <ExternalLink size={16} className="text-gray-400" />
                                         </motion.div>

@@ -1,8 +1,18 @@
-import { Store, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Store, ExternalLink, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import TrustButton from './TrustButton';
+import VerifiedBadge from './VerifiedBadge';
 
-const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername }) => {
+const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername, storeId, trustCount: initialTrustCount = 0, verification }) => {
+    const [trustCount, setTrustCount] = useState(initialTrustCount);
+    const [isTrusted, setIsTrusted] = useState(false);
+
+    // Update local state when prop changes
+    useEffect(() => {
+        setTrustCount(initialTrustCount);
+    }, [initialTrustCount]);
     // If no store configured, show seller username
     if (!storeName || !storeSlug) {
         return (
@@ -36,10 +46,31 @@ const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername }) => {
                         </div>
                     )}
                     <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {storeName}
-                        </h3>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                                {storeName}
+                                {verification?.isVerified && (
+                                    <VerifiedBadge size="sm" />
+                                )}
+                            </h3>
+                            {storeId && (
+                                <div onClick={(e) => e.preventDefault()}>
+                                    <TrustButton
+                                        storeId={storeId}
+                                        storeName={storeName}
+                                        initialTrustCount={trustCount}
+                                        initialIsTrusted={isTrusted}
+                                        compact={true}
+                                        onTrustChange={(newIsTrusted, newCount) => {
+                                            setIsTrusted(newIsTrusted);
+                                            setTrustCount(newCount);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
                         <p className="text-xs text-gray-500">/{storeSlug}</p>
+                        <p className="text-xs text-gray-500 mt-1">{trustCount} {trustCount === 1 ? 'truster' : 'trusters'}</p>
                     </div>
                 </div>
             </Link>

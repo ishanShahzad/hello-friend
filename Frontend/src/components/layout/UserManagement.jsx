@@ -179,7 +179,7 @@ const UserManagement = () => {
       const token = localStorage.getItem('jwtToken')
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/admin-toggle/${selectedUser._id}`,
         {
-
+          newRole: selectedUser.targetRole
         },
         {
           headers: {
@@ -209,15 +209,17 @@ const UserManagement = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6 mt-8">
       <div className="max-w-7xl mx-auto">
-        <motion.h1
-          className="text-3xl font-bold text-gray-800 mb-8 flex items-center gap-2"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <UserCog className="w-8 h-8" />
-          User Management
-        </motion.h1>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <motion.h1
+            className="text-3xl font-bold text-gray-800 flex items-center gap-2"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <UserCog className="w-8 h-8" />
+            User Management
+          </motion.h1>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -294,7 +296,7 @@ const UserManagement = () => {
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search by username or email..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -311,6 +313,7 @@ const UserManagement = () => {
                 >
                   <option value="all">All Roles</option>
                   <option value="admin">Admin</option>
+                  <option value="seller">Seller</option>
                   <option value="user">User</option>
                 </select>
               </div>
@@ -601,25 +604,62 @@ const UserManagement = () => {
               exit={{ scale: 0.9, opacity: 0 }}
             >
               <h3 className="text-lg font-medium text-gray-900 mb-4">Change User Role</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to change {selectedUser.username}'s role to {
-                  selectedUser.role === 'user' ? 'seller' : 
-                  selectedUser.role === 'seller' ? 'admin' : 
-                  'user'
-                }?
+              <p className="text-gray-600 mb-4">
+                Current role: <span className="font-semibold">{selectedUser.role}</span>
               </p>
-              <div className="flex justify-end space-x-3">
+              <p className="text-gray-600 mb-6">
+                Change {selectedUser.username}'s role to:
+              </p>
+              <div className="space-y-2 mb-6">
                 <button
-                  onClick={() => setShowRoleModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    selectedUser.targetRole = 'user';
+                    confirmChangeRole();
+                  }}
+                  disabled={selectedUser.role === 'user'}
+                  className={`w-full px-4 py-2 rounded-lg text-left ${
+                    selectedUser.role === 'user'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                  }`}
                 >
-                  Cancel
+                  👤 User {selectedUser.role === 'user' && '(Current)'}
                 </button>
                 <button
-                  onClick={confirmChangeRole}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  onClick={() => {
+                    selectedUser.targetRole = 'seller';
+                    confirmChangeRole();
+                  }}
+                  disabled={selectedUser.role === 'seller'}
+                  className={`w-full px-4 py-2 rounded-lg text-left ${
+                    selectedUser.role === 'seller'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-green-50 hover:bg-green-100 text-green-700'
+                  }`}
                 >
-                  Confirm
+                  🏪 Seller {selectedUser.role === 'seller' && '(Current)'}
+                </button>
+                <button
+                  onClick={() => {
+                    selectedUser.targetRole = 'admin';
+                    confirmChangeRole();
+                  }}
+                  disabled={selectedUser.role === 'admin'}
+                  className={`w-full px-4 py-2 rounded-lg text-left ${
+                    selectedUser.role === 'admin'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
+                  }`}
+                >
+                  👑 Admin {selectedUser.role === 'admin' && '(Current)'}
+                </button>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowRoleModal(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
                 </button>
               </div>
             </motion.div>

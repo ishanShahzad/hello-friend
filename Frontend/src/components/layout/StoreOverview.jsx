@@ -7,7 +7,7 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 
 
 const StoreOverview = () => {
-    const { formatPrice } = useCurrency();
+    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
     const {
         products,
         orders
@@ -22,6 +22,26 @@ const StoreOverview = () => {
         // handleCreateProduct,
         // handleDeleteProduct
     } = useOutletContext()
+
+    // Format large numbers with K, M, B suffixes
+    const formatCompactPrice = (amount) => {
+        const usdAmount = Number(amount) || 0;
+        // Convert USD to selected currency
+        const rate = exchangeRates[currency] || 1;
+        const convertedAmount = usdAmount * rate;
+        const symbol = getCurrencySymbol();
+        
+        if (convertedAmount >= 1000000000) {
+            return `${symbol}${(convertedAmount / 1000000000).toFixed(1)}B`;
+        }
+        if (convertedAmount >= 1000000) {
+            return `${symbol}${(convertedAmount / 1000000).toFixed(1)}M`;
+        }
+        if (convertedAmount >= 10000) {
+            return `${symbol}${(convertedAmount / 1000).toFixed(1)}K`;
+        }
+        return formatPrice(usdAmount);
+    };
 
     const totalProducts = products.length;
     const outOfStock = products.filter(p => p.stock === 0).length;
@@ -40,7 +60,7 @@ const StoreOverview = () => {
         { label: 'Out of Stock', value: outOfStock, icon: <TriangleAlert size={24} />, color: 'red' },
         { label: 'Low Stock', value: `${lowStock}`, icon: <AlertCircle size={24} />, color: 'red' },
         { label: 'Featured Products', value: featuredProducts, icon: <Star size={24} />, color: 'yellow' },
-        { label: 'Total Revenue', value: formatPrice(totalRevenue), icon: <DollarSign size={24} />, color: 'green' }
+        { label: 'Total Revenue', value: formatCompactPrice(totalRevenue), icon: <DollarSign size={24} />, color: 'green' }
     ];
 
     return (

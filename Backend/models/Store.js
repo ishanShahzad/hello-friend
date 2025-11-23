@@ -38,6 +38,66 @@ const storeSchema = new mongoose.Schema({
   views: {
     type: Number,
     default: 0
+  },
+  trustCount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Trust count cannot be negative']
+  },
+  socialLinks: {
+    website: {
+      type: String,
+      default: ''
+    },
+    facebook: {
+      type: String,
+      default: ''
+    },
+    instagram: {
+      type: String,
+      default: ''
+    },
+    twitter: {
+      type: String,
+      default: ''
+    },
+    youtube: {
+      type: String,
+      default: ''
+    },
+    tiktok: {
+      type: String,
+      default: ''
+    }
+  },
+  verification: {
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    status: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected'],
+      default: 'none'
+    },
+    appliedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    applicationMessage: {
+      type: String,
+      default: ''
+    },
+    rejectionReason: {
+      type: String,
+      default: ''
+    }
   }
 }, {
   timestamps: true // Automatically adds createdAt and updatedAt
@@ -61,4 +121,6 @@ storeSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Store', storeSchema);
+const Store = mongoose.model('Store', storeSchema);
+
+module.exports = Store;

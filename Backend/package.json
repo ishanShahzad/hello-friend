@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand --detectOpenHandles",
+    "test:watch": "jest --watch",
     "start": "node server.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "testTimeout": 30000
   },
   "keywords": [],
   "author": "",
@@ -31,5 +39,11 @@
     "passport-google-oauth20": "^2.0.0",
     "resend": "^6.4.1",
     "stripe": "^18.5.0"
+  },
+  "devDependencies": {
+    "fast-check": "^4.3.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.3.0",
+    "supertest": "^7.1.4"
   }
 }

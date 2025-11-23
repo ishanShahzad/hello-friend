@@ -11,7 +11,12 @@ exports.getUsers = async (req, res) => {
     try {
         if (role) query.role = role
         if (status) query.status = status
-        if (search) query.username = { $regex: search, $options: 'i' }
+        if (search) {
+            query.$or = [
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ]
+        }
         const users = await User.find(query)
         res.status(200).json({ msg: 'Users fetched succcessfully.', users: users })
     } catch (error) {

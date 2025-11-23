@@ -64,17 +64,34 @@ const StoresListing = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 }}
                 >
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl shadow-lg">
-                            <Store size={32} className="text-white" />
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl shadow-lg">
+                                <Store size={32} className="text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                                    Discover Stores
+                                </h1>
+                                <p className="text-gray-600 mt-1">Explore amazing sellers and their unique products</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                                Discover Stores
-                            </h1>
-                            <p className="text-gray-600 mt-1">Explore amazing sellers and their unique products</p>
-                        </div>
+                        <Link
+                            to="/stores/trusted"
+                            className="hidden md:flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg font-medium"
+                        >
+                            <span>❤️</span>
+                            <span>My Trusted Stores</span>
+                        </Link>
                     </div>
+                    {/* Mobile button */}
+                    <Link
+                        to="/stores/trusted"
+                        className="md:hidden flex items-center justify-center gap-2 w-full px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg font-medium mt-4"
+                    >
+                        <span>❤️</span>
+                        <span>My Trusted Stores</span>
+                    </Link>
                 </motion.div>
 
                 {/* Search and Sort Card */}
