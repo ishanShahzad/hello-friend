@@ -129,48 +129,62 @@ function Products() {
         }
         
         // If we reach here, user has no active spin in DB (or it expired)
-        // But check localStorage first - user might have spun as guest
-        const storedSpin = localStorage.getItem('spinResult');
-        const storedTimestamp = localStorage.getItem('spinTimestamp');
+        // Check if this account has EVER spun before (even if expired)
+        const hasSpunBefore = dbSpinTimestamp && dbSpinTimestamp > 0;
         
-        if (storedSpin && storedTimestamp) {
-          const now = new Date().getTime();
-          const spinTime = parseInt(storedTimestamp);
-          const hoursPassed = (now - spinTime) / (1000 * 60 * 60);
-          
-          if (hoursPassed < 24) {
-            // Valid guest spin in localStorage - save it to this account
-            console.log('💾 Found valid guest spin, saving to account');
-            const spinData = JSON.parse(storedSpin);
-            setSpinResult(spinData);
-            
-            try {
-              const token = localStorage.getItem('jwtToken');
-              await axios.post(`${import.meta.env.VITE_API_URL}api/user/spin/save`, {
-                spinResult: spinData,
-                spinTimestamp: spinTime,
-                spinSelectedProducts: JSON.parse(localStorage.getItem('spinSelectedProducts') || '[]')
-              }, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              console.log('✅ Guest spin saved to account');
-            } catch (error) {
-              console.error('❌ Error saving guest spin to account:', error);
-            }
-            return; // Don't show spinner - user has active spin
-          } else {
-            // Expired guest spin - clear it
-            console.log('🗑️ Clearing expired guest spin');
-            localStorage.removeItem('spinResult');
-            localStorage.removeItem('spinTimestamp');
-            localStorage.removeItem('spinSelectedProducts');
-          }
-        } else {
-          // No localStorage data either - clear to be safe
+        if (hasSpunBefore) {
+          // This account has spun before - clear any guest spin data
+          // Don't transfer guest spins to accounts that have already used their spin
+          console.log('🚫 Account has spun before - clearing guest spin data');
           localStorage.removeItem('spinResult');
           localStorage.removeItem('spinTimestamp');
           localStorage.removeItem('spinSelectedProducts');
+          // User can spin again since their spin expired
+        } else {
+          // This is a brand new account that has NEVER spun
+          // Check if there's valid guest spin data to transfer
+          const storedSpin = localStorage.getItem('spinResult');
+          const storedTimestamp = localStorage.getItem('spinTimestamp');
+          
+          if (storedSpin && storedTimestamp) {
+            const now = new Date().getTime();
+            const spinTime = parseInt(storedTimestamp);
+            const hoursPassed = (now - spinTime) / (1000 * 60 * 60);
+            
+            if (hoursPassed < 24) {
+              // Valid guest spin - save it to this NEW account
+              console.log('💾 New account - transferring guest spin');
+              const spinData = JSON.parse(storedSpin);
+              setSpinResult(spinData);
+              
+              try {
+                const token = localStorage.getItem('jwtToken');
+                await axios.post(`${import.meta.env.VITE_API_URL}api/user/spin/save`, {
+                  spinResult: spinData,
+                  spinTimestamp: spinTime,
+                  spinSelectedProducts: JSON.parse(localStorage.getItem('spinSelectedProducts') || '[]')
+                }, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                console.log('✅ Guest spin saved to new account');
+              } catch (error) {
+                console.error('❌ Error saving guest spin to account:', error);
+              }
+              return; // Don't show spinner - user has active spin
+            } else {
+              // Expired guest spin - clear it
+              console.log('🗑️ Clearing expired guest spin');
+              localStorage.removeItem('spinResult');
+              localStorage.removeItem('spinTimestamp');
+              localStorage.removeItem('spinSelectedProducts');
+            }
+          }
         }
+        
+        // Clear any remaining localStorage data to be safe
+        localStorage.removeItem('spinResult');
+        localStorage.removeItem('spinTimestamp');
+        localStorage.removeItem('spinSelectedProducts');
       } catch (error) {
         console.error('❌ Error fetching spin data:', error);
       }
