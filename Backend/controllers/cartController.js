@@ -60,12 +60,21 @@ exports.getCart = async (req, res) => {
         const { id: userId } = req.user
 
         const userCart = await Cart.findOne({ user: userId })
-        if (!userCart) return res.status(200)
+        if (!userCart) return res.status(200).json({ msg: 'No cart found', cart: [], totalCartPrice: 0 })
 
         await userCart.populate('cartItems.product')
+        
+        // Filter out items with null products (deleted products)
+        const validCartItems = userCart.cartItems.filter(item => item.product !== null);
+        
+        // If items were removed, update the cart
+        if (validCartItems.length !== userCart.cartItems.length) {
+            userCart.cartItems = validCartItems;
+            await userCart.save();
+        }
+        
         console.log('usercart:::', userCart);
 
-        await userCart.save()
         res.status(200).json({ msg: 'cart fetched successfully', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
     } catch (error) {
         console.error('error while fetching cart:::', error);
