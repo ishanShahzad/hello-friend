@@ -32,7 +32,7 @@ exports.sendEmail = async (data) => {
                 to: to,
                 from: {
                     email: process.env.SENDGRID_FROM_EMAIL,
-                    name: 'genZ Winners'
+                    name: 'Tortrose'
                 },
                 subject: subject,
                 text: text,
@@ -64,7 +64,7 @@ exports.sendEmail = async (data) => {
             
             try {
                 const response = await mailConfig.services.resend.emails.send({
-                    from: `genZ Winners <${fromEmail}>`,
+                    from: `Tortrose <${fromEmail}>`,
                     to: to,
                     subject: subject,
                     html: html
@@ -89,7 +89,7 @@ exports.sendEmail = async (data) => {
             console.log('📧 Sending email via Gmail SMTP to:', to);
             
             const mailOptions = {
-                from: `"genZ Winners Support" <${process.env.EMAIL_USER}>`,
+                from: `"Tortrose Support" <${process.env.EMAIL_USER}>`,
                 to: to,
                 subject: subject,
                 text: text,

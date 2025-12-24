@@ -113,7 +113,7 @@ exports.sendOTP = async (req, res) => {
         <div class="content">
             <p>Hello <strong>${username}</strong>,</p>
             
-            <p>Thank you for creating an account with genZ Winners. To complete your registration and verify your email address, please use the verification code below:</p>
+            <p>Thank you for creating an account with Tortrose. To complete your registration and verify your email address, please use the verification code below:</p>
             
             <div class="otp-box">
                 <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; font-weight: 600;">VERIFICATION CODE</p>
@@ -124,15 +124,15 @@ exports.sendOTP = async (req, res) => {
             <p style="color: #666; font-size: 14px;">Enter this code on the verification page to activate your account.</p>
             
             <p style="color: #999; font-size: 13px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                <strong>Didn't request this?</strong> If you didn't create an account with genZ Winners, you can safely ignore this email.
+                <strong>Didn't request this?</strong> If you didn't create an account with Tortrose, you can safely ignore this email.
             </p>
             
             <p style="color: #999; font-size: 12px; margin-top: 15px;">
-                <strong>Security reminder:</strong> Never share this code with anyone. genZ Winners staff will never ask for your verification code.
+                <strong>Security reminder:</strong> Never share this code with anyone. Tortrose staff will never ask for your verification code.
             </p>
         </div>
         <div class="footer">
-            <p style="margin: 0 0 5px 0;">&copy; ${new Date().getFullYear()} genZ Winners. All rights reserved.</p>
+            <p style="margin: 0 0 5px 0;">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</p>
             <div class="company-info">
                 <p style="margin: 5px 0;">This is an automated message, please do not reply to this email.</p>
             </div>
@@ -144,7 +144,7 @@ exports.sendOTP = async (req, res) => {
 
         await sendEmail({
             to: email,
-            subject: 'Verify Your Email - genZ Winners',
+            subject: 'Verify Your Email - Tortrose',
             text: `Your OTP for email verification is: ${otp}. Valid for 10 minutes.`,
             html: html
         });

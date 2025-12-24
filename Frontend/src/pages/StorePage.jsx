@@ -95,7 +95,7 @@ const StorePage = () => {
         if (navigator.share) {
             navigator.share({
                 title: store?.storeName,
-                text: `Check out ${store?.storeName} on genZ Winners`,
+                text: `Check out ${store?.storeName} on Tortrose`,
                 url: url
             });
         } else {

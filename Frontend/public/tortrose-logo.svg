@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Abstract T with rose petal accent -->
+  <g transform="translate(5, 8)">
+    <!-- Main T shape -->
+    <rect x="0" y="0" width="24" height="5" rx="2" fill="url(#iconGradient)"/>
+    <rect x="9" y="3" width="6" height="28" rx="2" fill="url(#iconGradient)"/>
+    <!-- Rose petal accent -->
+    <circle cx="22" cy="26" r="6" fill="url(#logoGradient)" opacity="0.9"/>
+    <circle cx="18" cy="22" r="4" fill="url(#logoGradient)" opacity="0.7"/>
+    <circle cx="26" cy="22" r="3" fill="url(#logoGradient)" opacity="0.5"/>
+  </g>
+  
+  <!-- Text: Tortrose with inline font -->
+  <text x="42" y="35" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="url(#logoGradient)" style="font-weight: 700;">
+    Tortrose
+  </text>
+</svg>

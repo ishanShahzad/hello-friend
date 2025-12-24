@@ -11,7 +11,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 4173,
     allowedHosts: [
-      'genz-winners.up.railway.app',
+      'tortrose.up.railway.app',
       '*.up.railway.app'
     ],
   }

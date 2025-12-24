@@ -51,10 +51,8 @@ function Navbar() {
 
             {/* Left: Logo & Stores Link */}
             <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
-                <Link to="/" className="group">
-                    <span className="font-bold text-base sm:text-lg md:text-xl lg:text-2xl bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent tracking-wide group-hover:from-sky-300 group-hover:to-blue-400 transition-all duration-300">
-                        genZ Winners
-                    </span>
+                <Link to="/" className="group flex items-center gap-2">
+                    <img src="/tortrose-logo.svg" alt="Tortrose" className="h-8 sm:h-9 md:h-10" />
                 </Link>
                 <Link to="/stores" className="hidden md:block text-white/90 hover:text-white font-medium transition-colors text-sm lg:text-base">
                     Stores

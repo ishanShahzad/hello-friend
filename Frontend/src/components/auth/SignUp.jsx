@@ -101,7 +101,7 @@ const GlassSignUpPage = () => {
       <div className="w-full max-w-md bg-white/30 backdrop-blur-lg rounded-2xl shadow-xl overflow-hidden border border-white/50">
         <div className="p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent tracking-wide mb-2">genZ Winners</h1>
+            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-12 mx-auto mb-4" />
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">
               {step === 1 ? 'Create Account' : 'Verify Email'}
             </h2>
