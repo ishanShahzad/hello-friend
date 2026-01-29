@@ -36,14 +36,12 @@
      
 
 
-     <!-- GSM Cashback Tracking Script -->
+<!-- GSM Cashback Tracking Script -->
 <script>
 (function() {
   window.GSM = {
-    brandId: '697b284bbef9e1868b1ee927',
-    apiUrl: window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000' 
-      : 'https://your-production-gsm-api.com',  // TODO: Update with actual production URL
+    brandId: '697b9599afb2ae3c366b6753',
+    apiUrl: 'https://gsm-v2-api-5ffdf926b962.herokuapp.com',
     
     init: function() {
       var urlParams = new URLSearchParams(window.location.search);
@@ -119,9 +117,6 @@
   }
 })();
 </script>
-
-
-
 
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
