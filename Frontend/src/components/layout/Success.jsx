@@ -34,7 +34,8 @@ export default function Success() {
                     window.GSM.trackPurchase({
                         orderId: sessionData.metadata?.orderId || sessionData.id,
                         amount: sessionData.amount_total / 100,
-                        customerEmail: sessionData.customer_details?.email
+                        customerEmail: sessionData.customer_details?.email,
+                        currency: 'USD'
                     });
                 } catch (gsmError) {
                     console.error('GSM tracking failed:', gsmError);

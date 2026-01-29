@@ -41,7 +41,9 @@
 (function() {
   window.GSM = {
     brandId: '697b284bbef9e1868b1ee927',
-    apiUrl: 'http://localhost:3000',
+    apiUrl: window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : 'https://your-production-gsm-api.com',  // TODO: Update with actual production URL
     
     init: function() {
       var urlParams = new URLSearchParams(window.location.search);

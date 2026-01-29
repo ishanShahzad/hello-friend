@@ -398,7 +398,8 @@ export default function Checkout() {
             window.GSM.trackPurchase({
               orderId: res.data.order.orderId,
               amount: res.data.order.totalAmount,
-              customerEmail: res.data.order.email
+              customerEmail: res.data.order.email,
+              currency: 'USD'
             });
           } catch (gsmError) {
             console.error('GSM tracking failed:', gsmError);
