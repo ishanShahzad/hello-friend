@@ -32,6 +32,78 @@
     <!-- on click ads popunder ad  -->
      <!-- <script>(function(s){s.dataset.zone='10125635',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script> -->
 
+
+     <!-- GSM Cashback Tracking -->
+<script>
+(function() {
+  var config = {
+    brandId: '697b284bbef9e1868b1ee927',
+    apiUrl: 'http://localhost:3000'
+  };
+
+  function captureTracking() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var trackingCode = urlParams.get('gsm_tracking');
+    if (trackingCode) {
+      var trackingData = {
+        code: trackingCode,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000)
+      };
+      localStorage.setItem('gsm_tracking', JSON.stringify(trackingData));
+      console.log('[GSM] Tracking captured:', trackingCode);
+    }
+  }
+
+  function getTrackingCode() {
+    try {
+      var data = localStorage.getItem('gsm_tracking');
+      if (!data) return null;
+      var tracking = JSON.parse(data);
+      if (Date.now() > tracking.expiresAt) {
+        localStorage.removeItem('gsm_tracking');
+        return null;
+      }
+      return tracking.code;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  window.GSM = {
+    trackPurchase: function(orderData) {
+      var trackingCode = getTrackingCode();
+      if (!trackingCode) {
+        console.log('[GSM] No tracking code');
+        return;
+      }
+      fetch(config.apiUrl + '/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('token')
+        },
+        body: JSON.stringify({
+          productId: orderData.productId,
+          amount: orderData.amount,
+          orderId: orderData.orderId,
+          trackingCode: trackingCode
+        })
+      }).then(function(res) {
+        if (res.ok) {
+          console.log('[GSM] Purchase tracked');
+          localStorage.removeItem('gsm_tracking');
+        }
+      }).catch(function(err) {
+        console.error('[GSM] Error:', err);
+      });
+    }
+  };
+
+  captureTracking();
+  console.log('[GSM] Initialized for brand:', config.brandId);
+})();
+</script>
      
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

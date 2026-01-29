@@ -1,15 +1,22 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
-const config = getDefaultConfig(__dirname);
+// Use path.resolve to get the absolute path
+const projectRoot = path.resolve(__dirname);
+const nodeModulesPath = path.resolve(projectRoot, 'node_modules');
 
-// Reduce file watching to avoid EMFILE error
-config.watchFolders = [__dirname];
-config.resolver.sourceExts = ['js', 'jsx', 'json', 'ts', 'tsx'];
+const config = getDefaultConfig(projectRoot);
 
-// Ignore unnecessary directories
-config.watchFolders = [];
-config.resolver.blockList = [
-  /node_modules\/.*\/node_modules\/.*/,
-];
+// Ensure the project root is set correctly
+config.projectRoot = projectRoot;
+
+// Ensure node_modules is in the watch folders
+config.watchFolders = [projectRoot, nodeModulesPath];
+
+// Ensure the resolver can find modules
+config.resolver.nodeModulesPaths = [nodeModulesPath];
+
+// Disable watchman to avoid issues with paths containing spaces
+config.resolver.useWatchman = false;
 
 module.exports = config;

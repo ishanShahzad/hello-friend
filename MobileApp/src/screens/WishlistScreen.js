@@ -1,67 +1,300 @@
-import React, { useEffect } from 'react';
+/**
+ * WishlistScreen
+ * Displays user's saved wishlist items with modern design
+ * 
+ * Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6
+ */
+
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import ProductCard from '../components/ProductCard';
-import { colors, spacing, fontSize } from '../styles/theme';
+import { useCurrency } from '../contexts/CurrencyContext';
+import {
+  colors,
+  spacing,
+  fontSize,
+  borderRadius,
+  shadows,
+  fontWeight,
+  typography,
+  cardStyles,
+  buttonStyles,
+} from '../styles/theme';
+import Loader, { InlineLoader } from '../components/common/Loader';
+import { EmptyWishlist, LoginRequired } from '../components/common/EmptyState';
 
 export default function WishlistScreen({ navigation }) {
-  const { wishlistItems, fetchWishlist, isCartLoading } = useGlobal();
+  const { currentUser } = useAuth();
+  const {
+    wishlistItems,
+    fetchWishlist,
+    handleDeleteFromWishlist,
+    handleAddToCart,
+    cartItems,
+    isCartLoading,
+    loadingProductId,
+  } = useGlobal();
+  const { formatPrice } = useCurrency();
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
+
+  const loadWishlist = useCallback(async () => {
+    try {
+      await fetchWishlist();
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [fetchWishlist]);
 
   useEffect(() => {
-    fetchWishlist();
-  }, []);
+    if (currentUser) {
+      loadWishlist();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentUser, loadWishlist]);
 
-  if (isCartLoading && !wishlistItems.length) {
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadWishlist();
+  }, [loadWishlist]);
+
+  const handleRemoveFromWishlist = useCallback(async (productId) => {
+    setRemovingId(productId);
+    try {
+      await handleDeleteFromWishlist(productId);
+    } finally {
+      setRemovingId(null);
+    }
+  }, [handleDeleteFromWishlist]);
+
+  const handleAddToCartWithFeedback = useCallback(async (productId) => {
+    try {
+      await handleAddToCart(productId);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add item to cart');
+    }
+  }, [handleAddToCart]);
+
+  const handleBrowseProducts = useCallback(() => {
+    navigation.navigate('MainTabs', { screen: 'Home' });
+  }, [navigation]);
+
+  const handleLogin = useCallback(() => {
+    navigation.navigate('Login');
+  }, [navigation]);
+
+  const handleProductPress = useCallback((productId) => {
+    navigation.navigate('ProductDetail', { productId });
+  }, [navigation]);
+
+  const keyExtractor = useCallback((item) => item._id, []);
+
+  // Guest View
+  if (!currentUser) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Wishlist</Text>
+        </View>
+        <LoginRequired
+          onLogin={handleLogin}
+          onBrowse={handleBrowseProducts}
+        />
+      </SafeAreaView>
     );
   }
 
-  if (!wishlistItems.length) {
+  // Loading state
+  if (isLoading) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="heart-outline" size={80} color={colors.gray} />
-        <Text style={styles.emptyText}>Your wishlist is empty</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Wishlist</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Loader size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Empty Wishlist
+  if (!wishlistItems || wishlistItems.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Wishlist</Text>
+        </View>
+        <EmptyWishlist onBrowse={handleBrowseProducts} />
+      </SafeAreaView>
+    );
+  }
+
+  const renderWishlistItem = ({ item, index }) => {
+    const isInCart = cartItems?.cart?.some((cartItem) => cartItem?.product?._id === item._id);
+    const isAddingToCart = isCartLoading && loadingProductId === item._id;
+    const isRemoving = removingId === item._id;
+    const isOutOfStock = item.stock === 0;
+
+    return (
+      <View style={[styles.wishlistItem, index === 0 && styles.firstItem]}>
         <TouchableOpacity
-          style={styles.shopButton}
-          onPress={() => navigation.navigate('Home')}
+          style={styles.itemContent}
+          onPress={() => handleProductPress(item._id)}
+          activeOpacity={0.7}
         >
-          <Text style={styles.shopButtonText}>Browse Products</Text>
+          {/* Product Image */}
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: item.image || item.images?.[0]?.url }}
+              style={styles.itemImage}
+              resizeMode="cover"
+            />
+            {isOutOfStock && (
+              <View style={styles.outOfStockOverlay}>
+                <Text style={styles.outOfStockText}>Out of Stock</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Product Details */}
+          <View style={styles.itemDetails}>
+            {item.category && (
+              <Text style={styles.itemCategory}>{item.category}</Text>
+            )}
+            <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+            
+            {/* Price */}
+            <View style={styles.priceRow}>
+              <Text style={styles.itemPrice}>
+                {formatPrice(item.discountedPrice || item.price)}
+              </Text>
+              {item.discountedPrice && item.discountedPrice < item.price && (
+                <>
+                  <Text style={styles.originalPrice}>{formatPrice(item.price)}</Text>
+                  <View style={styles.discountBadge}>
+                    <Text style={styles.discountText}>
+                      -{Math.round((1 - item.discountedPrice / item.price) * 100)}%
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* Rating */}
+            <View style={styles.ratingContainer}>
+              {[...Array(5)].map((_, i) => {
+                const rating = item.rating || 0;
+                const filled = i < Math.floor(rating);
+                const halfFilled = !filled && i < rating;
+                return (
+                  <Ionicons
+                    key={i}
+                    name={filled ? 'star' : halfFilled ? 'star-half' : 'star-outline'}
+                    size={14}
+                    color={colors.star}
+                  />
+                );
+              })}
+              <Text style={styles.ratingText}>
+                ({item.rating?.toFixed(1) || '0.0'})
+              </Text>
+            </View>
+          </View>
         </TouchableOpacity>
+
+        {/* Actions */}
+        <View style={styles.actionsContainer}>
+          {/* Remove from Wishlist */}
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => handleRemoveFromWishlist(item._id)}
+            disabled={isRemoving}
+            activeOpacity={0.7}
+          >
+            {isRemoving ? (
+              <InlineLoader size={22} color={colors.heart} />
+            ) : (
+              <Ionicons name="heart" size={22} color={colors.heart} />
+            )}
+            <Text style={styles.removeButtonText}>Remove</Text>
+          </TouchableOpacity>
+
+          {/* Add to Cart */}
+          <TouchableOpacity
+            style={[
+              styles.addToCartButton,
+              isInCart && styles.inCartButton,
+              isOutOfStock && styles.disabledButton,
+            ]}
+            onPress={() => handleAddToCartWithFeedback(item._id)}
+            disabled={isOutOfStock || isAddingToCart}
+            activeOpacity={0.7}
+          >
+            {isAddingToCart ? (
+              <InlineLoader size={16} color={isInCart ? colors.error : colors.white} />
+            ) : isOutOfStock ? (
+              <Text style={styles.disabledButtonText}>Out of Stock</Text>
+            ) : isInCart ? (
+              <>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.inCartButtonText}>In Cart</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="cart-outline" size={16} color={colors.white} />
+                <Text style={styles.addToCartButtonText}>Add to Cart</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     );
-  }
+  };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Wishlist</Text>
-        <Text style={styles.itemCount}>{wishlistItems.length} items</Text>
+        <Text style={styles.headerTitle}>Wishlist</Text>
+        <View style={styles.itemCountBadge}>
+          <Text style={styles.itemCount}>{wishlistItems.length}</Text>
+        </View>
       </View>
 
+      {/* Wishlist Items */}
       <FlatList
         data={wishlistItems}
-        keyExtractor={(item) => item._id}
-        numColumns={2}
+        keyExtractor={keyExtractor}
+        renderItem={renderWishlistItem}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPress={() => navigation.navigate('ProductDetail', { productId: item._id })}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
-        )}
+        }
+        ListFooterComponent={<View style={styles.listFooter} />}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -70,52 +303,177 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centerContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  emptyText: {
-    fontSize: fontSize.lg,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  shopButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-  },
-  shopButtonText: {
-    color: colors.white,
-    fontSize: fontSize.md,
-    fontWeight: 'bold',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: colors.white,
-    padding: spacing.md,
-    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.light,
   },
   headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.dark,
+    ...typography.h2,
+  },
+  itemCountBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
   },
   itemCount: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    ...typography.caption,
+    color: colors.white,
+    fontWeight: fontWeight.semibold,
   },
   listContent: {
+    padding: spacing.md,
+  },
+  listFooter: {
+    height: spacing.xxl,
+  },
+  wishlistItem: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.md,
+    ...shadows.md,
+    overflow: 'hidden',
+  },
+  firstItem: {
+    marginTop: 0,
+  },
+  itemContent: {
+    flexDirection: 'row',
+    padding: spacing.md,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  itemImage: {
+    width: 100,
+    height: 100,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.light,
+  },
+  outOfStockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockText: {
+    ...typography.caption,
+    color: colors.white,
+    fontWeight: fontWeight.semibold,
+  },
+  itemDetails: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  itemCategory: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  itemName: {
+    ...typography.bodySemibold,
+    marginBottom: spacing.sm,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  itemPrice: {
+    ...typography.price,
+  },
+  originalPrice: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    backgroundColor: colors.errorLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  discountText: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: fontWeight.semibold,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.light,
+    backgroundColor: colors.lighter,
+  },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  removeButtonText: {
+    ...typography.bodySmall,
+    color: colors.heart,
+    fontWeight: fontWeight.medium,
+  },
+  addToCartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  inCartButton: {
+    backgroundColor: colors.successLight,
+  },
+  disabledButton: {
+    backgroundColor: colors.light,
+  },
+  addToCartButtonText: {
+    color: colors.white,
+    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.sm,
+  },
+  inCartButtonText: {
+    color: colors.success,
+    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.sm,
+  },
+  disabledButtonText: {
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
+    fontSize: fontSize.sm,
   },
 });

@@ -1,12 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { colors, spacing, fontSize, borderRadius } from '../../styles/theme';
-import api from '../../config/api';
+/**
+ * SellerStoreSettingsScreen
+ * Manage store settings and information
+ * 
+ * Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6
+ */
 
-export default function SellerStoreSettingsScreen() {
-  const [storeName, setStoreName] = useState('');
-  const [storeDescription, setStoreDescription] = useState('');
-  const [loading, setLoading] = useState(false);
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  SafeAreaView,
+  Image,
+  RefreshControl,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import api from '../../config/api';
+import Loader from '../../components/common/Loader';
+import VerifiedBadge from '../../components/VerifiedBadge';
+import {
+  colors,
+  spacing,
+  fontSize,
+  borderRadius,
+  shadows,
+  fontWeight,
+  typography,
+  buttonStyles,
+} from '../../styles/theme';
+
+export default function SellerStoreSettingsScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [store, setStore] = useState(null);
+  const [formData, setFormData] = useState({
+    storeName: '',
+    description: '',
+  });
+  const [logo, setLogo] = useState(null);
+  const [banner, setBanner] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchSettings();
@@ -15,66 +54,244 @@ export default function SellerStoreSettingsScreen() {
   const fetchSettings = async () => {
     try {
       const response = await api.get('/api/stores/my-store');
-      setStoreName(response.data.storeName || '');
-      setStoreDescription(response.data.description || '');
+      const storeData = response.data?.store || response.data;
+      setStore(storeData);
+      setFormData({
+        storeName: storeData?.name || storeData?.storeName || '',
+        description: storeData?.description || '',
+      });
+      setLogo(storeData?.logo || null);
+      setBanner(storeData?.banner || null);
     } catch (error) {
-      console.log('Error fetching settings:', error);
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchSettings();
+  }, []);
+
+  const updateField = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
+  }, [errors]);
+
+  const pickImage = useCallback(async (type) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: type === 'logo' ? [1, 1] : [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        if (type === 'logo') {
+          setLogo(result.assets[0].uri);
+        } else {
+          setBanner(result.assets[0].uri);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  }, []);
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.storeName.trim()) {
+      newErrors.storeName = 'Store name is required';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const saveSettings = async () => {
-    setLoading(true);
+    if (!validateForm()) {
+      Alert.alert('Validation Error', 'Please fix the errors in the form');
+      return;
+    }
+
+    setSaving(true);
     try {
       await api.put('/api/stores/update', {
-        storeName,
-        description: storeDescription,
+        storeName: formData.storeName.trim(),
+        description: formData.description.trim(),
+        logo,
+        banner,
       });
-      Alert.alert('Success', 'Settings saved successfully');
+      Alert.alert('Success', 'Store settings saved successfully');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save settings');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to save settings');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Loader fullScreen message="Loading settings..." />
+      </SafeAreaView>
+    );
+  }
+
+  const isVerified = store?.verification?.isVerified;
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Store Settings</Text>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Store Name</Text>
-          <TextInput
-            style={styles.input}
-            value={storeName}
-            onChangeText={setStoreName}
-            placeholder="Enter store name"
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="settings-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.headerTitle}>Store Settings</Text>
+          <Text style={styles.headerSubtitle}>Manage your store information</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Store Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={storeDescription}
-            onChangeText={setStoreDescription}
-            placeholder="Enter store description"
-            multiline
-            numberOfLines={4}
-          />
+        {/* Verification Status */}
+        <View style={styles.section}>
+          <View style={styles.verificationCard}>
+            <View style={styles.verificationIcon}>
+              <Ionicons
+                name={isVerified ? 'shield-checkmark' : 'shield-outline'}
+                size={32}
+                color={isVerified ? colors.success : colors.grayLight}
+              />
+            </View>
+            <View style={styles.verificationInfo}>
+              <Text style={styles.verificationTitle}>
+                {isVerified ? 'Verified Store' : 'Not Verified'}
+              </Text>
+              <Text style={styles.verificationText}>
+                {isVerified
+                  ? 'Your store is verified and trusted by customers'
+                  : 'Contact admin to get your store verified'}
+              </Text>
+            </View>
+            {isVerified && <VerifiedBadge size="md" />}
+          </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-          onPress={saveSettings}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {loading ? 'Saving...' : 'Save Settings'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        {/* Images Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Store Images</Text>
+          
+          {/* Banner */}
+          <Text style={styles.label}>Store Banner</Text>
+          <TouchableOpacity
+            style={styles.bannerPicker}
+            onPress={() => pickImage('banner')}
+            activeOpacity={0.8}
+          >
+            {banner ? (
+              <Image source={{ uri: banner }} style={styles.bannerImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.bannerPlaceholder}>
+                <Ionicons name="image-outline" size={32} color={colors.grayLight} />
+                <Text style={styles.pickerText}>Tap to add banner</Text>
+              </View>
+            )}
+            <View style={styles.editBadge}>
+              <Ionicons name="camera" size={16} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Logo */}
+          <Text style={styles.label}>Store Logo</Text>
+          <TouchableOpacity
+            style={styles.logoPicker}
+            onPress={() => pickImage('logo')}
+            activeOpacity={0.8}
+          >
+            {logo ? (
+              <Image source={{ uri: logo }} style={styles.logoImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.logoPlaceholder}>
+                <Ionicons name="storefront-outline" size={32} color={colors.grayLight} />
+              </View>
+            )}
+            <View style={styles.editBadgeLogo}>
+              <Ionicons name="camera" size={14} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Store Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Store Details</Text>
+          
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Store Name <Text style={styles.required}>*</Text>
+            </Text>
+            <TextInput
+              style={[styles.input, errors.storeName && styles.inputError]}
+              value={formData.storeName}
+              onChangeText={(value) => updateField('storeName', value)}
+              placeholder="Enter store name"
+              placeholderTextColor={colors.grayLight}
+            />
+            {errors.storeName && (
+              <Text style={styles.errorText}>{errors.storeName}</Text>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Store Description</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.description}
+              onChangeText={(value) => updateField('description', value)}
+              placeholder="Describe your store..."
+              placeholderTextColor={colors.grayLight}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <View style={styles.submitContainer}>
+          <TouchableOpacity
+            style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+            onPress={saveSettings}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            {saving ? (
+              <Loader size="small" color={colors.white} />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={22} color={colors.white} />
+                <Text style={styles.submitButtonText}>Save Settings</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Spacing */}
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -83,49 +300,179 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  // Header
+  header: {
+    backgroundColor: colors.white,
+    padding: spacing.xl,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.light,
+  },
+  headerIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryLighter,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  headerTitle: {
+    ...typography.h2,
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  // Sections
   section: {
+    backgroundColor: colors.white,
+    marginTop: spacing.md,
     padding: spacing.lg,
   },
   sectionTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.lg,
+    ...typography.h4,
+    marginBottom: spacing.md,
   },
+  // Verification
+  verificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.lighter,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+  },
+  verificationIcon: {
+    marginRight: spacing.md,
+  },
+  verificationInfo: {
+    flex: 1,
+  },
+  verificationTitle: {
+    ...typography.bodySemibold,
+    marginBottom: 2,
+  },
+  verificationText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  // Image Pickers
+  bannerPicker: {
+    height: 120,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.lighter,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoPicker: {
+    width: 100,
+    height: 100,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.lighter,
+    overflow: 'hidden',
+    position: 'relative',
+    alignSelf: 'center',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  logoPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerText: {
+    ...typography.bodySmall,
+    color: colors.grayLight,
+    marginTop: spacing.xs,
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editBadgeLogo: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  // Form
   inputGroup: {
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.bodySemibold,
     marginBottom: spacing.sm,
   },
+  required: {
+    color: colors.error,
+  },
   input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.lighter,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: fontSize.md,
+    color: colors.text,
+    borderWidth: 2,
+    borderColor: colors.lighter,
+  },
+  inputError: {
+    borderColor: colors.error,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
-  saveButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+  errorText: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: spacing.xs,
+  },
+  // Submit
+  submitContainer: {
+    padding: spacing.lg,
+  },
+  submitButton: {
+    ...buttonStyles.primary,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.md,
+    gap: spacing.sm,
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
-  saveButtonText: {
-    color: colors.white,
-    fontSize: fontSize.md,
-    fontWeight: '600',
+  submitButtonText: {
+    ...buttonStyles.primaryText,
+  },
+  // Bottom
+  bottomSpacing: {
+    height: spacing.xxl,
   },
 });

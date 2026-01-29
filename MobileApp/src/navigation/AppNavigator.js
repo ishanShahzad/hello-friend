@@ -1,9 +1,25 @@
-import { createStackNavigator } from '@react-navigation/stack';
+/**
+ * AppNavigator
+ * Modern navigation system with enhanced tab bar and consistent styling
+ * 
+ * Requirements: 29.1, 29.2, 29.3, 29.4, 29.5, 29.6, 29.7
+ */
+
+import React, { useEffect, useRef } from 'react';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { 
+  colors, 
+  spacing, 
+  fontSize, 
+  fontWeight, 
+  borderRadius,
+  shadows,
+} from '../styles/theme';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -39,240 +55,401 @@ import OrderManagementScreen from '../screens/shared/OrderManagementScreen';
 import OrderDetailManagementScreen from '../screens/shared/OrderDetailManagementScreen';
 import StoreOverviewScreen from '../screens/shared/StoreOverviewScreen';
 
+// New Feature Screens
+import SpinWheelScreen from '../screens/SpinWheelScreen';
+import TrustedStoresScreen from '../screens/TrustedStoresScreen';
+import BecomeSellerScreen from '../screens/BecomeSellerScreen';
+import StoreVerificationScreen from '../screens/admin/StoreVerificationScreen';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Cart Badge Component
+// Helper function to calculate cart item count - exported for testing
+export const calculateCartItemCount = (cartItems) => {
+  if (!cartItems?.cart || !Array.isArray(cartItems.cart)) return 0;
+  return cartItems.cart.reduce((total, item) => total + (item.qty || 1), 0);
+};
+
+// Helper function to get tab icon name - exported for testing
+export const getTabIconName = (routeName, focused) => {
+  const iconMap = {
+    Home: { active: 'home', inactive: 'home-outline' },
+    Stores: { active: 'storefront', inactive: 'storefront-outline' },
+    Cart: { active: 'cart', inactive: 'cart-outline' },
+    Wishlist: { active: 'heart', inactive: 'heart-outline' },
+    Account: { active: 'person', inactive: 'person-outline' },
+  };
+  const icons = iconMap[routeName] || { active: 'help', inactive: 'help-outline' };
+  return focused ? icons.active : icons.inactive;
+};
+
+// Helper function to get tab color - exported for testing
+export const getTabColor = (focused) => {
+  return focused ? colors.primary : colors.grayLight;
+};
+
+// Animated Cart Badge Component
 function CartBadge({ count }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const prevCount = useRef(count);
+
+  useEffect(() => {
+    if (count !== prevCount.current && count > 0) {
+      // Animate badge when count changes
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.3,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevCount.current = count;
+  }, [count, scaleAnim]);
+
   if (count === 0) return null;
 
   return (
-    <View style={styles.badge}>
-      <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
-    </View>
+    <Animated.View style={[styles.badge, { transform: [{ scale: scaleAnim }] }]}>
+      <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+    </Animated.View>
   );
 }
 
-// Bottom Tab Navigator for main app
+// Tab Bar Icon Component with animation
+function TabBarIcon({ route, focused, color, size }) {
+  const iconName = getTabIconName(route.name, focused);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: focused ? 1.1 : 1,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, scaleAnim]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Ionicons name={iconName} size={size} color={color} />
+    </Animated.View>
+  );
+}
+
+// Bottom Tab Navigator for main app - accessible to all users (guests included)
 function MainTabs() {
   const { cartItems } = useGlobal();
-  const cartCount = cartItems?.cart?.length || 0;
+  const cartCount = calculateCartItemCount(cartItems);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Stores') {
-            iconName = focused ? 'storefront' : 'storefront-outline';
-          } else if (route.name === 'Cart') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'Wishlist') {
-            iconName = focused ? 'heart' : 'heart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-
           return (
-            <View>
-              <Ionicons name={iconName} size={size} color={color} />
+            <View style={styles.tabIconContainer}>
+              <TabBarIcon route={route} focused={focused} color={color} size={24} />
               {route.name === 'Cart' && <CartBadge count={cartCount} />}
             </View>
           );
         },
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.grayLight,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabBarLabel,
+        tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Stores" component={StoresListingScreen} />
-      <Tab.Screen name="Cart" component={CartScreen} />
-      <Tab.Screen name="Wishlist" component={WishlistScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen 
+        name="Stores" 
+        component={StoresListingScreen}
+        options={{ tabBarLabel: 'Stores' }}
+      />
+      <Tab.Screen 
+        name="Cart" 
+        component={CartScreen}
+        options={{ tabBarLabel: 'Cart' }}
+      />
+      <Tab.Screen 
+        name="Wishlist" 
+        component={WishlistScreen}
+        options={{ tabBarLabel: 'Wishlist' }}
+      />
+      <Tab.Screen 
+        name="Account" 
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Account' }}
+      />
     </Tab.Navigator>
   );
 }
 
-// Main App Navigator
+// Main App Navigator - No auth gate, everyone can browse
 export default function AppNavigator() {
-  const { currentUser, isLoading } = useAuth();
+  const { isLoading } = useAuth();
+
+  // Default screen options for stack navigator - defined inside component to ensure styles are available
+  const defaultScreenOptions = {
+    headerStyle: {
+      backgroundColor: colors.dark,
+      elevation: 0,
+      shadowOpacity: 0,
+      borderBottomWidth: 0,
+    },
+    headerTintColor: colors.white,
+    headerTitleStyle: {
+      fontWeight: fontWeight.semibold,
+      fontSize: fontSize.lg,
+      color: colors.white,
+    },
+    headerBackTitleVisible: false,
+    headerLeftContainerStyle: {
+      paddingLeft: spacing.sm,
+    },
+    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+    gestureEnabled: true,
+    gestureDirection: 'horizontal',
+  };
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return null;
   }
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      {!currentUser ? (
-        // Auth Stack
-        <>
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SignUp"
-            component={SignUpScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ForgotPassword"
-            component={ForgotPasswordScreen}
-            options={{ title: 'Forgot Password' }}
-          />
-        </>
-      ) : (
-        // Main App Stack
-        <>
-          <Stack.Screen
-            name="MainTabs"
-            component={MainTabs}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ProductDetail"
-            component={ProductDetailScreen}
-            options={{ title: 'Product Details' }}
-          />
-          <Stack.Screen
-            name="Store"
-            component={StoreScreen}
-            options={{ title: 'Store' }}
-          />
-          <Stack.Screen
-            name="Checkout"
-            component={CheckoutScreen}
-            options={{ title: 'Checkout' }}
-          />
-          <Stack.Screen
-            name="Orders"
-            component={OrdersScreen}
-            options={{ title: 'My Orders' }}
-          />
-          <Stack.Screen
-            name="OrderDetail"
-            component={OrderDetailScreen}
-            options={{ title: 'Order Details' }}
-          />
+    <Stack.Navigator screenOptions={defaultScreenOptions}>
+      {/* Main App - accessible to everyone */}
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+      
+      {/* Auth Screens - accessible when not logged in */}
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SignUp"
+        component={SignUpScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ title: 'Forgot Password' }}
+      />
 
-          {/* Admin Dashboard */}
-          <Stack.Screen
-            name="AdminDashboard"
-            component={AdminDashboardScreen}
-            options={{ title: 'Admin Dashboard' }}
-          />
-          <Stack.Screen
-            name="AdminStoreOverview"
-            component={StoreOverviewScreen}
-            initialParams={{ isAdmin: true }}
-            options={{ title: 'Store Overview' }}
-          />
-          <Stack.Screen
-            name="AdminProductManagement"
-            component={ProductManagementScreen}
-            initialParams={{ isAdmin: true }}
-            options={{ title: 'Product Management' }}
-          />
-          <Stack.Screen
-            name="AdminOrderManagement"
-            component={OrderManagementScreen}
-            initialParams={{ isAdmin: true }}
-            options={{ title: 'Order Management' }}
-          />
-          <Stack.Screen
-            name="AdminUserManagement"
-            component={AdminUserManagementScreen}
-            options={{ title: 'User Management' }}
-          />
-          <Stack.Screen
-            name="AdminTaxConfiguration"
-            component={AdminTaxConfigurationScreen}
-            options={{ title: 'Tax Configuration' }}
-          />
+      {/* Product & Store Screens */}
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{ title: 'Product Details' }}
+      />
+      <Stack.Screen
+        name="Store"
+        component={StoreScreen}
+        options={{ title: 'Store' }}
+      />
+      
+      {/* Protected Screens - require login */}
+      <Stack.Screen
+        name="Checkout"
+        component={CheckoutScreen}
+        options={{ title: 'Checkout' }}
+      />
+      <Stack.Screen
+        name="Orders"
+        component={OrdersScreen}
+        options={{ title: 'My Orders' }}
+      />
+      <Stack.Screen
+        name="OrderDetail"
+        component={OrderDetailScreen}
+        options={{ title: 'Order Details' }}
+      />
 
-          {/* Seller Dashboard */}
-          <Stack.Screen
-            name="SellerDashboard"
-            component={SellerDashboardScreen}
-            options={{ title: 'Seller Dashboard' }}
-          />
-          <Stack.Screen
-            name="SellerStoreOverview"
-            component={StoreOverviewScreen}
-            initialParams={{ isAdmin: false }}
-            options={{ title: 'Store Overview' }}
-          />
-          <Stack.Screen
-            name="SellerProductManagement"
-            component={ProductManagementScreen}
-            initialParams={{ isAdmin: false }}
-            options={{ title: 'Product Management' }}
-          />
-          <Stack.Screen
-            name="SellerOrderManagement"
-            component={OrderManagementScreen}
-            initialParams={{ isAdmin: false }}
-            options={{ title: 'Order Management' }}
-          />
-          <Stack.Screen
-            name="SellerStoreSettings"
-            component={SellerStoreSettingsScreen}
-            options={{ title: 'Store Settings' }}
-          />
-          <Stack.Screen
-            name="SellerShippingConfiguration"
-            component={SellerShippingConfigurationScreen}
-            options={{ title: 'Shipping Configuration' }}
-          />
+      {/* Admin Dashboard */}
+      <Stack.Screen
+        name="AdminDashboard"
+        component={AdminDashboardScreen}
+        options={{ title: 'Admin Dashboard' }}
+      />
+      <Stack.Screen
+        name="AdminStoreOverview"
+        component={StoreOverviewScreen}
+        initialParams={{ isAdmin: true }}
+        options={{ title: 'Store Overview' }}
+      />
+      <Stack.Screen
+        name="AdminProductManagement"
+        component={ProductManagementScreen}
+        initialParams={{ isAdmin: true }}
+        options={{ title: 'Product Management' }}
+      />
+      <Stack.Screen
+        name="AdminOrderManagement"
+        component={OrderManagementScreen}
+        initialParams={{ isAdmin: true }}
+        options={{ title: 'Order Management' }}
+      />
+      <Stack.Screen
+        name="AdminUserManagement"
+        component={AdminUserManagementScreen}
+        options={{ title: 'User Management' }}
+      />
+      <Stack.Screen
+        name="AdminTaxConfiguration"
+        component={AdminTaxConfigurationScreen}
+        options={{ title: 'Tax Configuration' }}
+      />
+      <Stack.Screen
+        name="StoreVerification"
+        component={StoreVerificationScreen}
+        options={{ title: 'Store Verification' }}
+      />
 
-          {/* Shared Screens */}
-          <Stack.Screen
-            name="ProductForm"
-            component={ProductFormScreen}
-            options={{ title: 'Product Form' }}
-          />
-          <Stack.Screen
-            name="OrderDetailManagement"
-            component={OrderDetailManagementScreen}
-            options={{ title: 'Order Details' }}
-          />
-        </>
-      )}
+      {/* Seller Dashboard */}
+      <Stack.Screen
+        name="SellerDashboard"
+        component={SellerDashboardScreen}
+        options={{ title: 'Seller Dashboard' }}
+      />
+      <Stack.Screen
+        name="SellerStoreOverview"
+        component={StoreOverviewScreen}
+        initialParams={{ isAdmin: false }}
+        options={{ title: 'Store Overview' }}
+      />
+      <Stack.Screen
+        name="SellerProductManagement"
+        component={ProductManagementScreen}
+        initialParams={{ isAdmin: false }}
+        options={{ title: 'Product Management' }}
+      />
+      <Stack.Screen
+        name="SellerOrderManagement"
+        component={OrderManagementScreen}
+        initialParams={{ isAdmin: false }}
+        options={{ title: 'Order Management' }}
+      />
+      <Stack.Screen
+        name="SellerStoreSettings"
+        component={SellerStoreSettingsScreen}
+        options={{ title: 'Store Settings' }}
+      />
+      <Stack.Screen
+        name="SellerShippingConfiguration"
+        component={SellerShippingConfigurationScreen}
+        options={{ title: 'Shipping Configuration' }}
+      />
+
+      {/* Shared Screens */}
+      <Stack.Screen
+        name="ProductForm"
+        component={ProductFormScreen}
+        options={({ route }) => ({ 
+          title: route.params?.productId ? 'Edit Product' : 'Add Product' 
+        })}
+      />
+      <Stack.Screen
+        name="OrderDetailManagement"
+        component={OrderDetailManagementScreen}
+        options={{ title: 'Order Details' }}
+      />
+
+      {/* Feature Screens */}
+      <Stack.Screen
+        name="SpinWheel"
+        component={SpinWheelScreen}
+        options={{ title: 'Spin & Win' }}
+      />
+      <Stack.Screen
+        name="TrustedStores"
+        component={TrustedStoresScreen}
+        options={{ title: 'Trusted Stores' }}
+      />
+      <Stack.Screen
+        name="BecomeSeller"
+        component={BecomeSellerScreen}
+        options={{ title: 'Become a Seller' }}
+      />
     </Stack.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
+  // Tab Bar Styles
+  tabBar: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.light,
+    paddingTop: spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.sm,
+    height: Platform.OS === 'ios' ? 85 : 65,
+    ...shadows.sm,
+  },
+  tabBarLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    marginTop: spacing.xs,
+  },
+  tabBarItem: {
+    paddingVertical: spacing.xs,
+  },
+  tabIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+
+  // Badge Styles
   badge: {
     position: 'absolute',
-    right: -8,
-    top: -4,
-    backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    right: -12,
+    top: -6,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.full,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: spacing.xs,
+    borderWidth: 2,
+    borderColor: colors.white,
+    ...shadows.sm,
   },
   badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+    textAlign: 'center',
+  },
+
+  // Header Styles
+  header: {
+    backgroundColor: colors.dark,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 0,
+  },
+  headerTitle: {
+    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.lg,
+    color: colors.white,
+  },
+  headerLeftContainer: {
+    paddingLeft: spacing.sm,
   },
 });

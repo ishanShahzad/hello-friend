@@ -14,45 +14,49 @@ export const useCurrency = () => {
 };
 
 const CURRENCIES = {
-  USD: { symbol: '$', name: 'US Dollar', code: 'USD', position: 'before' },
-  PKR: { symbol: 'Rs', name: 'Pakistani Rupee', code: 'PKR', position: 'before' },
-  EUR: { symbol: '€', name: 'Euro', code: 'EUR', position: 'before' },
-  GBP: { symbol: '£', name: 'British Pound', code: 'GBP', position: 'before' }
+  USD: { symbol: '$', name: 'US Dollar', code: 'USD' },
+  PKR: { symbol: '₨', name: 'Pakistani Rupee', code: 'PKR' },
+  EUR: { symbol: '€', name: 'Euro', code: 'EUR' },
+  GBP: { symbol: '£', name: 'British Pound', code: 'GBP' },
+  INR: { symbol: '₹', name: 'Indian Rupee', code: 'INR' },
+  AED: { symbol: 'د.إ', name: 'UAE Dirham', code: 'AED' },
+  SAR: { symbol: '﷼', name: 'Saudi Riyal', code: 'SAR' },
+  CAD: { symbol: 'C$', name: 'Canadian Dollar', code: 'CAD' },
+  AUD: { symbol: 'A$', name: 'Australian Dollar', code: 'AUD' },
+  JPY: { symbol: '¥', name: 'Japanese Yen', code: 'JPY' },
+};
+
+const DEFAULT_RATES = {
+  USD: 1,
+  PKR: 284.6,
+  EUR: 0.92,
+  GBP: 0.79,
+  INR: 83.5,
+  AED: 3.67,
+  SAR: 3.75,
+  CAD: 1.36,
+  AUD: 1.53,
+  JPY: 149.5,
 };
 
 export const CurrencyProvider = ({ children }) => {
-  const [currency, setCurrency] = useState('USD');
-  const [exchangeRates, setExchangeRates] = useState({ 
-    USD: 1, 
-    PKR: 284.6, 
-    EUR: 0.92, 
-    GBP: 0.79 
-  });
+  const [currency, setCurrencyState] = useState('USD');
+  const [exchangeRates, setExchangeRates] = useState(DEFAULT_RATES);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    detectAndSetCurrency();
+    loadSavedCurrency();
     fetchExchangeRates();
   }, []);
 
-  const detectAndSetCurrency = async () => {
+  const loadSavedCurrency = async () => {
     try {
       const savedCurrency = await AsyncStorage.getItem('userCurrency');
       if (savedCurrency && CURRENCIES[savedCurrency]) {
-        console.log('💰 Using saved currency:', savedCurrency);
-        setCurrency(savedCurrency);
-        setIsLoading(false);
-        return;
-      }
-
-      const res = await axios.get(`${API_BASE_URL}/api/currency/detect`);
-      if (res.data.success && res.data.detected) {
-        console.log('🌍 Auto-detected currency:', res.data.currency);
-        setCurrency(res.data.currency);
-        await AsyncStorage.setItem('userCurrency', res.data.currency);
+        setCurrencyState(savedCurrency);
       }
     } catch (error) {
-      console.error('Currency detection error:', error);
+      console.error('Error loading saved currency:', error);
     } finally {
       setIsLoading(false);
     }
@@ -61,39 +65,37 @@ export const CurrencyProvider = ({ children }) => {
   const fetchExchangeRates = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/currency/rates`);
-      if (res.data.success) {
-        console.log('💱 Exchange rates loaded');
-        setExchangeRates(res.data.rates);
+      if (res.data.success && res.data.rates) {
+        setExchangeRates({ ...DEFAULT_RATES, ...res.data.rates });
       }
     } catch (error) {
-      console.error('Exchange rates fetch error:', error);
+      // Use default rates if API fails
     }
   };
 
-  const changeCurrency = async (newCurrency) => {
+  const setCurrency = async (newCurrency) => {
     if (!CURRENCIES[newCurrency]) return;
     
-    console.log('💰 Changing currency to:', newCurrency);
-    setCurrency(newCurrency);
+    setCurrencyState(newCurrency);
     await AsyncStorage.setItem('userCurrency', newCurrency);
 
-    const token = await AsyncStorage.getItem('jwtToken');
-    if (token) {
-      try {
+    // Try to save to backend if user is logged in
+    try {
+      const token = await AsyncStorage.getItem('jwtToken');
+      if (token) {
         await axios.patch(
           `${API_BASE_URL}/api/currency/update`,
           { currency: newCurrency },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        console.log('✅ Currency preference saved');
-      } catch (error) {
-        console.error('Failed to save currency preference:', error);
       }
+    } catch (error) {
+      // Silently fail - local storage is the primary source
     }
   };
 
   const convertPrice = (priceInUSD) => {
-    if (!priceInUSD) return 0;
+    if (!priceInUSD || isNaN(priceInUSD)) return 0;
     const rate = exchangeRates[currency] || 1;
     return priceInUSD * rate;
   };
@@ -106,7 +108,7 @@ export const CurrencyProvider = ({ children }) => {
     } = options;
 
     const convertedPrice = convertPrice(priceInUSD);
-    const currencyInfo = CURRENCIES[currency];
+    const currencyInfo = CURRENCIES[currency] || CURRENCIES.USD;
     
     const formattedNumber = convertedPrice.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
@@ -122,9 +124,17 @@ export const CurrencyProvider = ({ children }) => {
   };
 
   const convertToUSD = (priceInCurrentCurrency) => {
-    if (!priceInCurrentCurrency) return 0;
+    if (!priceInCurrentCurrency || isNaN(priceInCurrentCurrency)) return 0;
     const rate = exchangeRates[currency] || 1;
     return priceInCurrentCurrency / rate;
+  };
+
+  const getCurrencySymbol = () => {
+    return CURRENCIES[currency]?.symbol || '$';
+  };
+
+  const getCurrencyName = () => {
+    return CURRENCIES[currency]?.name || 'US Dollar';
   };
 
   const value = {
@@ -132,12 +142,12 @@ export const CurrencyProvider = ({ children }) => {
     currencies: CURRENCIES,
     exchangeRates,
     isLoading,
-    changeCurrency,
+    setCurrency,
     convertPrice,
     formatPrice,
     convertToUSD,
-    getCurrencySymbol: () => CURRENCIES[currency].symbol,
-    getCurrencyName: () => CURRENCIES[currency].name
+    getCurrencySymbol,
+    getCurrencyName,
   };
 
   return (
@@ -146,3 +156,5 @@ export const CurrencyProvider = ({ children }) => {
     </CurrencyContext.Provider>
   );
 };
+
+export default CurrencyContext;
