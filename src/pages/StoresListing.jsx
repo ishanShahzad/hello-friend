@@ -22,7 +22,7 @@ const StoresListing = () => {
             const res = await axios.get(
                 `${import.meta.env.VITE_API_URL}api/stores/all?sort=${sortBy}`
             );
-            setStores(res.data.stores);
+            setStores(res.data?.stores || []);
         } catch (error) {
             console.error('Error fetching stores:', error);
         } finally {
