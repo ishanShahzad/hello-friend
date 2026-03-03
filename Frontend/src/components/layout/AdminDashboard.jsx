@@ -296,7 +296,7 @@ const AdminDashboard = () => {
 
 
     return (
-        <div className="min-h-screen relative bg-gray-50 flex">
+        <div className="min-h-screen relative flex" style={{ background: 'linear-gradient(135deg, hsl(230, 35%, 88%) 0%, hsl(210, 40%, 90%) 25%, hsl(250, 30%, 92%) 50%, hsl(200, 35%, 88%) 75%, hsl(280, 25%, 90%) 100%)', backgroundAttachment: 'fixed' }}>
 
             {/* Sidebar */}
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -362,7 +362,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full bg-linear-to-b from-slate-900 via-blue-950 to-slate-900">
+        <div className="flex flex-col h-full glass-panel-strong" style={{ borderRadius: '0' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-6 pb-4">
                 <div className="flex items-center gap-3">
@@ -510,13 +510,13 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                className="glass-panel-strong max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             >
                 {/* Header */}
                 <div className="p-6 border-b border-gray-200 flex justify-between items-center">

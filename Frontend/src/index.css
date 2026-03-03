@@ -1,104 +1,88 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ====================
-   Global Reset & Base
+   Liquid Glass Design System
 ==================== */
-body {
-    font-family: 'Inter', 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #EEF2FF;
-    background-image:
-        radial-gradient(ellipse 90% 65% at -5% -10%, rgba(99, 102, 241, 0.13) 0%, transparent 55%),
-        radial-gradient(ellipse 70% 55% at 105% 108%, rgba(14, 165, 233, 0.10) 0%, transparent 55%);
-    background-attachment: fixed;
-    color: var(--color-text-primary);
-    line-height: 1.6;
-    font-size: 16px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
 
 /* ====================
    Custom Properties (Design Tokens)
 ==================== */
 :root {
-    /* Backgrounds */
-    --color-bg: #EEF2FF;          /* Indigo-50 – light themed background */
-    --color-surface: #FFFFFF;     /* Card / container background */
-    --color-surface-raised: #F1F5F9; /* Slightly elevated surface (slate-100) */
+    /* Core Semantic Tokens */
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+    --primary: 220 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 94%;
+    --secondary-foreground: 220 25% 25%;
+    --muted: 220 12% 92%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 200 80% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --border: 220 15% 90%;
+    --ring: 220 70% 55%;
+    --radius: 1rem;
 
-    /* Text */
-    --color-text-primary: #1E293B;   /* Slate-800 – rich but not harsh */
-    --color-text-secondary: #64748B; /* Slate-500 – secondary text */
-    --color-text-muted: #94A3B8;     /* Slate-400 – placeholders */
+    /* Glass Tokens */
+    --glass-bg: rgba(255, 255, 255, 0.12);
+    --glass-bg-strong: rgba(255, 255, 255, 0.18);
+    --glass-bg-subtle: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.25);
+    --glass-border-strong: rgba(255, 255, 255, 0.4);
+    --glass-border-subtle: rgba(255, 255, 255, 0.15);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+    --glass-shadow-lg: 0 16px 48px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+    --glass-shadow-soft: 0 4px 24px rgba(0,0,0,0.04);
+    --glass-inner-glow: inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -1px 1px rgba(255,255,255,0.1);
+    --glass-blur: 28px;
+    --glass-blur-strong: 44px;
 
-    /* Primary – Indigo */
-    --color-primary: #6366F1;        /* Indigo-500 */
-    --color-primary-dark: #4F46E5;   /* Indigo-600 */
-    --color-primary-hover: #4338CA;  /* Indigo-700 */
-    --color-primary-light: #EEF2FF;  /* Indigo-50 */
-
-    /* Secondary – Sky */
-    --color-secondary: #0EA5E9;      /* Sky-500 */
-    --color-secondary-hover: #0284C7;/* Sky-600 */
-
-    /* Accent – Sky light */
-    --color-accent: #38BDF8;         /* Sky-400 */
-    --color-accent-light: #E0F2FE;   /* Sky-100 */
-
-    /* Status Colors */
-    --color-success: #10B981;        /* Emerald-500 */
-    --color-success-light: #D1FAE5;  /* Emerald-100 */
-    --color-error: #F43F5E;          /* Rose-500 */
-    --color-error-light: #FFE4E6;    /* Rose-100 */
-    --color-warning: #F59E0B;        /* Amber-500 */
-    --color-warning-light: #FEF3C7;  /* Amber-100 */
-
-    /* Borders & Shadows */
-    --color-border: #E2E8F0;         /* Slate-200 */
-    --color-border-light: #F1F5F9;   /* Slate-100 */
-    --shadow-soft: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-    --shadow-card: 0 4px 24px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(0,0,0,0.08);
-    --shadow-elevated: 0 10px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, #6366F1 0%, #0EA5E9 100%);
-    --gradient-hero: linear-gradient(135deg, #1E1B4B 0%, #1E3A5F 50%, #0C4A6E 100%);
-    --gradient-surface: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+    /* Legacy compat */
+    --color-primary: hsl(220, 70%, 55%);
+    --color-primary-dark: hsl(220, 72%, 50%);
+    --color-primary-hover: hsl(220, 74%, 42%);
+    --color-text-primary: hsl(220, 25%, 10%);
+    --color-text-secondary: hsl(220, 10%, 50%);
+    --color-surface: rgba(255, 255, 255, 0.12);
+    --color-border: rgba(255, 255, 255, 0.25);
+    --color-success: #10B981;
+    --color-error: #F43F5E;
+    --color-warning: #F59E0B;
 }
 
 /* ====================
-   Scrollbars
+   Global Reset & Base
 ==================== */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background-color: #9CA3AF; /* Lighter gray for modern feel */
-    border-radius: 10px;
-}
-
-.filter-sb::-webkit-scrollbar {
-    display: none;
+body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    background: linear-gradient(135deg,
+        hsl(230, 35%, 88%) 0%,
+        hsl(210, 40%, 90%) 25%,
+        hsl(250, 30%, 92%) 50%,
+        hsl(200, 35%, 88%) 75%,
+        hsl(280, 25%, 90%) 100%
+    );
+    background-attachment: fixed;
+    color: hsl(var(--foreground));
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
 }
 
 /* ====================
    Typography
 ==================== */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-weight: 600;
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
     line-height: 1.2;
-    color: var(--color-text-primary);
-    font-family: 'Poppins', sans-serif;
+    color: hsl(var(--foreground));
+    letter-spacing: -0.02em;
 }
 
 /* ====================
@@ -110,87 +94,240 @@ a {
     transition: color 0.3s ease;
 }
 
-/* Removed global hover color - let components handle their own hover states */
-
-/* ====================
-   Buttons
-==================== */
-.button {
-    border-radius: 8px;
-    font-weight: 500;
-    background-color: var(--color-primary);
-    color: #fff;
-    transition: all 0.3s ease;
-}
-
-.button:hover {
-    background-color: var(--color-primary-hover);
-}
-
 /* ====================
    Inputs & Forms
 ==================== */
-/* Removed global input styles to prevent conflicts with Tailwind classes */
-/* Use specific classes for styled inputs instead */
-input,
-select,
-textarea {
+input, select, textarea {
     font-family: inherit;
 }
 
-/* Optional: Add a class for legacy styled inputs if needed */
-.legacy-input,
-.legacy-select,
-.legacy-textarea {
-    border: 2px solid lightgray;
-    border-radius: 6px;
-    padding: 10px;
-    outline: none;
-    transition: border 0.2s ease;
+/* ====================
+   Scrollbars
+==================== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.3);
+    border-radius: 10px;
 }
-
-.legacy-input:focus,
-.legacy-select:focus,
-.legacy-textarea:focus {
-    border-color: var(--color-primary);
-}
+.filter-sb::-webkit-scrollbar { display: none; }
 
 /* ====================
-   Containers
+   Glass Panel Classes
 ==================== */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.5rem;
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), var(--glass-inner-glow);
+    border-radius: 24px;
 }
 
-/* ====================
-   Cards
-==================== */
-.card {
-    background: var(--color-surface);
+.glass-panel-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
+    border-radius: 28px;
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), var(--glass-inner-glow);
+    border-radius: 22px;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    transform: translateY(-3px) scale(1.015);
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-strong);
+    box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
+}
+
+.glass-inner {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
-    box-shadow: var(--shadow-soft);
-    padding: 1.5rem;
-    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+.glass-button {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-soft), var(--glass-inner-glow);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-button:hover {
+    background: var(--glass-bg-strong);
+    transform: translateY(-1px);
 }
 
 /* ====================
-   Wishlist Heart Icon
+   Water Shimmer Overlay
 ==================== */
-.heart-icon {
-    font-size: 20px;
-    color: #9CA3AF;
-    transition: color 0.3s ease;
+.water-shimmer {
+    position: relative;
+    overflow: hidden;
 }
 
-.heart-icon.active {
-    color: var(--color-error);
+.water-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(125deg,
+        rgba(255,255,255,0.3) 0%,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0.15) 60%,
+        rgba(255,255,255,0) 100%
+    );
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* ====================
+   Tag Pill
+==================== */
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 9999px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(99, 102, 241, 0.1);
+    color: hsl(220, 70%, 50%);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* ====================
+   Gradient Text
+==================== */
+.gradient-text {
+    background: linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-text-accent {
+    background: linear-gradient(135deg, hsl(200, 80%, 50%), hsl(170, 70%, 45%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.bg-clip-text {
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+}
+
+.text-transparent {
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+}
+
+/* ====================
+   Glow Effects
+==================== */
+.glow-soft {
+    box-shadow: 0 0 30px -4px hsl(220, 70%, 55%, 0.35);
+}
+
+/* ====================
+   Background Orbs
+==================== */
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+    animation: orb-drift 20s ease-in-out infinite;
+}
+
+.orb-blue {
+    background: linear-gradient(135deg, hsl(200, 85%, 68%), hsl(220, 75%, 60%));
+    opacity: 0.5;
+}
+.orb-purple {
+    background: linear-gradient(135deg, hsl(270, 65%, 65%), hsl(300, 55%, 60%));
+    opacity: 0.45;
+}
+.orb-green {
+    background: linear-gradient(135deg, hsl(160, 65%, 55%), hsl(180, 55%, 50%));
+    opacity: 0.4;
+}
+.orb-pink {
+    background: linear-gradient(135deg, hsl(340, 65%, 65%), hsl(310, 55%, 60%));
+    opacity: 0.45;
+}
+.orb-cyan {
+    background: linear-gradient(135deg, hsl(185, 80%, 60%), hsl(200, 70%, 55%));
+    opacity: 0.5;
+}
+.orb-indigo {
+    background: linear-gradient(135deg, hsl(240, 65%, 65%), hsl(260, 60%, 58%));
+    opacity: 0.45;
+}
+
+@keyframes orb-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* ====================
+   Floating Bubbles
+==================== */
+@keyframes bubble-rise {
+    0% {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0;
+    }
+    10% { opacity: var(--bubble-opacity, 0.2); }
+    90% { opacity: var(--bubble-opacity, 0.2); }
+    100% {
+        transform: translateY(-110vh) translateX(var(--bubble-drift, 20px));
+        opacity: 0;
+    }
+}
+
+.bubble {
+    position: fixed;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.55), rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: inset 0 0 6px rgba(255,255,255,0.2), 0 0 8px rgba(100,150,255,0.08);
+    pointer-events: none;
+    animation: bubble-rise var(--bubble-duration, 15s) linear infinite;
+    animation-delay: var(--bubble-delay, 0s);
+    opacity: 0;
+    z-index: 0;
+}
+
+/* ====================
+   Float Animation
+==================== */
+@keyframes float-gentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.float-gentle {
+    animation: float-gentle 8s ease-in-out infinite;
 }
 
 /* ====================
@@ -201,58 +338,63 @@ textarea {
 }
 
 @keyframes fadeIn {
-    0% {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ====================
-   Product Hover Image
-==================== */
-.prod-sec-img {
-    opacity: 0;
-    visibility: hidden;
-    transition: 0.34s ease;
-    background-color: white;
-}
-
-.prod-card:hover .prod-sec-img {
-    visibility: visible;
-    opacity: 1;
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
 /* ====================
    Full Height Utility
 ==================== */
-.height,
-.h {
+.height, .h {
     min-height: calc(100vh - 80px);
 }
 
+/* ====================
+   Wishlist Heart Icon (legacy)
+==================== */
+.heart-icon {
+    font-size: 20px;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.3s ease;
+}
+.heart-icon.active {
+    color: hsl(var(--destructive));
+}
 
 /* ====================
-   Gradient Text Utility
+   Product Hover Image (legacy)
 ==================== */
-.gradient-text {
-    background: linear-gradient(to right, #38bdf8, #3b82f6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+.prod-sec-img {
+    opacity: 0; visibility: hidden; transition: 0.34s ease;
+    background-color: rgba(255,255,255,0.1);
+}
+.prod-card:hover .prod-sec-img {
+    visibility: visible; opacity: 1;
 }
 
-/* Ensure bg-clip-text works properly */
-.bg-clip-text {
-    -webkit-background-clip: text !important;
-    background-clip: text !important;
+/* ====================
+   Glass Input Styles
+==================== */
+.glass-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: hsl(var(--foreground));
+    font-size: 0.875rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    outline: none;
 }
 
-.text-transparent {
-    -webkit-text-fill-color: transparent !important;
-    color: transparent !important;
+.glass-input::placeholder {
+    color: hsl(var(--muted-foreground));
+}
+
+.glass-input:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 3px hsl(220, 70%, 55%, 0.15);
 }
