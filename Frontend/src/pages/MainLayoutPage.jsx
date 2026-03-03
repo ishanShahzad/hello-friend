@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import Navbar from '../components/layout/Navbar'
 import CartDropdown from '../components/common/CartDropdown'
+import GlassBackground from '../components/common/GlassBackground'
 import { useGlobal } from '../contexts/GlobalContext'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -30,7 +31,8 @@ function MainLayoutPage() {
   }, [location.pathname])
 
   return (
-    <div className='relative'>
+    <div className='relative min-h-screen'>
+      <GlassBackground />
       <AnimatePresence mode='wait'>
         {
           isOpen && (
@@ -41,14 +43,12 @@ function MainLayoutPage() {
               className={`flex fixed w-full h-screen top-0 left-0 backdrop-blur-[4px] bg-black/30 z-50`}></motion.div>
           )
         }
-
       </AnimatePresence>
       <Navbar />
       <CartDropdown />
-      <div className='mt-[70px] sm:mt-[80px]'>
+      <div className='mt-[90px] sm:mt-[96px] relative z-10'>
         <Outlet />
       </div>
-      
     </div>
   )
 }

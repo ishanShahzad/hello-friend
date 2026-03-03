@@ -1,4 +1,3 @@
-// src/components/CartDropdown.jsx
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Loader2, Minus, Plus, ShoppingBag, ShoppingCart, Trash2, X } from "lucide-react";
@@ -27,7 +26,6 @@ const CartDropdown = () => {
 
   return (
     <div ref={dropdownRef}>
-      {/* Backdrop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -38,29 +36,27 @@ const CartDropdown = () => {
         )}
       </AnimatePresence>
 
-      {/* Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-            className="fixed top-0 right-0 h-full w-[380px] max-w-full bg-white/90 backdrop-blur-xl z-50 flex flex-col shadow-2xl shadow-indigo-900/20 border-l border-white/50"
+            className="fixed top-0 right-0 h-full w-[380px] max-w-full z-50 flex flex-col glass-panel-strong"
+            style={{ borderRadius: '28px 0 0 28px' }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/20 bg-linear-to-r from-indigo-600 to-sky-500">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/15">
               <div className="flex items-center gap-2.5">
-                <ShoppingBag size={20} className="text-white" />
-                <h2 className="text-lg font-bold text-white">Your Cart</h2>
+                <div className="glass-inner p-2 rounded-xl">
+                  <ShoppingBag size={18} style={{ color: 'hsl(var(--primary))' }} />
+                </div>
+                <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Your Cart</h2>
                 {!isEmpty && (
-                  <span className="bg-white/25 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {cartItems.cart.length}
-                  </span>
+                  <span className="tag-pill text-xs font-bold">{cartItems.cart.length}</span>
                 )}
               </div>
-              <motion.button
-                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                onClick={toggleCart}
-                className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-colors">
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                onClick={toggleCart} className="p-1.5 rounded-xl glass-button">
                 <X size={18} />
               </motion.button>
             </div>
@@ -68,29 +64,25 @@ const CartDropdown = () => {
             {/* Items */}
             <div className="flex-1 overflow-y-auto">
               {isCartLoading ? (
-                <div className="h-full flex items-center justify-center">
-                  <Loader />
-                </div>
+                <div className="h-full flex items-center justify-center"><Loader /></div>
               ) : isEmpty ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   className="h-full flex flex-col items-center justify-center gap-4 p-8 text-center">
-                  <div className="p-5 rounded-2xl bg-indigo-50">
-                    <ShoppingCart size={40} className="text-indigo-300" />
+                  <div className="glass-inner p-5 rounded-2xl">
+                    <ShoppingCart size={40} style={{ color: 'hsl(var(--muted-foreground))' }} />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-700 text-lg">Your cart is empty</p>
-                    <p className="text-sm text-slate-400 mt-1">Add some products to get started</p>
+                    <p className="font-semibold text-lg" style={{ color: 'hsl(var(--foreground))' }}>Your cart is empty</p>
+                    <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Add some products to get started</p>
                   </div>
-                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                    <Link to="/products" onClick={toggleCart}
-                      className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
-                      Browse Products <ArrowRight size={16} />
-                    </Link>
-                  </motion.div>
+                  <Link to="/" onClick={toggleCart}
+                    className="inline-flex items-center gap-2 font-semibold px-5 py-2.5 rounded-xl text-sm glow-soft"
+                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+                    Browse Products <ArrowRight size={16} />
+                  </Link>
                 </motion.div>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-white/10">
                   {cartItems.cart.map((item, index) => {
                     const { product, qty, _id: id } = item
                     if (!product) return null
@@ -102,55 +94,37 @@ const CartDropdown = () => {
                       <div key={index} className="relative p-4">
                         <AnimatePresence>
                           {qtyUpdateId === id && (
-                            <motion.div
-                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                              className="absolute inset-0 backdrop-blur-sm bg-white/70 z-10 flex items-center justify-center gap-2 rounded-lg">
-                              <Loader2 size={18} className="animate-spin text-indigo-600" />
-                              <span className="text-sm text-indigo-700 font-medium">Updating…</span>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="absolute inset-0 glass-panel z-10 flex items-center justify-center gap-2 rounded-lg">
+                              <Loader2 size={18} className="animate-spin" style={{ color: 'hsl(var(--primary))' }} />
+                              <span className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>Updating…</span>
                             </motion.div>
                           )}
                         </AnimatePresence>
 
                         <div className="flex gap-3">
-                          {/* Product image */}
                           <div className="relative shrink-0">
-                            <img src={image} alt={name}
-                              className="w-16 h-16 rounded-xl object-cover object-center border border-slate-100 shadow-sm" />
+                            <img src={image} alt={name} className="w-16 h-16 rounded-xl object-cover glass-inner" />
                             {hasDiscount && (
-                              <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full">
-                                SALE
-                              </span>
+                              <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 py-0.5 rounded-full"
+                                style={{ background: 'hsl(var(--destructive))', color: 'white' }}>SALE</span>
                             )}
                           </div>
-
-                          {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-slate-800 text-sm leading-snug truncate pr-6">{name}</h4>
+                            <h4 className="font-semibold text-sm leading-snug truncate pr-6" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                             <div className="flex items-baseline gap-1.5 mt-1">
-                              <span className="font-bold text-indigo-600 text-sm">{formatPrice(displayPrice)}</span>
-                              {hasDiscount && (
-                                <span className="text-xs text-slate-400 line-through">{formatPrice(price)}</span>
-                              )}
+                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatPrice(displayPrice)}</span>
+                              {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(price)}</span>}
                             </div>
-                            <QuantitySelector
-                              qty={qty}
-                              onIncrement={() => handleQtyInc(item._id)}
-                              onDecrement={() => handleQtyDec(item._id)}
-                              disableIncrease={true}
-                            />
+                            <QuantitySelector qty={qty} onIncrement={() => handleQtyInc(item._id)} onDecrement={() => handleQtyDec(item._id)} disableIncrease={true} />
                           </div>
-
-                          {/* Line total + remove */}
                           <div className="flex flex-col items-end justify-between shrink-0">
-                            <motion.button
-                              whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }}
+                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }}
                               onClick={() => handleRemoveCartItem(_id)}
-                              className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer">
+                              className="p-1.5 rounded-lg glass-button hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 size={15} />
                             </motion.button>
-                            <span className="text-sm font-bold text-slate-700">
-                              {formatPrice(displayPrice * qty)}
-                            </span>
+                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice * qty)}</span>
                           </div>
                         </div>
                       </div>
@@ -162,17 +136,17 @@ const CartDropdown = () => {
 
             {/* Footer */}
             {!isEmpty && (
-              <div className="border-t border-slate-100/60 p-4 bg-white/60 backdrop-blur-md space-y-3">
+              <div className="border-t border-white/15 p-4 glass-inner m-3 rounded-2xl space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-sm font-medium">Subtotal</span>
-                  <span className="text-slate-800 font-bold text-lg">{formatPrice(subtotal)}</span>
+                  <span className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span>
+                  <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal)}</span>
                 </div>
-                <p className="text-xs text-slate-400 text-center">Taxes & shipping calculated at checkout</p>
+                <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>Taxes & shipping calculated at checkout</p>
                 <Link to="/checkout" onClick={handleGoToCheckout}>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     disabled={isCartLoading}
-                    className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-300/40 transition-all cursor-pointer">
+                    className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 glow-soft transition-all cursor-pointer"
+                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
                     Proceed to Checkout <ArrowRight size={16} />
                   </motion.button>
                 </Link>
@@ -189,21 +163,21 @@ export default CartDropdown;
 
 function QuantitySelector({ qty, onIncrement, onDecrement, disableIncrease = false }) {
   return (
-    <div className="flex items-center w-max bg-slate-100 rounded-full px-1 py-0.5 mt-2 gap-1">
+    <div className="flex items-center w-max glass-inner rounded-full px-1 py-0.5 mt-2 gap-1">
       <motion.button whileTap={{ scale: 0.85 }} onClick={onDecrement}
-        className="p-1 rounded-full hover:bg-white hover:shadow-sm transition-all cursor-pointer">
-        <Minus className="w-3 h-3 text-slate-600" />
+        className="p-1 rounded-full hover:bg-white/15 transition-all cursor-pointer">
+        <Minus className="w-3 h-3" />
       </motion.button>
       <AnimatePresence mode="popLayout">
         <motion.span key={qty} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="w-6 text-center text-xs font-bold text-slate-800 select-none">{qty}</motion.span>
+          className="w-6 text-center text-xs font-bold select-none">{qty}</motion.span>
       </AnimatePresence>
       <motion.button
         whileTap={!disableIncrease ? { scale: 0.85 } : {}}
         onClick={disableIncrease ? () => toast.error('Only 1 item per product allowed.') : onIncrement}
-        className={`p-1 rounded-full transition-all ${disableIncrease ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white hover:shadow-sm cursor-pointer'}`}>
-        <Plus className="w-3 h-3 text-slate-600" />
+        className={`p-1 rounded-full transition-all ${disableIncrease ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/15 cursor-pointer'}`}>
+        <Plus className="w-3 h-3" />
       </motion.button>
     </div>
   )

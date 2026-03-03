@@ -28,22 +28,32 @@ function Navbar() {
 
     return (
         <>
-            <nav className={`transition-all duration-300 fixed top-0 left-0 w-full z-50 flex justify-between items-center
+            <nav className={`transition-all duration-300 fixed z-50 flex justify-between items-center
                 px-4 sm:px-6 md:px-10 lg:px-14
                 ${isScrolled
-                    ? 'h-[60px] bg-indigo-950/80 backdrop-blur-xl shadow-lg shadow-indigo-950/30 border-b border-white/10'
-                    : 'h-[70px] sm:h-[80px] bg-indigo-950/70 backdrop-blur-md border-b border-white/5'
-                } text-white`}>
+                    ? 'top-0 left-0 right-0 h-[60px] glass-panel-strong'
+                    : 'top-4 left-4 right-4 h-[60px] sm:h-[64px] glass-panel'
+                }`}
+                style={{
+                    borderRadius: isScrolled ? '0' : '24px',
+                }}
+            >
 
                 {/* Left: Logo + Nav Links */}
                 <div className="flex items-center gap-6">
                     <Link to="/" className="flex items-center gap-2 shrink-0">
-                        <img src="/tortrose-logo.svg" alt="Tortrose" className="h-8 sm:h-9 md:h-10" />
+                        <div className="glass-inner p-1.5 rounded-xl">
+                            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-7 sm:h-8" />
+                        </div>
+                        <span className="font-extrabold text-lg tracking-tight hidden sm:inline">
+                            <span className="gradient-text">Tort</span><span style={{ color: 'hsl(var(--foreground))' }}>rose</span>
+                        </span>
                     </Link>
                     <div className="hidden md:flex items-center gap-1">
                         {navLinks.map(link => (
                             <Link key={link.to} to={link.to}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200">
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-white/10 transition-all duration-300"
+                                style={{ color: 'hsl(var(--foreground))' }}>
                                 {link.label}
                             </Link>
                         ))}
@@ -59,11 +69,13 @@ function Navbar() {
                 <div className="flex items-center gap-2 sm:gap-3">
                     {/* Cart Button */}
                     <button ref={cartBtn} onClick={toggleCart}
-                        className="relative flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white">
-                        <ShoppingCart size={20} />
-                        <span className="hidden sm:inline text-sm font-medium">Cart</span>
+                        className="relative flex items-center gap-1.5 px-2.5 py-2 rounded-xl glass-button text-sm font-medium"
+                        style={{ color: 'hsl(var(--foreground))' }}>
+                        <ShoppingCart size={18} />
+                        <span className="hidden sm:inline">Cart</span>
                         {(cartItems?.cart?.length || 0) > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[10px] font-bold w-4.5 h-4.5 min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full shadow-md">
+                            <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full shadow-md"
+                                style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
                                 {cartItems?.cart?.length || 0}
                             </span>
                         )}
@@ -75,8 +87,11 @@ function Navbar() {
                     {/* Login button (desktop) */}
                     {!currentUser && (
                         <Link to="/login" className="hidden sm:block">
-                            <button className="bg-linear-to-r from-indigo-500 to-sky-400 hover:from-indigo-600 hover:to-sky-500
-                                text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-md shadow-sky-900/30 text-sm">
+                            <button className="px-4 py-2 rounded-xl font-semibold text-sm transition-all glow-soft"
+                                style={{
+                                    background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                    color: 'hsl(var(--primary-foreground))',
+                                }}>
                                 Login / Sign Up
                             </button>
                         </Link>
@@ -84,7 +99,7 @@ function Navbar() {
 
                     {/* Mobile hamburger */}
                     <button onClick={() => setMobileMenuOpen(true)}
-                        className="md:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all">
+                        className="md:hidden p-2 rounded-xl glass-button">
                         <Menu size={22} />
                     </button>
                 </div>
@@ -94,23 +109,22 @@ function Navbar() {
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <>
-                        {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
                             onClick={() => setMobileMenuOpen(false)} />
 
-                        {/* Drawer */}
                         <motion.div
                             initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
                             transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-                            className="fixed top-0 left-0 h-full w-72 bg-indigo-950/90 backdrop-blur-xl z-[70] flex flex-col shadow-2xl shadow-indigo-950/50 border-r border-white/10">
+                            className="fixed top-0 left-0 h-full w-72 z-[70] flex flex-col glass-panel-strong"
+                            style={{ borderRadius: '0 28px 28px 0' }}>
 
                             {/* Drawer header */}
-                            <div className="flex items-center justify-between p-5 border-b border-white/10">
+                            <div className="flex items-center justify-between p-5 border-b border-white/15">
                                 <img src="/tortrose-logo.svg" alt="Tortrose" className="h-8" />
                                 <button onClick={() => setMobileMenuOpen(false)}
-                                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all">
+                                    className="p-2 rounded-xl glass-button">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -119,20 +133,23 @@ function Navbar() {
                             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                                 {navLinks.map(link => (
                                     <Link key={link.to} to={link.to} onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all font-medium">
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all font-medium">
                                         {link.icon}
                                         {link.label}
                                     </Link>
                                 ))}
 
-                                {/* Divider */}
-                                <div className="h-px bg-white/10 my-3" />
+                                <div className="h-px bg-white/15 my-3" />
 
                                 {currentUser
                                     ? <div className="px-2"><NavDropdown /></div>
                                     : (
                                         <Link to="/login" onClick={() => setMobileMenuOpen(false)}
-                                            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-linear-to-r from-indigo-500 to-sky-400 text-white font-semibold">
+                                            className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold"
+                                            style={{
+                                                background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                                color: 'white',
+                                            }}>
                                             <LogIn size={18} /> Login / Sign Up
                                         </Link>
                                     )
@@ -142,7 +159,6 @@ function Navbar() {
                     </>
                 )}
             </AnimatePresence>
-
         </>
     );
 }
