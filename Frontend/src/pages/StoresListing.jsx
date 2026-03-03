@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Store, Search, Home, ChevronRight, Sparkles, Heart, ChevronDown, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,11 +15,22 @@ const StoresListing = () => {
     const [sortOpen, setSortOpen] = useState(false);
     const sortRef = useRef(null);
 
+    const buttonRef = useRef(null);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
     const sortOptions = [
         { value: 'newest', label: 'Newest First' },
         { value: 'views', label: 'Most Viewed' },
         { value: 'name', label: 'Name (A-Z)' },
     ];
+
+    const toggleSort = () => {
+        if (!sortOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setDropdownPos({ top: rect.bottom + 6, left: rect.right - 170 });
+        }
+        setSortOpen(prev => !prev);
+    };
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -133,45 +145,56 @@ const StoresListing = () => {
                                 className="glass-input glass-input-search"
                             />
                         </div>
-                        <div className="relative" ref={sortRef} style={{ zIndex: 100 }}>
+                        <div ref={sortRef}>
                             <motion.button
+                                ref={buttonRef}
                                 whileTap={{ scale: 0.97 }}
-                                onClick={() => setSortOpen(!sortOpen)}
+                                onClick={toggleSort}
                                 className="glass-inner flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl cursor-pointer font-medium text-sm w-full"
                                 style={{ color: 'hsl(var(--foreground))', minWidth: 170 }}
                             >
                                 <span>{sortOptions.find(o => o.value === sortBy)?.label}</span>
                                 <ChevronDown size={16} style={{ color: 'hsl(var(--muted-foreground))', transform: sortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s ease' }} />
                             </motion.button>
-                            <AnimatePresence>
-                                {sortOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        animate={{ opacity: 1, y: 4, scale: 1 }}
-                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        transition={{ duration: 0.18 }}
-                                        className="absolute right-0 top-full z-50 glass-panel-strong p-1.5 rounded-xl min-w-[170px]"
-                                        style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
-                                    >
-                                        {sortOptions.map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => { setSortBy(opt.value); setSortOpen(false); }}
-                                                className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-                                                style={{
-                                                    color: sortBy === opt.value ? 'hsl(220, 70%, 55%)' : 'hsl(var(--foreground))',
-                                                    background: sortBy === opt.value ? 'hsla(220, 70%, 55%, 0.08)' : 'transparent',
-                                                }}
-                                                onMouseEnter={e => { if (sortBy !== opt.value) e.currentTarget.style.background = 'hsla(var(--foreground), 0.05)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = sortBy === opt.value ? 'hsla(220, 70%, 55%, 0.08)' : 'transparent'; }}
-                                            >
-                                                <span>{opt.label}</span>
-                                                {sortBy === opt.value && <Check size={15} style={{ color: 'hsl(220, 70%, 55%)' }} />}
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            {createPortal(
+                                <AnimatePresence>
+                                    {sortOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                            transition={{ duration: 0.18 }}
+                                            className="glass-panel-strong p-1.5 rounded-xl"
+                                            style={{
+                                                position: 'fixed',
+                                                top: dropdownPos.top,
+                                                left: dropdownPos.left,
+                                                zIndex: 99999,
+                                                minWidth: 170,
+                                                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                                            }}
+                                        >
+                                            {sortOptions.map(opt => (
+                                                <button
+                                                    key={opt.value}
+                                                    onClick={() => { setSortBy(opt.value); setSortOpen(false); }}
+                                                    className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
+                                                    style={{
+                                                        color: sortBy === opt.value ? 'hsl(220, 70%, 55%)' : 'hsl(var(--foreground))',
+                                                        background: sortBy === opt.value ? 'hsla(220, 70%, 55%, 0.08)' : 'transparent',
+                                                    }}
+                                                    onMouseEnter={e => { if (sortBy !== opt.value) e.currentTarget.style.background = 'hsla(220, 70%, 55%, 0.08)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = sortBy === opt.value ? 'hsla(220, 70%, 55%, 0.08)' : 'transparent'; }}
+                                                >
+                                                    <span>{opt.label}</span>
+                                                    {sortBy === opt.value && <Check size={15} style={{ color: 'hsl(220, 70%, 55%)' }} />}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>,
+                                document.body
+                            )}
                         </div>
                     </div>
                 </motion.div>
