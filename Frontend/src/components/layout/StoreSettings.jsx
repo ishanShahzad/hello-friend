@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import Loader from '../common/Loader';
 
 const StoreSettings = () => {
     const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
@@ -344,7 +345,7 @@ const StoreSettings = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <Loader2 className="animate-spin" size={40} />
+                <Loader />
             </div>
         );
     }

@@ -4,6 +4,7 @@ import { Truck, Zap, Gift, Save, Loader2, Clock, DollarSign } from 'lucide-react
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import Loader from '../common/Loader';
 
 export default function ShippingConfiguration() {
   const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
@@ -159,7 +160,7 @@ export default function ShippingConfiguration() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader text="Loading shipping methods..." />
       </div>
     );
   }

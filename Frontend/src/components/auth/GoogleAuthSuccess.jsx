@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import Loader from '../common/Loader';
 
 const GoogleAuthSuccess = () => {
     const [searchParams] = useSearchParams();
@@ -42,11 +43,8 @@ const GoogleAuthSuccess = () => {
     }, [searchParams, navigate]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Completing sign in...</p>
-            </div>
+        <div className="min-h-screen flex items-center justify-center">
+            <Loader text="Completing sign in..." />
         </div>
     );
 };
