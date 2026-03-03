@@ -61,7 +61,7 @@ function Products() {
       const query = serializeFilters()
       navigate(`${location.pathname}?${query}`)
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
-      setProducts(res.data.products)
+      setProducts(res.data?.products || [])
     } catch (err) {
       console.log(err)
       setError(err)
@@ -241,8 +241,8 @@ function Products() {
   };
 
   const applySpinDiscount = () => {
-    if (!spinResult || spinResult.hasCheckedOut) {
-      setDisplayProducts(products);
+    if (!products || !spinResult || spinResult.hasCheckedOut) {
+      setDisplayProducts(products || []);
       return;
     }
 
