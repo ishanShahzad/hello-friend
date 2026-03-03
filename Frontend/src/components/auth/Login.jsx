@@ -53,11 +53,11 @@ const GlassLoginPage = () => {
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--foreground))' }}>Password</label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input id="password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={handleChange}
-                    className="glass-input" placeholder="•••••••" required />
+                    className="glass-input pr-10" placeholder="•••••••" required />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    className="absolute right-3 flex items-center justify-center transition-colors cursor-pointer" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -65,10 +65,24 @@ const GlassLoginPage = () => {
             </div>
 
             <div className="flex items-center justify-between mt-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input id="rememberMe" type="checkbox" checked={form.rememberMe} onChange={handleChange}
-                  className="w-4 h-4 rounded accent-indigo-600" />
-                Remember me
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none" style={{ color: 'hsl(var(--foreground))' }}>
+                <div className="relative flex items-center justify-center">
+                  <input id="rememberMe" type="checkbox" checked={form.rememberMe} onChange={handleChange}
+                    className="peer sr-only" />
+                  <div className="w-[18px] h-[18px] rounded-md border-2 transition-all duration-200 peer-checked:border-transparent peer-checked:bg-gradient-to-br"
+                    style={{
+                      borderColor: form.rememberMe ? 'transparent' : 'hsl(var(--muted-foreground) / 0.4)',
+                      background: form.rememberMe ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' : 'hsl(var(--muted) / 0.3)',
+                    }}
+                  >
+                    {form.rememberMe && (
+                      <svg className="w-full h-full p-[2px]" viewBox="0 0 16 16" fill="none">
+                        <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Remember me</span>
               </label>
               <Link to="/forgot-password" className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>Forgot password?</Link>
             </div>
