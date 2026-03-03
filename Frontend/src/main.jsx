@@ -6,16 +6,19 @@ import { AuthProvider } from './contexts/AuthContext.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { GlobalProvider } from './contexts/GlobalContext.jsx'
 import { CurrencyProvider } from './contexts/CurrencyContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <AuthProvider>
-      <CurrencyProvider>
-        <GlobalProvider>
-          <App />
-        </GlobalProvider>
-      </CurrencyProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CurrencyProvider>
+          <GlobalProvider>
+            <App />
+          </GlobalProvider>
+        </CurrencyProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </BrowserRouter>
 )
