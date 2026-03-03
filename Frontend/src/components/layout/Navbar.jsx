@@ -3,13 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import NavDropdown from "../common/Dropdown";
-import { ShoppingCart, Menu, X, Store, Home, LogIn } from "lucide-react";
+import { ShoppingCart, Menu, X, Store, Home, LogIn, Sun, Moon } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import WishlistDropdown from "../common/Wishlist";
+import { useTheme } from "../../contexts/ThemeContext";
 
 function Navbar() {
     const { currentUser } = useAuth();
     const { cartItems, toggleCart, dropdownRef, cartBtn, fetchCart } = useGlobal();
+    const { isDark, toggleTheme } = useTheme();
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
@@ -67,6 +69,16 @@ function Navbar() {
 
                 {/* Right: Cart, Wishlist, Login */}
                 <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Theme Toggle */}
+                    <button onClick={toggleTheme}
+                        className="p-2 rounded-xl glass-button transition-all duration-300"
+                        style={{ color: 'hsl(var(--foreground))' }}
+                        aria-label="Toggle dark mode">
+                        <motion.div key={isDark ? 'moon' : 'sun'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
+                            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                        </motion.div>
+                    </button>
+
                     {/* Cart Button */}
                     <button ref={cartBtn} onClick={toggleCart}
                         className="relative flex items-center gap-1.5 px-2.5 py-2 rounded-xl glass-button text-sm font-medium"
