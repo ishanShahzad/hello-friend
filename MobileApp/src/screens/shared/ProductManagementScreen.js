@@ -88,6 +88,21 @@ export default function ProductManagementScreen({ navigation, route }) {
     finally { setBulkLoading(false); }
   };
 
+  const handleBulkPriceUpdate = async () => {
+    if (bulkPriceValue === '' || isNaN(Number(bulkPriceValue)) || (bulkPriceType !== 'set' && Number(bulkPriceValue) === 0)) { Alert.alert('Error', 'Enter a valid price value'); return; }
+    setBulkLoading(true);
+    try { await api.post('/api/products/bulk-price-update', { productIds: selectedProducts.map(p => p._id), updateType: bulkPriceType, value: Number(bulkPriceValue) }); exitBulkMode(); fetchProducts(); }
+    catch (e) { Alert.alert('Error', e.response?.data?.msg || 'Failed to update prices'); }
+    finally { setBulkLoading(false); }
+  };
+
+  const handleRemoveDiscount = async () => {
+    setBulkLoading(true);
+    try { await api.post('/api/products/remove-discount', { productIds: selectedProducts.map(p => p._id) }); exitBulkMode(); fetchProducts(); }
+    catch (e) { Alert.alert('Error', e.response?.data?.msg || 'Failed to remove discounts'); }
+    finally { setBulkLoading(false); }
+  };
+
   const renderProduct = useCallback(({ item }) => {
     const stockStatus = getStockStatus(item.stock);
     const isDeleting = deletingId === item._id;
@@ -187,7 +202,7 @@ export default function ProductManagementScreen({ navigation, route }) {
             <TouchableOpacity onPress={() => setBulkModalVisible(false)}><Ionicons name="close" size={22} color={colors.text} /></TouchableOpacity>
           </View>
           <View style={styles.bulkTabRow}>
-            {[{ key: 'discount', label: 'Discount', icon: 'pricetag-outline' }, { key: 'price', label: 'Price', icon: 'cash-outline' }].map(tab => (
+            {[{ key: 'discount', label: 'Discount', icon: 'pricetag-outline' }, { key: 'price', label: 'Price', icon: 'cash-outline' }, { key: 'remove', label: 'Remove', icon: 'trash-outline' }].map(tab => (
               <TouchableOpacity key={tab.key} style={[styles.bulkTab, bulkTab === tab.key && styles.bulkTabActive]} onPress={() => setBulkTab(tab.key)}>
                 <Ionicons name={tab.icon} size={16} color={bulkTab === tab.key ? 'white' : colors.textSecondary} />
                 <Text style={[styles.bulkTabText, bulkTab === tab.key && { color: 'white' }]}>{tab.label}</Text>
@@ -196,10 +211,47 @@ export default function ProductManagementScreen({ navigation, route }) {
           </View>
           {bulkTab === 'discount' && (
             <View style={{ padding: spacing.lg }}>
+              <Text style={styles.label}>Discount Type</Text>
+              <View style={styles.typeRow}>
+                {[{ key: 'percentage', label: '%' }, { key: 'fixed', label: '$' }].map(dt => (
+                  <TouchableOpacity key={dt.key} style={[styles.typeBtn, bulkDiscountType === dt.key && styles.typeBtnActive]} onPress={() => setBulkDiscountType(dt.key)}>
+                    <Text style={[styles.typeBtnText, bulkDiscountType === dt.key && { color: 'white' }]}>{dt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <Text style={styles.label}>Discount Value</Text>
-              <TextInput style={styles.input} value={bulkDiscountValue} onChangeText={setBulkDiscountValue} keyboardType="decimal-pad" placeholder="e.g. 10" placeholderTextColor={colors.textSecondary} />
+              <TextInput style={styles.input} value={bulkDiscountValue} onChangeText={setBulkDiscountValue} keyboardType="decimal-pad" placeholder={bulkDiscountType === 'percentage' ? 'e.g. 20' : 'e.g. 10.00'} placeholderTextColor={colors.textSecondary} />
               <TouchableOpacity style={[styles.submitButton, bulkLoading && { opacity: 0.6 }]} onPress={handleBulkDiscount} disabled={bulkLoading}>
                 {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Apply Discount</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
+          {bulkTab === 'price' && (
+            <View style={{ padding: spacing.lg }}>
+              <Text style={styles.label}>Update Type</Text>
+              <View style={styles.typeRow}>
+                {[{ key: 'percentage', label: '%' }, { key: 'fixed', label: '$' }, { key: 'set', label: 'Set' }].map(pt => (
+                  <TouchableOpacity key={pt.key} style={[styles.typeBtn, bulkPriceType === pt.key && styles.typeBtnActive]} onPress={() => setBulkPriceType(pt.key)}>
+                    <Text style={[styles.typeBtnText, bulkPriceType === pt.key && { color: 'white' }]}>{pt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.label}>{bulkPriceType === 'set' ? 'New Price' : 'Change Value'}</Text>
+              <TextInput style={styles.input} value={bulkPriceValue} onChangeText={setBulkPriceValue} keyboardType="decimal-pad" placeholder={bulkPriceType === 'percentage' ? 'e.g. 10 or -10' : bulkPriceType === 'fixed' ? 'e.g. 5 or -5' : 'e.g. 99.99'} placeholderTextColor={colors.textSecondary} />
+              <TouchableOpacity style={[styles.submitButton, bulkLoading && { opacity: 0.6 }]} onPress={handleBulkPriceUpdate} disabled={bulkLoading}>
+                {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Update Prices</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
+          {bulkTab === 'remove' && (
+            <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+              <Ionicons name="trash-outline" size={32} color={colors.error} style={{ marginBottom: spacing.md }} />
+              <Text style={[styles.label, { textAlign: 'center' }]}>Remove All Discounts</Text>
+              <Text style={{ ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg }}>
+                This will remove all discounts from {selectedProducts.length} selected product(s). Prices will revert to original values.
+              </Text>
+              <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.error }, bulkLoading && { opacity: 0.6 }]} onPress={handleRemoveDiscount} disabled={bulkLoading}>
+                {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Remove Discounts</Text>}
               </TouchableOpacity>
             </View>
           )}
@@ -253,4 +305,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: spacing.md },
   submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md },
   submitButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'white' },
+  typeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  typeBtn: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  typeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  typeBtnText: { ...typography.bodySemibold, color: colors.textSecondary },
 });

@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import Loader from '../components/common/Loader';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
@@ -19,6 +20,7 @@ import {
 
 export default function UserDashboardScreen({ navigation }) {
   const { currentUser } = useAuth();
+  const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -38,6 +40,16 @@ export default function UserDashboardScreen({ navigation }) {
 
   const pendingOrders = orders.filter(o => o.status === 'pending' || o.orderStatus === 'pending').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered' || o.orderStatus === 'delivered').length;
+  const totalSpent = orders.reduce((acc, o) => {
+    if (o.isPaid) {
+      const subtotal = o.orderSummary?.subtotal || 0;
+      const tax = o.orderSummary?.tax || 0;
+      let shipping = o.orderSummary?.shippingCost || 0;
+      if (o.sellerShipping?.length > 0) shipping = o.sellerShipping.reduce((s, ss) => s + (ss.shippingMethod?.price || 0), 0);
+      return acc + subtotal + tax + shipping;
+    }
+    return acc;
+  }, 0);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -79,6 +91,13 @@ export default function UserDashboardScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.miniStat}>
             <Text style={[styles.miniStatValue, { color: colors.success }]}>{deliveredOrders}</Text>
             <Text style={styles.miniStatLabel}>Delivered</Text>
+          </GlassPanel>
+        </View>
+        <View style={[styles.statsRow, { marginTop: spacing.md }]}>
+          <GlassPanel variant="card" style={[styles.miniStat, { flex: 1 }]}>  
+            <Ionicons name="card-outline" size={18} color={colors.info} style={{ marginBottom: 4 }} />
+            <Text style={[styles.miniStatValue, { color: colors.info, fontSize: fontSize.lg }]}>{formatPrice(totalSpent)}</Text>
+            <Text style={styles.miniStatLabel}>Total Spent</Text>
           </GlassPanel>
         </View>
 
