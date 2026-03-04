@@ -1,28 +1,31 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const GlassLoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '', rememberMe: false });
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
     setForm(prev => ({ ...prev, [id]: type === 'checkbox' ? checked : value }));
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await login({ email: form.email, password: form.password }, () => setForm({ email: '', password: '', rememberMe: false }));
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.msg || 'Login failed. Please try again.');
+      setError(error.response?.data?.msg || 'Login failed. Please check your credentials and try again.');
     }
   };
 
@@ -43,6 +46,25 @@ const GlassLoginPage = () => {
             <h2 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'hsl(var(--foreground))' }}>Sign In</h2>
             <p style={{ color: 'hsl(var(--muted-foreground))' }}>Continue to your account</p>
           </div>
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                className="mb-5 flex items-start gap-3 p-3.5 rounded-xl border"
+                style={{
+                  background: 'hsla(0, 70%, 50%, 0.08)',
+                  borderColor: 'hsla(0, 70%, 50%, 0.25)',
+                }}
+              >
+                <AlertCircle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 70%, 55%)' }} />
+                <p className="text-sm font-medium" style={{ color: 'hsl(0, 70%, 60%)' }}>{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
