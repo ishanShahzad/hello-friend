@@ -4,6 +4,7 @@ import {
     Bell, Package, ShoppingBag, Store, Shield,
     Settings, Save, CheckCircle, Loader2
 } from 'lucide-react';
+import Loader from '../common/Loader';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -113,7 +114,7 @@ const NotificationSettings = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <Loader size="default" text="Loading preferences..." />
             </div>
         );
     }

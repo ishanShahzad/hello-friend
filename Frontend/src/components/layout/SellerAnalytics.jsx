@@ -1,106 +1,124 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
     TrendingUp, DollarSign, ShoppingBag, Package, BarChart3,
-    Calendar, ArrowUp, ArrowDown, Sparkles, Star
+    Calendar, ArrowUp, ArrowDown, Sparkles, Star, AlertTriangle
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import Loader from '../common/Loader';
+import axios from 'axios';
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
 const SellerAnalytics = () => {
-    const { products, orders } = useOutletContext();
+    const { products: localProducts, orders: localOrders } = useOutletContext();
     const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
     const [timeRange, setTimeRange] = useState('30');
+    const [loading, setLoading] = useState(true);
+    const [analytics, setAnalytics] = useState(null);
 
     const rate = exchangeRates[currency] || 1;
     const symbol = getCurrencySymbol();
 
-    // ── Revenue over time ──
-    const revenueData = useMemo(() => {
+    const fetchAnalytics = async () => {
+        setLoading(true);
+        const token = localStorage.getItem('jwtToken');
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/seller?days=${timeRange}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAnalytics(res.data.analytics);
+        } catch (err) {
+            // Fallback to local data if backend not available
+            console.error('Seller analytics API error, using local data:', err);
+            buildLocalAnalytics();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const buildLocalAnalytics = () => {
         const days = parseInt(timeRange);
         const now = new Date();
-        const buckets = {};
+        const startDate = new Date(now); startDate.setDate(startDate.getDate() - days);
+        const orders = localOrders.filter(o => new Date(o.createdAt) >= startDate);
+
+        const dayBuckets = {};
         for (let i = days - 1; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
+            const d = new Date(now); d.setDate(d.getDate() - i);
             const key = d.toISOString().slice(0, 10);
-            buckets[key] = { date: key, revenue: 0, orders: 0 };
+            dayBuckets[key] = { date: key, revenue: 0, orders: 0 };
         }
         orders.forEach(o => {
             const key = new Date(o.createdAt).toISOString().slice(0, 10);
-            if (buckets[key]) {
-                buckets[key].orders += 1;
-                if (o.isPaid) buckets[key].revenue += (o.orderSummary?.totalAmount || 0);
+            if (dayBuckets[key]) {
+                dayBuckets[key].orders++;
+                if (o.isPaid) dayBuckets[key].revenue += (o.orderSummary?.totalAmount || 0);
             }
         });
-        return Object.values(buckets).map(b => ({
-            ...b,
-            label: new Date(b.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-            revenue: Math.round(b.revenue * rate * 100) / 100,
-        }));
-    }, [orders, timeRange, rate]);
 
-    // ── Order volume by status ──
-    const statusData = useMemo(() => {
-        const counts = { pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
-        orders.forEach(o => { if (counts[o.orderStatus] !== undefined) counts[o.orderStatus]++; });
-        return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [orders]);
-
-    const STATUS_COLORS = ['hsl(30,90%,50%)', 'hsl(220,70%,55%)', 'hsl(200,80%,50%)', 'hsl(150,60%,45%)', 'hsl(0,72%,55%)'];
-
-    // ── Top products by revenue ──
-    const topProducts = useMemo(() => {
-        const map = {};
+        const productMap = {};
         orders.forEach(o => {
             if (!o.isPaid) return;
             o.orderItems?.forEach(item => {
                 const id = item.productId;
-                if (!map[id]) map[id] = { name: item.name, image: item.image, revenue: 0, sold: 0 };
-                map[id].revenue += item.price * item.quantity;
-                map[id].sold += item.quantity;
+                if (!productMap[id]) productMap[id] = { name: item.name, image: item.image, revenue: 0, sold: 0 };
+                productMap[id].revenue += item.price * item.quantity;
+                productMap[id].sold += item.quantity;
             });
         });
-        return Object.values(map)
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 6)
-            .map(p => ({ ...p, revenue: Math.round(p.revenue * rate * 100) / 100 }));
-    }, [orders, rate]);
 
-    // ── Category breakdown ──
-    const categoryData = useMemo(() => {
-        const cats = {};
-        products.forEach(p => {
-            if (!cats[p.category]) cats[p.category] = { name: p.category, count: 0, value: 0 };
-            cats[p.category].count++;
-            cats[p.category].value += (p.discountedPrice || p.price) * p.stock;
+        const catMap = {};
+        localProducts.forEach(p => {
+            if (!catMap[p.category]) catMap[p.category] = { name: p.category, count: 0 };
+            catMap[p.category].count++;
         });
-        return Object.values(cats).sort((a, b) => b.count - a.count).slice(0, 6);
-    }, [products]);
 
+        const totalRevenue = orders.reduce((s, o) => o.isPaid ? s + (o.orderSummary?.totalAmount || 0) : s, 0);
+        const paidOrders = orders.filter(o => o.isPaid).length;
+        const totalUnitsSold = orders.reduce((s, o) => o.isPaid ? s + o.orderItems.reduce((a, i) => a + i.quantity, 0) : s, 0);
+
+        setAnalytics({
+            revenueByDay: Object.values(dayBuckets),
+            topProducts: Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+            categoryBreakdown: Object.values(catMap).sort((a, b) => b.count - a.count),
+            summary: {
+                totalRevenue: Math.round(totalRevenue * 100) / 100,
+                paidOrders,
+                avgOrderValue: paidOrders > 0 ? Math.round((totalRevenue / paidOrders) * 100) / 100 : 0,
+                totalUnitsSold,
+                conversionRate: orders.length > 0 ? Math.round((paidOrders / orders.length) * 100) : 0,
+            }
+        });
+    };
+
+    useEffect(() => { fetchAnalytics(); }, [timeRange]);
+
+    const STATUS_COLORS = ['hsl(30,90%,50%)', 'hsl(220,70%,55%)', 'hsl(200,80%,50%)', 'hsl(150,60%,45%)', 'hsl(0,72%,55%)'];
     const CAT_COLORS = ['hsl(220,70%,55%)', 'hsl(150,60%,45%)', 'hsl(200,80%,50%)', 'hsl(280,60%,55%)', 'hsl(30,90%,50%)', 'hsl(340,65%,55%)'];
 
-    // ── Summary stats ──
-    const totalRevenue = orders.reduce((s, o) => o.isPaid ? s + (o.orderSummary?.totalAmount || 0) : s, 0);
-    const paidOrders = orders.filter(o => o.isPaid).length;
-    const avgOrderValue = paidOrders > 0 ? totalRevenue / paidOrders : 0;
-    const totalUnitsSold = orders.reduce((s, o) => o.isPaid ? s + o.orderItems.reduce((a, i) => a + i.quantity, 0) : s, 0);
+    const revenueData = useMemo(() => {
+        if (!analytics?.revenueByDay) return [];
+        return analytics.revenueByDay.map(b => ({
+            ...b,
+            label: new Date(b.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+            revenue: Math.round(b.revenue * rate * 100) / 100,
+        }));
+    }, [analytics, rate]);
 
-    const summaryStats = [
-        { label: 'Total Revenue', value: `${symbol}${(totalRevenue * rate).toFixed(2)}`, icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)', change: '+12%', up: true },
-        { label: 'Paid Orders', value: paidOrders, icon: <ShoppingBag size={20} />, color: 'hsl(220,70%,55%)', bg: 'rgba(99,102,241,0.12)', change: '+8%', up: true },
-        { label: 'Avg Order Value', value: `${symbol}${(avgOrderValue * rate).toFixed(2)}`, icon: <TrendingUp size={20} />, color: 'hsl(200,80%,50%)', bg: 'rgba(14,165,233,0.12)', change: '+5%', up: true },
-        { label: 'Units Sold', value: totalUnitsSold, icon: <Package size={20} />, color: 'hsl(280,60%,55%)', bg: 'rgba(139,92,246,0.12)', change: '-2%', up: false },
-    ];
+    const statusData = useMemo(() => {
+        const counts = { pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+        localOrders.forEach(o => { if (counts[o.orderStatus] !== undefined) counts[o.orderStatus]++; });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [localOrders]);
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (!active || !payload?.length) return null;
         return (
-            <div className="glass-panel p-3" style={{ minWidth: 140 }}>
+            <div className="glass-floating p-3" style={{ minWidth: 140 }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
                 {payload.map((p, i) => (
                     <p key={i} className="text-xs" style={{ color: p.color }}>
@@ -115,6 +133,25 @@ const SellerAnalytics = () => {
         { label: '7 Days', value: '7' },
         { label: '30 Days', value: '30' },
         { label: '90 Days', value: '90' },
+    ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader size="default" text="Loading analytics..." />
+            </div>
+        );
+    }
+
+    if (!analytics) return null;
+
+    const s = analytics.summary;
+
+    const summaryStats = [
+        { label: 'Total Revenue', value: `${symbol}${(s.totalRevenue * rate).toFixed(2)}`, icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)' },
+        { label: 'Paid Orders', value: s.paidOrders, icon: <ShoppingBag size={20} />, color: 'hsl(220,70%,55%)', bg: 'rgba(99,102,241,0.12)' },
+        { label: 'Avg Order Value', value: `${symbol}${(s.avgOrderValue * rate).toFixed(2)}`, icon: <TrendingUp size={20} />, color: 'hsl(200,80%,50%)', bg: 'rgba(14,165,233,0.12)' },
+        { label: 'Units Sold', value: s.totalUnitsSold, icon: <Package size={20} />, color: 'hsl(280,60%,55%)', bg: 'rgba(139,92,246,0.12)' },
     ];
 
     return (
@@ -148,18 +185,14 @@ const SellerAnalytics = () => {
 
             {/* Summary Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {summaryStats.map((s, i) => (
-                    <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                {summaryStats.map((stat, i) => (
+                    <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }} className="glass-card water-shimmer p-5">
                         <div className="flex items-center justify-between mb-3">
-                            <div className="p-2.5 rounded-xl" style={{ background: s.bg, color: s.color }}>{s.icon}</div>
-                            <span className="flex items-center gap-0.5 text-[11px] font-semibold"
-                                style={{ color: s.up ? 'hsl(150,60%,45%)' : 'hsl(0,72%,55%)' }}>
-                                {s.up ? <ArrowUp size={10} /> : <ArrowDown size={10} />}{s.change}
-                            </span>
+                            <div className="p-2.5 rounded-xl" style={{ background: stat.bg, color: stat.color }}>{stat.icon}</div>
                         </div>
-                        <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.label}</p>
-                        <p className="text-2xl font-extrabold mt-1" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>{s.value}</p>
+                        <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{stat.label}</p>
+                        <p className="text-2xl font-extrabold mt-1" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>{stat.value}</p>
                     </motion.div>
                 ))}
             </div>
@@ -197,7 +230,6 @@ const SellerAnalytics = () => {
 
             {/* Order Volume + Order Status */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Order Volume Chart */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
                     className="glass-panel water-shimmer p-5 sm:p-6">
                     <div className="flex items-center justify-between mb-6">
@@ -222,7 +254,6 @@ const SellerAnalytics = () => {
                     </div>
                 </motion.div>
 
-                {/* Order Status Pie */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                     className="glass-panel water-shimmer p-5 sm:p-6">
                     <div className="flex items-center justify-between mb-6">
@@ -257,7 +288,6 @@ const SellerAnalytics = () => {
 
             {/* Top Products + Category Breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top Products */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
                     className="glass-panel water-shimmer p-5 sm:p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -269,14 +299,14 @@ const SellerAnalytics = () => {
                             <Star size={18} />
                         </div>
                     </div>
-                    {topProducts.length === 0 ? (
+                    {analytics.topProducts.length === 0 ? (
                         <div className="text-center py-10">
                             <div className="glass-inner inline-flex p-3 rounded-xl mb-2"><Package size={28} style={{ color: 'hsl(var(--muted-foreground))' }} /></div>
                             <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No sales data yet</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {topProducts.map((p, i) => (
+                            {analytics.topProducts.slice(0, 6).map((p, i) => (
                                 <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: 0.4 + i * 0.05 }}
                                     className="flex items-center gap-3 p-3 rounded-xl glass-inner">
@@ -286,14 +316,13 @@ const SellerAnalytics = () => {
                                         <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</p>
                                         <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{p.sold} units sold</p>
                                     </div>
-                                    <p className="text-sm font-bold shrink-0" style={{ color: 'hsl(150,60%,45%)' }}>{symbol}{p.revenue}</p>
+                                    <p className="text-sm font-bold shrink-0" style={{ color: 'hsl(150,60%,45%)' }}>{symbol}{(p.revenue * rate).toFixed(2)}</p>
                                 </motion.div>
                             ))}
                         </div>
                     )}
                 </motion.div>
 
-                {/* Category Breakdown */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                     className="glass-panel water-shimmer p-5 sm:p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -302,14 +331,14 @@ const SellerAnalytics = () => {
                             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Products by category</p>
                         </div>
                     </div>
-                    {categoryData.length === 0 ? (
+                    {analytics.categoryBreakdown.length === 0 ? (
                         <div className="text-center py-10">
                             <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No products yet</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {categoryData.map((c, i) => {
-                                const maxCount = Math.max(...categoryData.map(x => x.count));
+                            {analytics.categoryBreakdown.map((c, i) => {
+                                const maxCount = Math.max(...analytics.categoryBreakdown.map(x => x.count));
                                 const pct = maxCount > 0 ? (c.count / maxCount) * 100 : 0;
                                 return (
                                     <div key={c.name}>
