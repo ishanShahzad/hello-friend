@@ -261,7 +261,7 @@ const AdminDashboard = () => {
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 8, scale: 0.96 }}
                                             transition={{ duration: 0.2 }}
-                                            className="absolute right-0 top-full mt-2 w-80 sm:w-96 overflow-hidden z-50 glass-panel-strong"
+                                            className="absolute right-0 top-full mt-2 w-80 sm:w-96 overflow-hidden z-50 glass-floating"
                                             style={{ maxHeight: '70vh' }}>
                                             <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                                 <h3 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>Notifications</h3>
@@ -272,8 +272,8 @@ const AdminDashboard = () => {
                                             </div>
                                             <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 60px)' }}>
                                                 {notificationsLoading ? (
-                                                    <div className="flex items-center justify-center py-8">
-                                                        <Loader2 size={20} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                                     <div className="flex items-center justify-center py-8">
+                                                        <Loader size={20} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
                                                     </div>
                                                 ) : notifications.length === 0 ? (
                                                     <div className="text-center py-8 px-4">
@@ -527,12 +527,12 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
             className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-start justify-center p-4 pt-8 sm:pt-12 z-50 overflow-y-auto">
             <motion.div initial={{ scale: 0.92, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 30 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-full max-w-4xl mb-8 glass-panel-strong"
+                className="w-full max-w-4xl mb-8 glass-floating"
                 style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.2), 0 8px 32px rgba(0,0,0,0.1)' }}>
                 <div className="max-h-[85vh] overflow-y-auto" style={{ borderRadius: 28 }}>
 
                 {/* Header */}
-                <div className="sticky top-0 z-10 p-5 sm:p-6 flex justify-between items-center glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '28px 28px 0 0' }}>
+                <div className="sticky top-0 z-10 p-5 sm:p-6 flex justify-between items-center glass-floating" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '24px 24px 0 0' }}>
                     <div>
                         <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                             {product._id ? "Edit Product" : "Add New Product"}

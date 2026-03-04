@@ -186,6 +186,25 @@ input, select, textarea {
     border-radius: 28px;
 }
 
+/* High-opacity floating panels (dropdowns, modals, popovers) matching navbar */
+.glass-floating {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(60px) saturate(180%);
+    -webkit-backdrop-filter: blur(60px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
+    border-radius: 24px;
+}
+
+.dark .glass-floating {
+    background: rgba(20, 20, 30, 0.88);
+    backdrop-filter: blur(60px) saturate(180%);
+    -webkit-backdrop-filter: blur(60px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
+    border-radius: 24px;
+}
+
 .glass-card {
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));

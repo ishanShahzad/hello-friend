@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import {
     TrendingUp, DollarSign, ShoppingBag, Package, BarChart3,
     Calendar, ArrowUp, ArrowDown, Sparkles, Star, Store, Users,
-    CheckCircle, Clock, Loader2
+    CheckCircle, Clock, AlertTriangle
 } from 'lucide-react';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import Loader from '../common/Loader';
 import axios from 'axios';
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -16,6 +17,7 @@ const AdminAnalytics = () => {
     const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
     const [timeRange, setTimeRange] = useState('30');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [analytics, setAnalytics] = useState(null);
 
     const rate = exchangeRates[currency] || 1;
@@ -23,6 +25,7 @@ const AdminAnalytics = () => {
 
     const fetchAnalytics = async () => {
         setLoading(true);
+        setError(null);
         const token = localStorage.getItem('jwtToken');
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/admin?days=${timeRange}`, {
@@ -31,6 +34,9 @@ const AdminAnalytics = () => {
             setAnalytics(res.data.analytics);
         } catch (err) {
             console.error('Failed to fetch admin analytics:', err);
+            setError(err.response?.status === 404 
+                ? 'Analytics API not available. Please redeploy your backend with the latest code.'
+                : 'Failed to load analytics data. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -54,7 +60,7 @@ const AdminAnalytics = () => {
     const CustomTooltip = ({ active, payload, label }) => {
         if (!active || !payload?.length) return null;
         return (
-            <div className="glass-panel p-3" style={{ minWidth: 140 }}>
+            <div className="glass-floating p-3" style={{ minWidth: 140 }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
                 {payload.map((p, i) => (
                     <p key={i} className="text-xs" style={{ color: p.color }}>
@@ -71,13 +77,34 @@ const AdminAnalytics = () => {
         { label: '90 Days', value: '90' },
     ];
 
-    if (loading || !analytics) {
+    if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <Loader size="default" text="Loading analytics..." />
             </div>
         );
     }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="glass-panel p-8 text-center max-w-md">
+                    <div className="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(249,115,22,0.12)' }}>
+                        <AlertTriangle size={24} style={{ color: 'hsl(30,90%,50%)' }} />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Analytics Unavailable</h3>
+                    <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>{error}</p>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={fetchAnalytics}
+                        className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
+                        Retry
+                    </motion.button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!analytics) return null;
 
     const s = analytics.summary;
 
