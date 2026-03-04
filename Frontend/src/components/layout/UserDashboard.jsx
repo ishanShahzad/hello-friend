@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlassBackground from '../common/GlassBackground';
 import {
     // ✅ User Dashboard essentials
     User,
@@ -144,6 +145,7 @@ const UserDashboard = () => {
 
     return (
         <div className="min-h-screen relative flex" style={{ background: 'linear-gradient(135deg, hsl(230, 35%, 88%) 0%, hsl(210, 40%, 90%) 25%, hsl(250, 30%, 92%) 50%, hsl(200, 35%, 88%) 75%, hsl(280, 25%, 90%) 100%)', backgroundAttachment: 'fixed' }}>
+            <GlassBackground />
 
             {/* Sidebar */}
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />

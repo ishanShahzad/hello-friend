@@ -6,6 +6,7 @@ import {
     TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info,
 } from 'lucide-react';
 import axios from 'axios';
+import GlassBackground from '../common/GlassBackground';
 import { toast } from 'react-toastify';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -218,7 +219,8 @@ const SellerDashboard = () => {
     }, []);
 
     return (
-        <div className="min-h-screen relative flex">
+        <div className="min-h-screen relative flex" style={{ background: 'linear-gradient(135deg, hsl(230, 35%, 88%) 0%, hsl(210, 40%, 90%) 25%, hsl(250, 30%, 92%) 50%, hsl(200, 35%, 88%) 75%, hsl(280, 25%, 90%) 100%)', backgroundAttachment: 'fixed' }}>
+            <GlassBackground />
             {/* Sidebar */}
             <SellerSidebar
                 activeTab={activeTab}
