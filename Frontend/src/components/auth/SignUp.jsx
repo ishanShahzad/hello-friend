@@ -3,8 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const GlassSignUpPage = () => {
   const [step, setStep] = useState(1);
@@ -12,30 +13,36 @@ const GlassSignUpPage = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const { setCurrentUser } = useAuth();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setForm(prev => ({ ...prev, [id]: value }));
+    if (error) setError('');
   };
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+    setSuccess('');
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/send-otp`, form, { timeout: 30000 });
-      toast.success(res.data.msg);
+      setSuccess(res.data.msg || 'OTP sent successfully!');
       setStep(2);
     } catch (error) {
-      if (error.code === 'ECONNABORTED') toast.error('Request timeout.');
-      else toast.error(error.response?.data?.msg || 'Failed to send OTP.');
+      if (error.code === 'ECONNABORTED') setError('Request timed out. Please try again.');
+      else setError(error.response?.data?.msg || 'Failed to send OTP. Please try again.');
     } finally { setLoading(false); }
   };
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/verify-otp`, { email: form.email, otp });
       localStorage.setItem("jwtToken", res.data.token);
@@ -45,17 +52,25 @@ const GlassSignUpPage = () => {
       navigate('/');
       location.reload();
     } catch (error) {
-      toast.error(error.response?.data?.msg || 'Invalid OTP.');
+      setError(error.response?.data?.msg || 'Invalid OTP. Please check and try again.');
     } finally { setLoading(false); }
   };
 
   const handleResendOTP = async () => {
     setLoading(true);
+    setError('');
+    setSuccess('');
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}api/auth/send-otp`, form);
-      toast.success('OTP resent!');
-    } catch { toast.error('Failed to resend OTP.'); }
+      setSuccess('OTP resent successfully!');
+    } catch { setError('Failed to resend OTP.'); }
     finally { setLoading(false); }
+  };
+
+  const alertVariants = {
+    initial: { opacity: 0, y: -8, scale: 0.95 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -8, scale: 0.95 },
   };
 
   return (
@@ -77,6 +92,29 @@ const GlassSignUpPage = () => {
               {step === 1 ? 'Join our community today' : 'Check your email for the code'}
             </p>
           </div>
+
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div key="error" variants={alertVariants} initial="initial" animate="animate" exit="exit"
+                transition={{ duration: 0.25 }}
+                className="mb-5 flex items-start gap-3 p-3.5 rounded-xl border"
+                style={{ background: 'hsla(0, 70%, 50%, 0.08)', borderColor: 'hsla(0, 70%, 50%, 0.25)' }}
+              >
+                <AlertCircle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 70%, 55%)' }} />
+                <p className="text-sm font-medium" style={{ color: 'hsl(0, 70%, 60%)' }}>{error}</p>
+              </motion.div>
+            )}
+            {success && !error && (
+              <motion.div key="success" variants={alertVariants} initial="initial" animate="animate" exit="exit"
+                transition={{ duration: 0.25 }}
+                className="mb-5 flex items-start gap-3 p-3.5 rounded-xl border"
+                style={{ background: 'hsla(142, 70%, 45%, 0.08)', borderColor: 'hsla(142, 70%, 45%, 0.25)' }}
+              >
+                <CheckCircle2 size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(142, 70%, 45%)' }} />
+                <p className="text-sm font-medium" style={{ color: 'hsl(142, 70%, 50%)' }}>{success}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {step === 1 ? (
             <form onSubmit={handleSendOTP}>
@@ -118,7 +156,7 @@ const GlassSignUpPage = () => {
                 </div>
                 <div>
                   <label htmlFor="otp" className="block text-sm font-medium mb-1 text-center">Enter OTP</label>
-                  <input id="otp" type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  <input id="otp" type="text" value={otp} onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); if (error) setError(''); }}
                     className="glass-input text-center text-2xl font-bold tracking-widest" placeholder="000000" maxLength={6} required disabled={loading} />
                 </div>
                 <div className="text-center text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -132,7 +170,7 @@ const GlassSignUpPage = () => {
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
                 {loading ? 'Verifying...' : 'Verify & Sign Up'}
               </button>
-              <button type="button" onClick={() => { setStep(1); setOtp(''); }}
+              <button type="button" onClick={() => { setStep(1); setOtp(''); setError(''); setSuccess(''); }}
                 className="w-full mt-4 py-2 px-4 font-medium transition" style={{ color: 'hsl(var(--muted-foreground))' }}>← Back to form</button>
             </form>
           )}
