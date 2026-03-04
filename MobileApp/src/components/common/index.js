@@ -57,3 +57,7 @@ export {
   CompactStoreCard,
   StoreListItem,
 } from './StoreCard';
+
+// Glass design system
+export { default as GlassBackground } from './GlassBackground';
+export { default as GlassPanel } from './GlassPanel';
