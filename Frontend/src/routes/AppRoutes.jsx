@@ -23,6 +23,9 @@ import TaxConfiguration from '../components/layout/TaxConfiguration'
 import ShippingConfiguration from '../components/layout/ShippingConfiguration'
 import SellerHome from '../components/layout/SellerHome'
 import SellerAnalytics from '../components/layout/SellerAnalytics'
+import AdminAnalytics from '../components/layout/AdminAnalytics'
+import NotificationsPage from '../components/layout/NotificationsPage'
+import NotificationSettings from '../components/layout/NotificationSettings'
 import AccountOverview from '../components/layout/AccountOverview'
 import UserProfile from '../components/layout/Profile'
 import UserOrdersManagement from '../components/layout/UserOrdersManagement'
@@ -165,6 +168,21 @@ function AppRoutes() {
                             <StoreVerifications />
                         </ProtectedRoute>
                     } />
+                    <Route path='/admin-dashboard/analytics' element={
+                        <ProtectedRoute role={'admin'}>
+                            <AdminAnalytics />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/admin-dashboard/notifications' element={
+                        <ProtectedRoute role={'admin'}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/admin-dashboard/notification-settings' element={
+                        <ProtectedRoute role={'admin'}>
+                            <NotificationSettings />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* SELLER DASHBOARD */}
@@ -212,6 +230,16 @@ function AppRoutes() {
                     <Route path='/seller-dashboard/analytics' element={
                         <ProtectedRoute role={'seller'}>
                             <SellerAnalytics />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/notifications' element={
+                        <ProtectedRoute role={'seller'}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/notification-settings' element={
+                        <ProtectedRoute role={'seller'}>
+                            <NotificationSettings />
                         </ProtectedRoute>
                     } />
                 </Route>

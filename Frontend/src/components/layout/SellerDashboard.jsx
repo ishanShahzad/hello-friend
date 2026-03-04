@@ -175,6 +175,8 @@ const SellerDashboard = () => {
         if (path.includes('order-management')) return 'Order Management';
         if (path.includes('shipping-configuration')) return 'Shipping';
         if (path.includes('store-settings')) return 'Store Settings';
+        if (path.includes('notification-settings')) return 'Notification Settings';
+        if (path.includes('notifications')) return 'Notifications';
         if (path.includes('analytics')) return 'Analytics';
         if (path.includes('seller-home')) return 'Dashboard';
         return 'Dashboard';
@@ -275,8 +277,8 @@ const SellerDashboard = () => {
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 8, scale: 0.96 }}
                                             transition={{ duration: 0.2 }}
-                                            className="absolute right-0 top-full mt-2 w-80 sm:w-96 glass-panel-strong overflow-hidden z-50"
-                                            style={{ borderRadius: 20, maxHeight: '70vh' }}>
+                                            className="absolute right-0 top-full mt-2 w-80 sm:w-96 overflow-hidden z-50"
+                                            style={{ borderRadius: 20, maxHeight: '70vh', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(44px)', WebkitBackdropFilter: 'blur(44px)', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)' }}>
                                             <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                                 <h3 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>Notifications</h3>
                                                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
@@ -434,7 +436,9 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/seller-dashboard/product-management', badge: lowStockProducts },
         { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/seller-dashboard/order-management', badge: pendingOrders },
         { id: 'shipping', label: 'Shipping', icon: <Truck size={18} />, link: '/seller-dashboard/shipping-configuration' },
+        { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
+        { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
     ];
 
     useEffect(() => {
