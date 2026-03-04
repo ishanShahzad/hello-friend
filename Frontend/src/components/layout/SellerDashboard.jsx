@@ -461,7 +461,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
                 transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
                 className="fixed top-0 left-0 h-full w-64 z-50 shadow-2xl overflow-hidden"
             >
-                <div className="flex flex-col h-full glass-panel-strong water-shimmer" style={{ borderRadius: 0 }}>
+                <div className="flex flex-col h-full glass-panel-strong water-shimmer" style={{ borderRadius: '0 28px 28px 0' }}>
                     {/* Logo / Brand */}
                     <div className="px-5 pt-6 pb-4">
                         <div className="flex items-center justify-between">

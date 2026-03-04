@@ -188,40 +188,46 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full glass-panel-strong" style={{ borderRadius: '0' }}>
+        <div className="flex flex-col h-full glass-panel-strong water-shimmer" style={{ borderRadius: '0 28px 28px 0' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-6 pb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/30 flex items-center justify-center text-indigo-200 font-bold text-sm border border-indigo-400/30">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border"
+                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
                         {currentUser?.username?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
-                        <p className="text-white font-semibold text-sm leading-tight truncate max-w-[120px]">{currentUser?.username || 'User'}</p>
-                        <span className="text-[10px] font-medium bg-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded-full">Member</span>
+                        <p className="font-semibold text-sm leading-tight truncate max-w-[120px]" style={{ color: 'hsl(var(--foreground))' }}>{currentUser?.username || 'User'}</p>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'hsl(220, 70%, 55%)' }}>Member</span>
                     </div>
                 </div>
                 {isMobile && (
-                    <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-colors">
+                    <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 rounded-lg glass-inner transition-colors"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
                         <X size={16} />
                     </button>
                 )}
             </div>
 
-            <div className="mx-4 h-px bg-white/10 mb-4" />
+            <div className="mx-4 h-px" style={{ background: 'var(--glass-border)' }} />
 
             {/* Nav */}
-            <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Menu</p>
                 {menuItems.map(item => {
                     const isActive = activeTab === item.id
                     return (
                         <Link key={item.id} to={item.link}>
                             <motion.button whileHover={{ x: 2 }} onClick={() => handleTabClick(item.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
-                                    ? 'bg-indigo-500/25 text-white border border-indigo-400/30 shadow-sm'
-                                    : 'text-white/60 hover:text-white hover:bg-white/8'}`}>
-                                <span className={`${isActive ? 'text-indigo-300' : 'text-white/50'}`}>{item.icon}</span>
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'border shadow-sm' : 'hover:bg-white/8'}`}
+                                style={isActive ? {
+                                    background: 'rgba(99, 102, 241, 0.12)',
+                                    color: 'hsl(var(--foreground))',
+                                    borderColor: 'rgba(99, 102, 241, 0.25)'
+                                } : { color: 'hsl(var(--muted-foreground))' }}>
+                                <span style={{ color: isActive ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
                                 {item.label}
-                                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400" />}
+                                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%)' }} />}
                             </motion.button>
                         </Link>
                     )
@@ -229,11 +235,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             </nav>
 
             {/* Footer */}
-            <div className="px-3 pb-5 pt-4 border-t border-white/10 mt-4">
+            <div className="px-3 pb-5 pt-3" style={{ borderTop: '1px solid var(--glass-border)' }}>
                 <Link to="/">
                     <motion.button whileHover={{ x: 2 }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/8 transition-all">
-                        <LayoutPanelLeft size={18} className="text-white/40" />
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        <LayoutPanelLeft size={18} />
                         Back to Store
                     </motion.button>
                 </Link>
