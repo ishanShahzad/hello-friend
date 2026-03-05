@@ -1,6 +1,7 @@
 /**
  * GlassPanel Component — Liquid Glass Design
- * Single-layer translucent card (no double-boxing)
+ * Translucent, refractive card with blur and border effects
+ * Matches the web platform's .glass-panel / .glass-card aesthetic
  */
 
 import React from 'react';
@@ -41,37 +42,38 @@ export default function GlassPanel({ children, style, variant = 'default' }) {
 
   if (Platform.OS === 'ios') {
     return (
-      <View
-        style={[
-          styles.panel,
-          { backgroundColor: v.backgroundColor, borderColor: v.borderColor },
-          style,
-        ]}
-      >
-        <BlurView
-          intensity={v.blurIntensity}
-          tint="light"
-          style={StyleSheet.absoluteFill}
-        />
-        {children}
+      <View style={[styles.wrapper, style]}>
+        <BlurView intensity={v.blurIntensity} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[styles.overlay, { backgroundColor: v.backgroundColor, borderColor: v.borderColor }]}>
+          {children}
+        </View>
       </View>
     );
   }
 
-  // Android fallback
+  // Android fallback — no BlurView, use higher opacity background
   return (
-    <View style={[styles.panel, { backgroundColor: v.backgroundColor, borderColor: v.borderColor }, style]}>
+    <View style={[styles.androidPanel, { backgroundColor: v.backgroundColor, borderColor: v.borderColor }, style]}>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: {
+  wrapper: {
+    borderRadius: br.xl,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  overlay: {
+    borderWidth: 1,
+    borderRadius: br.xl,
+    padding: spacing.lg,
+  },
+  androidPanel: {
     borderRadius: br.xl,
     borderWidth: 1,
     padding: spacing.lg,
-    overflow: 'hidden',
     ...shadows.md,
   },
 });
