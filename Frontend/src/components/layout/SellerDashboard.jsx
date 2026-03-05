@@ -460,17 +460,20 @@ const SellerDashboard = () => {
             {createPortal(notificationsDropdown, document.body)}
 
             {/* Product Form Modal */}
-            <AnimatePresence>
-                {isFormOpen && (
-                    <ProductForm
-                        product={editingProduct}
-                        setProduct={setEditingProduct}
-                        onSave={handleSaveProduct}
-                        onClose={() => { setIsFormOpen(false); setEditingProduct(null); }}
-                        uploadingImages={uploadingImages}
-                    />
-                )}
-            </AnimatePresence>
+            {createPortal(
+                <AnimatePresence>
+                    {isFormOpen && (
+                        <ProductForm
+                            product={editingProduct}
+                            setProduct={setEditingProduct}
+                            onSave={handleSaveProduct}
+                            onClose={() => { setIsFormOpen(false); setEditingProduct(null); }}
+                            uploadingImages={uploadingImages}
+                        />
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 };
