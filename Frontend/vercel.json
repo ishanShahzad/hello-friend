@@ -21,7 +21,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!sitemap.*\\.xml|robots\\.txt|og-image\\.png|favicon\\.svg|tortrose-logo\\.svg|manifest\\.json).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
