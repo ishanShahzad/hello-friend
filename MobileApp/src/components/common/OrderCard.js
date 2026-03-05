@@ -103,7 +103,7 @@ export const CompactOrderCard = ({ order, onPress }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, marginBottom: spacing.md },
+  container: { padding: spacing.md, marginBottom: spacing.sm },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
   orderInfo: { flex: 1 },
   orderId: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.xs },

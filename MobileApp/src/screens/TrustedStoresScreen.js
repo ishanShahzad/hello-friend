@@ -81,7 +81,10 @@ export default function TrustedStoresScreen({ navigation }) {
     <GlassBackground>
       {/* Header */}
       <GlassPanel variant="floating" style={styles.header}>
-        <View style={styles.headerIcon}><Ionicons name="heart" size={20} color={colors.heart} /></View>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerIcon}><Ionicons name="heart" size={18} color={colors.heart} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Trusted Stores</Text>
           <Text style={styles.headerSub}>{trustedStores.length} stores you trust</Text>
@@ -113,8 +116,9 @@ const styles = StyleSheet.create({
   authTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg },
   authSub: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.xl },
   loginBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: 14, borderRadius: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.md },
-  headerIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(239,68,68,0.12)', justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.12)', justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
   headerSub: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   storeCard: { padding: spacing.md, marginBottom: spacing.md },

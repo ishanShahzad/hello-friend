@@ -28,7 +28,7 @@ export const getMenuItemsForRole = (role) => {
   ];
   switch (role) {
     case 'admin':
-      return [...baseItems, { id: 'admin', title: 'Admin Dashboard', icon: 'settings-outline', screen: 'AdminDashboard', highlight: true, color: colors.error }];
+      return [...baseItems, { id: 'admin', title: 'Admin Dashboard', icon: 'shield-outline', screen: 'AdminDashboard', highlight: true, color: colors.error }];
     case 'seller':
       return [...baseItems, { id: 'seller', title: 'Seller Dashboard', icon: 'storefront-outline', screen: 'SellerDashboard', highlight: true, color: colors.success }];
     case 'user':
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   // Menu
   menuCard: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md },
   sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textLight, letterSpacing: 1, marginBottom: spacing.sm, paddingLeft: spacing.sm },
-  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.sm, gap: spacing.md },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.sm, gap: spacing.md },
   menuRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   menuIcon: { width: 40, height: 40, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
   menuRowText: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text },

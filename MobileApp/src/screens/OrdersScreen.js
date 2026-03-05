@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   heroTitle: { flex: 1, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
   heroBadge: { backgroundColor: 'rgba(99,102,241,0.15)', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   heroBadgeText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  listContent: { padding: spacing.md, flexGrow: 1 },
+  listContent: { padding: spacing.sm, flexGrow: 1 },
   firstCard: { marginTop: 0 },
   listFooter: { height: spacing.xxl },
 });

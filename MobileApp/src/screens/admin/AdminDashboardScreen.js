@@ -15,7 +15,8 @@ import StatCard, {
 } from '../../components/common/StatCard';
 import ActionCard, {
   UserManagementAction, StoreVerificationAction, TaxConfigAction,
-  AdminProductsAction, AdminOrdersAction,
+  AdminProductsAction, AdminOrdersAction, StoreOverviewAction,
+  AdminStoresAction,
 } from '../../components/common/ActionCard';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
@@ -143,11 +144,15 @@ export default function AdminDashboardScreen({ navigation }) {
         {/* Quick Actions */}
         <GlassPanel variant="card" style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <AdminStoresAction onPress={() => navigation.navigate('StoreOverview')} />
+          <ActionCard title="Analytics" subtitle="Platform insights & reports" icon="bar-chart-outline" color={colors.info} onPress={() => navigation.navigate('AdminAnalytics')} />
           <UserManagementAction onPress={() => navigation.navigate('AdminUserManagement')} badge={stats.totalUsers} />
           <StoreVerificationAction onPress={() => navigation.navigate('StoreVerification')} badge={stats.pendingVerifications} />
           <AdminOrdersAction onPress={() => navigation.navigate('AdminOrderManagement')} badge={stats.totalOrders} />
           <AdminProductsAction onPress={() => navigation.navigate('AdminProductManagement')} />
           <TaxConfigAction onPress={() => navigation.navigate('AdminTaxConfiguration')} />
+          <ActionCard title="Notifications" subtitle="System alerts & updates" icon="notifications-outline" color={colors.warning} onPress={() => navigation.navigate('AdminNotifications')} />
+          <ActionCard title="Notification Settings" subtitle="Configure alert preferences" icon="options-outline" color={colors.gray} onPress={() => navigation.navigate('NotificationSettings')} />
         </GlassPanel>
 
         {/* Recent Activity */}

@@ -26,7 +26,7 @@ const ActionCard = ({ title, subtitle, icon, color = colors.primary, onPress, ba
         </View>
         <View style={styles.content}>
           <Text style={[styles.title, disabled && styles.titleDisabled]} numberOfLines={1}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+          {subtitle && <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>}
         </View>
         {badge !== undefined && badge > 0 && (
           <View style={[styles.badge, { backgroundColor: color }]}>
@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     overflow: 'hidden',
   },
   containerDisabled: {
@@ -73,9 +73,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 22,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.inner,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
