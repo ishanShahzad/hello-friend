@@ -1,265 +1,205 @@
 /**
- * Animated Multi-Ring Loader Component
- * Matches the website's loader design with four animated rings
- * 
- * Requirements: 2.1, 2.2, 2.5
+ * Orbiting Dots Loader — matches web Loader design
+ * Glass backdrop with 4 orbiting gradient dots and a center pulse
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
-import { colors, loaderColors, spacing } from '../../styles/theme';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { colors, spacing } from '../../styles/theme';
 
 const SIZES = {
-  small: { size: 40, strokeWidth: 4 },
-  medium: { size: 80, strokeWidth: 8 },
-  large: { size: 120, strokeWidth: 12 },
+  small: { container: 48, orb: 10, gap: 10 },
+  medium: { container: 80, orb: 14, gap: 14 },
+  large: { container: 112, orb: 18, gap: 18 },
 };
 
-const Loader = ({ 
-  size = 'medium', 
-  color, 
-  fullScreen = false,
-  style,
-}) => {
-  const { size: loaderSize, strokeWidth } = SIZES[size] || SIZES.medium;
-  const viewBox = 240;
-  const scale = loaderSize / viewBox;
+const ORB_COLORS = [
+  ['#60a5fa', '#6366f1'], // blue → indigo
+  ['#c084fc', '#ec4899'], // purple → pink
+  ['#22d3ee', '#3b82f6'], // cyan → blue
+  ['#818cf8', '#a855f7'], // indigo → purple
+];
 
-  // Animation values for each ring
-  const ringAProgress = useRef(new Animated.Value(0)).current;
-  const ringBProgress = useRef(new Animated.Value(0)).current;
-  const ringCProgress = useRef(new Animated.Value(0)).current;
-  const ringDProgress = useRef(new Animated.Value(0)).current;
+const Loader = ({ size = 'medium', text = '', style }) => {
+  const s = SIZES[size] || SIZES.medium;
+
+  // One rotation value per orb
+  const rotations = useRef(ORB_COLORS.map(() => new Animated.Value(0))).current;
+  // Scale pulse per orb
+  const scales = useRef(ORB_COLORS.map(() => new Animated.Value(1))).current;
+  // Center pulse
+  const centerScale = useRef(new Animated.Value(0.8)).current;
+  const centerOpacity = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    const duration = 2000;
-
-    const createAnimation = (animatedValue, delay = 0) => {
-      return Animated.loop(
+    // Orbit animations
+    const orbitAnims = rotations.map((val, i) =>
+      Animated.loop(
         Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(animatedValue, {
+          Animated.delay(i * 150),
+          Animated.timing(val, {
             toValue: 1,
-            duration: duration,
+            duration: 2400,
             easing: Easing.linear,
             useNativeDriver: true,
           }),
         ])
-      );
-    };
+      )
+    );
 
-    // Start all animations with slight delays for staggered effect
-    const animations = [
-      createAnimation(ringAProgress, 0),
-      createAnimation(ringBProgress, 100),
-      createAnimation(ringCProgress, 200),
-      createAnimation(ringDProgress, 300),
-    ];
+    // Scale pulse animations
+    const scaleAnims = scales.map((val, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 300),
+          Animated.timing(val, { toValue: 1.3, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(val, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      )
+    );
 
-    animations.forEach(anim => anim.start());
+    // Center pulse
+    const centerAnim = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(centerScale, { toValue: 1.2, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(centerOpacity, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(centerScale, { toValue: 0.8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(centerOpacity, { toValue: 0.5, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      ])
+    );
 
-    return () => {
-      animations.forEach(anim => anim.stop());
-    };
+    [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.start());
+    return () => [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.stop());
   }, []);
 
-  // Interpolate rotation for each ring
-  const ringARotation = ringAProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  return (
+    <View style={[styles.wrapper, style]}>
+      <View style={[styles.container, { width: s.container, height: s.container }]}>
+        {/* Glass backdrop circle */}
+        <View style={[styles.backdrop, { width: s.container, height: s.container, borderRadius: s.container / 2 }]} />
 
-  const ringBRotation = ringBProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-360deg'],
-  });
+        {/* Orbiting dots */}
+        {ORB_COLORS.map((colorPair, i) => {
+          const rotate = rotations[i].interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '360deg'],
+          });
+          return (
+            <Animated.View
+              key={i}
+              style={[
+                styles.orbitWrap,
+                { width: s.container, height: s.container, transform: [{ rotate }] },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.orb,
+                  {
+                    width: s.orb,
+                    height: s.orb,
+                    borderRadius: s.orb / 2,
+                    backgroundColor: colorPair[0],
+                    transform: [{ translateY: -s.gap }, { scale: scales[i] }],
+                    shadowColor: colorPair[1],
+                  },
+                ]}
+              />
+            </Animated.View>
+          );
+        })}
 
-  const ringCRotation = ringCProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+        {/* Center pulse */}
+        <Animated.View
+          style={[
+            styles.center,
+            {
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              opacity: centerOpacity,
+              transform: [{ scale: centerScale }],
+            },
+          ]}
+        />
+      </View>
 
-  const ringDRotation = ringDProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-360deg'],
-  });
-
-  const renderLoader = () => (
-    <View style={[styles.loaderContainer, { width: loaderSize, height: loaderSize }, style]}>
-      {/* Ring A - Outer ring (Red) */}
-      <Animated.View 
-        style={[
-          styles.ringContainer, 
-          { transform: [{ rotate: ringARotation }] }
-        ]}
-      >
-        <Svg width={loaderSize} height={loaderSize} viewBox={`0 0 ${viewBox} ${viewBox}`}>
-          <Circle
-            cx="120"
-            cy="120"
-            r="105"
-            stroke={color || loaderColors.ringA}
-            strokeWidth={strokeWidth / scale}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray="60 600"
-            strokeDashoffset="-330"
-          />
-        </Svg>
-      </Animated.View>
-
-      {/* Ring B - Inner ring (Yellow) */}
-      <Animated.View 
-        style={[
-          styles.ringContainer, 
-          styles.absoluteRing,
-          { transform: [{ rotate: ringBRotation }] }
-        ]}
-      >
-        <Svg width={loaderSize} height={loaderSize} viewBox={`0 0 ${viewBox} ${viewBox}`}>
-          <Circle
-            cx="120"
-            cy="120"
-            r="35"
-            stroke={color || loaderColors.ringB}
-            strokeWidth={strokeWidth / scale}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray="20 200"
-            strokeDashoffset="-110"
-          />
-        </Svg>
-      </Animated.View>
-
-      {/* Ring C - Left ring (Blue) */}
-      <Animated.View 
-        style={[
-          styles.ringContainer, 
-          styles.absoluteRing,
-          { transform: [{ rotate: ringCRotation }] }
-        ]}
-      >
-        <Svg width={loaderSize} height={loaderSize} viewBox={`0 0 ${viewBox} ${viewBox}`}>
-          <Circle
-            cx="85"
-            cy="120"
-            r="70"
-            stroke={color || loaderColors.ringC}
-            strokeWidth={strokeWidth / scale}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray="40 400"
-            strokeDashoffset="0"
-          />
-        </Svg>
-      </Animated.View>
-
-      {/* Ring D - Right ring (Green) */}
-      <Animated.View 
-        style={[
-          styles.ringContainer, 
-          styles.absoluteRing,
-          { transform: [{ rotate: ringDRotation }] }
-        ]}
-      >
-        <Svg width={loaderSize} height={loaderSize} viewBox={`0 0 ${viewBox} ${viewBox}`}>
-          <Circle
-            cx="155"
-            cy="120"
-            r="70"
-            stroke={color || loaderColors.ringD}
-            strokeWidth={strokeWidth / scale}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray="40 400"
-            strokeDashoffset="0"
-          />
-        </Svg>
-      </Animated.View>
+      {text ? (
+        <Animated.Text style={styles.text}>{text}</Animated.Text>
+      ) : null}
     </View>
   );
-
-  if (fullScreen) {
-    return (
-      <View style={styles.fullScreenContainer}>
-        <View style={styles.backdrop} />
-        {renderLoader()}
-      </View>
-    );
-  }
-
-  return renderLoader();
 };
 
-// Simple inline loader for buttons and small spaces
-export const InlineLoader = ({ size = 20, color = colors.white }) => (
-  <View style={[styles.inlineLoader, { width: size, height: size }]}>
-    <Animated.View style={styles.inlineSpinner}>
-      <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Circle
-          cx="12"
-          cy="12"
-          r="10"
-          stroke={color}
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray="31.4 31.4"
-          strokeDashoffset="0"
-        />
-      </Svg>
-    </Animated.View>
-  </View>
-);
+// Simple inline loader for buttons
+export const InlineLoader = ({ size = 20, color = colors.white }) => {
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+  }, []);
+
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: color, borderTopColor: 'transparent', transform: [{ rotate }] }} />
+  );
+};
 
 // Loading overlay for screens
 export const LoadingOverlay = ({ visible, message }) => {
   if (!visible) return null;
-  
   return (
     <View style={styles.overlayContainer}>
       <View style={styles.overlayContent}>
         <Loader size="medium" />
-        {message && (
-          <View style={styles.messageContainer}>
-            <Animated.Text style={styles.messageText}>{message}</Animated.Text>
-          </View>
-        )}
+        {message && <Text style={styles.overlayText}>{message}</Text>}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  loaderContainer: {
-    justifyContent: 'center',
+  wrapper: {
     alignItems: 'center',
-  },
-  ringContainer: {
-    position: 'absolute',
-  },
-  absoluteRing: {
-    position: 'absolute',
-  },
-  fullScreenContainer: {
-    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
+    gap: spacing.md,
+  },
+  container: {
     alignItems: 'center',
-    zIndex: 1000,
+    justifyContent: 'center',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  inlineLoader: {
-    justifyContent: 'center',
+  orbitWrap: {
+    position: 'absolute',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  inlineSpinner: {
-    // Animation handled by parent
+  orb: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  center: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  text: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -279,10 +219,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  messageContainer: {
+  overlayText: {
     marginTop: spacing.lg,
-  },
-  messageText: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '500',
