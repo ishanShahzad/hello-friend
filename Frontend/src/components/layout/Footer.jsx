@@ -10,7 +10,9 @@ function Footer() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
             {/* Brand */}
             <div className="col-span-2 sm:col-span-1">
-              <Link to="/" className="text-xl font-bold gradient-text">Tortrose</Link>
+              <Link to="/" className="flex items-center">
+                <img src="/tortrose-logo.svg" alt="Tortrose" className="h-8" />
+              </Link>
               <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
                 A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers.
               </p>
