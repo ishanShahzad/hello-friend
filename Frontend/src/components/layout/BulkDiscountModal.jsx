@@ -49,7 +49,7 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
                 <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }}
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="max-w-2xl w-full max-h-[95vh] overflow-y-auto glass-panel-strong"
+                    className="max-w-2xl w-full max-h-[95vh] overflow-y-auto glass-floating"
                     style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.2), 0 8px 32px rgba(0,0,0,0.1)' }}>
                     
                     {/* Header */}
