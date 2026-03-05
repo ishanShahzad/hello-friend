@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { borderRadius as br, shadows } from '../../styles/theme';
+import { borderRadius as br, shadows, spacing } from '../../styles/theme';
 
 const VARIANTS = {
   default: {
@@ -68,11 +68,12 @@ const styles = StyleSheet.create({
   overlay: {
     borderWidth: 1,
     borderRadius: br.xl,
-    padding: 0, // let consumers control padding
+    padding: spacing.lg,
   },
   androidPanel: {
     borderRadius: br.xl,
     borderWidth: 1,
+    padding: spacing.lg,
     ...shadows.md,
   },
 });
