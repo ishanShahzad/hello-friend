@@ -65,7 +65,7 @@ export default function StoresListingScreen({ navigation }) {
                     </TouchableOpacity>
                   )}
                 </View>
-                <GlassPanel variant="inner" style={styles.searchBox}>
+                <View style={styles.searchBox}>
                   <Ionicons name="search" size={18} color={colors.textSecondary} />
                   <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
                   {searchQuery.length > 0 && (
@@ -73,7 +73,7 @@ export default function StoresListingScreen({ navigation }) {
                       <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
                   )}
-                </GlassPanel>
+                </View>
               </GlassPanel>
               <View style={styles.resultsRow}>
                 <Text style={styles.resultsText}>{searchQuery ? 'Found ' : ''}<Text style={styles.resultsCount}>{filteredStores.length}</Text> {filteredStores.length === 1 ? 'store' : 'stores'}{searchQuery ? '' : ' available'}</Text>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   heroSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary },
   trustedButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
   trustedButtonText: { color: colors.heart, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, height: 46, gap: spacing.sm },
+  searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, height: 46, gap: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
   resultsRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   resultsText: { fontSize: fontSize.sm, color: colors.textSecondary },

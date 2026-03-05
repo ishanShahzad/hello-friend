@@ -28,7 +28,7 @@ const VARIANTS = {
   },
   inner: {
     ios: { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.4)', blurIntensity: 30 },
-    android: { backgroundColor: 'rgba(255,255,255,0.82)', borderColor: 'rgba(0,0,0,0.04)' },
+    android: { backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(0,0,0,0.03)' },
   },
 };
 
@@ -54,10 +54,18 @@ export default function GlassPanel({ children, style, variant = 'default' }) {
     );
   }
 
-  // Android — higher opacity, subtle colored border, and a soft shadow for depth
+  // Android — higher opacity fallback; keep inner panels flat to avoid double-boxing
   const v = config.android;
+  const isInner = variant === 'inner';
   return (
-    <View style={[styles.panel, styles.androidPanel, { backgroundColor: v.backgroundColor, borderColor: v.borderColor }, style]}>
+    <View
+      style={[
+        styles.panel,
+        isInner ? styles.androidInnerPanel : styles.androidPanel,
+        { backgroundColor: v.backgroundColor, borderColor: v.borderColor, borderWidth: isInner ? 0 : 1 },
+        style,
+      ]}
+    >
       {children}
     </View>
   );
@@ -75,5 +83,10 @@ const styles = StyleSheet.create({
     // Soft shadow for Android — no colored shadow to avoid double-box look
     elevation: 2,
     shadowColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  androidInnerPanel: {
+    // Inner cards stay flat on Android to prevent parent/child double panel effect
+    elevation: 0,
+    shadowOpacity: 0,
   },
 });

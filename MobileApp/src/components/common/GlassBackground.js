@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Animated, Dimensions, Platform, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../styles/theme';
 
@@ -57,7 +57,7 @@ export default function GlassBackground({ children, style, variant = 'default' }
     : ['#eef2ff', '#e0e7ff', '#dbeafe', '#ede9fe', '#e0e7ff'];
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, Platform.OS === 'android' && styles.androidSafeTop, style]}>
       <LinearGradient colors={gradientColors} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         {/* Floating orbs for depth */}
         <View style={styles.orbContainer} pointerEvents="none">
@@ -75,6 +75,9 @@ export default function GlassBackground({ children, style, variant = 'default' }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  androidSafeTop: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
   },
   gradient: {
     flex: 1,

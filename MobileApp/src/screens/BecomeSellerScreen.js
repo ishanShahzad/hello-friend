@@ -71,6 +71,17 @@ export default function BecomeSellerScreen({ navigation }) {
     <GlassBackground>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}>
+          {/* Header with back navigation */}
+          <GlassPanel variant="floating" style={styles.header}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
+            </TouchableOpacity>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle}>Become a Seller</Text>
+              <Text style={styles.headerSubtitle}>Start your store journey</Text>
+            </View>
+          </GlassPanel>
+
           {/* Hero Header */}
           <GlassPanel variant="strong" style={styles.heroPanel}>
             <View style={styles.heroIcon}><Ionicons name="storefront" size={40} color={colors.primary} /></View>
@@ -160,6 +171,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   primaryBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 16 },
   primaryBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginBottom: spacing.md },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerCenter: { flex: 1, marginLeft: spacing.md },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   heroPanel: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   heroIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
   heroTitle: { fontSize: 24, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center', marginBottom: spacing.sm },
