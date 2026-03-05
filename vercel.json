@@ -1,7 +1,10 @@
 {
+  "buildCommand": "cd Frontend && npm install && npm run build",
+  "outputDirectory": "Frontend/dist",
+  "framework": null,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!sitemap.*\\.xml|robots\\.txt|og-image\\.png|favicon\\.svg|tortrose-logo\\.svg|manifest\\.json).*)",
       "destination": "/index.html"
     }
   ]
