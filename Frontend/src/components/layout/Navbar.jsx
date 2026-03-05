@@ -44,8 +44,8 @@ function Navbar() {
                 {/* Left: Logo + Nav Links */}
                 <div className="flex items-center gap-6">
                     <Link to="/" className="flex items-center shrink-0">
-                        <div className="glass-inner p-1.5 rounded-xl">
-                            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-7 sm:h-8" />
+                        <div className="glass-inner p-1.5 rounded-xl flex items-center justify-center">
+                            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-7 sm:h-8 block" />
                         </div>
                     </Link>
                     <div className="hidden md:flex items-center gap-1">
