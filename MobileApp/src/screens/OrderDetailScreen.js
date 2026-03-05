@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, RefreshControl,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, RefreshControl, SafeAreaView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,6 +91,14 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   return (
     <GlassBackground>
+      <SafeAreaView style={{ flex: 1 }}>
+      {/* Custom Header */}
+      <GlassPanel variant="floating" style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.md }}>
+        <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' }} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={{ flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text }}>Order Details</Text>
+      </GlassPanel>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
         
@@ -209,6 +217,7 @@ export default function OrderDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         )}
       </ScrollView>
+      </SafeAreaView>
     </GlassBackground>
   );
 }

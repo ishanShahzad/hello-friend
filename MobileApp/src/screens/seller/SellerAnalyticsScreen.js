@@ -1,14 +1,14 @@
 /**
- * SellerAnalyticsScreen — Liquid Glass
+ * SellerAnalyticsScreen — Full analytics matching website
+ * Revenue trend, order volume, order status, top products, category breakdown
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl,
+  View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, SafeAreaView, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../config/api';
-import StatCard from '../../components/common/StatCard';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
@@ -16,101 +16,371 @@ import {
   colors, spacing, fontSize, fontWeight, borderRadius, typography, glass,
 } from '../../styles/theme';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const RANGES = [
+  { label: '7 Days', value: '7' },
+  { label: '30 Days', value: '30' },
+  { label: '90 Days', value: '90' },
+];
+
+const STATUS_COLORS = [colors.warning, colors.info, colors.primary, colors.success, colors.error, '#f43f5e'];
+const CAT_COLORS = ['#6366f1', '#10b981', '#0ea5e9', '#8b5cf6', '#f97316', '#ec4899'];
+
 export default function SellerAnalyticsScreen({ navigation }) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [timeRange, setTimeRange] = useState('30');
   const [analytics, setAnalytics] = useState(null);
   const [error, setError] = useState(null);
 
-  useEffect(() => { fetchAnalytics(); }, []);
-
   const fetchAnalytics = async () => {
+    setLoading(true); setError(null);
     try {
-      setError(null);
-      const response = await api.get('/api/stores/analytics');
-      setAnalytics(response.data);
-    } catch (err) {
-      setError('Failed to load analytics. Pull to refresh.');
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      const res = await api.get(`/api/analytics/seller?days=${timeRange}`);
+      setAnalytics(res.data.analytics);
+    } catch (e) {
+      // Fallback: try to build from local data
+      try {
+        const [productsRes, ordersRes] = await Promise.all([
+          api.get('/api/products/get-seller-products').catch(() => ({ data: { products: [] } })),
+          api.get('/api/order/get').catch(() => ({ data: { orders: [] } })),
+        ]);
+        const products = productsRes.data?.products || productsRes.data || [];
+        const orders = ordersRes.data?.orders || [];
+        buildLocalAnalytics(products, orders);
+      } catch {
+        setError('Failed to load analytics.');
+      }
+    } finally { setLoading(false); setRefreshing(false); }
+  };
+
+  const buildLocalAnalytics = (products, orders) => {
+    const days = parseInt(timeRange);
+    const now = new Date();
+    const startDate = new Date(now); startDate.setDate(startDate.getDate() - days);
+    const filtered = orders.filter(o => new Date(o.createdAt) >= startDate);
+
+    const dayBuckets = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dayBuckets[key] = { date: key, revenue: 0, orders: 0 };
     }
+    filtered.forEach(o => {
+      const key = new Date(o.createdAt).toISOString().slice(0, 10);
+      if (dayBuckets[key]) {
+        dayBuckets[key].orders++;
+        if (o.isPaid || o.status !== 'cancelled') dayBuckets[key].revenue += (o.orderSummary?.totalAmount || o.totalAmount || o.total || 0);
+      }
+    });
+
+    const productMap = {};
+    filtered.forEach(o => {
+      if (o.status === 'cancelled') return;
+      o.orderItems?.forEach(item => {
+        const id = item.productId || item._id;
+        if (!productMap[id]) productMap[id] = { name: item.name, revenue: 0, sold: 0 };
+        productMap[id].revenue += (item.price || 0) * (item.quantity || item.qty || 1);
+        productMap[id].sold += (item.quantity || item.qty || 1);
+      });
+    });
+
+    const catMap = {};
+    products.forEach(p => {
+      const cat = p.category || 'Uncategorized';
+      if (!catMap[cat]) catMap[cat] = { name: cat, count: 0 };
+      catMap[cat].count++;
+    });
+
+    const statusCounts = { pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    filtered.forEach(o => {
+      const s = o.orderStatus || o.status || 'pending';
+      if (statusCounts[s] !== undefined) statusCounts[s]++;
+    });
+
+    const totalRevenue = filtered.reduce((s, o) => o.status !== 'cancelled' ? s + (o.orderSummary?.totalAmount || o.totalAmount || o.total || 0) : s, 0);
+    const paidOrders = filtered.filter(o => o.status !== 'cancelled').length;
+    const totalUnitsSold = filtered.reduce((s, o) => o.status !== 'cancelled' ? s + (o.orderItems?.reduce((a, i) => a + (i.quantity || i.qty || 1), 0) || 0) : s, 0);
+
+    setAnalytics({
+      revenueByDay: Object.values(dayBuckets),
+      topProducts: Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+      categoryBreakdown: Object.values(catMap).sort((a, b) => b.count - a.count),
+      statusBreakdown: Object.entries(statusCounts).map(([name, value]) => ({ name, value })),
+      summary: {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        paidOrders,
+        avgOrderValue: paidOrders > 0 ? Math.round((totalRevenue / paidOrders) * 100) / 100 : 0,
+        totalUnitsSold,
+        conversionRate: filtered.length > 0 ? Math.round((paidOrders / filtered.length) * 100) : 0,
+      }
+    });
   };
 
-  const onRefresh = useCallback(() => { setRefreshing(true); fetchAnalytics(); }, []);
+  useEffect(() => { fetchAnalytics(); }, [timeRange]);
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchAnalytics(); }, [timeRange]);
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  };
+  if (loading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading analytics..." /></SafeAreaView></GlassBackground>;
 
-  if (isLoading) {
-    return <GlassBackground><Loader fullScreen message="Loading analytics..." /></GlassBackground>;
-  }
+  if (error) return (
+    <GlassBackground>
+      <SafeAreaView style={{flex:1}}>
+        <View style={styles.errorContainer}>
+          <GlassPanel variant="card" style={styles.errorCard}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.warning} />
+            <Text style={styles.errorTitle}>Analytics Unavailable</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchAnalytics}><Text style={styles.retryBtnText}>Retry</Text></TouchableOpacity>
+          </GlassPanel>
+        </View>
+      </SafeAreaView>
+    </GlassBackground>
+  );
+
+  if (!analytics) return null;
+  const s = analytics.summary;
+
+  const summaryStats = [
+    { label: 'Total Revenue', value: `$${(s.totalRevenue || 0).toFixed(2)}`, icon: 'cash-outline', color: colors.success, bg: 'rgba(16,185,129,0.12)' },
+    { label: 'Paid Orders', value: s.paidOrders || 0, icon: 'receipt-outline', color: colors.info, bg: 'rgba(99,102,241,0.12)' },
+    { label: 'Avg Order Value', value: `$${(s.avgOrderValue || 0).toFixed(2)}`, icon: 'trending-up-outline', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+    { label: 'Units Sold', value: s.totalUnitsSold || 0, icon: 'cube-outline', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  ];
+
+  const maxRevenue = Math.max(...(analytics.revenueByDay || []).map(d => d.revenue), 1);
+  const maxOrders = Math.max(...(analytics.revenueByDay || []).map(d => d.orders), 1);
+
+  const statusBreakdown = analytics.statusBreakdown || [];
+  const totalStatusCount = statusBreakdown.reduce((sum, s) => sum + s.value, 0);
 
   return (
     <GlassBackground>
+      <SafeAreaView style={{flex:1}}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         
-        <GlassPanel variant="floating" style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="bar-chart" size={28} color={colors.primary} />
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <View style={{flex:1}}>
+            <View style={styles.tagPill}><Ionicons name="sparkles" size={12} color={colors.primary} /><Text style={styles.tagText}>Analytics</Text></View>
+            <Text style={styles.headerTitle}>Store Analytics</Text>
+            <Text style={styles.headerSubtitle}>Track your store performance</Text>
           </View>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>{analytics?.storeName || 'Store Analytics'}</Text>
-            <Text style={styles.headerSubtitle}>Member since {formatDate(analytics?.createdAt)}</Text>
+        </View>
+
+        {/* Period Selector */}
+        <View style={styles.rangeRow}>
+          {RANGES.map(r => (
+            <TouchableOpacity key={r.value} style={[styles.rangeBtn, timeRange === r.value && styles.rangeBtnActive]}
+              onPress={() => setTimeRange(r.value)}>
+              <Ionicons name="calendar-outline" size={12} color={timeRange === r.value ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.rangeBtnText, timeRange === r.value && { color: colors.primary }]}>{r.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Summary Stats */}
+        <View style={styles.statsGrid}>
+          {summaryStats.map((stat) => (
+            <GlassPanel key={stat.label} variant="card" style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: stat.bg }]}>
+                <Ionicons name={stat.icon} size={20} color={stat.color} />
+              </View>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+              <Text style={styles.statValue}>{stat.value}</Text>
+            </GlassPanel>
+          ))}
+        </View>
+
+        {/* Revenue Chart */}
+        <GlassPanel variant="card" style={styles.chartSection}>
+          <View style={styles.chartHeader}>
+            <View>
+              <Text style={styles.chartTitle}>Revenue Trend</Text>
+              <Text style={styles.chartSubtitle}>Daily revenue over {timeRange} days</Text>
+            </View>
+            <View style={[styles.chartIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+              <Ionicons name="trending-up" size={18} color={colors.success} />
+            </View>
+          </View>
+          <View style={styles.barChart}>
+            {(analytics.revenueByDay || []).slice(-14).map((day, i) => (
+              <View key={i} style={styles.barContainer}>
+                <View style={[styles.bar, { height: Math.max((day.revenue / maxRevenue) * 120, 4), backgroundColor: colors.success }]} />
+                {i % 3 === 0 && (
+                  <Text style={styles.barLabel}>{new Date(day.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</Text>
+                )}
+              </View>
+            ))}
           </View>
         </GlassPanel>
 
-        {error ? (
-          <GlassPanel variant="card" style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
-          </GlassPanel>
-        ) : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Performance Overview</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statWrapper}>
-                <StatCard title="Store Views" value={analytics?.views ?? 0} icon="eye-outline" iconColor={colors.info} iconBgColor="rgba(14,165,233,0.12)" />
-              </View>
-              <View style={styles.statWrapper}>
-                <StatCard title="Total Products" value={analytics?.productCount ?? 0} icon="cube-outline" iconColor={colors.secondary} iconBgColor="rgba(139,92,246,0.12)" />
-              </View>
+        {/* Order Volume Chart */}
+        <GlassPanel variant="card" style={styles.chartSection}>
+          <View style={styles.chartHeader}>
+            <View>
+              <Text style={styles.chartTitle}>Order Volume</Text>
+              <Text style={styles.chartSubtitle}>Daily orders received</Text>
             </View>
-            <View style={styles.statsGrid}>
-              <View style={styles.statWrapper}>
-                <StatCard title="Total Sales" value={`$${(analytics?.totalSales ?? 0).toLocaleString()}`} icon="cash-outline" iconColor={colors.success} iconBgColor="rgba(16,185,129,0.12)" />
-              </View>
-              <View style={styles.statWrapper}>
-                <StatCard title="Trust Count" value={analytics?.trustCount ?? 0} icon="heart-outline" iconColor={colors.error} iconBgColor="rgba(239,68,68,0.12)" />
-              </View>
+            <View style={[styles.chartIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
+              <Ionicons name="bar-chart" size={18} color={colors.primary} />
             </View>
           </View>
+          <View style={styles.barChart}>
+            {(analytics.revenueByDay || []).slice(-14).map((day, i) => (
+              <View key={i} style={styles.barContainer}>
+                <View style={[styles.bar, { height: Math.max((day.orders / maxOrders) * 120, 4), backgroundColor: colors.primary }]} />
+                {i % 3 === 0 && (
+                  <Text style={styles.barLabel}>{new Date(day.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        </GlassPanel>
+
+        {/* Order Status Distribution */}
+        {statusBreakdown.length > 0 && totalStatusCount > 0 && (
+          <GlassPanel variant="card" style={styles.chartSection}>
+            <Text style={styles.chartTitle}>Order Status</Text>
+            <Text style={[styles.chartSubtitle, {marginBottom: spacing.md}]}>Breakdown by current status</Text>
+            {/* Visual pie approximation */}
+            <View style={styles.statusPieRow}>
+              <View style={styles.pieContainer}>
+                {statusBreakdown.map((st, i) => {
+                  if (st.value === 0) return null;
+                  const pct = (st.value / totalStatusCount) * 100;
+                  return (
+                    <View key={st.name} style={[styles.pieSegment, { 
+                      width: `${pct}%`, 
+                      backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length],
+                      borderTopLeftRadius: i === 0 ? 6 : 0,
+                      borderBottomLeftRadius: i === 0 ? 6 : 0,
+                      borderTopRightRadius: i === statusBreakdown.filter(s=>s.value>0).length - 1 ? 6 : 0,
+                      borderBottomRightRadius: i === statusBreakdown.filter(s=>s.value>0).length - 1 ? 6 : 0,
+                    }]} />
+                  );
+                })}
+              </View>
+            </View>
+            <View style={styles.statusLegend}>
+              {statusBreakdown.map((st, i) => st.value > 0 && (
+                <View key={st.name} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }]} />
+                  <Text style={styles.legendName}>{st.name}</Text>
+                  <Text style={styles.legendValue}>{st.value}</Text>
+                </View>
+              ))}
+            </View>
+          </GlassPanel>
+        )}
+
+        {/* Top Products */}
+        {analytics.topProducts?.length > 0 && (
+          <GlassPanel variant="card" style={styles.chartSection}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text style={styles.chartTitle}>Top Products</Text>
+                <Text style={styles.chartSubtitle}>By revenue generated</Text>
+              </View>
+              <View style={[styles.chartIcon, { backgroundColor: 'rgba(139,92,246,0.12)' }]}>
+                <Ionicons name="star" size={18} color="#8b5cf6" />
+              </View>
+            </View>
+            {analytics.topProducts.slice(0, 6).map((p, i) => (
+              <View key={i} style={styles.topRow}>
+                <Text style={styles.topRank}>#{i + 1}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.topName} numberOfLines={1}>{p.name}</Text>
+                  <Text style={styles.topMeta}>${p.revenue?.toFixed(2)} · {p.sold} sold</Text>
+                </View>
+              </View>
+            ))}
+          </GlassPanel>
+        )}
+
+        {/* Category Breakdown */}
+        {analytics.categoryBreakdown?.length > 0 && (
+          <GlassPanel variant="card" style={styles.chartSection}>
+            <Text style={styles.chartTitle}>Category Breakdown</Text>
+            <Text style={[styles.chartSubtitle, {marginBottom: spacing.md}]}>Products by category</Text>
+            {analytics.categoryBreakdown.slice(0, 6).map((cat, i) => {
+              const total = analytics.categoryBreakdown.reduce((s, c) => s + c.count, 0);
+              const pct = total > 0 ? ((cat.count / total) * 100).toFixed(0) : 0;
+              return (
+                <View key={cat.name} style={styles.catRow}>
+                  <View style={styles.catLeft}>
+                    <View style={[styles.legendDot, { backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }]} />
+                    <Text style={styles.catName}>{cat.name}</Text>
+                  </View>
+                  <View style={styles.catBarContainer}>
+                    <View style={[styles.catBar, { width: `${pct}%`, backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }]} />
+                  </View>
+                  <Text style={styles.catCount}>{cat.count}</Text>
+                </View>
+              );
+            })}
+          </GlassPanel>
         )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      </SafeAreaView>
     </GlassBackground>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
-  header: { flexDirection: 'row', alignItems: 'center', margin: spacing.lg, padding: spacing.lg },
-  headerIcon: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: 'rgba(99,102,241,0.12)',
-    justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
-  },
-  headerText: { flex: 1 },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+  tagPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(99,102,241,0.12)', alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, marginBottom: spacing.xs },
+  tagText: { fontSize: 11, color: colors.primary, fontWeight: fontWeight.semibold },
+  headerTitle: { fontSize: fontSize.xxl + 2, fontWeight: fontWeight.bold, color: colors.text, letterSpacing: -0.5 },
   headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  section: { padding: spacing.lg },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: spacing.md },
-  statsGrid: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  statWrapper: { flex: 1 },
-  errorContainer: { alignItems: 'center', padding: spacing.xxxl, margin: spacing.lg },
-  errorText: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.md },
+  rangeRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.lg },
+  rangeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
+  rangeBtnActive: { backgroundColor: 'rgba(99,102,241,0.12)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' },
+  rangeBtnText: { fontSize: 12, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingHorizontal: spacing.lg },
+  statCard: { width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2, padding: spacing.md },
+  statIcon: { width: 40, height: 40, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+  statLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  statValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, letterSpacing: -0.5, marginTop: 2 },
+  chartSection: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg },
+  chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  chartTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  chartSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  chartIcon: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 140 },
+  barContainer: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
+  bar: { width: '100%', borderRadius: 3, minWidth: 4 },
+  barLabel: { fontSize: 8, color: colors.textSecondary, marginTop: 4 },
+  statusPieRow: { marginBottom: spacing.md },
+  pieContainer: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)' },
+  pieSegment: { height: 12 },
+  statusLegend: { gap: spacing.sm },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendName: { flex: 1, fontSize: 12, color: colors.textSecondary, textTransform: 'capitalize' },
+  legendValue: { fontSize: 12, fontWeight: fontWeight.bold, color: colors.text },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  topRank: { fontSize: 12, fontWeight: fontWeight.bold, color: colors.textSecondary, width: 24 },
+  topName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+  topMeta: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  catRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  catLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: 100 },
+  catName: { fontSize: 12, color: colors.textSecondary },
+  catBarContainer: { flex: 1, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.06)' },
+  catBar: { height: 8, borderRadius: 4 },
+  catCount: { fontSize: 12, fontWeight: fontWeight.bold, color: colors.text, width: 30, textAlign: 'right' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxl },
+  errorCard: { alignItems: 'center', padding: spacing.xxl },
+  errorTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md },
+  errorText: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm },
+  retryBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, marginTop: spacing.lg },
+  retryBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: 'white' },
 });

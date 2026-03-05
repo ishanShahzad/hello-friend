@@ -335,12 +335,12 @@ export default function AppNavigator() {
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreen}
-        options={{ title: 'Product Details' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Store"
         component={StoreScreen}
-        options={{ title: 'Store' }}
+        options={{ headerShown: false }}
       />
       
       {/* Protected Screens - require login */}
@@ -357,132 +357,36 @@ export default function AppNavigator() {
       <Stack.Screen
         name="OrderDetail"
         component={OrderDetailScreen}
-        options={{ title: 'Order Details' }}
+        options={{ headerShown: false }}
       />
 
       {/* Admin Dashboard (role-guarded: admin only) */}
-      <Stack.Screen
-        name="AdminDashboard"
-        component={GuardedAdminDashboard}
-        options={{ title: 'Admin Dashboard' }}
-      />
-      <Stack.Screen
-        name="AdminStoreOverview"
-        component={GuardedAdminStoreOverview}
-        initialParams={{ isAdmin: true }}
-        options={{ title: 'Store Overview' }}
-      />
-      <Stack.Screen
-        name="AdminProductManagement"
-        component={GuardedAdminProductManagement}
-        initialParams={{ isAdmin: true }}
-        options={{ title: 'Product Management' }}
-      />
-      <Stack.Screen
-        name="AdminOrderManagement"
-        component={GuardedAdminOrderManagement}
-        initialParams={{ isAdmin: true }}
-        options={{ title: 'Order Management' }}
-      />
-      <Stack.Screen
-        name="AdminUserManagement"
-        component={GuardedAdminUserManagement}
-        options={{ title: 'User Management' }}
-      />
-      <Stack.Screen
-        name="AdminTaxConfiguration"
-        component={GuardedAdminTaxConfiguration}
-        options={{ title: 'Tax Configuration' }}
-      />
-      <Stack.Screen
-        name="StoreVerification"
-        component={GuardedStoreVerification}
-        options={{ title: 'Store Verification' }}
-      />
-      <Stack.Screen
-        name="AdminNotifications"
-        component={GuardedAdminNotifications}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AdminAnalytics"
-        component={GuardedAdminAnalytics}
-        options={{ title: 'Platform Analytics' }}
-      />
+      <Stack.Screen name="AdminDashboard" component={GuardedAdminDashboard} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminStoreOverview" component={GuardedAdminStoreOverview} initialParams={{ isAdmin: true }} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminProductManagement" component={GuardedAdminProductManagement} initialParams={{ isAdmin: true }} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminOrderManagement" component={GuardedAdminOrderManagement} initialParams={{ isAdmin: true }} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminUserManagement" component={GuardedAdminUserManagement} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminTaxConfiguration" component={GuardedAdminTaxConfiguration} options={{ headerShown: false }} />
+      <Stack.Screen name="StoreVerification" component={GuardedStoreVerification} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminNotifications" component={GuardedAdminNotifications} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminAnalytics" component={GuardedAdminAnalytics} options={{ headerShown: false }} />
 
       {/* Seller Dashboard (role-guarded: seller or admin) */}
-      <Stack.Screen
-        name="SellerDashboard"
-        component={GuardedSellerDashboard}
-        options={{ title: 'Seller Dashboard' }}
-      />
-      <Stack.Screen
-        name="SellerAnalytics"
-        component={GuardedSellerAnalytics}
-        options={{ title: 'Store Analytics' }}
-      />
-      <Stack.Screen
-        name="SellerStoreOverview"
-        component={GuardedSellerStoreOverview}
-        initialParams={{ isAdmin: false }}
-        options={{ title: 'Store Overview' }}
-      />
-      <Stack.Screen
-        name="SellerProductManagement"
-        component={GuardedSellerProductManagement}
-        initialParams={{ isAdmin: false }}
-        options={{ title: 'Product Management' }}
-      />
-      <Stack.Screen
-        name="SellerOrderManagement"
-        component={GuardedSellerOrderManagement}
-        initialParams={{ isAdmin: false }}
-        options={{ title: 'Order Management' }}
-      />
-      <Stack.Screen
-        name="SellerStoreSettings"
-        component={GuardedSellerStoreSettings}
-        options={{ title: 'Store Settings' }}
-      />
-      <Stack.Screen
-        name="SellerShippingConfiguration"
-        component={GuardedSellerShippingConfiguration}
-        options={{ title: 'Shipping Configuration' }}
-      />
-      <Stack.Screen
-        name="SellerNotifications"
-        component={GuardedSellerNotifications}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="SellerHome"
-        component={GuardedSellerHome}
-        options={{ title: 'Seller Home' }}
-      />
-      <Stack.Screen
-        name="NotificationSettings"
-        component={GuardedNotificationSettings}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="UserDashboard"
-        component={UserDashboardScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="SellerDashboard" component={GuardedSellerDashboard} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerAnalytics" component={GuardedSellerAnalytics} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerStoreOverview" component={GuardedSellerStoreOverview} initialParams={{ isAdmin: false }} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerProductManagement" component={GuardedSellerProductManagement} initialParams={{ isAdmin: false }} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerOrderManagement" component={GuardedSellerOrderManagement} initialParams={{ isAdmin: false }} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerStoreSettings" component={GuardedSellerStoreSettings} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerShippingConfiguration" component={GuardedSellerShippingConfiguration} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerNotifications" component={GuardedSellerNotifications} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerHome" component={GuardedSellerHome} options={{ headerShown: false }} />
+      <Stack.Screen name="NotificationSettings" component={GuardedNotificationSettings} options={{ headerShown: false }} />
+      <Stack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ headerShown: false }} />
 
       {/* Shared Screens (role-guarded: seller or admin) */}
-      <Stack.Screen
-        name="ProductForm"
-        component={GuardedProductForm}
-        options={({ route }) => ({
-          title: route.params?.productId ? 'Edit Product' : 'Add Product'
-        })}
-      />
-      <Stack.Screen
-        name="OrderDetailManagement"
-        component={GuardedOrderDetailManagement}
-        options={{ title: 'Order Details' }}
-      />
+      <Stack.Screen name="ProductForm" component={GuardedProductForm} options={{ headerShown: false }} />
+      <Stack.Screen name="OrderDetailManagement" component={GuardedOrderDetailManagement} options={{ headerShown: false }} />
 
       {/* Feature Screens */}
       <Stack.Screen
@@ -500,16 +404,8 @@ export default function AppNavigator() {
         component={EditProfileScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen
-        name="TrustedStores"
-        component={TrustedStoresScreen}
-        options={{ title: 'Trusted Stores' }}
-      />
-      <Stack.Screen
-        name="BecomeSeller"
-        component={BecomeSellerScreen}
-        options={{ title: 'Become a Seller' }}
-      />
+      <Stack.Screen name="TrustedStores" component={TrustedStoresScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="BecomeSeller" component={BecomeSellerScreen} options={{ headerShown: false }} />
 
       {/* Payment Result Screens */}
       <Stack.Screen

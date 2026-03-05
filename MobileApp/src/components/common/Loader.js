@@ -8,46 +8,35 @@ import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { colors, spacing } from '../../styles/theme';
 
 const SIZES = {
-  small: { container: 48, orb: 10, gap: 10 },
-  medium: { container: 80, orb: 14, gap: 14 },
-  large: { container: 112, orb: 18, gap: 18 },
+  small: { container: 36, orb: 7, gap: 8 },
+  medium: { container: 56, orb: 10, gap: 10 },
+  large: { container: 80, orb: 14, gap: 14 },
 };
 
 const ORB_COLORS = [
-  ['#60a5fa', '#6366f1'], // blue → indigo
-  ['#c084fc', '#ec4899'], // purple → pink
-  ['#22d3ee', '#3b82f6'], // cyan → blue
-  ['#818cf8', '#a855f7'], // indigo → purple
+  ['#60a5fa', '#6366f1'],
+  ['#c084fc', '#ec4899'],
+  ['#22d3ee', '#3b82f6'],
+  ['#818cf8', '#a855f7'],
 ];
 
-const Loader = ({ size = 'medium', text = '', style }) => {
+const Loader = ({ size = 'medium', text = '', style, fullScreen = false }) => {
   const s = SIZES[size] || SIZES.medium;
 
-  // One rotation value per orb
   const rotations = useRef(ORB_COLORS.map(() => new Animated.Value(0))).current;
-  // Scale pulse per orb
   const scales = useRef(ORB_COLORS.map(() => new Animated.Value(1))).current;
-  // Center pulse
   const centerScale = useRef(new Animated.Value(0.8)).current;
   const centerOpacity = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    // Orbit animations
     const orbitAnims = rotations.map((val, i) =>
       Animated.loop(
         Animated.sequence([
           Animated.delay(i * 150),
-          Animated.timing(val, {
-            toValue: 1,
-            duration: 2400,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
+          Animated.timing(val, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true }),
         ])
       )
     );
-
-    // Scale pulse animations
     const scaleAnims = scales.map((val, i) =>
       Animated.loop(
         Animated.sequence([
@@ -57,8 +46,6 @@ const Loader = ({ size = 'medium', text = '', style }) => {
         ])
       )
     );
-
-    // Center pulse
     const centerAnim = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -71,82 +58,44 @@ const Loader = ({ size = 'medium', text = '', style }) => {
         ]),
       ])
     );
-
     [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.start());
     return () => [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.stop());
   }, []);
 
-  return (
+  const loaderContent = (
     <View style={[styles.wrapper, style]}>
       <View style={[styles.container, { width: s.container, height: s.container }]}>
-        {/* Glass backdrop circle */}
         <View style={[styles.backdrop, { width: s.container, height: s.container, borderRadius: s.container / 2 }]} />
-
-        {/* Orbiting dots */}
         {ORB_COLORS.map((colorPair, i) => {
-          const rotate = rotations[i].interpolate({
-            inputRange: [0, 1],
-            outputRange: ['0deg', '360deg'],
-          });
+          const rotate = rotations[i].interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
           return (
-            <Animated.View
-              key={i}
-              style={[
-                styles.orbitWrap,
-                { width: s.container, height: s.container, transform: [{ rotate }] },
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.orb,
-                  {
-                    width: s.orb,
-                    height: s.orb,
-                    borderRadius: s.orb / 2,
-                    backgroundColor: colorPair[0],
-                    transform: [{ translateY: -s.gap }, { scale: scales[i] }],
-                    shadowColor: colorPair[1],
-                  },
-                ]}
-              />
+            <Animated.View key={i} style={[styles.orbitWrap, { width: s.container, height: s.container, transform: [{ rotate }] }]}>
+              <Animated.View style={[styles.orb, { width: s.orb, height: s.orb, borderRadius: s.orb / 2, backgroundColor: colorPair[0], transform: [{ translateY: -s.gap }, { scale: scales[i] }], shadowColor: colorPair[1] }]} />
             </Animated.View>
           );
         })}
-
-        {/* Center pulse */}
-        <Animated.View
-          style={[
-            styles.center,
-            {
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              opacity: centerOpacity,
-              transform: [{ scale: centerScale }],
-            },
-          ]}
-        />
+        <Animated.View style={[styles.center, { width: 8, height: 8, borderRadius: 4, opacity: centerOpacity, transform: [{ scale: centerScale }] }]} />
       </View>
-
-      {text ? (
-        <Animated.Text style={styles.text}>{text}</Animated.Text>
-      ) : null}
+      {text ? <Text style={styles.text}>{text}</Text> : null}
     </View>
   );
+
+  if (fullScreen) {
+    return <View style={styles.fullScreen}>{loaderContent}</View>;
+  }
+
+  return loaderContent;
 };
 
 // Simple inline loader for buttons
 export const InlineLoader = ({ size = 20, color = colors.white }) => {
   const spin = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.loop(
       Animated.timing(spin, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, []);
-
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
   return (
     <Animated.View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: color, borderTopColor: 'transparent', transform: [{ rotate }] }} />
   );
@@ -166,10 +115,15 @@ export const LoadingOverlay = ({ visible, message }) => {
 };
 
 const styles = StyleSheet.create({
+  fullScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   container: {
     alignItems: 'center',
@@ -197,7 +151,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.8)',
   },
   text: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.textSecondary,
   },

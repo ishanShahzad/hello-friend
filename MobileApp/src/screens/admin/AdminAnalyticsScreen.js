@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../config/api';
@@ -45,10 +45,11 @@ export default function AdminAnalyticsScreen({ navigation }) {
   useEffect(() => { fetchAnalytics(); }, [timeRange]);
   const onRefresh = useCallback(() => { setRefreshing(true); fetchAnalytics(); }, [timeRange]);
 
-  if (loading) return <GlassBackground><Loader fullScreen message="Loading analytics..." /></GlassBackground>;
+  if (loading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading analytics..." /></SafeAreaView></GlassBackground>;
 
   if (error) return (
     <GlassBackground>
+      <SafeAreaView style={{flex:1}}>
       <View style={styles.errorContainer}>
         <GlassPanel variant="card" style={styles.errorCard}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.warning} />
@@ -57,6 +58,7 @@ export default function AdminAnalyticsScreen({ navigation }) {
           <TouchableOpacity style={styles.retryBtn} onPress={fetchAnalytics}><Text style={styles.retryBtnText}>Retry</Text></TouchableOpacity>
         </GlassPanel>
       </View>
+      </SafeAreaView>
     </GlassBackground>
   );
 
@@ -76,12 +78,16 @@ export default function AdminAnalyticsScreen({ navigation }) {
 
   return (
     <GlassBackground>
+      <SafeAreaView style={{flex:1}}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         
         {/* Header */}
         <View style={styles.headerRow}>
-          <View>
+          <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginTop: 4 }} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <View style={{flex:1}}>
             <View style={styles.tagPill}><Ionicons name="sparkles" size={12} color={colors.primary} /><Text style={styles.tagText}>Platform Analytics</Text></View>
             <Text style={styles.headerTitle}>Admin Analytics</Text>
             <Text style={styles.headerSubtitle}>Last {timeRange} days vs previous {timeRange} days</Text>
@@ -202,13 +208,14 @@ export default function AdminAnalyticsScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      </SafeAreaView>
     </GlassBackground>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
-  headerRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
   tagPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(99,102,241,0.12)', alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, marginBottom: spacing.sm },
   tagText: { ...typography.caption, color: colors.primary, fontWeight: fontWeight.semibold },
   headerTitle: { fontSize: fontSize.xxl + 4, fontWeight: fontWeight.bold, color: colors.text, letterSpacing: -0.5 },

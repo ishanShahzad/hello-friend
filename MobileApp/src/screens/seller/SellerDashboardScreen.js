@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions,
+  View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions, SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../config/api';
@@ -73,7 +73,6 @@ const QuickTile = ({ icon, color, label, onPress, badge }) => (
         )}
       </View>
       <Text style={styles.quickTileLabel} numberOfLines={1}>{label}</Text>
-      <Ionicons name="chevron-forward" size={14} color={colors.grayLight} />
     </GlassPanel>
   </TouchableOpacity>
 );
@@ -107,7 +106,7 @@ export default function SellerDashboardScreen({ navigation }) {
   const onRefresh = useCallback(() => { setRefreshing(true); fetchDashboardData(); }, []);
   const recentOrders = orders.slice(0, 5);
 
-  if (isLoading) return <GlassBackground><Loader fullScreen message="Loading dashboard..." /></GlassBackground>;
+  if (isLoading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading dashboard..." /></SafeAreaView></GlassBackground>;
 
   const quickActions = [
     { icon: 'cube-outline', color: colors.secondary, label: 'Products', onPress: () => navigation.navigate('SellerProductManagement'), badge: stats.totalProducts },
@@ -120,6 +119,7 @@ export default function SellerDashboardScreen({ navigation }) {
 
   return (
     <GlassBackground>
+      <SafeAreaView style={{flex:1}}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -197,6 +197,7 @@ export default function SellerDashboardScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      </SafeAreaView>
     </GlassBackground>
   );
 }

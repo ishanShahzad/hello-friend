@@ -19,6 +19,7 @@ import {
   ScrollView,
   Animated,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
@@ -514,8 +515,10 @@ export default function HomeScreen({ navigation }) {
   if (isLoading && products.length === 0) {
     return (
       <GlassBackground>
-        <StatusBar barStyle="dark-content" />
-        <Loader fullScreen size="large" />
+        <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar barStyle="light-content" />
+        <Loader fullScreen size="medium" />
+        </SafeAreaView>
       </GlassBackground>
     );
   }
@@ -532,7 +535,8 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <GlassBackground>
-      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="light-content" />
       <FlatList
         data={products}
         keyExtractor={(item) => item._id}
@@ -564,6 +568,7 @@ export default function HomeScreen({ navigation }) {
         )}
       />
       {renderFilterModal()}
+      </SafeAreaView>
     </GlassBackground>
   );
 }
@@ -572,7 +577,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   // Hero Header
   heroHeader: { backgroundColor: colors.primaryDark, paddingBottom: spacing.xxxl },
-  heroTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
+  heroTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.white },
