@@ -76,6 +76,13 @@ import NotificationSettingsScreen from '../screens/shared/NotificationSettingsSc
 import SellerHomeScreen from '../screens/seller/SellerHomeScreen';
 import UserDashboardScreen from '../screens/UserDashboardScreen';
 
+// Informational Screens
+import FAQScreen from '../screens/FAQScreen';
+import ContactScreen from '../screens/ContactScreen';
+import AboutScreen from '../screens/AboutScreen';
+import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -406,6 +413,13 @@ export default function AppNavigator() {
       />
       <Stack.Screen name="TrustedStores" component={TrustedStoresScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BecomeSeller" component={BecomeSellerScreen} options={{ headerShown: false }} />
+
+      {/* Informational Screens */}
+      <Stack.Screen name="FAQ" component={FAQScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Contact" component={ContactScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
 
       {/* Payment Result Screens */}
       <Stack.Screen

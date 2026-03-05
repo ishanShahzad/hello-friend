@@ -90,15 +90,16 @@ export default function SettingsScreen({ navigation }) {
 
           <Text style={styles.sectionLabel}>SUPPORT</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="mail-outline" iconColor={colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="support@tortrose.com" onPress={() => Linking.openURL('mailto:support@tortrose.com')} />
-            <SettingRow icon="logo-whatsapp" iconColor="#25D366" iconBg="#e8fdf0" title="WhatsApp Support" subtitle="Chat with us directly" onPress={() => Linking.openURL('https://wa.me/923001234567')} />
+            <SettingRow icon="mail-outline" iconColor={colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="Get in touch with us" onPress={() => navigation.navigate('Contact')} />
+            <SettingRow icon="help-circle-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="FAQ" subtitle="Frequently asked questions" onPress={() => navigation.navigate('FAQ')} />
+            <SettingRow icon="information-circle-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Tortrose" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
             <SettingRow icon="star-outline" iconColor={colors.warning} iconBg="rgba(245,158,11,0.15)" title="Rate the App" subtitle="Share your experience" onPress={() => Alert.alert('Rate Us ⭐', 'Enjoying Tortrose?', [{ text: 'Maybe Later', style: 'cancel' }, { text: 'Rate Now', onPress: () => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com' : 'https://play.google.com') }])} showBorder={false} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>LEGAL</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="shield-outline" iconColor={colors.secondary} iconBg="rgba(139,92,246,0.15)" title="Privacy Policy" onPress={() => Linking.openURL('https://tortrose.com/privacy-policy')} />
-            <SettingRow icon="document-text-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Terms of Service" onPress={() => Linking.openURL('https://tortrose.com/terms')} showBorder={false} />
+            <SettingRow icon="shield-outline" iconColor={colors.secondary} iconBg="rgba(139,92,246,0.15)" title="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
+            <SettingRow icon="document-text-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Terms of Service" onPress={() => navigation.navigate('TermsOfService')} showBorder={false} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>ACCOUNT</Text>

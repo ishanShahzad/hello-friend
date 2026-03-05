@@ -1,16 +1,17 @@
 {
   "expo": {
-    "name": "Tortrose",
+    "name": "Tortrose — Trusted Marketplace",
     "slug": "tortrose",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "tortrose",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "description": "Tortrose is a modern marketplace built on trust. Shop from verified independent sellers, discover unique products, and enjoy a seamless shopping experience with secure payments, real-time order tracking, and multi-currency support.",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#6366f1"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,9 +19,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#6366f1"
       },
       "package": "com.tortrose.app",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -44,14 +46,20 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tortrose.app",
+      "buildNumber": "1",
       "associatedDomains": [
         "applinks:tortrose.com"
-      ]
+      ],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Tortrose needs camera access to let you take product photos.",
+        "NSPhotoLibraryUsageDescription": "Tortrose needs photo library access to let you upload product images."
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -82,6 +90,13 @@
           "project": "tortrose-mobile"
         }
       ]
-    ]
+    ],
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "locales": {
+      "en": "./locales/en.json"
+    },
+    "primaryColor": "#6366f1"
   }
 }
