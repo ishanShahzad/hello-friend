@@ -107,6 +107,17 @@ function ProductDetailPage() {
 
     useEffect(() => { fetchProduct(); }, [id]);
 
+    // Track product view for personalized recommendations
+    useEffect(() => {
+        if (id) {
+            const viewed = JSON.parse(localStorage.getItem('viewedProducts') || '[]');
+            if (!viewed.includes(id)) {
+                viewed.unshift(id);
+                localStorage.setItem('viewedProducts', JSON.stringify(viewed.slice(0, 20)));
+            }
+        }
+    }, [id]);
+
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }

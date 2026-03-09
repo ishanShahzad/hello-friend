@@ -274,11 +274,14 @@ function Products() {
 
       {/* Product Grid */}
       <main className='flex-1 p-4 lg:p-6'>
-        <div className='mb-6 flex flex-col gap-4'>
+        {/* Personalized Sections */}
+        <PersonalizedSections />
+
+        <div className='mb-6 mt-8 flex flex-col gap-4'>
           <StoreSearch />
           <div className='flex flex-col sm:flex-row justify-between items-center gap-3'>
             <div className='flex items-center gap-3'>
-              <h1 className='text-2xl lg:text-3xl font-extrabold tracking-tight'>Products</h1>
+              <h1 className='text-2xl lg:text-3xl font-extrabold tracking-tight'>All Products</h1>
               <Link to='/stores' className='tag-pill text-sm font-medium flex items-center gap-1'>
                 Browse Stores →
               </Link>
