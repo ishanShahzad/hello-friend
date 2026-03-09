@@ -112,7 +112,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
