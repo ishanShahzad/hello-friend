@@ -75,7 +75,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -101,14 +101,31 @@ exports.createStore = async (req, res) => {
             return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
         }
 
-        // Generate unique slug
-        const storeSlug = await generateUniqueSlug(storeName);
+        let finalSlug;
+        if (storeSlug) {
+            // Validate custom slug
+            if (storeSlug.length < 3) {
+                return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
+            }
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            if (reserved.includes(storeSlug.toLowerCase())) {
+                return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
+            }
+            const duplicateSlug = await Store.findOne({ storeSlug: storeSlug.toLowerCase() });
+            if (duplicateSlug) {
+                return res.status(409).json({ msg: 'This subdomain is already taken' });
+            }
+            finalSlug = storeSlug.toLowerCase();
+        } else {
+            // Generate unique slug
+            finalSlug = await generateUniqueSlug(storeName);
+        }
 
         // Create store
         const newStore = new Store({
             seller: sellerId,
             storeName: storeName.trim(),
-            storeSlug,
+            storeSlug: finalSlug,
             description: description || '',
             logo: logo || '',
             banner: banner || '',

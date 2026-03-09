@@ -174,10 +174,23 @@ const StoreSettings = () => {
             setSaving(true);
             const token = localStorage.getItem('jwtToken');
             const endpoint = hasStore ? 'update' : 'create';
-            const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, storeData, { headers: { Authorization: `Bearer ${token}` } });
+            
+            const payload = { ...storeData };
+            // Include the custom subdomain if it's set and valid
+            if (customSubdomain && customSubdomain.length >= 3) {
+                payload.storeSlug = customSubdomain;
+            }
+
+            const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg);
             setHasStore(true);
-            if (!hasStore) setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
+            
+            // Update local state with whatever the server returned
+            if (res.data.store) {
+                setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
+                setCustomSubdomain(res.data.store.storeSlug);
+            }
+            
             fetchAnalytics();
         } catch (error) { toast.error(error.response?.data?.msg || 'Failed to save store'); }
         finally { setSaving(false); }
