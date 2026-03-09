@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone } from 'lucide-react';
+import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -16,6 +16,13 @@ const StoreSettings = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    
+    // Subdomain state
+    const [customSubdomain, setCustomSubdomain] = useState('');
+    const [subdomainAvailable, setSubdomainAvailable] = useState(null);
+    const [subdomainChecking, setSubdomainChecking] = useState(false);
+    const [subdomainMessage, setSubdomainMessage] = useState('');
+    const [subdomainOwned, setSubdomainOwned] = useState(false);
 
     const formatCompactPrice = (amount) => {
         const usdAmount = Number(amount) || 0;
