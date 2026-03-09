@@ -178,6 +178,33 @@ exports.createStore = async (req, res) => {
 
         await newStore.save();
 
+        // Send store creation email
+        try {
+            const seller = await User.findById(sellerId);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '🎉 Your Store is Live!',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>Congratulations! Your store <strong>"${newStore.storeName}"</strong> has been successfully created on Tortrose.</p>
+                    <div class="highlight">
+                        <strong>Store URL:</strong> ${process.env.FRONTEND_URL}/store/${newStore.storeSlug}<br/>
+                        <strong>Subdomain:</strong> ${newStore.storeSlug}.tortrose.com <em>(activates after verification)</em>
+                    </div>
+                    <p>Next steps:</p>
+                    <ul>
+                        <li>Add products to your store</li>
+                        <li>Customize your store settings & branding</li>
+                        <li>Apply for verification to activate your subdomain</li>
+                    </ul>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
+                    'Manage Your Store'
+                );
+                await sendEmail({ to: seller.email, subject: `Your Store "${newStore.storeName}" is Live! 🎉`, html });
+            }
+        } catch (emailErr) {
+            console.error('Store creation email failed:', emailErr.message);
+        }
+
         res.status(201).json({
             msg: 'Store created successfully',
             store: newStore
