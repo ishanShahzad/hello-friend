@@ -19,7 +19,8 @@ const {
     getVerifiedStores,
     approveVerification,
     rejectVerification,
-    removeVerification
+    removeVerification,
+    checkSubdomainAvailability
 } = require('../controllers/storeController');
 const verifyToken = require('../middleware/authMiddleware');
 
