@@ -35,6 +35,7 @@ import GoogleAuthSuccess from '../components/auth/GoogleAuthSuccess'
 import StoreSettings from '../components/layout/StoreSettings'
 import SellerSubdomainManagement from '../components/layout/SellerSubdomainManagement'
 import AdminSubdomainManagement from '../components/layout/AdminSubdomainManagement'
+import ComplaintsManagement from '../components/layout/ComplaintsManagement'
 import StorePage from '../pages/StorePage'
 import StoresListing from '../pages/StoresListing'
 import TrustedStoresPage from '../pages/TrustedStoresPage'
@@ -198,6 +199,11 @@ function AppRoutes() {
                     <Route path='/admin-dashboard/subdomains' element={
                         <ProtectedRoute role={'admin'}>
                             <AdminSubdomainManagement />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/admin-dashboard/complaints' element={
+                        <ProtectedRoute role={'admin'}>
+                            <ComplaintsManagement />
                         </ProtectedRoute>
                     } />
                 </Route>

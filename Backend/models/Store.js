@@ -92,6 +92,37 @@ const storeSchema = new mongoose.Schema({
       default: ''
     }
   },
+  returnPolicy: {
+    returnsEnabled: {
+      type: Boolean,
+      default: false
+    },
+    returnDuration: {
+      type: Number,
+      default: 0 // days
+    },
+    refundType: {
+      type: String,
+      enum: ['none', 'full_refund', 'replacement_only', 'store_credit'],
+      default: 'none'
+    },
+    warrantyEnabled: {
+      type: Boolean,
+      default: false
+    },
+    warrantyDuration: {
+      type: Number,
+      default: 0 // months
+    },
+    warrantyDescription: {
+      type: String,
+      default: ''
+    },
+    policyDescription: {
+      type: String,
+      default: ''
+    }
+  },
   verification: {
     isVerified: {
       type: Boolean,

@@ -32,7 +32,15 @@ const productSchema = mongoose.Schema(
         isFeatured: { type: Boolean, default: false }, 
         tags: [String],
         seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Track who created the product
-        
+        returnPolicy: {
+            useStorePolicy: { type: Boolean, default: true }, // true = inherit from store
+            returnsEnabled: { type: Boolean, default: false },
+            returnDuration: { type: Number, default: 0 },
+            refundType: { type: String, enum: ['none', 'full_refund', 'replacement_only', 'store_credit'], default: 'none' },
+            warrantyEnabled: { type: Boolean, default: false },
+            warrantyDuration: { type: Number, default: 0 },
+            warrantyDescription: { type: String, default: '' },
+        },
     },
     {
         timestamps: true

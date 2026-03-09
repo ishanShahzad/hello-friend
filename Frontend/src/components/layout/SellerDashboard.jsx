@@ -882,6 +882,50 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                         )}
                     </div>
 
+                    {/* Return Policy Override */}
+                    <div className="glass-inner rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <input type="checkbox" checked={!(product.returnPolicy?.useStorePolicy ?? true)}
+                                onChange={e => setProduct({ ...product, returnPolicy: { ...(product.returnPolicy || {}), useStorePolicy: !e.target.checked } })}
+                                className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
+                            <div><p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Custom Return Policy</p>
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Override store default for this product</p></div>
+                        </div>
+                        {!(product.returnPolicy?.useStorePolicy ?? true) && (
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center gap-3">
+                                    <input type="checkbox" checked={product.returnPolicy?.returnsEnabled || false}
+                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnsEnabled: e.target.checked } })}
+                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
+                                    <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Allow Returns</span>
+                                </div>
+                                {product.returnPolicy?.returnsEnabled && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Days</label>
+                                            <input type="number" min={1} value={product.returnPolicy?.returnDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-2" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Refund Type</label>
+                                            <select value={product.returnPolicy?.refundType || 'none'} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, refundType: e.target.value } })} className="glass-input text-sm py-2 cursor-pointer">
+                                                <option value="none">No Refund</option><option value="full_refund">Full Refund</option><option value="replacement_only">Replacement</option><option value="store_credit">Store Credit</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3">
+                                    <input type="checkbox" checked={product.returnPolicy?.warrantyEnabled || false}
+                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyEnabled: e.target.checked } })}
+                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(45, 80%, 45%)' }} />
+                                    <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Warranty</span>
+                                    {product.returnPolicy?.warrantyEnabled && (
+                                        <input type="number" min={1} placeholder="Months" value={product.returnPolicy?.warrantyDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-1.5 w-24" />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Featured Checkbox */}
                     <div className="flex items-center gap-3 glass-inner rounded-xl p-4">
                         <input id="featured" type="checkbox" disabled={uploadingImages}

@@ -112,7 +112,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -173,6 +173,15 @@ exports.createStore = async (req, res) => {
                 state: '',
                 country: '',
                 postalCode: ''
+            },
+            returnPolicy: returnPolicy || {
+                returnsEnabled: false,
+                returnDuration: 0,
+                refundType: 'none',
+                warrantyEnabled: false,
+                warrantyDuration: 0,
+                warrantyDescription: '',
+                policyDescription: ''
             }
         });
 
@@ -252,7 +261,7 @@ exports.getMyStore = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -337,7 +346,20 @@ exports.updateStore = async (req, res) => {
                 country: address.country || '',
                 postalCode: address.postalCode || ''
             };
-            store.markModified('address'); // Mark nested object as modified
+            store.markModified('address');
+        }
+
+        if (returnPolicy !== undefined) {
+            store.returnPolicy = {
+                returnsEnabled: returnPolicy.returnsEnabled || false,
+                returnDuration: returnPolicy.returnDuration || 0,
+                refundType: returnPolicy.refundType || 'none',
+                warrantyEnabled: returnPolicy.warrantyEnabled || false,
+                warrantyDuration: returnPolicy.warrantyDuration || 0,
+                warrantyDescription: returnPolicy.warrantyDescription || '',
+                policyDescription: returnPolicy.policyDescription || '',
+            };
+            store.markModified('returnPolicy');
         }
 
         await store.save();

@@ -177,6 +177,7 @@ const AdminDashboard = () => {
         if (path.includes('order-management')) return 'Order Management';
         if (path.includes('store-verifications')) return 'Store Verifications';
         if (path.includes('subdomains')) return 'Subdomains';
+        if (path.includes('complaints')) return 'Complaints';
         if (path.includes('tax-configuration')) return 'Tax Configuration';
         if (path.includes('notifications')) return 'Notifications';
         if (path.includes('notification-settings')) return 'Settings';
@@ -430,6 +431,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },
         { id: 'verifications', label: 'Verifications', icon: <CheckCircle size={18} />, link: '/admin-dashboard/store-verifications' },
         { id: 'subdomains', label: 'Subdomains', icon: <Store size={18} />, link: '/admin-dashboard/subdomains' },
+        { id: 'complaints', label: 'Complaints', icon: <AlertCircle size={18} />, link: '/admin-dashboard/complaints' },
         { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
@@ -770,12 +772,57 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                         </div>
                     </div>
 
+                    {/* Return Policy Override */}
+                    <div className="glass-inner rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <input type="checkbox" checked={!(product.returnPolicy?.useStorePolicy ?? true)}
+                                onChange={e => setProduct({ ...product, returnPolicy: { ...(product.returnPolicy || {}), useStorePolicy: !e.target.checked } })}
+                                className="hidden" />
+                            <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors cursor-pointer`}
+                                onClick={() => setProduct({ ...product, returnPolicy: { ...(product.returnPolicy || {}), useStorePolicy: !(product.returnPolicy?.useStorePolicy ?? true) ? true : false } })}
+                                style={!(product.returnPolicy?.useStorePolicy ?? true) ? { background: 'hsl(var(--primary))' } : { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                                {!(product.returnPolicy?.useStorePolicy ?? true) && <CheckSquare size={14} className="text-white" />}
+                            </div>
+                            <div><p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Custom Return Policy</p>
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Override store default for this product</p></div>
+                        </div>
+                        {!(product.returnPolicy?.useStorePolicy ?? true) && (
+                            <div className="space-y-3 pt-2">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={product.returnPolicy?.returnsEnabled || false}
+                                            onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnsEnabled: e.target.checked } })}
+                                            className="h-4 w-4 rounded" style={{ accentColor: 'hsl(var(--primary))' }} />
+                                        <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Allow Returns</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={product.returnPolicy?.warrantyEnabled || false}
+                                            onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyEnabled: e.target.checked } })}
+                                            className="h-4 w-4 rounded" style={{ accentColor: 'hsl(var(--primary))' }} />
+                                        <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Warranty</span>
+                                    </label>
+                                </div>
+                                {product.returnPolicy?.returnsEnabled && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="number" min={1} placeholder="Return days" value={product.returnPolicy?.returnDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm" />
+                                        <select value={product.returnPolicy?.refundType || 'none'} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, refundType: e.target.value } })} className="glass-input text-sm cursor-pointer">
+                                            <option value="none">No Refund</option><option value="full_refund">Full Refund</option><option value="replacement_only">Replacement</option><option value="store_credit">Store Credit</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {product.returnPolicy?.warrantyEnabled && (
+                                    <input type="number" min={1} placeholder="Warranty months" value={product.returnPolicy?.warrantyDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm" />
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Featured */}
                     <label className="glass-checkbox-box flex items-center gap-3 p-4 cursor-pointer">
                         <input type="checkbox" checked={product.isFeatured || false}
                             onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
                             className="hidden" />
-                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${product.isFeatured ? '' : ''}`}
+                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors`}
                             style={product.isFeatured ? { background: 'hsl(var(--primary))' } : { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                             {product.isFeatured && <CheckSquare size={14} className="text-white" />}
                         </div>

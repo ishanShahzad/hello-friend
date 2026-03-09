@@ -227,6 +227,7 @@ const currencyRoutes = require('./routes/currencyRoutes')
 const trustRoutes = require('./routes/trustRoutes')
 const analyticsRoutes = require('./routes/analyticsRoutes')
 const subdomainRoutes = require('./routes/subdomain')
+const chatbotRoutes = require('./routes/chatbotRoutes')
 const { getOrderDetail } = require('./controllers/orderController')
 const Cart = require('./models/Cart')
 const { sendEmail } = require('./controllers/mailController')
@@ -248,6 +249,7 @@ app.use('/api/shipping', shippingRoutes)
 app.use('/api/currency', currencyRoutes)
 app.use('/api/analytics', analyticsRoutes)
 app.use('/api/subdomain', subdomainRoutes)
+app.use('/api/chatbot', chatbotRoutes)
 
 // Centralized JSON error responses
 app.use((err, req, res, next) => {
