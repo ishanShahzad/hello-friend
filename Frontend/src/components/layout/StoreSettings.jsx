@@ -59,12 +59,14 @@ const StoreSettings = () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/my-store`, { headers: { Authorization: `Bearer ${token}` } });
             const defaultSocialLinks = { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' };
             const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
+            const defaultReturnPolicy = { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' };
             const slug = res.data.store.storeSlug || '';
             setStoreData({
                 storeName: res.data.store.storeName, description: res.data.store.description,
                 logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
-                socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) }
+                socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
+                returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
             });
             setCustomSubdomain(slug);
             setSubdomainOwned(true);
