@@ -176,6 +176,7 @@ const AdminDashboard = () => {
         if (path.includes('product-management')) return 'Product Management';
         if (path.includes('order-management')) return 'Order Management';
         if (path.includes('store-verifications')) return 'Store Verifications';
+        if (path.includes('subdomains')) return 'Subdomains';
         if (path.includes('tax-configuration')) return 'Tax Configuration';
         if (path.includes('notifications')) return 'Notifications';
         if (path.includes('notification-settings')) return 'Settings';
