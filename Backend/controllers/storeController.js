@@ -23,6 +23,55 @@ const generateUniqueSlug = async (storeName) => {
     return slug;
 };
 
+// Check if subdomain/slug is available
+exports.checkSubdomainAvailability = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        
+        if (!slug || slug.trim().length < 3) {
+            return res.status(400).json({ 
+                available: false, 
+                msg: 'Subdomain must be at least 3 characters' 
+            });
+        }
+
+        // Reserved subdomains
+        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+        if (reserved.includes(slug.toLowerCase())) {
+            return res.status(200).json({ 
+                available: false, 
+                msg: 'This subdomain is reserved by the system' 
+            });
+        }
+
+        // Check if slug is taken
+        const existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
+        
+        if (existingStore) {
+            // If it's the current user's store, it's "available" for them
+            if (req.user && existingStore.seller.toString() === req.user.id) {
+                return res.status(200).json({ 
+                    available: true, 
+                    isOwned: true,
+                    msg: 'This is your current subdomain' 
+                });
+            }
+            return res.status(200).json({ 
+                available: false, 
+                msg: 'This subdomain is already taken' 
+            });
+        }
+
+        res.status(200).json({ 
+            available: true, 
+            msg: 'Subdomain is available' 
+        });
+    } catch (error) {
+        console.error('Check subdomain availability error:', error);
+        res.status(500).json({ msg: 'Server error while checking availability' });
+    }
+};
+
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
