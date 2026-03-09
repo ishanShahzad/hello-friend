@@ -847,6 +847,27 @@ exports.rejectVerification = async (req, res) => {
 
         await store.save();
 
+        // Send rejection email to seller
+        try {
+            const seller = await User.findById(store.seller);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '❌ Verification Application Rejected',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>Unfortunately, the verification application for your store <strong>"${store.storeName}"</strong> has been rejected.</p>
+                    <div class="highlight">
+                        <strong>Reason:</strong> ${rejectionReason || 'Application did not meet the requirements'}
+                    </div>
+                    <p>You can update your store information and reapply for verification. If you need assistance, please contact our support team.</p>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
+                    'Update & Reapply'
+                );
+                await sendEmail({ to: seller.email, subject: `Verification Rejected — ${store.storeName}`, html });
+            }
+        } catch (emailErr) {
+            console.error('Verification rejection email failed:', emailErr.message);
+        }
+
         res.status(200).json({
             msg: 'Store verification rejected',
             store
