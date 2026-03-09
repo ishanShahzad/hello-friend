@@ -171,7 +171,7 @@ exports.getMyStore = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -200,13 +200,34 @@ exports.updateStore = async (req, res) => {
                     return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
                 }
             }
+            store.storeName = storeName.trim();
+        }
 
-            // Generate new slug if store name changed
-            if (storeName !== store.storeName) {
-                store.storeSlug = await generateUniqueSlug(storeName);
+        // Handle custom slug/subdomain update if provided
+        if (storeSlug && storeSlug !== store.storeSlug) {
+            // Validate slug
+            if (storeSlug.length < 3) {
+                return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
+            }
+            
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            if (reserved.includes(storeSlug.toLowerCase())) {
+                return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
             }
 
-            store.storeName = storeName.trim();
+            // Check if available
+            const duplicateSlug = await Store.findOne({ 
+                storeSlug: storeSlug.toLowerCase(),
+                _id: { $ne: store._id }
+            });
+            if (duplicateSlug) {
+                return res.status(409).json({ msg: 'This subdomain is already taken by another store' });
+            }
+            
+            store.storeSlug = storeSlug.toLowerCase();
+        } else if (storeName && !storeSlug && storeName !== store.storeName) {
+            // Generate new slug if store name changed and no custom slug provided
+            store.storeSlug = await generateUniqueSlug(storeName);
         }
 
         // Update other fields
