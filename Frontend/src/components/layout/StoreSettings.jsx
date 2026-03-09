@@ -546,6 +546,57 @@ const StoreSettings = () => {
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Max 5MB, wide image recommended (1200x400)</p>
                     </div>
 
+                    {/* Return & Warranty Policy */}
+                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                            🔄 Return & Warranty Policy
+                        </h3>
+                        <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>Set your store's default return and warranty policy. Products can override this individually.</p>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 glass-inner rounded-xl p-4">
+                                <input type="checkbox" checked={storeData.returnPolicy.returnsEnabled} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, returnsEnabled: e.target.checked } }))} className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
+                                <div><p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Enable Returns</p><p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Allow customers to return products</p></div>
+                            </div>
+                            {storeData.returnPolicy.returnsEnabled && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Return Window (Days)</label>
+                                        <input type="number" min={1} max={365} value={storeData.returnPolicy.returnDuration} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, returnDuration: parseInt(e.target.value) || 0 } }))} className="glass-input" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Refund Type</label>
+                                        <select value={storeData.returnPolicy.refundType} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, refundType: e.target.value } }))} className="glass-input cursor-pointer">
+                                            <option value="none">No Refund</option>
+                                            <option value="full_refund">Full Money Back</option>
+                                            <option value="replacement_only">Replacement Only</option>
+                                            <option value="store_credit">Store Credit</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3 glass-inner rounded-xl p-4">
+                                <input type="checkbox" checked={storeData.returnPolicy.warrantyEnabled} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, warrantyEnabled: e.target.checked } }))} className="h-4 w-4 rounded" style={{ accentColor: 'hsl(45, 80%, 45%)' }} />
+                                <div><p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Enable Warranty</p><p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Offer warranty on products</p></div>
+                            </div>
+                            {storeData.returnPolicy.warrantyEnabled && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Warranty Duration (Months)</label>
+                                        <input type="number" min={1} max={120} value={storeData.returnPolicy.warrantyDuration} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, warrantyDuration: parseInt(e.target.value) || 0 } }))} className="glass-input" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Warranty Description</label>
+                                        <input type="text" value={storeData.returnPolicy.warrantyDescription} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, warrantyDescription: e.target.value } }))} className="glass-input" placeholder="e.g. Covers manufacturing defects" maxLength={200} />
+                                    </div>
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Policy Description (Optional)</label>
+                                <textarea value={storeData.returnPolicy.policyDescription} onChange={e => setStoreData(prev => ({ ...prev, returnPolicy: { ...prev.returnPolicy, policyDescription: e.target.value } }))} rows={2} className="glass-input" placeholder="Additional policy details..." maxLength={500} />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Social Links */}
                     <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
                         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>

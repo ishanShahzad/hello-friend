@@ -201,6 +201,11 @@ function AppRoutes() {
                             <AdminSubdomainManagement />
                         </ProtectedRoute>
                     } />
+                    <Route path='/admin-dashboard/complaints' element={
+                        <ProtectedRoute role={'admin'}>
+                            <ComplaintsManagement />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* SELLER DASHBOARD */}
