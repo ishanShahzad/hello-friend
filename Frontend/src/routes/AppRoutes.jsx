@@ -195,6 +195,11 @@ function AppRoutes() {
                             <NotificationSettings />
                         </ProtectedRoute>
                     } />
+                    <Route path='/admin-dashboard/subdomains' element={
+                        <ProtectedRoute role={'admin'}>
+                            <AdminSubdomainManagement />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* SELLER DASHBOARD */}
