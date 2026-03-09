@@ -431,6 +431,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },
         { id: 'verifications', label: 'Verifications', icon: <CheckCircle size={18} />, link: '/admin-dashboard/store-verifications' },
         { id: 'subdomains', label: 'Subdomains', icon: <Store size={18} />, link: '/admin-dashboard/subdomains' },
+        { id: 'complaints', label: 'Complaints', icon: <AlertCircle size={18} />, link: '/admin-dashboard/complaints' },
         { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
