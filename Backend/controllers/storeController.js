@@ -1,5 +1,42 @@
 const Store = require('../models/Store');
 const User = require('../models/User');
+const { sendEmail } = require('./mailController');
+
+// Email template helper
+const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>${title}</title>
+  <style>
+    body { background-color: #F8F9FA; font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif; color: #1A1A1A; margin: 0; padding: 0; }
+    .email-wrapper { max-width: 600px; margin: 0 auto; padding: 1.5rem; }
+    .card { background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 2rem; }
+    .header { background: linear-gradient(135deg, #4F46E5, #3B82F6); color: #fff; padding: 1.25rem 2rem; border-radius: 12px 12px 0 0; font-size: 1.2rem; font-weight: 600; text-align: center; }
+    .content { padding: 1.5rem 0; line-height: 1.7; }
+    .content p { margin: 0.75rem 0; }
+    .button { display: inline-block; margin-top: 1.25rem; background: linear-gradient(135deg, #4F46E5, #3B82F6); color: white !important; padding: 0.75rem 1.75rem; border-radius: 10px; text-decoration: none; font-weight: 600; }
+    .footer { font-size: 13px; text-align: center; color: #6B7280; margin-top: 2rem; }
+    .highlight { background: #F0F4FF; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; border-left: 4px solid #4F46E5; }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="card">
+      <div class="header">${title}</div>
+      <div class="content">
+        ${bodyHtml}
+        ${ctaUrl ? `<p style="text-align:center"><a href="${ctaUrl}" class="button">${ctaText || 'View Details'}</a></p>` : ''}
+        <p>Best regards,<br/>The Tortrose Team</p>
+      </div>
+    </div>
+    <div class="footer">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</div>
+  </div>
+</body>
+</html>
+`;
 
 // Helper function to generate unique slug
 const generateUniqueSlug = async (storeName) => {
@@ -140,6 +177,33 @@ exports.createStore = async (req, res) => {
         });
 
         await newStore.save();
+
+        // Send store creation email
+        try {
+            const seller = await User.findById(sellerId);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '🎉 Your Store is Live!',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>Congratulations! Your store <strong>"${newStore.storeName}"</strong> has been successfully created on Tortrose.</p>
+                    <div class="highlight">
+                        <strong>Store URL:</strong> ${process.env.FRONTEND_URL}/store/${newStore.storeSlug}<br/>
+                        <strong>Subdomain:</strong> ${newStore.storeSlug}.tortrose.com <em>(activates after verification)</em>
+                    </div>
+                    <p>Next steps:</p>
+                    <ul>
+                        <li>Add products to your store</li>
+                        <li>Customize your store settings & branding</li>
+                        <li>Apply for verification to activate your subdomain</li>
+                    </ul>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
+                    'Manage Your Store'
+                );
+                await sendEmail({ to: seller.email, subject: `Your Store "${newStore.storeName}" is Live! 🎉`, html });
+            }
+        } catch (emailErr) {
+            console.error('Store creation email failed:', emailErr.message);
+        }
 
         res.status(201).json({
             msg: 'Store created successfully',
@@ -726,6 +790,28 @@ exports.approveVerification = async (req, res) => {
 
         await store.save();
 
+        // Send activation email to seller
+        try {
+            const seller = await User.findById(store.seller);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '✅ Store Verified — Subdomain Activated!',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>Great news! Your store <strong>"${store.storeName}"</strong> has been verified by the Tortrose team.</p>
+                    <div class="highlight">
+                        <strong>🌐 Your subdomain is now live:</strong><br/>
+                        <a href="https://${store.storeSlug}.tortrose.com" style="color:#4F46E5;font-weight:600">${store.storeSlug}.tortrose.com</a>
+                    </div>
+                    <p>Your store now displays a verified badge and customers can access it via your custom subdomain. Share your link to start getting traffic!</p>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/subdomain`,
+                    'View Subdomain Dashboard'
+                );
+                await sendEmail({ to: seller.email, subject: `Your Store "${store.storeName}" is Now Verified! ✅`, html });
+            }
+        } catch (emailErr) {
+            console.error('Verification approval email failed:', emailErr.message);
+        }
+
         res.status(200).json({
             msg: 'Store verification approved successfully',
             store
@@ -760,6 +846,27 @@ exports.rejectVerification = async (req, res) => {
         store.verification.rejectionReason = rejectionReason || 'Application rejected';
 
         await store.save();
+
+        // Send rejection email to seller
+        try {
+            const seller = await User.findById(store.seller);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '❌ Verification Application Rejected',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>Unfortunately, the verification application for your store <strong>"${store.storeName}"</strong> has been rejected.</p>
+                    <div class="highlight">
+                        <strong>Reason:</strong> ${rejectionReason || 'Application did not meet the requirements'}
+                    </div>
+                    <p>You can update your store information and reapply for verification. If you need assistance, please contact our support team.</p>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
+                    'Update & Reapply'
+                );
+                await sendEmail({ to: seller.email, subject: `Verification Rejected — ${store.storeName}`, html });
+            }
+        } catch (emailErr) {
+            console.error('Verification rejection email failed:', emailErr.message);
+        }
 
         res.status(200).json({
             msg: 'Store verification rejected',
@@ -827,6 +934,31 @@ exports.removeVerification = async (req, res) => {
         store.verification.rejectionReason = reason || 'Verification removed by admin';
 
         await store.save();
+
+        // Send deactivation email to seller
+        try {
+            const seller = await User.findById(store.seller);
+            if (seller?.email) {
+                const html = storeEmailTemplate(
+                    '⚠️ Store Verification Removed',
+                    `<p>Hello ${seller.username || 'Seller'},</p>
+                    <p>We're writing to inform you that the verification for your store <strong>"${store.storeName}"</strong> has been removed by an administrator.</p>
+                    <div class="highlight">
+                        <strong>What this means:</strong><br/>
+                        • Your subdomain <strong>${store.storeSlug}.tortrose.com</strong> is no longer active<br/>
+                        • The verified badge has been removed from your store<br/>
+                        • Your store is still accessible at its regular URL
+                    </div>
+                    <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
+                    <p>If you believe this was a mistake or would like to reapply, please visit your Store Settings or contact our support team.</p>`,
+                    `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
+                    'Go to Store Settings'
+                );
+                await sendEmail({ to: seller.email, subject: `Store Verification Removed — ${store.storeName}`, html });
+            }
+        } catch (emailErr) {
+            console.error('Verification removal email failed:', emailErr.message);
+        }
 
         res.status(200).json({
             msg: 'Store verification removed successfully',
