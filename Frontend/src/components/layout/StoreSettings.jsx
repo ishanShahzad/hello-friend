@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone } from 'lucide-react';
+import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -16,6 +16,13 @@ const StoreSettings = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    
+    // Subdomain state
+    const [customSubdomain, setCustomSubdomain] = useState('');
+    const [subdomainAvailable, setSubdomainAvailable] = useState(null);
+    const [subdomainChecking, setSubdomainChecking] = useState(false);
+    const [subdomainMessage, setSubdomainMessage] = useState('');
+    const [subdomainOwned, setSubdomainOwned] = useState(false);
 
     const formatCompactPrice = (amount) => {
         const usdAmount = Number(amount) || 0;
@@ -51,12 +58,17 @@ const StoreSettings = () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/my-store`, { headers: { Authorization: `Bearer ${token}` } });
             const defaultSocialLinks = { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' };
             const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
+            const slug = res.data.store.storeSlug || '';
             setStoreData({
                 storeName: res.data.store.storeName, description: res.data.store.description,
-                logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: res.data.store.storeSlug,
+                logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) }
             });
+            setCustomSubdomain(slug);
+            setSubdomainOwned(true);
+            setSubdomainAvailable(true);
+            setSubdomainMessage('This is your current subdomain');
             setHasStore(true);
         } catch (error) {
             if (error.response?.status === 404) setHasStore(false);
@@ -101,6 +113,47 @@ const StoreSettings = () => {
     const handleSocialLinkChange = (platform, value) => { setStoreData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [platform]: value } })); };
     const handleAddressChange = (field, value) => { setStoreData(prev => ({ ...prev, address: { ...prev.address, [field]: value } })); };
 
+    // Sanitize subdomain input: lowercase, alphanumeric + hyphens only
+    const sanitizeSubdomain = (val) =>
+        val.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');
+
+    const checkSubdomainAvailability = useCallback(async (slug) => {
+        if (!slug || slug.length < 3) {
+            setSubdomainAvailable(null);
+            setSubdomainMessage('');
+            setSubdomainOwned(false);
+            return;
+        }
+        try {
+            setSubdomainChecking(true);
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/check-subdomain/${slug}`, { headers: { Authorization: `Bearer ${token}` } });
+            setSubdomainAvailable(res.data.available);
+            setSubdomainOwned(res.data.isOwned || false);
+            setSubdomainMessage(res.data.msg);
+        } catch (e) {
+            setSubdomainAvailable(null);
+            setSubdomainMessage('Could not check availability');
+        } finally {
+            setSubdomainChecking(false);
+        }
+    }, []);
+
+    // Debounce subdomain check
+    useEffect(() => {
+        if (!customSubdomain || customSubdomain === storeData.storeSlug) return;
+        const timer = setTimeout(() => checkSubdomainAvailability(customSubdomain), 600);
+        return () => clearTimeout(timer);
+    }, [customSubdomain, storeData.storeSlug, checkSubdomainAvailability]);
+
+    const handleSubdomainChange = (e) => {
+        const val = sanitizeSubdomain(e.target.value);
+        setCustomSubdomain(val);
+        setSubdomainAvailable(null);
+        setSubdomainMessage('');
+        setSubdomainOwned(false);
+    };
+
     const handleLogoUpload = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         if (file.size > 5 * 1024 * 1024) { toast.error('Logo must be less than 5MB'); return; }
@@ -121,10 +174,23 @@ const StoreSettings = () => {
             setSaving(true);
             const token = localStorage.getItem('jwtToken');
             const endpoint = hasStore ? 'update' : 'create';
-            const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, storeData, { headers: { Authorization: `Bearer ${token}` } });
+            
+            const payload = { ...storeData };
+            // Include the custom subdomain if it's set and valid
+            if (customSubdomain && customSubdomain.length >= 3) {
+                payload.storeSlug = customSubdomain;
+            }
+
+            const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg);
             setHasStore(true);
-            if (!hasStore) setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
+            
+            // Update local state with whatever the server returned
+            if (res.data.store) {
+                setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
+                setCustomSubdomain(res.data.store.storeSlug);
+            }
+            
             fetchAnalytics();
         } catch (error) { toast.error(error.response?.data?.msg || 'Failed to save store'); }
         finally { setSaving(false); }
@@ -234,18 +300,166 @@ const StoreSettings = () => {
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{storeData.storeName.length}/50 characters</p>
                     </div>
 
-                    {/* Store URL */}
+                    {/* Store URL (path-based, always active) */}
                     {storeData.storeSlug && (
-                        <div className="glass-inner rounded-xl p-3">
-                            <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                <span className="font-medium">Store URL:</span>{' '}
-                                <span style={{ color: 'hsl(var(--primary))' }}>{window.location.origin}/store/{storeData.storeSlug}</span>
-                            </p>
+                        <div className="glass-inner rounded-xl p-3 flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Store URL:</span>
+                            <a href={`/store/${storeData.storeSlug}`} target="_blank" rel="noreferrer"
+                                className="text-sm font-medium hover:underline flex items-center gap-1"
+                                style={{ color: 'hsl(var(--primary))' }}>
+                                {window.location.origin}/store/{storeData.storeSlug}
+                                <ExternalLink size={12} />
+                            </a>
                         </div>
                     )}
 
+                    {/* ─── Subdomain Section ─── */}
+                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Globe size={18} style={{ color: 'hsl(var(--primary))' }} />
+                            <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                Custom Subdomain
+                            </h3>
+                            {verification.isVerified ? (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                    ✓ Active
+                                </span>
+                            ) : (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(234,179,8,0.12)', color: 'hsl(45, 80%, 40%)', border: '1px solid rgba(234,179,8,0.25)' }}>
+                                    <Lock size={10} /> Not Active — Verification Required
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Choose a unique subdomain for your branded store link. Only verified stores get an active subdomain.
+                        </p>
+
+                        {/* Subdomain Input */}
+                        <div className="flex items-center gap-0 rounded-xl overflow-hidden mb-2" style={{ border: '1.5px solid var(--glass-border)', background: 'var(--glass-bg)' }}>
+                            <span className="px-3 py-3 text-sm font-medium select-none" style={{ background: 'var(--glass-inner)', color: 'hsl(var(--muted-foreground))', borderRight: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>
+                                tortrose.com/
+                            </span>
+                            <input
+                                type="text"
+                                value={customSubdomain}
+                                onChange={handleSubdomainChange}
+                                className="flex-1 px-3 py-3 bg-transparent text-sm outline-none font-mono"
+                                style={{ color: 'hsl(var(--foreground))' }}
+                                placeholder="your-store-name"
+                                maxLength={50}
+                            />
+                            <span className="px-3 py-3" style={{ minWidth: '28px' }}>
+                                {subdomainChecking ? (
+                                    <Loader2 size={16} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                ) : subdomainAvailable === true ? (
+                                    <CheckCircle size={16} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                ) : subdomainAvailable === false ? (
+                                    <AlertCircle size={16} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                ) : null}
+                            </span>
+                        </div>
+
+                        {/* Availability message */}
+                        {subdomainMessage && customSubdomain.length >= 3 && (
+                            <p className="text-xs mb-3" style={{ color: subdomainAvailable ? 'hsl(150, 60%, 45%)' : 'hsl(0, 72%, 55%)' }}>
+                                {subdomainMessage}
+                            </p>
+                        )}
+
+                        {/* Live subdomain preview */}
+                        {customSubdomain.length >= 3 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="rounded-xl p-4 mb-4"
+                                style={{ background: 'var(--glass-inner)', border: '1px solid var(--glass-border)' }}
+                            >
+                                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Subdomain Preview
+                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Globe size={14} style={{ color: 'hsl(var(--primary))' }} />
+                                    <span className="text-sm font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                        {customSubdomain}.tortrose.com
+                                    </span>
+                                    {verification.isVerified ? (
+                                        <span className="text-xs" style={{ color: 'hsl(150, 60%, 45%)' }}>← Will route to your store</span>
+                                    ) : (
+                                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>← Will be active once verified</span>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Status banner based on verification */}
+                        {!verification.isVerified && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="rounded-xl p-4 space-y-3"
+                                style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)' }}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 45%)' }} />
+                                    <div>
+                                        <p className="text-sm font-semibold" style={{ color: 'hsl(45, 70%, 38%)' }}>
+                                            Subdomain not active — Verification required
+                                        </p>
+                                        {customSubdomain.length >= 3 && (
+                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                <strong className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{customSubdomain}.tortrose.com</strong> is your chosen address. It won't go live until your store is verified.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Urgency: subdomain availability warning */}
+                                {subdomainAvailable && !subdomainOwned && customSubdomain.length >= 3 && (
+                                    <div className="flex items-start gap-2 rounded-lg px-3 py-2" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                        <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                        <p className="text-xs" style={{ color: 'hsl(0, 72%, 50%)' }}>
+                                            <strong>This subdomain is currently available</strong> but is not assigned to your brand yet. Other sellers can claim it before you. Apply for verification to secure it.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {verification.status === 'none' && (
+                                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                                            onClick={() => setShowVerificationModal(true)}
+                                            className="px-4 py-2 rounded-lg text-xs font-semibold text-white"
+                                            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
+                                            Apply for Brand Verification
+                                        </motion.button>
+                                    )}
+                                    <a href="mailto:support@tortrose.com"
+                                        className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                                        style={{ background: 'var(--glass-inner)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                        <Mail size={12} /> Contact Support
+                                    </a>
+                                </div>
+
+                                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Need help? Contact <a href="mailto:support@tortrose.com" className="underline">support@tortrose.com</a> for more information about getting verified.
+                                </p>
+                            </motion.div>
+                        )}
+
+                        {/* Verified: subdomain is active */}
+                        {verification.isVerified && customSubdomain.length >= 3 && (
+                            <div className="rounded-xl p-4" style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'hsl(150, 60%, 40%)' }}>
+                                    <CheckCircle size={15} /> Your subdomain is live!
+                                </p>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Customers can reach your store at <strong className="font-mono">{customSubdomain}.tortrose.com</strong>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Description */}
-                    <div>
+                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
                         <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Description</label>
                         <textarea name="description" value={storeData.description} onChange={handleInputChange} rows={4} className="glass-input" placeholder="Tell customers about your store..." maxLength={500} />
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{storeData.description.length}/500 characters</p>
@@ -378,6 +592,7 @@ const StoreSettings = () => {
                     </div>
                 </div>
             </div>
+
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (

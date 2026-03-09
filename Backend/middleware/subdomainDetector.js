@@ -16,10 +16,11 @@ const subdomainDetector = async (req, res, next) => {
                 return next();
             }
             
-            // Find store by slug matching subdomain
+            // Find store by slug matching subdomain - ONLY verified stores get subdomain routing
             const store = await Store.findOne({ 
                 storeSlug: subdomain.toLowerCase(),
-                isActive: true 
+                isActive: true,
+                'verification.isVerified': true
             });
             
             if (store) {

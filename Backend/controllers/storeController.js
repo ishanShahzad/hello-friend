@@ -23,10 +23,59 @@ const generateUniqueSlug = async (storeName) => {
     return slug;
 };
 
+// Check if subdomain/slug is available
+exports.checkSubdomainAvailability = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        
+        if (!slug || slug.trim().length < 3) {
+            return res.status(400).json({ 
+                available: false, 
+                msg: 'Subdomain must be at least 3 characters' 
+            });
+        }
+
+        // Reserved subdomains
+        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+        if (reserved.includes(slug.toLowerCase())) {
+            return res.status(200).json({ 
+                available: false, 
+                msg: 'This subdomain is reserved by the system' 
+            });
+        }
+
+        // Check if slug is taken
+        const existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
+        
+        if (existingStore) {
+            // If it's the current user's store, it's "available" for them
+            if (req.user && existingStore.seller.toString() === req.user.id) {
+                return res.status(200).json({ 
+                    available: true, 
+                    isOwned: true,
+                    msg: 'This is your current subdomain' 
+                });
+            }
+            return res.status(200).json({ 
+                available: false, 
+                msg: 'This subdomain is already taken' 
+            });
+        }
+
+        res.status(200).json({ 
+            available: true, 
+            msg: 'Subdomain is available' 
+        });
+    } catch (error) {
+        console.error('Check subdomain availability error:', error);
+        res.status(500).json({ msg: 'Server error while checking availability' });
+    }
+};
+
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -52,14 +101,31 @@ exports.createStore = async (req, res) => {
             return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
         }
 
-        // Generate unique slug
-        const storeSlug = await generateUniqueSlug(storeName);
+        let finalSlug;
+        if (storeSlug) {
+            // Validate custom slug
+            if (storeSlug.length < 3) {
+                return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
+            }
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            if (reserved.includes(storeSlug.toLowerCase())) {
+                return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
+            }
+            const duplicateSlug = await Store.findOne({ storeSlug: storeSlug.toLowerCase() });
+            if (duplicateSlug) {
+                return res.status(409).json({ msg: 'This subdomain is already taken' });
+            }
+            finalSlug = storeSlug.toLowerCase();
+        } else {
+            // Generate unique slug
+            finalSlug = await generateUniqueSlug(storeName);
+        }
 
         // Create store
         const newStore = new Store({
             seller: sellerId,
             storeName: storeName.trim(),
-            storeSlug,
+            storeSlug: finalSlug,
             description: description || '',
             logo: logo || '',
             banner: banner || '',
@@ -122,7 +188,7 @@ exports.getMyStore = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, description, logo, banner, socialLinks, address } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -151,13 +217,34 @@ exports.updateStore = async (req, res) => {
                     return res.status(409).json({ msg: 'A store with this name already exists. Please choose a different name.' });
                 }
             }
+            store.storeName = storeName.trim();
+        }
 
-            // Generate new slug if store name changed
-            if (storeName !== store.storeName) {
-                store.storeSlug = await generateUniqueSlug(storeName);
+        // Handle custom slug/subdomain update if provided
+        if (storeSlug && storeSlug !== store.storeSlug) {
+            // Validate slug
+            if (storeSlug.length < 3) {
+                return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
+            }
+            
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            if (reserved.includes(storeSlug.toLowerCase())) {
+                return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
             }
 
-            store.storeName = storeName.trim();
+            // Check if available
+            const duplicateSlug = await Store.findOne({ 
+                storeSlug: storeSlug.toLowerCase(),
+                _id: { $ne: store._id }
+            });
+            if (duplicateSlug) {
+                return res.status(409).json({ msg: 'This subdomain is already taken by another store' });
+            }
+            
+            store.storeSlug = storeSlug.toLowerCase();
+        } else if (storeName && !storeSlug && storeName !== store.storeName) {
+            // Generate new slug if store name changed and no custom slug provided
+            store.storeSlug = await generateUniqueSlug(storeName);
         }
 
         // Update other fields

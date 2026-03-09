@@ -19,7 +19,8 @@ const {
     getVerifiedStores,
     approveVerification,
     rejectVerification,
-    removeVerification
+    removeVerification,
+    checkSubdomainAvailability
 } = require('../controllers/storeController');
 const verifyToken = require('../middleware/authMiddleware');
 
@@ -73,6 +74,7 @@ router.get('/search', searchStores);
 router.get('/suggestions', getStoreSuggestions);
 router.get('/all', getAllStores);
 router.get('/seller/:id', getStoreBySellerId);
+router.get('/check-subdomain/:slug', verifyToken, checkSubdomainAvailability); // Check availability
 router.get('/:slug/products', getStoreProducts);
 router.post('/:slug/view', incrementStoreView);
 router.get('/:slug', getStoreBySlug); // This must be last
