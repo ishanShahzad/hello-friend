@@ -18,7 +18,8 @@ const VoiceCommerce = () => {
   const [conversationHistory, setConversationHistory] = useState([])
 
   const navigate = useNavigate()
-  const { cart, setCart } = useGlobal()
+  const { cartItems } = useGlobal()
+  const cart = cartItems?.cart || []
   const { currentUser, token } = useAuth()
 
   // Initialize Web Speech API
