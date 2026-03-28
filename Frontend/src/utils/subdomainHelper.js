@@ -9,6 +9,12 @@ export const getSubdomain = () => {
         return null;
     }
     
+    // Skip preview/deployment platforms
+    const skipDomains = ['lovableproject.com', 'lovable.app', 'vercel.app', 'netlify.app', 'pages.dev'];
+    if (skipDomains.some(domain => host.endsWith(domain))) {
+        return null;
+    }
+    
     // If more than 2 parts (e.g., storename.tortrose.com)
     if (parts.length > 2) {
         const subdomain = parts[0];

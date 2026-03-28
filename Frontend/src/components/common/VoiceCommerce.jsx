@@ -289,7 +289,7 @@ const VoiceCommerce = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed bottom-24 left-6 right-6 sm:left-auto sm:right-auto sm:bottom-28 sm:left-1/2 sm:-translate-x-1/2 w-auto sm:w-96 max-w-[calc(100vw-3rem)] glass-panel-strong z-50 p-6 rounded-3xl"
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100vw-3rem)] sm:w-96 max-h-[80vh] overflow-y-auto glass-panel-strong z-50 p-6 rounded-3xl"
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-4">
