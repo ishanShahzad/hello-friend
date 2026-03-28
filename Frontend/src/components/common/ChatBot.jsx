@@ -840,7 +840,16 @@ const ChatBot = () => {
                     {ttsEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
                   </button>
                   <button
-                    onClick={() => { setMessages([]); localStorage.removeItem('tortrose_chat_history'); }}
+                    onClick={() => {
+                      setMessages([]);
+                      localStorage.removeItem('tortrose_chat_history');
+                      const jwtToken = localStorage.getItem('jwtToken');
+                      if (jwtToken) {
+                        axios.delete(`${import.meta.env.VITE_API_URL}api/chatbot/history`, {
+                          headers: { Authorization: `Bearer ${jwtToken}` }
+                        }).catch(() => {});
+                      }
+                    }}
                     className="p-1.5 rounded-lg glass-inner"
                     style={{ color: 'hsl(var(--muted-foreground))' }}
                     title="Clear chat"
