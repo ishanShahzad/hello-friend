@@ -243,7 +243,13 @@ const ChatBot = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isVoiceCallMode, setIsVoiceCallMode] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tortrose_chat_history');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showComplaintForm, setShowComplaintForm] = useState(false);
