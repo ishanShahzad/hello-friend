@@ -1,106 +1,142 @@
 
 
-# Mobile App UI/UX Overhaul Plan
+# Unified AI Shopping Assistant — Lovable AI + Voice Call Mode + Personal Stylist
 
-## Issues Identified from Screenshots
+## Overview
 
-### 1. HomeScreen (Screenshot 1)
-- Overall layout looks reasonable but the search bar and filter button styling could be tighter
-- Categories section is functional but could use polish
-- Product cards appear to work but need verification against web parity
+Replace HuggingFace with **Lovable AI** (Gemini via gateway) and transform the chatbot into an intelligent personal shopping advisor with voice call mode. The AI acts as a fashion consultant — it asks follow-up questions about occasion, style preferences, and budget, gives color coordination advice, remembers user history, and proactively suggests outfits.
 
-### 2. StoresListingScreen (Screenshot 2)
-- Store cards have a purple banner that looks flat and monotone
-- The "Trust" button and store stats layout works but cards feel oversized with too much vertical spacing
-- Search input inside the glass panel looks cramped
+## Architecture
 
-### 3. ProfileScreen (Screenshot 3)
-- Profile card looks reasonable but the avatar area could be larger/more prominent
-- Menu items spacing is very large, causing excessive scrolling
-- "Admin Dashboard" icon is using the wrong icon (settings-outline instead of shield)
+```text
+┌─────────────────────────────────────────────┐
+│          ChatBot.jsx (Unified UI)           │
+│                                             │
+│  TEXT MODE          │  VOICE CALL MODE      │
+│  Chat bubbles       │  Animated pulsing orb │
+│  Product cards      │  Live waveform bars   │
+│  Style advice cards │  "Listening..."       │
+│  [🎤] [Send]        │  [End Call] button     │
+│                     │  Call timer            │
+│─────────────────────┴──────────────────────│
+│              ↓ both feed into ↓             │
+│  ┌─────────────────────────────────────┐    │
+│  │  Backend Edge Function (Lovable AI) │    │
+│  │  - Product DB context injected      │    │
+│  │  - User order history injected      │    │
+│  │  - Conversation history maintained  │    │
+│  │  - Returns: text + actions + products│   │
+│  └─────────────────────────────────────┘    │
+│              ↓                              │
+│  Action execution + optional TTS response   │
+│  Navigation cards / Product cards in chat   │
+└─────────────────────────────────────────────┘
+```
 
-### 4. OrdersScreen (Screenshot 4)
-- Order cards have excessive vertical spacing between them
-- Item preview images are showing placeholder cubes instead of product images (data issue)
-- Card padding is too generous, wasting screen space
+## What Changes
 
-### 5. TrustedStoresScreen (Screenshot 5)
-- Header shows a broken layout: red heart icon button is floating with no text beside it
-- The "Trusted Stores" title is in a purple header bar that doesn't match the glass aesthetic
-- Only one store showing with excessive empty space below
-- Missing back button integration with navigation header
+### 1. New Supabase Edge Function: `supabase/functions/ai-chat/index.ts`
 
-### 6. ChangePasswordScreen (Screenshot 6)
-- Input fields have thick black borders that clash with the glass design
-- The border style uses solid dark outlines instead of subtle glass borders
-- Eye toggle icons are barely visible
-- Overall form looks harsh against the soft glass background
+Replaces HuggingFace entirely. Uses Lovable AI gateway (`LOVABLE_API_KEY` already available).
 
-### 7. AdminDashboardScreen (Screenshot 7)
-- Quick Action cards have a broken layout: text is being clipped ("Manage platform users" / "Verify seller stores")
-- Action cards are taking too much vertical space with large gaps between them
-- Badge numbers overlap with card layout
-- **Missing features vs web**: Admin dashboard on web has Store Overview, Analytics, Notifications page, and Notification Settings as navigation items. Mobile admin only has: User Management, Store Verification, Tax Config, Products, Orders. Missing: **Store Overview**, **Analytics**, **Notifications page** (separate from bell), and **Notification Settings**
+**System prompt** instructs the AI to be a personal fashion/shopping consultant:
+- Ask clarifying questions: "What occasion is this for?", "What's your budget range?", "Do you prefer slim fit or relaxed?"
+- Give styling advice: color theory, outfit coordination, seasonal suggestions
+- Proactively suggest complementary items: "That shirt pairs great with dark jeans"
+- Use tool calling to return structured actions (product search, navigate, add to cart)
 
-### 8. Missing Admin Features (Web vs Mobile comparison)
-Web admin sidebar has 9 items:
-1. Store Overview (**exists on mobile as a screen but NOT in admin quick actions**)
-2. Analytics (**exists as AdminAnalyticsScreen but NOT in admin quick actions**)
-3. User Management (exists)
-4. Products (exists)
-5. Orders (exists)
-6. Verifications (exists)
-7. Tax Config (exists)
-8. Notifications (**exists as AdminNotificationsScreen but NOT in admin quick actions**)
-9. Settings / Notification Settings (**exists as NotificationSettingsScreen but NOT in admin quick actions**)
+**Tool definitions** the AI can call:
+- `search_products(query, category, maxPrice, minPrice, style)` — fuzzy search products
+- `navigate(route)` — navigate user to a page
+- `get_user_orders()` — fetch recent order history
+- `show_style_advice(advice, colorPalette, occasion)` — render a styled advice card
+- `suggest_outfit(products, reason)` — show a curated outfit with explanation
 
-## Implementation Plan
+**Flow**: Frontend sends full conversation history → edge function adds system prompt + user context (order history, browsing context) → Lovable AI responds with text and/or tool calls → frontend renders responses and executes actions.
 
-### Task 1: Fix ChangePasswordScreen input styling
-- Replace thick black `borderWidth: 1` / dark `borderColor` with subtle glass borders matching the theme
-- Use `glass.borderSubtle` for border colors and lighter styling
-- Improve eye icon visibility with better contrast colors
+### 2. New Backend Endpoint: `GET /api/chatbot/user-context`
 
-### Task 2: Fix AdminDashboardScreen layout and add missing features
-- Add missing quick action entries: Store Overview, Analytics, Notifications, Notification Settings
-- Fix action card text clipping by ensuring proper flex layout
-- Reduce excessive vertical spacing between action cards
-- Add alert bar for pending orders/out-of-stock (matching web)
+Returns user's recent orders, favorite categories, and past purchases for AI personalization. Called once when chat opens.
 
-### Task 3: Fix TrustedStoresScreen header and layout
-- Fix the broken header — remove the floating heart icon button, integrate properly with the title
-- Add proper back button navigation
-- Improve the header to use consistent glass panel styling without the purple bar
-- Fix empty state spacing
+### 3. Rewrite `Frontend/src/components/common/ChatBot.jsx`
 
-### Task 4: Fix OrdersScreen card spacing
-- Reduce excessive vertical padding between order cards
-- Tighten the card internal padding to reduce wasted space
+**Voice Call Mode:**
+- Mic button in input bar transforms the panel into a full-screen voice interface
+- Animated pulsing orb + sound wave bars (CSS animations)
+- `SpeechRecognition` with `continuous = true` — stays open like a phone call
+- Each recognized sentence sent to AI immediately, AI responds via TTS
+- "End Call" dumps full transcript into chat history as bubbles
+- Call duration timer displayed
 
-### Task 5: Fix ProfileScreen menu icon and spacing
-- Change Admin Dashboard icon from `settings-outline` to `shield-outline` to match its purpose
-- Reduce menu row vertical padding to show more items without excessive scrolling
+**Personal Stylist Features (rendered in chat):**
+- **Style Advice Cards**: When AI gives fashion advice, render a styled card with color palette swatches, occasion tag, and reasoning
+- **Outfit Suggestion Cards**: Group of product cards with "Why this works" explanation
+- **Follow-up Question Chips**: AI-generated contextual chips ("For a party", "Casual wear", "Office look") that the user can tap instead of typing
+- **Color Harmony Display**: Visual color swatches when AI discusses color combinations
 
-### Task 6: Fix StoreCard styling on StoresListingScreen
-- Reduce card height and tighten content spacing
-- Improve banner-to-content transition
+**Smart Navigation Engine** (client-side intent execution from AI tool calls):
+- `navigate(route)` → `useNavigate` to profile, orders, checkout, stores, etc.
+- `addToCart(productId)` → calls global context `handleAddToCart`
+- Shows inline action confirmation cards
 
-### Task 7: Fix ActionCard text clipping
-- Ensure subtitle text is not getting cut off in the action cards
-- Adjust badge positioning so it doesn't overlap with text content
-- Reduce internal padding to make cards more compact
+**Personalization on Open:**
+- Fetches user context (orders, preferences) via `/api/chatbot/user-context`
+- AI greeting references their history: "Welcome back! How are those sneakers working out?"
+- Time-aware greetings
+
+**Contextual Quick Action Chips** that change based on conversation:
+- Initial: "Help me find an outfit", "Track my order", "Style advice", "Browse stores"
+- After product search: "Show me more like this", "What goes with this?", "Add to cart"
+- After style discussion: "Show me options", "Different color", "Higher budget"
+
+### 4. Update `Backend/controllers/chatbotController.js`
+
+- Remove `callHF` dependency for the main chat (keep complaint/order logic as server-side handlers)
+- Add `getUserContext` endpoint that returns last 5 orders with product details, most-bought categories, and total spend
+
+### 5. Delete `Frontend/src/components/common/VoiceCommerce.jsx`
+
+### 6. Update `Frontend/src/pages/MainLayoutPage.jsx`
+
+- Remove VoiceCommerce import and component
+
+### 7. Update `supabase/config.toml`
+
+- Register the new `ai-chat` edge function
+
+## AI Personality & Capabilities
+
+The system prompt makes the AI behave as:
+
+- **Personal Stylist**: "This navy blazer with khaki chinos is a timeless combo — perfect for a semi-formal dinner. The warm tones complement each other without clashing."
+- **Conversational**: Asks follow-up questions naturally — "Where are you planning to wear this?", "Do you usually go for bold or neutral colors?"
+- **Color Expert**: "Earth tones like olive and tan work great for your skin tone. Avoid pairing two saturated colors — one should be muted."
+- **Occasion-Aware**: Different suggestions for party, office, casual, date night, travel
+- **Budget-Sensitive**: "I found some great options under $40 that still look premium"
+- **Proactive**: "By the way, that store has free shipping right now" / "This item is 30% off today"
+- **Reorder Helper**: "Want to reorder those joggers you bought last month?"
+- **Comparison Helper**: "Between these two, the cotton one breathes better for summer, but the polyester blend is more wrinkle-resistant for travel"
 
 ## Technical Details
 
-**Files to modify:**
-- `MobileApp/src/screens/ChangePasswordScreen.js` — input border styling
-- `MobileApp/src/screens/admin/AdminDashboardScreen.js` — add missing quick actions, fix layout
-- `MobileApp/src/screens/TrustedStoresScreen.js` — fix header layout
-- `MobileApp/src/screens/OrdersScreen.js` — reduce card spacing
-- `MobileApp/src/screens/ProfileScreen.js` — fix admin icon, reduce spacing
-- `MobileApp/src/components/common/ActionCard.js` — fix text clipping and spacing
-- `MobileApp/src/components/common/OrderCard.js` — tighten padding
-- `MobileApp/src/components/common/StoreCard.js` — reduce vertical spacing
+- **AI Provider**: Lovable AI gateway (`google/gemini-3-flash-preview`) via Supabase edge function
+- **API Key**: `LOVABLE_API_KEY` (already provisioned)
+- **Voice**: Web Speech API (browser-native, no dependencies)
+- **TTS**: Browser `SpeechSynthesis` with adjustable rate
+- **Streaming**: SSE streaming from edge function for real-time token rendering
+- **No new npm dependencies** — all browser-native APIs + existing libraries
+- **Graceful degradation**: Mic button hidden if browser doesn't support Speech API
 
-**No new dependencies required.** All changes are styling and layout adjustments using existing theme tokens and adding missing navigation entries to the admin dashboard.
+## Files Summary
+
+| Action | File |
+|--------|------|
+| Create | `supabase/functions/ai-chat/index.ts` |
+| Create | `supabase/config.toml` |
+| Rewrite | `Frontend/src/components/common/ChatBot.jsx` |
+| Modify | `Backend/controllers/chatbotController.js` (add user-context endpoint) |
+| Modify | `Backend/routes/chatbotRoutes.js` (add user-context route) |
+| Modify | `Frontend/src/pages/MainLayoutPage.jsx` (remove VoiceCommerce) |
+| Delete | `Frontend/src/components/common/VoiceCommerce.jsx` |
+| Delete | `Backend/utils/hfClient.js` (no longer needed) |
 
