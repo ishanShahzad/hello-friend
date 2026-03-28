@@ -4,6 +4,52 @@ const Complaint = require('../models/Complaint');
 const { callHF } = require('../utils/hfClient');
 const Fuse = require('fuse.js');
 
+// Get user context for AI personalization
+exports.getUserContext = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ msg: 'Authentication required' });
+
+    try {
+        const recentOrders = await Order.find({ user: userId })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .populate('orderItems.productId', 'name category brand');
+
+        const user = await require('../models/User').findById(userId).select('username email');
+
+        const orderData = recentOrders.map(o => ({
+            orderId: o.orderId,
+            status: o.orderStatus,
+            total: o.orderSummary?.totalAmount || 0,
+            items: o.orderItems?.map(item => item.productId?.name).filter(Boolean),
+            date: o.createdAt,
+        }));
+
+        // Extract favorite categories from order history
+        const categories = {};
+        recentOrders.forEach(o => {
+            o.orderItems?.forEach(item => {
+                if (item.productId?.category) {
+                    categories[item.productId.category] = (categories[item.productId.category] || 0) + 1;
+                }
+            });
+        });
+        const topCategories = Object.entries(categories)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([cat]) => cat);
+
+        res.json({
+            name: user?.username || '',
+            recentOrders: orderData,
+            preferences: topCategories.length > 0 ? `Frequently buys: ${topCategories.join(', ')}` : null,
+        });
+    } catch (error) {
+        console.error('Get user context error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
 // Chat with AI assistant
 exports.chat = async (req, res) => {
     const { message, conversationHistory = [] } = req.body;
