@@ -1,7 +1,62 @@
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Complaint = require('../models/Complaint');
+const ChatHistory = require('../models/ChatHistory');
 const { callHF } = require('../utils/hfClient');
+const Fuse = require('fuse.js');
+
+// ─── Chat History CRUD ───
+exports.getChatHistory = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ msg: 'Authentication required' });
+    try {
+        const history = await ChatHistory.findOne({ user: userId });
+        res.json({ messages: history?.messages || [] });
+    } catch (error) {
+        console.error('Get chat history error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.saveChatHistory = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ msg: 'Authentication required' });
+    try {
+        const { messages } = req.body;
+        if (!Array.isArray(messages)) return res.status(400).json({ msg: 'messages must be an array' });
+
+        // Only keep role + content, limit to 100
+        const clean = messages
+            .filter(m => m.role && m.content)
+            .map(({ role, content }) => ({ role, content }))
+            .slice(-100);
+
+        await ChatHistory.findOneAndUpdate(
+            { user: userId },
+            { messages: clean, updatedAt: new Date() },
+            { upsert: true, new: true }
+        );
+        res.json({ msg: 'Chat history saved' });
+    } catch (error) {
+        console.error('Save chat history error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.clearChatHistory = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ msg: 'Authentication required' });
+    try {
+        await ChatHistory.findOneAndUpdate(
+            { user: userId },
+            { messages: [], updatedAt: new Date() }
+        );
+        res.json({ msg: 'Chat history cleared' });
+    } catch (error) {
+        console.error('Clear chat history error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
 const Fuse = require('fuse.js');
 
 // Get user context for AI personalization

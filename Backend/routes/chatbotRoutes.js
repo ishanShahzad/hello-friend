@@ -7,7 +7,10 @@ const {
     submitComplaint,
     getMyComplaints,
     getAllComplaints,
-    updateComplaint
+    updateComplaint,
+    getChatHistory,
+    saveChatHistory,
+    clearChatHistory
 } = require('../controllers/chatbotController');
 
 // Optional auth middleware (doesn't block guests)
