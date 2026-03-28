@@ -68,7 +68,7 @@ const ProductCard = ({
           {stock === 0 && (
             <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
               className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold shadow-md"
-              style={{ background: 'rgba(0,0,0,0.5)', color: 'white', backdropFilter: 'blur(8px)' }}>
+              style={{ background: 'rgba(0,0,0,0.6)', color: 'white' }}>
               <span className="hidden sm:inline">Out of Stock</span><span className="sm:hidden">Sold</span>
             </motion.span>
           )}

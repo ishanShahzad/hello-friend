@@ -29,7 +29,7 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     </span>
                 )}
                 {product.stock === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}>
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
                         <span className="px-3 py-1.5 rounded-full text-xs font-bold text-white"
                             style={{ background: 'hsl(0, 72%, 55%)' }}>
                             Out of Stock
@@ -42,13 +42,13 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                         onClick={() => onEditProduct(product)}
                         className="p-2 rounded-xl shadow-lg"
-                        style={{ background: 'var(--glass-bg-strong)', backdropFilter: 'blur(16px)', border: '1px solid var(--glass-border)', color: 'hsl(var(--primary))' }}>
+                        style={{ background: 'var(--glass-bg-strong)', border: '1px solid var(--glass-border)', color: 'hsl(var(--primary))' }}>
                         <Edit size={16} />
                     </motion.button>
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                         onClick={() => setDeleteConfirm(product._id)}
                         className="p-2 rounded-xl shadow-lg"
-                        style={{ background: 'var(--glass-bg-strong)', backdropFilter: 'blur(16px)', border: '1px solid var(--glass-border)', color: 'hsl(0, 72%, 55%)' }}>
+                        style={{ background: 'var(--glass-bg-strong)', border: '1px solid var(--glass-border)', color: 'hsl(0, 72%, 55%)' }}>
                         <Trash2 size={16} />
                     </motion.button>
                 </div>

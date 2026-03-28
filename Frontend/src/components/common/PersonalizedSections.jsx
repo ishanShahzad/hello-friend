@@ -51,7 +51,7 @@ const ProductSlider = ({ products }) => {
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100"
             style={{
               background: 'hsl(var(--background) / 0.9)',
-              backdropFilter: 'blur(8px)',
+              border: '1px solid hsl(var(--border))',
               border: '1px solid hsl(var(--border))',
             }}
           >
@@ -71,7 +71,7 @@ const ProductSlider = ({ products }) => {
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100"
             style={{
               background: 'hsl(var(--background) / 0.9)',
-              backdropFilter: 'blur(8px)',
+              border: '1px solid hsl(var(--border))',
               border: '1px solid hsl(var(--border))',
             }}
           >
