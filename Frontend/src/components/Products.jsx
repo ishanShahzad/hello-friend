@@ -55,7 +55,7 @@ function Products() {
 
   const serializeFilters = () => {
     let params = new URLSearchParams()
-    Object.keys(filters).forEach((key) => {
+    Object.keys(filters || {}).forEach((key) => {
       const value = filters[key]
       if (Array.isArray(value)) {
         if (key === 'priceRange') params.append(key, value.join(','))
@@ -100,8 +100,12 @@ function Products() {
     </div>
   )
 
-  const activeFilterCount = filters.categories.length + filters.brands.length +
-    (filters.priceRange[0] !== '0' || filters.priceRange[1] !== '5000' ? 1 : 0)
+  const filterCategories = filters.categories || []
+  const filterBrands = filters.brands || []
+  const filterPriceRange = filters.priceRange || ['0', '5000']
+
+  const activeFilterCount = filterCategories.length + filterBrands.length +
+    (filterPriceRange[0] !== '0' || filterPriceRange[1] !== '5000' ? 1 : 0)
 
   const FilterSidebarContent = ({ onClose }) => (
     <div className='flex flex-col gap-6 p-6'>
@@ -184,18 +188,18 @@ function Products() {
           style={{ background: 'rgba(255,255,255,0.15)' }}
         />
         <div className='flex justify-between mt-2'>
-          <span className='tag-pill text-xs font-semibold'>${filters.priceRange[0]}</span>
-          <span className='tag-pill text-xs font-semibold'>${filters.priceRange[1]}</span>
+          <span className='tag-pill text-xs font-semibold'>${filterPriceRange[0]}</span>
+          <span className='tag-pill text-xs font-semibold'>${filterPriceRange[1]}</span>
         </div>
       </div>
 
       {/* Active Filters */}
       {activeFilterCount > 0 && (
         <div className='flex flex-wrap gap-2'>
-          {filters.categories.map(c => (
+          {filterCategories.map(c => (
             <span key={c} className='tag-pill text-xs font-medium'>{c}</span>
           ))}
-          {filters.brands.map(b => (
+          {filterBrands.map(b => (
             <span key={b} className='tag-pill text-xs font-medium' style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'hsl(200, 80%, 50%)' }}>{b}</span>
           ))}
         </div>
