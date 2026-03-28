@@ -100,8 +100,12 @@ function Products() {
     </div>
   )
 
-  const activeFilterCount = filters.categories.length + filters.brands.length +
-    (filters.priceRange[0] !== '0' || filters.priceRange[1] !== '5000' ? 1 : 0)
+  const filterCategories = filters.categories || []
+  const filterBrands = filters.brands || []
+  const filterPriceRange = filters.priceRange || ['0', '5000']
+
+  const activeFilterCount = filterCategories.length + filterBrands.length +
+    (filterPriceRange[0] !== '0' || filterPriceRange[1] !== '5000' ? 1 : 0)
 
   const FilterSidebarContent = ({ onClose }) => (
     <div className='flex flex-col gap-6 p-6'>
