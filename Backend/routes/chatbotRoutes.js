@@ -7,7 +7,10 @@ const {
     submitComplaint,
     getMyComplaints,
     getAllComplaints,
-    updateComplaint
+    updateComplaint,
+    getChatHistory,
+    saveChatHistory,
+    clearChatHistory
 } = require('../controllers/chatbotController');
 
 // Optional auth middleware (doesn't block guests)
@@ -34,5 +37,10 @@ router.post('/complaint', verifyToken, submitComplaint);
 router.get('/my-complaints', verifyToken, getMyComplaints);
 router.get('/complaints', verifyToken, getAllComplaints); // admin
 router.put('/complaint/:id', verifyToken, updateComplaint); // admin
+
+// Chat history routes (authenticated)
+router.get('/history', verifyToken, getChatHistory);
+router.post('/history', verifyToken, saveChatHistory);
+router.delete('/history', verifyToken, clearChatHistory);
 
 module.exports = router;

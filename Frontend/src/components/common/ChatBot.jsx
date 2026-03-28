@@ -271,16 +271,47 @@ const ChatBot = () => {
   const callTimerRef = useRef(null);
   const isSpeakingRef = useRef(false);
 
-  // ─── Persist messages to localStorage ───
+  // ─── Persist messages to localStorage + DB ───
+  const saveTimerRef = useRef(null);
+
   useEffect(() => {
     if (messages.length > 0) {
       try {
-        // Only save non-streaming messages
-        const toSave = messages.filter(m => !m._streaming).map(({ _streaming, ...rest }) => rest);
+        const toSave = messages.filter(m => !m._streaming).map(({ _streaming, toolResults, ...rest }) => ({ role: rest.role, content: rest.content }));
         localStorage.setItem('tortrose_chat_history', JSON.stringify(toSave));
+
+        // Debounced save to backend for logged-in users
+        if (currentUser) {
+          clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = setTimeout(() => {
+            const jwtToken = localStorage.getItem('jwtToken');
+            if (jwtToken) {
+              axios.post(`${import.meta.env.VITE_API_URL}api/chatbot/history`, { messages: toSave }, {
+                headers: { Authorization: `Bearer ${jwtToken}` }
+              }).catch(() => {});
+            }
+          }, 2000);
+        }
       } catch {}
     }
-  }, [messages]);
+  }, [messages, currentUser]);
+
+  // ─── Load chat history from DB on login ───
+  useEffect(() => {
+    if (currentUser && messages.length === 0) {
+      const jwtToken = localStorage.getItem('jwtToken');
+      if (jwtToken) {
+        axios.get(`${import.meta.env.VITE_API_URL}api/chatbot/history`, {
+          headers: { Authorization: `Bearer ${jwtToken}` }
+        }).then(res => {
+          if (res.data?.messages?.length > 0) {
+            setMessages(res.data.messages);
+            localStorage.setItem('tortrose_chat_history', JSON.stringify(res.data.messages));
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [currentUser]);
 
   // ─── Scroll to bottom ───
   useEffect(() => {
@@ -809,7 +840,16 @@ const ChatBot = () => {
                     {ttsEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
                   </button>
                   <button
-                    onClick={() => { setMessages([]); localStorage.removeItem('tortrose_chat_history'); }}
+                    onClick={() => {
+                      setMessages([]);
+                      localStorage.removeItem('tortrose_chat_history');
+                      const jwtToken = localStorage.getItem('jwtToken');
+                      if (jwtToken) {
+                        axios.delete(`${import.meta.env.VITE_API_URL}api/chatbot/history`, {
+                          headers: { Authorization: `Bearer ${jwtToken}` }
+                        }).catch(() => {});
+                      }
+                    }}
                     className="p-1.5 rounded-lg glass-inner"
                     style={{ color: 'hsl(var(--muted-foreground))' }}
                     title="Clear chat"
