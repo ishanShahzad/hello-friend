@@ -13,9 +13,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const AI_CHAT_URL = `${SUPABASE_URL}/functions/v1/ai-chat`;
+const AI_CHAT_URL = 'https://tveuvogqzovgsdfnexkw.supabase.co/functions/v1/ai-chat';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZXV2b2dxem92Z3NkZm5leGt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MjEzNzksImV4cCI6MjA5MDI5NzM3OX0.cxcLp93P2VGW4Zv_JVNKgNbZA135dEMkRaGaz_FnoZM';
 
 const COMPLAINT_CATEGORIES = [
   { value: 'product_issue', label: 'Product Issue' },
