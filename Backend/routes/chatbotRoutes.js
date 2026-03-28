@@ -3,15 +3,15 @@ const router = express.Router();
 const verifyToken = require('../middleware/authMiddleware');
 const {
     chat,
+    getUserContext,
     submitComplaint,
     getMyComplaints,
     getAllComplaints,
     updateComplaint
 } = require('../controllers/chatbotController');
 
-// Chat endpoint (works for both authenticated and guest users)
-router.post('/chat', (req, res, next) => {
-    // Try to authenticate but don't require it
+// Optional auth middleware (doesn't block guests)
+const optionalAuth = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (token) {
         const jwt = require('jsonwebtoken');
@@ -21,7 +21,13 @@ router.post('/chat', (req, res, next) => {
         } catch (e) { /* guest user */ }
     }
     next();
-}, chat);
+};
+
+// Chat endpoint (works for both authenticated and guest users)
+router.post('/chat', optionalAuth, chat);
+
+// User context for AI personalization (authenticated)
+router.get('/user-context', verifyToken, getUserContext);
 
 // Complaint routes (authenticated)
 router.post('/complaint', verifyToken, submitComplaint);

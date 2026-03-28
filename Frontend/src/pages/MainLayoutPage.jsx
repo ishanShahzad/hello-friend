@@ -6,7 +6,6 @@ import GlassBackground from '../components/common/GlassBackground'
 import Footer from '../components/layout/Footer'
 import SEOHead from '../components/common/SEOHead'
 import ChatBot from '../components/common/ChatBot'
-import VoiceCommerce from '../components/common/VoiceCommerce'
 import { useGlobal } from '../contexts/GlobalContext'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -55,7 +54,6 @@ function MainLayoutPage() {
       </div>
       <Footer />
       <ChatBot />
-      <VoiceCommerce />
     </div>
   )
 }
