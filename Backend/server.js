@@ -229,6 +229,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes')
 const subdomainRoutes = require('./routes/subdomain')
 const chatbotRoutes = require('./routes/chatbotRoutes')
 const smartTagRoutes = require('./routes/smartTagRoutes')
+const aiActionRoutes = require('./routes/aiActionRoutes')
 const { getOrderDetail } = require('./controllers/orderController')
 const Cart = require('./models/Cart')
 const { sendEmail } = require('./controllers/mailController')
@@ -252,6 +253,7 @@ app.use('/api/analytics', analyticsRoutes)
 app.use('/api/subdomain', subdomainRoutes)
 app.use('/api/chatbot', chatbotRoutes)
 app.use('/api/smart-tags', smartTagRoutes)
+app.use('/api/ai-actions', aiActionRoutes)
 
 // Centralized JSON error responses
 app.use((err, req, res, next) => {

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const SellerDashboard = () => {
     const { currentUser } = useAuth();
     const [isMobile, setIsMobile] = useState(false);
+    const [aiChatOpen, setAiChatOpen] = useState(false);
 
     useEffect(() => {
         const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -458,6 +459,39 @@ const SellerDashboard = () => {
                 </div>
             </div>
 
+            {/* AI Chat Slide Panel */}
+            <AnimatePresence>
+                {aiChatOpen && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
+                        className="fixed top-0 right-0 h-full w-[400px] max-w-[90vw] z-[60] shadow-2xl"
+                    >
+                        <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between px-4 py-3 glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '0 0 0 20px' }}>
+                                <div className="flex items-center gap-2">
+                                    <Bot size={18} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Business Assistant</span>
+                                </div>
+                                <button onClick={() => setAiChatOpen(false)} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <ChatBotComponent embedded dashboardRole="seller" />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {aiChatOpen && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55]"
+                    onClick={() => setAiChatOpen(false)} />
+            )}
+
             {createPortal(notificationsDropdown, document.body)}
 
             {/* Product Form Modal */}
@@ -481,6 +515,7 @@ const SellerDashboard = () => {
 
 export default SellerDashboard;
 
+import ChatBotComponent from '../common/ChatBot';
 
 // ============================
 // Sidebar Component
@@ -500,6 +535,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
         { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
+        { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
     ];
 
     useEffect(() => {

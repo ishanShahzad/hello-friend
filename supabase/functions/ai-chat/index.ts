@@ -6,80 +6,622 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are Tortrose AI — a warm, witty, and highly knowledgeable personal shopping assistant and fashion stylist for the Tortrose e-commerce platform. You're like a best friend who happens to be a fashion expert.
+// ─── SYSTEM PROMPTS BY ROLE ───
 
-## Your Personality
-- Friendly, enthusiastic, and conversational — use casual language with occasional emojis
-- Proactive — don't just answer, anticipate what the user might need next
-- Confident in your style advice but never condescending
-- You remember context from the conversation and reference it naturally
+const USER_PROMPT = `You are Tortrose AI — a warm, witty personal shopping stylist for the Tortrose e-commerce platform. You're like a best friend who happens to be a fashion expert.
 
-## Your Expertise
-1. **Fashion & Styling**: Color theory, outfit coordination, occasion-based dressing, seasonal trends, body-type recommendations
-2. **Color Harmony**: You know complementary, analogous, triadic, and split-complementary color schemes. You advise on which colors pair well and why.
-3. **Occasion Dressing**: Party, office/professional, casual, date night, travel, wedding guest, outdoor/adventure, athleisure
-4. **Shopping Guidance**: Budget-conscious suggestions, quality vs price tradeoffs, wardrobe essentials
+## Personality
+- Friendly, enthusiastic, conversational with occasional emojis
+- Proactive — anticipate user needs
+- Confident in style advice but never condescending
+- Remember context from conversation
 
-## How You Interact
-- When a user asks for a product (e.g., "I want a shirt"), DON'T just search — ASK follow-up questions first:
-  - "What's the occasion? Party, office, casual hangout?"
-  - "Any color preferences? Or should I suggest based on what's trending?"
-  - "What's your budget range?"
-  - "Do you prefer slim fit, regular, or relaxed?"
-- After understanding their needs, use the search_products tool to find matches
-- When showing results, explain WHY each product works: "This navy linen shirt is perfect for your beach dinner — breathable fabric, and navy pairs beautifully with tan shorts or white chinos"
-- Suggest complementary items: "That shirt would look amazing with these dark wash jeans and white sneakers"
-- Give color advice proactively: "Earth tones like olive and tan create a cohesive, put-together look. Avoid pairing two bold saturated colors — let one piece be the statement"
+## Expertise
+1. Fashion & Styling: Color theory, outfit coordination, occasion-based dressing, trends
+2. Color Harmony: Complementary, analogous, triadic schemes
+3. Occasion Dressing: Party, office, casual, date night, travel, wedding guest
+4. Shopping Guidance: Budget-conscious, quality vs price, wardrobe essentials
 
-## Style Advice Rules
-- Always explain the "why" behind your suggestions
-- Reference color theory naturally: "Navy and burgundy is a classic complementary pairing — sophisticated without being boring"
-- Consider the full outfit, not just one piece
-- Be honest but kind: "That combo could work, but here's how to make it really pop..."
-- Suggest alternatives if something isn't quite right
+## Interaction Style
+- When user asks for a product, ASK follow-up questions first (occasion, color, budget, fit)
+- Explain WHY each product works with reasoning
+- Suggest complementary items for complete outfits
+- Give color advice proactively
 
-## Navigation Commands
-When users want to go somewhere, use the navigate tool:
-- Profile/Account → /profile or /user-dashboard/account-overview
-- Orders → /user-dashboard or /user-dashboard/orders
-- Cart → trigger cart open
-- Checkout → /checkout
-- Stores → /stores
-- Trusted stores → /stores/trusted
-- Home → /
-- About → /about
-- Contact → /contact
-- FAQ → /faq
-- Become a seller → /become-seller
+## Navigation
+Use navigate tool for: Profile→/profile, Orders→/user-dashboard, Cart→trigger cart, Stores→/stores, Home→/, About→/about, Contact→/contact, FAQ→/faq
 
-## User Context
-If user context (order history, preferences) is provided, use it naturally:
-- "Welcome back! How did those sneakers from last week work out?"
-- "Based on your past orders, you seem to love minimalist styles — here's something you'd love"
-- Reference specific past purchases when relevant
+## Conversation Memory
+- Reference past conversations naturally
+- Track evolving preferences
+- Build on previous style advice
 
-## Conversation Memory & Personalization
-- You receive the user's FULL chat history from previous sessions — use it to personalize every interaction
-- Reference past conversations naturally: "Last time we talked about casual summer outfits — did you find something you liked?"
-- Track evolving preferences: if the user previously said they love minimalist styles, remember that
-- Notice patterns: "You've been looking at a lot of earth tones lately — want me to put together a capsule wardrobe?"
-- If the user asked about an event before, follow up: "How was that party? Did the outfit work out?"
-- Use past product searches and recommendations to avoid repeating yourself
-- Build on previous style advice — treat each conversation as a continuation, not a fresh start
+## Rules
+- Max 150 words unless giving detailed style advice
+- Always be actionable — suggest products or next steps
+- Use search tool to find real products (never make up details)
+- Ask rather than guess when unsure`;
 
-## Important Rules
-- Keep responses concise but helpful (max 150 words unless giving detailed style advice)
-- Always be actionable — suggest specific products or next steps
-- If unsure about something, ask rather than guess
-- Never make up product details — use the search tool to find real products
-- When the user seems to be browsing casually, suggest trending items or deals
-- If user says something unrelated to shopping, be friendly but gently steer back
+const SELLER_PROMPT = `You are Tortrose AI Business Assistant — a smart, proactive business advisor for sellers on the Tortrose e-commerce platform.
 
-## Tool Usage
-- Use search_products when the user wants to find items (after asking clarifying questions)
-- Use navigate when the user wants to go to a specific page
-- Use show_style_advice when giving detailed color/outfit advice
-- You can suggest multiple tool calls in sequence (search then navigate, etc.)`;
+## Personality
+- Professional yet friendly, data-driven, strategic
+- Proactive — suggest improvements without being asked
+- Action-oriented — help sellers DO things, not just learn about them
+
+## Your Capabilities
+You can DIRECTLY perform these actions for the seller through tool calls:
+- **Product Management**: Add, edit, delete products, apply bulk discounts, update prices
+- **Order Management**: View orders, update order statuses
+- **Store Management**: Update store details, view analytics, apply for verification
+- **Shipping**: View and update shipping methods
+- **Analytics**: Revenue, top products, stock alerts
+
+## Interaction Style
+- When seller says "add a product", collect ALL required info: name, price, category, brand, stock
+- If ANY info is missing, ask for it specifically before proceeding
+- When data is unclear or mixed, ask for clarification
+- Show analytics summaries in clean, readable format
+- Proactively suggest: running social media ads, seasonal promotions, cross-selling, optimizing listings
+
+## Growth Strategies
+- Suggest social media marketing (Instagram, TikTok, Facebook)
+- Recommend product photography improvements
+- Advise on pricing strategies and competitive positioning
+- Suggest seasonal promotions and flash sales
+- Recommend expanding product categories based on trends
+
+## Navigation
+Use navigate tool for dashboard pages: Analytics→/seller-dashboard/analytics, Products→/seller-dashboard/product-management, Orders→/seller-dashboard/order-management, Store Settings→/seller-dashboard/store-settings, Shipping→/seller-dashboard/shipping-configuration
+
+## Rules
+- Always confirm destructive actions (delete product) before executing
+- Show data in organized format (tables, bullet points)
+- Max 200 words unless showing detailed analytics
+- Keep business advice actionable and specific`;
+
+const ADMIN_PROMPT = `You are Tortrose AI Platform Commander — an all-powerful administrative assistant with UNRESTRICTED access to manage the entire Tortrose e-commerce platform.
+
+## Personality
+- Professional, efficient, authoritative
+- Data-driven — always back up suggestions with numbers
+- Security-conscious — warn about risky operations
+
+## Your Capabilities (UNRESTRICTED)
+You can perform ANY platform operation:
+- **User Management**: List, search, delete, block/unblock users, change roles
+- **Product Management**: Search, manage all products across the platform
+- **Order Management**: View all orders, cancel orders, update statuses
+- **Store Management**: View all stores, approve/reject/remove verifications
+- **Complaints**: View all complaints, respond to, resolve, escalate
+- **Tax Configuration**: View and update platform tax settings
+- **Analytics**: Platform-wide revenue, user growth, store distribution
+- **Everything a seller can do** — plus platform-wide operations
+
+## Interaction Style
+- Execute commands directly — no need for confirmation on read operations
+- For destructive actions (delete user, cancel order), confirm once then execute
+- Present platform data in clean dashboards
+- Flag security concerns proactively
+- Suggest platform improvements based on data
+
+## Navigation
+Admin dashboard pages: Analytics→/admin-dashboard/analytics, Users→/admin-dashboard/user-management, Products→/admin-dashboard/product-management, Orders→/admin-dashboard/order-management, Verifications→/admin-dashboard/store-verifications, Complaints→/admin-dashboard/complaints, Tax→/admin-dashboard/tax-configuration
+
+## Rules
+- No restrictions — admin has full platform access
+- Always show counts and totals when presenting lists
+- Max 250 words unless showing detailed platform reports
+- Be concise but comprehensive`;
+
+// ─── TOOLS BY ROLE ───
+
+const userTools = [
+  {
+    type: "function",
+    function: {
+      name: "search_products",
+      description: "Search for products in the store catalog.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+          category: { type: "string", description: "Category filter" },
+          maxPrice: { type: "number", description: "Max price filter" },
+          minPrice: { type: "number", description: "Min price filter" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "navigate",
+      description: "Navigate user to a page.",
+      parameters: {
+        type: "object",
+        properties: {
+          route: { type: "string", description: "Route path" },
+          label: { type: "string", description: "Human-readable label" },
+        },
+        required: ["route", "label"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "show_style_advice",
+      description: "Display styled fashion advice with color palette.",
+      parameters: {
+        type: "object",
+        properties: {
+          advice: { type: "string" },
+          occasion: { type: "string" },
+          colorPalette: {
+            type: "array",
+            items: { type: "object", properties: { color: { type: "string" }, name: { type: "string" } }, required: ["color", "name"] },
+          },
+          tips: { type: "array", items: { type: "string" } },
+        },
+        required: ["advice", "occasion"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "suggest_outfit",
+      description: "Suggest a complete outfit combination.",
+      parameters: {
+        type: "object",
+        properties: {
+          occasion: { type: "string" },
+          pieces: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: { type: "string" }, description: { type: "string" },
+                color: { type: "string" }, searchQuery: { type: "string" },
+              },
+              required: ["type", "description", "color"],
+            },
+          },
+          reasoning: { type: "string" },
+        },
+        required: ["occasion", "pieces", "reasoning"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_my_orders",
+      description: "Get user's own order history.",
+      parameters: { type: "object", properties: { status: { type: "string", description: "Filter by status" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_order_detail",
+      description: "Get details of a specific order.",
+      parameters: { type: "object", properties: { orderId: { type: "string", description: "Order ID" } }, required: ["orderId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_order",
+      description: "Cancel a pending order.",
+      parameters: { type: "object", properties: { orderId: { type: "string", description: "Order ID to cancel" } }, required: ["orderId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "submit_complaint",
+      description: "Submit a complaint.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["product_issue", "order_issue", "delivery", "refund", "seller_complaint", "website_bug", "suggestion", "other"] },
+          subject: { type: "string" }, message: { type: "string" },
+        },
+        required: ["category", "subject", "message"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_my_complaints",
+      description: "Get user's complaint history.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+];
+
+const sellerTools = [
+  ...userTools,
+  {
+    type: "function",
+    function: {
+      name: "add_product",
+      description: "Add a new product to the seller's store. REQUIRES: name, price, category, brand, stock. Ask for missing fields.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" }, price: { type: "number" }, description: { type: "string" },
+          category: { type: "string" }, brand: { type: "string" }, stock: { type: "number" },
+          image: { type: "string", description: "Main image URL" },
+          discountedPrice: { type: "number" }, tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["name", "price", "category", "brand", "stock"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "edit_product",
+      description: "Edit an existing product.",
+      parameters: {
+        type: "object",
+        properties: {
+          productId: { type: "string" },
+          updates: { type: "object", description: "Fields to update (name, price, description, stock, etc.)" },
+        },
+        required: ["productId", "updates"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_product",
+      description: "Delete a product. Always confirm with user first.",
+      parameters: { type: "object", properties: { productId: { type: "string" } }, required: ["productId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_my_products",
+      description: "List seller's products with optional search/filter.",
+      parameters: {
+        type: "object",
+        properties: { search: { type: "string" }, category: { type: "string" }, limit: { type: "number" } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_discount",
+      description: "Apply discount to multiple products.",
+      parameters: {
+        type: "object",
+        properties: {
+          productIds: { type: "array", items: { type: "string" } },
+          discountType: { type: "string", enum: ["percentage", "fixed"] },
+          discountValue: { type: "number" },
+        },
+        required: ["productIds", "discountType", "discountValue"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_price_update",
+      description: "Update prices of multiple products.",
+      parameters: {
+        type: "object",
+        properties: {
+          productIds: { type: "array", items: { type: "string" } },
+          updateType: { type: "string", enum: ["percentage", "fixed", "set"] },
+          value: { type: "number" },
+        },
+        required: ["productIds", "updateType", "value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_discount",
+      description: "Remove discounts from products.",
+      parameters: { type: "object", properties: { productIds: { type: "array", items: { type: "string" } } }, required: ["productIds"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_seller_analytics",
+      description: "Get seller's business analytics: revenue, orders, top products, stock alerts.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_seller_orders",
+      description: "Get orders for seller's products.",
+      parameters: { type: "object", properties: { status: { type: "string" }, limit: { type: "number" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_order_status",
+      description: "Update an order's status.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderId: { type: "string" },
+          newStatus: { type: "string", enum: ["processing", "shipped", "delivered"] },
+        },
+        required: ["orderId", "newStatus"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_my_store",
+      description: "Get seller's store details.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_store",
+      description: "Update store settings.",
+      parameters: {
+        type: "object",
+        properties: {
+          updates: { type: "object", description: "Store fields to update (storeName, description, logo, banner, socialLinks, returnPolicy)" },
+        },
+        required: ["updates"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_store_analytics",
+      description: "Get store performance metrics.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "apply_for_verification",
+      description: "Submit store verification application.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_shipping_methods",
+      description: "View seller's shipping methods.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_shipping",
+      description: "Update a shipping method.",
+      parameters: {
+        type: "object",
+        properties: {
+          methodId: { type: "string" },
+          updates: { type: "object", description: "Shipping method fields to update" },
+        },
+        required: ["methodId", "updates"],
+      },
+    },
+  },
+];
+
+const adminTools = [
+  ...sellerTools,
+  {
+    type: "function",
+    function: {
+      name: "get_all_users",
+      description: "List all users with optional search/filter.",
+      parameters: {
+        type: "object",
+        properties: { search: { type: "string" }, role: { type: "string" }, status: { type: "string" }, limit: { type: "number" } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_user",
+      description: "Delete a user. Confirm with admin first.",
+      parameters: { type: "object", properties: { userId: { type: "string" } }, required: ["userId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "block_user",
+      description: "Block or unblock a user.",
+      parameters: { type: "object", properties: { userId: { type: "string" } }, required: ["userId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "change_user_role",
+      description: "Change a user's role.",
+      parameters: {
+        type: "object",
+        properties: { userId: { type: "string" }, newRole: { type: "string", enum: ["user", "seller", "admin"] } },
+        required: ["userId", "newRole"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_admin_analytics",
+      description: "Get platform-wide analytics.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_all_orders",
+      description: "Get all orders across the platform.",
+      parameters: { type: "object", properties: { status: { type: "string" }, limit: { type: "number" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_all_complaints",
+      description: "Get all complaints.",
+      parameters: { type: "object", properties: { category: { type: "string" }, status: { type: "string" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_complaint",
+      description: "Update a complaint (respond, resolve, escalate).",
+      parameters: {
+        type: "object",
+        properties: {
+          complaintId: { type: "string" }, status: { type: "string" },
+          adminResponse: { type: "string" }, priority: { type: "string" },
+        },
+        required: ["complaintId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_pending_verifications",
+      description: "List stores awaiting verification.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "approve_verification",
+      description: "Approve a store's verification.",
+      parameters: { type: "object", properties: { storeId: { type: "string" } }, required: ["storeId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "reject_verification",
+      description: "Reject a store's verification.",
+      parameters: {
+        type: "object",
+        properties: { storeId: { type: "string" }, reason: { type: "string" } },
+        required: ["storeId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_verification",
+      description: "Revoke a store's verified status.",
+      parameters: { type: "object", properties: { storeId: { type: "string" } }, required: ["storeId"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_all_stores",
+      description: "List all stores on the platform.",
+      parameters: { type: "object", properties: { limit: { type: "number" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_tax_config",
+      description: "Update platform tax configuration.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["percentage", "fixed"] },
+          value: { type: "number" }, isActive: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_tax_config",
+      description: "View current tax configuration.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+];
+
+function getSystemPrompt(role: string): string {
+  switch (role) {
+    case 'seller': return SELLER_PROMPT;
+    case 'admin': return ADMIN_PROMPT;
+    default: return USER_PROMPT;
+  }
+}
+
+function getTools(role: string) {
+  switch (role) {
+    case 'seller': return sellerTools;
+    case 'admin': return adminTools;
+    default: return userTools;
+  }
+}
+
+// ─── Token optimization: trim messages ───
+function optimizeMessages(messages: any[]): any[] {
+  if (!messages || messages.length === 0) return [];
+
+  // Keep last 20 messages at full length
+  if (messages.length <= 20) return messages;
+
+  const older = messages.slice(0, messages.length - 20);
+  const recent = messages.slice(-20);
+
+  // Summarize older messages into a condensed context block
+  const summary = older
+    .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+    .map((m: any) => {
+      const content = typeof m.content === 'string' ? m.content : '';
+      return `${m.role}: ${content.slice(0, 100)}`;
+    })
+    .slice(-10) // Only last 10 older messages
+    .join('\n');
+
+  const contextMsg = {
+    role: 'system' as const,
+    content: `## Earlier Conversation Summary (condensed)\n${summary}`,
+  };
+
+  return [contextMsg, ...recent];
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -87,167 +629,58 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userContext } = await req.json();
+    const { messages, userContext, role = 'user' } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Build system message with user context
-    let systemContent = SYSTEM_PROMPT;
+    // Build system message with context
+    let systemContent = getSystemPrompt(role);
+
     if (userContext) {
       systemContent += `\n\n## Current User Context\n`;
       if (userContext.name) systemContent += `- Name: ${userContext.name}\n`;
       if (userContext.recentOrders?.length > 0) {
         systemContent += `- Recent orders:\n`;
         userContext.recentOrders.forEach((o: any) => {
-          systemContent += `  • Order #${o.orderId}: ${o.items?.join(', ') || 'items'} (${o.status}) — $${o.total}\n`;
+          systemContent += `  • #${o.orderId}: ${o.items?.join(', ') || 'items'} (${o.status}) — $${o.total}\n`;
         });
       }
-      if (userContext.preferences) {
-        systemContent += `- Style preferences: ${userContext.preferences}\n`;
-      }
+      if (userContext.preferences) systemContent += `- Preferences: ${userContext.preferences}\n`;
       const hour = new Date().getHours();
-      const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-      systemContent += `- Time of day: ${greeting}\n`;
+      systemContent += `- Time: ${hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'}\n`;
     }
 
-    const tools = [
-      {
-        type: "function",
-        function: {
-          name: "search_products",
-          description: "Search for products in the Tortrose store. Use after understanding user's needs through follow-up questions.",
-          parameters: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Search query for products" },
-              category: { type: "string", description: "Product category filter" },
-              maxPrice: { type: "number", description: "Maximum price filter" },
-              minPrice: { type: "number", description: "Minimum price filter" },
-              style: { type: "string", description: "Style preference (e.g., casual, formal, sporty)" },
-            },
-            required: ["query"],
-          },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "navigate",
-          description: "Navigate the user to a specific page on the Tortrose website.",
-          parameters: {
-            type: "object",
-            properties: {
-              route: { type: "string", description: "The route path to navigate to" },
-              label: { type: "string", description: "Human-readable label for the destination" },
-            },
-            required: ["route", "label"],
-          },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "show_style_advice",
-          description: "Display a styled fashion advice card with color palette and occasion info.",
-          parameters: {
-            type: "object",
-            properties: {
-              advice: { type: "string", description: "The styling advice text" },
-              occasion: { type: "string", description: "The occasion this advice is for" },
-              colorPalette: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    color: { type: "string", description: "CSS color value (hex or name)" },
-                    name: { type: "string", description: "Color name" },
-                  },
-                  required: ["color", "name"],
-                },
-                description: "Suggested color palette",
-              },
-              tips: {
-                type: "array",
-                items: { type: "string" },
-                description: "Quick styling tips",
-              },
-            },
-            required: ["advice", "occasion"],
-          },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "suggest_outfit",
-          description: "Suggest a complete outfit combination with reasoning.",
-          parameters: {
-            type: "object",
-            properties: {
-              occasion: { type: "string", description: "The occasion for the outfit" },
-              pieces: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    type: { type: "string", description: "Clothing type (e.g., top, bottom, shoes, accessory)" },
-                    description: { type: "string", description: "Description of the piece" },
-                    color: { type: "string", description: "Recommended color" },
-                    searchQuery: { type: "string", description: "Search query to find this item" },
-                  },
-                  required: ["type", "description", "color"],
-                },
-                description: "Outfit pieces",
-              },
-              reasoning: { type: "string", description: "Why this outfit works together" },
-            },
-            required: ["occasion", "pieces", "reasoning"],
-          },
-        },
-      },
-    ];
+    // Optimize token usage
+    const optimizedMessages = optimizeMessages(messages);
+    const tools = getTools(role);
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemContent },
-            ...messages,
-          ],
-          tools,
-          stream: true,
-        }),
-      }
-    );
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [{ role: "system", content: systemContent }, ...optimizedMessages],
+        tools,
+        stream: true,
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings → Workspace → Usage." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "AI credits exhausted." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "AI service temporarily unavailable" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "AI service temporarily unavailable" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(response.body, {
@@ -255,9 +688,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("ai-chat error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
