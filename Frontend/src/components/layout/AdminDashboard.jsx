@@ -18,6 +18,7 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import GlassBackground from '../common/GlassBackground';
 import Loader from '../common/Loader';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import ChatBotComponent from '../common/ChatBot';
 
 
 const AdminDashboard = () => {
