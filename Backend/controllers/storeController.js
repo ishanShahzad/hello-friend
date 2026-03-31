@@ -188,6 +188,13 @@ exports.createStore = async (req, res) => {
 
         await newStore.save();
 
+        // Initialize seller subscription (15-day free trial)
+        try {
+            await initializeSubscription(sellerId);
+        } catch (subErr) {
+            console.error('Initialize subscription error:', subErr.message);
+        }
+
         // Send store creation email
         try {
             const seller = await User.findById(sellerId);
