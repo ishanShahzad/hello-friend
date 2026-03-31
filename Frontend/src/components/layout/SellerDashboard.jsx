@@ -539,10 +539,18 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
     ];
 
     useEffect(() => {
-        menuItems.forEach(item => { if (location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
+        menuItems.forEach(item => { if (item.link && location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
     }, [location]);
 
-    const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
+    const handleTabClick = (tabId, item) => {
+        if (item?.action === 'ai-chat') {
+            onAiChat?.();
+            if (isMobile) setIsSidebarOpen(false);
+            return;
+        }
+        setActiveTab(tabId);
+        if (isMobile) setIsSidebarOpen(false);
+    };
 
     return (
         <>
