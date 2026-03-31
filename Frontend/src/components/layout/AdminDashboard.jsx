@@ -8,7 +8,7 @@ import {
     CheckSquare, AlertCircle, Menu, TriangleAlert, TrafficCone,
     LayoutPanelLeft, ShoppingBag, Users, CheckCircle, Bell,
     Settings, TrendingUp, Info, AlertTriangle, Loader2,
-    Shield, Store,
+    Shield, Store, Bot,
 } from 'lucide-react';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import axios from 'axios';
@@ -18,11 +18,13 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import GlassBackground from '../common/GlassBackground';
 import Loader from '../common/Loader';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import ChatBotComponent from '../common/ChatBot';
 
 
 const AdminDashboard = () => {
     const { currentUser } = useAuth();
     const [isMobile, setIsMobile] = useState(false);
+    const [aiChatOpen, setAiChatOpen] = useState(false);
 
     useEffect(() => {
         const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -308,6 +310,7 @@ const AdminDashboard = () => {
                 isMobile={isMobile}
                 pendingOrders={pendingOrders}
                 lowStockProducts={lowStockProducts + outOfStockProducts}
+                onAiChat={() => setAiChatOpen(true)}
             />
 
             {/* Main Content */}
@@ -395,6 +398,39 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
+            {/* AI Chat Slide Panel */}
+            <AnimatePresence>
+                {aiChatOpen && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
+                        className="fixed top-0 right-0 h-full w-[400px] max-w-[90vw] z-[60] shadow-2xl"
+                    >
+                        <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between px-4 py-3 glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '0 0 0 20px' }}>
+                                <div className="flex items-center gap-2">
+                                    <Bot size={18} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Platform Commander</span>
+                                </div>
+                                <button onClick={() => setAiChatOpen(false)} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <ChatBotComponent embedded dashboardRole="admin" />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {aiChatOpen && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55]"
+                    onClick={() => setAiChatOpen(false)} />
+            )}
+
             {createPortal(notificationsDropdown, document.body)}
 
             {/* Product Form Modal */}
@@ -419,7 +455,7 @@ const AdminDashboard = () => {
 // ============================
 // Admin Sidebar Component
 // ============================
-const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isMobile, pendingOrders, lowStockProducts }) => {
+const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isMobile, pendingOrders, lowStockProducts, onAiChat }) => {
     const { currentUser } = useAuth();
     const location = useLocation();
 
@@ -435,13 +471,22 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
+        { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
     ];
 
     useEffect(() => {
-        menuItems.forEach(item => { if (location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
+        menuItems.forEach(item => { if (item.link && location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
     }, [location]);
 
-    const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
+    const handleTabClick = (tabId, item) => {
+        if (item?.action === 'ai-chat') {
+            onAiChat?.();
+            if (isMobile) setIsSidebarOpen(false);
+            return;
+        }
+        setActiveTab(tabId);
+        if (isMobile) setIsSidebarOpen(false);
+    };
 
     return (
         <>
@@ -496,26 +541,29 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
                         </p>
                         {menuItems.map(item => {
                             const isActive = activeTab === item.id;
-                            return (
-                                <Link key={item.id} to={item.link}>
-                                    <motion.button whileHover={{ x: 2 }} onClick={() => handleTabClick(item.id)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'border shadow-sm' : 'hover:bg-white/8'}`}
-                                        style={isActive ? {
-                                            background: 'rgba(99, 102, 241, 0.12)',
-                                            color: 'hsl(var(--foreground))',
-                                            borderColor: 'rgba(99, 102, 241, 0.25)'
-                                        } : { color: 'hsl(var(--muted-foreground))' }}>
-                                        <span style={{ color: isActive ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
-                                        {item.label}
-                                        {item.badge > 0 && (
-                                            <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5"
-                                                style={{ background: 'hsl(0, 72%, 55%)' }}>
-                                                {item.badge > 99 ? '99+' : item.badge}
-                                            </span>
-                                        )}
-                                        {isActive && !item.badge && <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%)' }} />}
-                                    </motion.button>
-                                </Link>
+                            const ButtonContent = (
+                                <motion.button whileHover={{ x: 2 }} onClick={() => handleTabClick(item.id, item)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'border shadow-sm' : 'hover:bg-white/8'}`}
+                                    style={isActive ? {
+                                        background: 'rgba(99, 102, 241, 0.12)',
+                                        color: 'hsl(var(--foreground))',
+                                        borderColor: 'rgba(99, 102, 241, 0.25)'
+                                    } : { color: 'hsl(var(--muted-foreground))' }}>
+                                    <span style={{ color: isActive ? 'hsl(220, 70%, 55%)' : item.action === 'ai-chat' ? 'hsl(150, 60%, 45%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
+                                    {item.label}
+                                    {item.badge > 0 && (
+                                        <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5"
+                                            style={{ background: 'hsl(0, 72%, 55%)' }}>
+                                            {item.badge > 99 ? '99+' : item.badge}
+                                        </span>
+                                    )}
+                                    {isActive && !item.badge && <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%)' }} />}
+                                </motion.button>
+                            );
+                            return item.action ? (
+                                <div key={item.id}>{ButtonContent}</div>
+                            ) : (
+                                <Link key={item.id} to={item.link}>{ButtonContent}</Link>
                             );
                         })}
                     </nav>
