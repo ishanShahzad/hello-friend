@@ -2,7 +2,6 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Complaint = require('../models/Complaint');
 const ChatHistory = require('../models/ChatHistory');
-const { callHF } = require('../utils/hfClient');
 const Fuse = require('fuse.js');
 
 // ─── Chat History CRUD ───
