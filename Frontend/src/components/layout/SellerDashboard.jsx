@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -18,6 +18,7 @@ const SellerDashboard = () => {
     const { currentUser } = useAuth();
     const [isMobile, setIsMobile] = useState(false);
     const [aiChatOpen, setAiChatOpen] = useState(false);
+    const [subscriptionData, setSubscriptionData] = useState(null);
 
     useEffect(() => {
         const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -26,6 +27,22 @@ const SellerDashboard = () => {
         return () => window.removeEventListener('resize', checkIsMobile);
     }, []);
 
+    // Fetch subscription status
+    useEffect(() => {
+        const fetchSub = async () => {
+            try {
+                const token = localStorage.getItem('jwtToken');
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subscription/status`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSubscriptionData(res.data.subscription);
+            } catch (e) { /* ignore */ }
+        };
+        fetchSub();
+    }, []);
+
+    const isSubBlocked = subscriptionData?.status === 'blocked';
+    const isTrialExpiring = subscriptionData?.isTrialExpiringSoon;
     const [activeTab, setActiveTab] = useState('overview');
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -454,6 +471,46 @@ const SellerDashboard = () => {
                     )}
                 </div>
 
+                {/* Subscription Warning Banners */}
+                {isSubBlocked && (
+                    <div className="mx-4 mt-3">
+                        <Link to="/seller-dashboard/subscription">
+                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                                className="p-4 rounded-2xl border cursor-pointer hover:scale-[1.01] transition-transform"
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                                <div className="flex items-center gap-3">
+                                    <Lock size={18} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold" style={{ color: 'hsl(0, 72%, 55%)' }}>Store Blocked — Subscribe to Reactivate</p>
+                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Your store and products are hidden. Click to subscribe.</p>
+                                    </div>
+                                    <Crown size={16} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                </div>
+                            </motion.div>
+                        </Link>
+                    </div>
+                )}
+                {isTrialExpiring && !isSubBlocked && (
+                    <div className="mx-4 mt-3">
+                        <Link to="/seller-dashboard/subscription">
+                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                                className="p-4 rounded-2xl border cursor-pointer hover:scale-[1.01] transition-transform"
+                                style={{ background: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+                                <div className="flex items-center gap-3">
+                                    <AlertTriangle size={18} style={{ color: 'hsl(45, 80%, 40%)' }} />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold" style={{ color: 'hsl(45, 80%, 40%)' }}>
+                                            Trial expires in {subscriptionData?.trialDaysRemaining} day{subscriptionData?.trialDaysRemaining !== 1 ? 's' : ''}
+                                        </p>
+                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Subscribe now — 90 days free, then $5/mo</p>
+                                    </div>
+                                    <Crown size={16} style={{ color: 'hsl(45, 80%, 40%)' }} />
+                                </div>
+                            </motion.div>
+                        </Link>
+                    </div>
+                )}
+
                 {/* Page Content */}
                 <div className="flex-1">
                     <Outlet context={outletContext} />
@@ -533,6 +590,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/seller-dashboard/order-management', badge: pendingOrders },
         { id: 'shipping', label: 'Shipping', icon: <Truck size={18} />, link: '/seller-dashboard/shipping-configuration' },
         { id: 'subdomain', label: 'Subdomain', icon: <LayoutPanelLeft size={18} />, link: '/seller-dashboard/subdomain' },
+        { id: 'subscription', label: 'Subscription', icon: <Crown size={18} />, link: '/seller-dashboard/subscription' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
         { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },

@@ -10,12 +10,25 @@ const AIRateLimit = require('../models/AIRateLimit');
 // Helper: get today's date string
 const getToday = () => new Date().toISOString().split('T')[0];
 
-// Rate limits per role
+// Rate limits per role (base limits - subscribed sellers get more)
 const RATE_LIMITS = {
     guest: 5,
     user: 20,
-    seller: 25,
+    seller: 25,       // Free/trial sellers
+    seller_sub: 100,   // Subscribed sellers
     admin: Infinity,
+};
+
+// Helper to get effective rate limit for seller
+const getSellerRateLimit = async (userId) => {
+    try {
+        const SellerSubscription = require('../models/SellerSubscription');
+        const sub = await SellerSubscription.findOne({ seller: userId });
+        if (sub && ['active', 'free_period'].includes(sub.status)) {
+            return sub.aiMessageLimit || RATE_LIMITS.seller_sub;
+        }
+    } catch (e) { /* fallback */ }
+    return RATE_LIMITS.seller;
 };
 
 // ─── Rate Limit ───
@@ -29,7 +42,7 @@ exports.getRateLimit = async (req, res) => {
         const query = userId ? { userId, date: today } : { ip, date: today, userId: null };
         const record = await AIRateLimit.findOne(query);
         const used = record?.messageCount || 0;
-        const limit = RATE_LIMITS[role] || RATE_LIMITS.guest;
+        const limit = role === 'seller' ? await getSellerRateLimit(userId) : (RATE_LIMITS[role] || RATE_LIMITS.guest);
 
         res.json({
             used,
@@ -49,7 +62,7 @@ exports.incrementRateLimit = async (req, res) => {
         const role = req.user?.role || 'guest';
         const ip = req.headers['cf-connecting-ip'] || req.ip || req.socket?.remoteAddress || 'unknown';
         const today = getToday();
-        const limit = RATE_LIMITS[role] || RATE_LIMITS.guest;
+        const limit = role === 'seller' ? await getSellerRateLimit(userId) : (RATE_LIMITS[role] || RATE_LIMITS.guest);
 
         const query = userId ? { userId, date: today } : { ip, date: today, userId: null };
 

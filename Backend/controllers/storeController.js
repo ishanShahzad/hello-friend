@@ -1,6 +1,7 @@
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
+const { initializeSubscription } = require('./subscriptionController');
 
 // Email template helper
 const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
@@ -186,6 +187,13 @@ exports.createStore = async (req, res) => {
         });
 
         await newStore.save();
+
+        // Initialize seller subscription (15-day free trial)
+        try {
+            await initializeSubscription(sellerId);
+        } catch (subErr) {
+            console.error('Initialize subscription error:', subErr.message);
+        }
 
         // Send store creation email
         try {

@@ -30,8 +30,19 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
    
 
 
+  // Handle subscription webhook events
+  const { handleWebhook: handleSubscriptionWebhook } = require('./controllers/subscriptionController');
+  if (['checkout.session.completed', 'customer.subscription.deleted', 'invoice.payment_failed'].includes(event.type)) {
+    await handleSubscriptionWebhook(event);
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+
+    // Skip subscription checkouts (handled above)
+    if (session.mode === 'subscription') {
+      return res.sendStatus(200);
+    }
 
     console.log("✅ Payment succeeded!");
     console.log("Session ID:", session.id);
@@ -230,6 +241,7 @@ const subdomainRoutes = require('./routes/subdomain')
 const chatbotRoutes = require('./routes/chatbotRoutes')
 const smartTagRoutes = require('./routes/smartTagRoutes')
 const aiActionRoutes = require('./routes/aiActionRoutes')
+const subscriptionRoutes = require('./routes/subscriptionRoutes')
 const { getOrderDetail } = require('./controllers/orderController')
 const Cart = require('./models/Cart')
 const { sendEmail } = require('./controllers/mailController')
@@ -254,6 +266,13 @@ app.use('/api/subdomain', subdomainRoutes)
 app.use('/api/chatbot', chatbotRoutes)
 app.use('/api/smart-tags', smartTagRoutes)
 app.use('/api/ai-actions', aiActionRoutes)
+app.use('/api/subscription', subscriptionRoutes)
+
+// Run trial expiration check every hour
+const { processTrialExpirations } = require('./controllers/subscriptionController');
+setInterval(processTrialExpirations, 60 * 60 * 1000);
+// Run once on startup after 30 seconds
+setTimeout(processTrialExpirations, 30000);
 
 // Centralized JSON error responses
 app.use((err, req, res, next) => {

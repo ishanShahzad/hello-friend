@@ -36,6 +36,7 @@ import StoreSettings from '../components/layout/StoreSettings'
 import SellerSubdomainManagement from '../components/layout/SellerSubdomainManagement'
 import AdminSubdomainManagement from '../components/layout/AdminSubdomainManagement'
 import ComplaintsManagement from '../components/layout/ComplaintsManagement'
+import SellerSubscription from '../components/layout/SellerSubscription'
 import StorePage from '../pages/StorePage'
 import StoresListing from '../pages/StoresListing'
 import TrustedStoresPage from '../pages/TrustedStoresPage'
@@ -268,6 +269,11 @@ function AppRoutes() {
                     <Route path='/seller-dashboard/subdomain' element={
                         <ProtectedRoute role={'seller'}>
                             <SellerSubdomainManagement />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/subscription' element={
+                        <ProtectedRoute role={'seller'}>
+                            <SellerSubscription />
                         </ProtectedRoute>
                     } />
                 </Route>

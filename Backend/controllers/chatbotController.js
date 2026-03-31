@@ -2,7 +2,6 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Complaint = require('../models/Complaint');
 const ChatHistory = require('../models/ChatHistory');
-const { callHF } = require('../utils/hfClient');
 const Fuse = require('fuse.js');
 
 // ─── Chat History CRUD ───
@@ -56,8 +55,6 @@ exports.clearChatHistory = async (req, res) => {
         console.error('Clear chat history error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
-};
-const Fuse = require('fuse.js');
 
 // Get user context for AI personalization
 exports.getUserContext = async (req, res) => {
@@ -200,26 +197,11 @@ exports.chat = async (req, res) => {
             });
         }
 
-        // Intent: General AI response using HuggingFace
-        const contextPrompt = `You are Tortrose AI, a friendly and helpful shopping assistant for Tortrose e-commerce store. You help users find products, track orders, give style advice, and handle support queries. Keep responses concise (max 100 words). Be warm and professional.
-
-User: ${message}
-Assistant:`;
-
-        try {
-            const aiResponse = await callHF(contextPrompt);
-            // Extract just the assistant's response
-            const assistantPart = aiResponse.split('Assistant:').pop()?.trim() || 
-                'I\'d be happy to help! You can browse our products, track your orders, or let me know if you have any questions.';
-            
-            return res.json({ reply: assistantPart, intent: 'general' });
-        } catch (aiErr) {
-            console.error('AI response failed, using fallback:', aiErr.message);
-            return res.json({
-                reply: 'I\'m here to help! I can assist you with:\n• 🔍 Finding products (e.g., "Find red sneakers under $50")\n• 🛒 Cart information\n• 📦 Order tracking\n• 📝 Filing complaints\n• 💡 Product recommendations\n\nWhat would you like help with?',
-                intent: 'fallback'
-            });
-        }
+        // Intent: General AI response (fallback - actual AI handled by edge function)
+        return res.json({
+            reply: 'I\'m here to help! I can assist you with:\n• 🔍 Finding products (e.g., "Find red sneakers under $50")\n• 🛒 Cart information\n• 📦 Order tracking\n• 📝 Filing complaints\n• 💡 Product recommendations\n\nWhat would you like help with?',
+            intent: 'general'
+        });
 
     } catch (error) {
         console.error('Chatbot error:', error);
