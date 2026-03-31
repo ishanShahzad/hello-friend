@@ -459,6 +459,39 @@ const SellerDashboard = () => {
                 </div>
             </div>
 
+            {/* AI Chat Slide Panel */}
+            <AnimatePresence>
+                {aiChatOpen && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
+                        className="fixed top-0 right-0 h-full w-[400px] max-w-[90vw] z-[60] shadow-2xl"
+                    >
+                        <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between px-4 py-3 glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '0 0 0 20px' }}>
+                                <div className="flex items-center gap-2">
+                                    <Bot size={18} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Business Assistant</span>
+                                </div>
+                                <button onClick={() => setAiChatOpen(false)} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <ChatBotComponent embedded dashboardRole="seller" />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {aiChatOpen && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55]"
+                    onClick={() => setAiChatOpen(false)} />
+            )}
+
             {createPortal(notificationsDropdown, document.body)}
 
             {/* Product Form Modal */}
