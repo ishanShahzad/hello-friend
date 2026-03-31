@@ -541,26 +541,29 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
                         </p>
                         {menuItems.map(item => {
                             const isActive = activeTab === item.id;
-                            return (
-                                <Link key={item.id} to={item.link}>
-                                    <motion.button whileHover={{ x: 2 }} onClick={() => handleTabClick(item.id)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'border shadow-sm' : 'hover:bg-white/8'}`}
-                                        style={isActive ? {
-                                            background: 'rgba(99, 102, 241, 0.12)',
-                                            color: 'hsl(var(--foreground))',
-                                            borderColor: 'rgba(99, 102, 241, 0.25)'
-                                        } : { color: 'hsl(var(--muted-foreground))' }}>
-                                        <span style={{ color: isActive ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
-                                        {item.label}
-                                        {item.badge > 0 && (
-                                            <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5"
-                                                style={{ background: 'hsl(0, 72%, 55%)' }}>
-                                                {item.badge > 99 ? '99+' : item.badge}
-                                            </span>
-                                        )}
-                                        {isActive && !item.badge && <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%)' }} />}
-                                    </motion.button>
-                                </Link>
+                            const ButtonContent = (
+                                <motion.button whileHover={{ x: 2 }} onClick={() => handleTabClick(item.id, item)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'border shadow-sm' : 'hover:bg-white/8'}`}
+                                    style={isActive ? {
+                                        background: 'rgba(99, 102, 241, 0.12)',
+                                        color: 'hsl(var(--foreground))',
+                                        borderColor: 'rgba(99, 102, 241, 0.25)'
+                                    } : { color: 'hsl(var(--muted-foreground))' }}>
+                                    <span style={{ color: isActive ? 'hsl(220, 70%, 55%)' : item.action === 'ai-chat' ? 'hsl(150, 60%, 45%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
+                                    {item.label}
+                                    {item.badge > 0 && (
+                                        <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5"
+                                            style={{ background: 'hsl(0, 72%, 55%)' }}>
+                                            {item.badge > 99 ? '99+' : item.badge}
+                                        </span>
+                                    )}
+                                    {isActive && !item.badge && <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%)' }} />}
+                                </motion.button>
+                            );
+                            return item.action ? (
+                                <div key={item.id}>{ButtonContent}</div>
+                            ) : (
+                                <Link key={item.id} to={item.link}>{ButtonContent}</Link>
                             );
                         })}
                     </nav>
