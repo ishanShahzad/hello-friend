@@ -266,6 +266,13 @@ app.use('/api/subdomain', subdomainRoutes)
 app.use('/api/chatbot', chatbotRoutes)
 app.use('/api/smart-tags', smartTagRoutes)
 app.use('/api/ai-actions', aiActionRoutes)
+app.use('/api/subscription', subscriptionRoutes)
+
+// Run trial expiration check every hour
+const { processTrialExpirations } = require('./controllers/subscriptionController');
+setInterval(processTrialExpirations, 60 * 60 * 1000);
+// Run once on startup after 30 seconds
+setTimeout(processTrialExpirations, 30000);
 
 // Centralized JSON error responses
 app.use((err, req, res, next) => {
