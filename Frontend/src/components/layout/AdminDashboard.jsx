@@ -8,7 +8,7 @@ import {
     CheckSquare, AlertCircle, Menu, TriangleAlert, TrafficCone,
     LayoutPanelLeft, ShoppingBag, Users, CheckCircle, Bell,
     Settings, TrendingUp, Info, AlertTriangle, Loader2,
-    Shield, Store,
+    Shield, Store, Bot,
 } from 'lucide-react';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import axios from 'axios';
