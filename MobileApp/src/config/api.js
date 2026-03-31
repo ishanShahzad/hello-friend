@@ -4,7 +4,8 @@
 // For local development on physical device: http://YOUR_LOCAL_IP:5000
 // For production: your deployed backend URL
 
-export const API_BASE_URL = 'https://genzwinners-backend.vercel.app';
+// Use environment variable or fallback to localhost for development
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
   AUTH: {
