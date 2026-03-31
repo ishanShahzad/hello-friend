@@ -535,6 +535,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
         { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
+        { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
     ];
 
     useEffect(() => {
