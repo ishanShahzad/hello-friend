@@ -42,7 +42,7 @@ exports.getRateLimit = async (req, res) => {
         const query = userId ? { userId, date: today } : { ip, date: today, userId: null };
         const record = await AIRateLimit.findOne(query);
         const used = record?.messageCount || 0;
-        const limit = RATE_LIMITS[role] || RATE_LIMITS.guest;
+        const limit = role === 'seller' ? await getSellerRateLimit(userId) : (RATE_LIMITS[role] || RATE_LIMITS.guest);
 
         res.json({
             used,
