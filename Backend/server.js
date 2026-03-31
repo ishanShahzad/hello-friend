@@ -30,8 +30,19 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
    
 
 
+  // Handle subscription webhook events
+  const { handleWebhook: handleSubscriptionWebhook } = require('./controllers/subscriptionController');
+  if (['checkout.session.completed', 'customer.subscription.deleted', 'invoice.payment_failed'].includes(event.type)) {
+    await handleSubscriptionWebhook(event);
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+
+    // Skip subscription checkouts (handled above)
+    if (session.mode === 'subscription') {
+      return res.sendStatus(200);
+    }
 
     console.log("✅ Payment succeeded!");
     console.log("Session ID:", session.id);
