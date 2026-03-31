@@ -27,6 +27,22 @@ const SellerDashboard = () => {
         return () => window.removeEventListener('resize', checkIsMobile);
     }, []);
 
+    // Fetch subscription status
+    useEffect(() => {
+        const fetchSub = async () => {
+            try {
+                const token = localStorage.getItem('jwtToken');
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subscription/status`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSubscriptionData(res.data.subscription);
+            } catch (e) { /* ignore */ }
+        };
+        fetchSub();
+    }, []);
+
+    const isSubBlocked = subscriptionData?.status === 'blocked';
+    const isTrialExpiring = subscriptionData?.isTrialExpiringSoon;
     const [activeTab, setActiveTab] = useState('overview');
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
