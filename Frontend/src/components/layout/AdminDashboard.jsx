@@ -455,7 +455,7 @@ const AdminDashboard = () => {
 // ============================
 // Admin Sidebar Component
 // ============================
-const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isMobile, pendingOrders, lowStockProducts }) => {
+const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isMobile, pendingOrders, lowStockProducts, onAiChat }) => {
     const { currentUser } = useAuth();
     const location = useLocation();
 
@@ -471,13 +471,22 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
+        { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
     ];
 
     useEffect(() => {
-        menuItems.forEach(item => { if (location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
+        menuItems.forEach(item => { if (item.link && location.pathname.includes(item.link.split('/').pop())) setActiveTab(item.id); });
     }, [location]);
 
-    const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
+    const handleTabClick = (tabId, item) => {
+        if (item?.action === 'ai-chat') {
+            onAiChat?.();
+            if (isMobile) setIsSidebarOpen(false);
+            return;
+        }
+        setActiveTab(tabId);
+        if (isMobile) setIsSidebarOpen(false);
+    };
 
     return (
         <>
