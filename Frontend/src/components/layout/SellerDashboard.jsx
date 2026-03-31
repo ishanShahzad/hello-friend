@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
