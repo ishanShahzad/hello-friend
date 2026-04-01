@@ -383,7 +383,16 @@ export default function Checkout() {
       const hasChanged = !savedShippingInfo || 
         Object.keys(currentShipping).some(k => currentShipping[k] !== (savedShippingInfo[k] || ''));
       
-      if (hasChanged && currentUser) {
+      if (!savedShippingInfo && currentUser) {
+        // First time - auto-save silently
+        try {
+          await axios.patch(`${import.meta.env.VITE_API_URL}api/user/shipping-info`,
+            { shippingInfo: currentShipping },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setSavedShippingInfo(currentShipping);
+        } catch (e) { console.error(e); }
+      } else if (hasChanged && currentUser) {
         setPendingOrderData({ order, data: res.data, currentShipping });
         setShowUpdatePrompt(true);
       }
