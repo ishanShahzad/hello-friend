@@ -85,6 +85,8 @@ export default function SellerDashboardScreen({ navigation }) {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, pendingOrders: 0, revenue: 0 });
+  const [showAI, setShowAI] = useState(false);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
