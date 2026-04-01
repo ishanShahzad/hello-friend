@@ -50,8 +50,19 @@ const orderSchema = mongoose.Schema(
             subtotal: { type: Number, required: true },
             shippingCost: { type: Number, required: true },
             tax: { type: Number, default: 0.00 },
+            couponDiscount: { type: Number, default: 0 },
             totalAmount: { type: Number, required: true }
         },
+
+        appliedCoupons: [
+            {
+                couponId: { type: mongoose.Schema.Types.ObjectId, ref: "Coupon" },
+                code: { type: String },
+                discountType: { type: String, enum: ["percentage", "fixed"] },
+                discountValue: { type: Number },
+                applicableProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
+            }
+        ],
 
         orderStatus: {
             type: String,
