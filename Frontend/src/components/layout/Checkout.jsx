@@ -43,6 +43,7 @@ export default function Checkout() {
   // Fetch tax configuration on mount
   useEffect(() => {
     fetchTaxConfig();
+    fetchSavedShippingInfo();
   }, []);
 
   // Fetch shipping methods when cart changes
