@@ -64,6 +64,35 @@ export default function Checkout() {
     }
   };
 
+  const fetchSavedShippingInfo = async () => {
+    try {
+      const token = localStorage.getItem('jwtToken');
+      if (!token) return;
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/shipping-info`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const info = res.data.shippingInfo;
+      if (info && info.fullName) {
+        setSavedShippingInfo(info);
+      }
+    } catch (error) {
+      console.error('Error fetching saved shipping info:', error);
+    }
+  };
+
+  const handleAutoFill = () => {
+    if (!savedShippingInfo) return;
+    setValue('fullName', savedShippingInfo.fullName || '');
+    setValue('email', savedShippingInfo.email || '');
+    setValue('phone', savedShippingInfo.phone || '');
+    setValue('address', savedShippingInfo.address || '');
+    setValue('city', savedShippingInfo.city || '');
+    setValue('state', savedShippingInfo.state || '');
+    setValue('postalCode', savedShippingInfo.postalCode || '');
+    setValue('country', savedShippingInfo.country || 'Pakistan');
+    toast.success('Shipping info auto-filled!');
+  };
+
   const fetchShippingMethods = async () => {
     try {
       const cartItemsData = cartItems.cart.map(item => ({
