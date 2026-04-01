@@ -156,17 +156,31 @@ const OrderDetail = () => {
                                     <span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order?.orderSummary.tax)}</span>
                                 </div>
                             )}
+                            {order?.orderSummary.couponDiscount > 0 && (
+                                <div className="flex justify-between">
+                                    <span style={{ color: 'hsl(150, 60%, 45%)' }}>Coupon Discount</span>
+                                    <span style={{ color: 'hsl(150, 60%, 45%)' }}>-{formatPrice(order?.orderSummary.couponDiscount)}</span>
+                                </div>
+                            )}
+                            {order?.appliedCoupons?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {order.appliedCoupons.map((c, i) => (
+                                        <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold" style={{ background: 'rgba(168,85,247,0.12)', color: 'hsl(280, 60%, 55%)' }}>{c.code}</span>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex justify-between pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
                                 <span className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Total</span>
                                 <span className="text-base font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
                                     {(() => {
                                         const subtotal = order?.orderSummary.subtotal || 0;
                                         const tax = order?.orderSummary.tax || 0;
+                                        const couponDiscount = order?.orderSummary.couponDiscount || 0;
                                         let actualShipping = order?.orderSummary.shippingCost || 0;
                                         if (order?.sellerShipping && order.sellerShipping.length > 0) {
                                             actualShipping = order.sellerShipping.reduce((sum, s) => sum + (s.shippingMethod.price || 0), 0);
                                         }
-                                        return formatPrice(subtotal + tax + actualShipping);
+                                        return formatPrice(subtotal + tax + actualShipping - couponDiscount);
                                     })()}
                                 </span>
                             </div>
