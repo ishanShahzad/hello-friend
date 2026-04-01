@@ -22,6 +22,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ChatBot from '../components/ChatBot';
 import api from '../config/api';
 import ProductCard from '../components/ProductCard';
 import CurrencySelector from '../components/CurrencySelector';
