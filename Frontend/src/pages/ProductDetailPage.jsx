@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useRef, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Share2, RotateCcw, Loader2, Home, Tag, Package } from 'lucide-react';
+import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Share2, RotateCcw, Loader2, Home, Tag, Package, Ticket, Copy, Check, Calendar } from 'lucide-react';
 import Loader from '../components/common/Loader';
 import StoreInfo from '../components/common/StoreInfo';
 import SEOHead from '../components/common/SEOHead';
