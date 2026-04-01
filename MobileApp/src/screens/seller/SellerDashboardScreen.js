@@ -115,13 +115,16 @@ export default function SellerDashboardScreen({ navigation }) {
 
   if (isLoading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading dashboard..." /></SafeAreaView></GlassBackground>;
 
+  const isTrialExpiring = subscription?.isTrialExpiringSoon;
+  const isBlocked = subscription?.status === 'blocked';
+
   const quickActions = [
     { icon: 'cube-outline', color: colors.secondary, label: 'Products', onPress: () => navigation.navigate('SellerProductManagement'), badge: stats.totalProducts },
     { icon: 'receipt-outline', color: colors.info, label: 'Orders', onPress: () => navigation.navigate('SellerOrderManagement'), badge: stats.pendingOrders },
     { icon: 'storefront-outline', color: colors.primary, label: 'Store', onPress: () => navigation.navigate('SellerStoreSettings') },
     { icon: 'car-outline', color: colors.warning, label: 'Shipping', onPress: () => navigation.navigate('SellerShippingConfiguration') },
     { icon: 'bar-chart-outline', color: colors.success, label: 'Analytics', onPress: () => navigation.navigate('SellerAnalytics') },
-    { icon: 'notifications-outline', color: colors.error, label: 'Alerts', onPress: () => navigation.navigate('SellerNotifications') },
+    { icon: 'diamond-outline', color: '#8b5cf6', label: 'Plan', onPress: () => navigation.navigate('SellerSubscription') },
   ];
 
   return (
