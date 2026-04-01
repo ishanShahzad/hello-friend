@@ -229,6 +229,15 @@ export default function SellerDashboardScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* AI FAB */}
+      <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
+        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
+        <Ionicons name="sparkles" size={22} color={colors.white} />
+      </TouchableOpacity>
+
+      {/* AI ChatBot */}
+      <ChatBot embedded={false} dashboardRole="seller" visible={showAI} onClose={() => setShowAI(false)} navigation={navigation} />
       </SafeAreaView>
     </GlassBackground>
   );
