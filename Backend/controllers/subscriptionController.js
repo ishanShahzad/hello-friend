@@ -78,10 +78,17 @@ exports.getSubscriptionStatus = async (req, res) => {
         // Check and update status if trial expired
         await checkAndUpdateStatus(sub);
 
+        // Check bonus features expiry
+        if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
+            sub.bonusFeaturesActive = false;
+            await sub.save();
+        }
+
         res.json({
             subscription: {
                 status: sub.status,
                 plan: sub.plan,
+                planName: sub.planName || 'Tortrose Starter',
                 trialStartDate: sub.trialStartDate,
                 trialEndDate: sub.trialEndDate,
                 trialDaysRemaining: sub.trialDaysRemaining,
@@ -93,6 +100,8 @@ exports.getSubscriptionStatus = async (req, res) => {
                 aiMessageLimit: sub.aiMessageLimit,
                 cancelledAt: sub.cancelledAt,
                 blockedReason: sub.blockedReason,
+                bonusFeaturesActive: sub.bonusFeaturesActive,
+                bonusExpiryDate: sub.bonusExpiryDate,
             },
         });
     } catch (error) {
@@ -159,7 +168,7 @@ exports.createCheckout = async (req, res) => {
             await sub.save();
         }
 
-        // Create a subscription with 90-day free trial
+        // Create a subscription with 30-day free trial
         const session = await stripe.checkout.sessions.create({
             customer: customerId,
             mode: 'subscription',
@@ -168,8 +177,8 @@ exports.createCheckout = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Tortrose Seller Plan',
-                        description: 'Seller subscription - First 90 days free, then $5/month. Cancel anytime.',
+                        name: 'Tortrose Starter',
+                        description: 'Seller subscription - First 30 days free, then $5/month. Cancel anytime.',
                     },
                     unit_amount: 500, // $5.00
                     recurring: { interval: 'month' },
@@ -177,7 +186,7 @@ exports.createCheckout = async (req, res) => {
                 quantity: 1,
             }],
             subscription_data: {
-                trial_period_days: 90,
+                trial_period_days: 30,
                 metadata: { sellerId: sellerId.toString() },
             },
             success_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?success=true`,
@@ -207,17 +216,20 @@ exports.handleWebhook = async (event) => {
                 if (!sub) break;
 
                 const now = new Date();
-                const freePeriodEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+                const freePeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // 6 months
 
                 sub.status = 'free_period';
                 sub.plan = 'starter';
+                sub.planName = 'Tortrose Starter';
                 sub.subscribedAt = now;
                 sub.freePeriodEndDate = freePeriodEnd;
                 sub.stripeSubscriptionId = session.subscription;
-                sub.aiMessageLimit = 100; // Upgraded AI limit
+                sub.aiMessageLimit = 100;
                 sub.blockedAt = null;
                 sub.blockedReason = '';
-
+                sub.bonusFeaturesActive = true;
+                sub.bonusExpiryDate = bonusExpiry;
                 await sub.save();
 
                 // Reactivate store
@@ -230,18 +242,19 @@ exports.handleWebhook = async (event) => {
                 const user = await User.findById(sellerId);
                 if (user?.email) {
                     const html = subscriptionEmailTemplate(
-                        '🎉 Subscription Activated!',
+                        '🎉 Tortrose Starter Activated!',
                         `<p>Hello ${user.username || 'Seller'},</p>
-                        <p>Your <strong>Tortrose Seller Plan</strong> is now active!</p>
+                        <p>Your <strong>Tortrose Starter</strong> plan is now active!</p>
                         <div class="highlight">
-                            <strong>Plan:</strong> Starter ($5/month)<br/>
-                            <strong>Free Period:</strong> 90 days (until ${freePeriodEnd.toLocaleDateString()})<br/>
-                            <strong>AI Messages:</strong> 100/day (upgraded from 25)
+                            <strong>Plan:</strong> Tortrose Starter ($5/month)<br/>
+                            <strong>Free Period:</strong> 30 days (until ${freePeriodEnd.toLocaleDateString()})<br/>
+                            <strong>AI Messages:</strong> 100/day (upgraded from 25)<br/>
+                            <strong>Bonus Features:</strong> Active for 6 months (until ${bonusExpiry.toLocaleDateString()})
                         </div>
                         <p>Your store has been reactivated and is now visible to customers.</p>
                         <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard" class="button">Go to Dashboard</a></p>`
                     );
-                    await sendEmail({ to: user.email, subject: 'Subscription Activated! 🎉', html });
+                    await sendEmail({ to: user.email, subject: 'Tortrose Starter Activated! 🎉', html });
                 }
                 break;
             }
@@ -349,12 +362,13 @@ exports.processTrialExpirations = async () => {
                     </div>
                     <p><strong>Subscribe now</strong> and get:</p>
                     <ul>
-                        <li>✅ First 90 days completely FREE</li>
+                        <li>✅ First 30 days completely FREE</li>
                         <li>✅ Then only $5/month — cancel anytime</li>
                         <li>✅ 100 AI messages/day (4x more!)</li>
+                        <li>✅ Bonus premium features for 6 months</li>
                         <li>✅ Uninterrupted store visibility</li>
                     </ul>
-                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 90 Days Free</a></p>`
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 30 Days Free</a></p>`
                 );
                 await sendEmail({ to: user.email, subject: `⏰ Trial Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}!`, html });
                 sub.warningEmailSent = true;

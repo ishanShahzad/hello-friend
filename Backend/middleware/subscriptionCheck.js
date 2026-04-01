@@ -33,6 +33,12 @@ const subscriptionCheck = async (req, res, next) => {
             });
         }
 
+        // Check bonus features expiry
+        if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
+            sub.bonusFeaturesActive = false;
+            await sub.save();
+        }
+
         // Attach subscription info to request
         req.subscription = sub;
         next();

@@ -17,16 +17,24 @@ const sellerSubscriptionSchema = new mongoose.Schema({
         enum: ['trial', 'free_period', 'active', 'past_due', 'cancelled', 'blocked'],
         default: 'trial',
     },
+    planName: {
+        type: String,
+        default: 'Tortrose Starter',
+    },
     plan: {
         type: String,
         enum: ['free_trial', 'starter'],
         default: 'free_trial',
     },
-    // After subscription: 90 days free, then $5/month
+    // After subscription: 30 days free, then $5/month
     subscribedAt: { type: Date },
-    freePeriodEndDate: { type: Date }, // subscribedAt + 90 days
+    freePeriodEndDate: { type: Date }, // subscribedAt + 30 days
     currentPeriodStart: { type: Date },
     currentPeriodEnd: { type: Date },
+
+    // Bonus features (available for 6 months from subscription date)
+    bonusExpiryDate: { type: Date }, // subscribedAt + 6 months
+    bonusFeaturesActive: { type: Boolean, default: false },
 
     // Stripe
     stripeCustomerId: { type: String },

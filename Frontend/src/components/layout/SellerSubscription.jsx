@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Crown, Check, Zap, Shield, Bot, Clock, AlertTriangle,
-    CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package
+    CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package,
+    Users, Award
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -75,7 +76,7 @@ const SellerSubscription = () => {
         if (!subscription) return null;
         const map = {
             trial: { label: 'Free Trial', color: 'hsl(220, 70%, 55%)', bg: 'rgba(99,102,241,0.12)', icon: <Clock size={12} /> },
-            free_period: { label: '90-Day Free', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Sparkles size={12} /> },
+            free_period: { label: '30-Day Free', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Sparkles size={12} /> },
             active: { label: 'Active', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Check size={12} /> },
             past_due: { label: 'Past Due', color: 'hsl(30, 90%, 50%)', bg: 'rgba(249,115,22,0.12)', icon: <AlertTriangle size={12} /> },
             blocked: { label: 'Blocked', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239,68,68,0.12)', icon: <Lock size={12} /> },
@@ -139,7 +140,7 @@ const SellerSubscription = () => {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Subscription</h1>
+                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Tortrose Starter</h1>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Manage your seller plan</p>
                 </div>
                 {getStatusBadge()}
@@ -152,9 +153,9 @@ const SellerSubscription = () => {
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: isSubscribed ? 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' : 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}>
                             <Crown size={22} className="text-white" />
                         </div>
-                        <div>
+                         <div>
                             <h2 className="text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                {isSubscribed ? 'Starter Plan' : isTrial ? 'Free Trial' : 'No Active Plan'}
+                                {isSubscribed ? 'Tortrose Starter' : isTrial ? 'Free Trial' : 'No Active Plan'}
                             </h2>
                             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 {isSubscribed
@@ -166,6 +167,11 @@ const SellerSubscription = () => {
                                         : 'Subscribe to activate your store'
                                 }
                             </p>
+                            {isSubscribed && subscription?.bonusFeaturesActive && subscription?.bonusExpiryDate && (
+                                <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                    <Award size={11} /> Bonus features active until {new Date(subscription.bonusExpiryDate).toLocaleDateString()}
+                                </p>
+                            )}
                         </div>
                     </div>
                     {isSubscribed && !subscription?.cancelledAt && (
@@ -192,7 +198,7 @@ const SellerSubscription = () => {
 
             {/* Pricing Card */}
             {showSubscribeButton && (
-                <motion.div
+            <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -202,30 +208,59 @@ const SellerSubscription = () => {
                     <div className="text-center mb-6">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
                             style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
-                            <Sparkles size={12} /> 90 DAYS FREE
+                            <Sparkles size={12} /> 30 DAYS FREE
                         </div>
                         <h3 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                            <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '1rem' }}>$5/mo</span>
-                            {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 90 days</span>
+                            Tortrose Starter
                         </h3>
+                        <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
+                            <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5/mo</span>
+                            {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 30 days</span>
+                        </p>
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                             Then $5/month • Cancel anytime
                         </p>
                     </div>
 
-                    <div className="space-y-3 mb-6">
+                    <div className="space-y-2.5 mb-6">
+                        <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Core Features</p>
                         {[
-                            { icon: <Store size={14} />, text: 'Keep your store & products visible to all customers' },
+                            { icon: <Store size={14} />, text: 'Store & products visible to all customers' },
+                            { icon: <Package size={14} />, text: 'Unlimited product listings' },
+                            { icon: <CreditCard size={14} />, text: 'Secure payment processing' },
+                            { icon: <Shield size={14} />, text: 'Custom subdomain for your store' },
                             { icon: <Bot size={14} />, text: '100 AI messages/day (4x more than free)' },
-                            { icon: <Shield size={14} />, text: 'Custom subdomain stays active' },
-                            { icon: <CreditCard size={14} />, text: 'Priority support & new features early access' },
-                            { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
+                            { icon: <Users size={14} />, text: 'Order management & customer insights' },
                         ].map((f, i) => (
                             <div key={i} className="flex items-center gap-3">
                                 <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
                                     {f.icon}
                                 </div>
                                 <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
+                            </div>
+                        ))}
+
+                        <div className="border-t my-3" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
+                        <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                            <Award size={13} /> Bonus Features
+                            <span className="text-[10px] font-normal px-2 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                Available for 6 months
+                            </span>
+                        </p>
+                        {[
+                            { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
+                            { icon: <Sparkles size={14} />, text: 'Smart tag AI generator for products' },
+                            { icon: <Shield size={14} />, text: 'Priority support & early access to new features' },
+                            { icon: <Crown size={14} />, text: 'Coupon & discount management system' },
+                            { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
+                        ].map((f, i) => (
+                            <div key={`bonus-${i}`} className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    {f.icon}
+                                </div>
+                                <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>
+                                    {f.text} <span className="text-[10px]" style={{ color: 'hsl(270, 60%, 55%)' }}>(In bonus available for 6 months)</span>
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -243,7 +278,7 @@ const SellerSubscription = () => {
                         ) : (
                             <>
                                 <CreditCard size={16} />
-                                Subscribe Now — 90 Days Free
+                                Subscribe Now — 30 Days Free
                                 <ArrowRight size={16} />
                             </>
                         )}
@@ -261,9 +296,10 @@ const SellerSubscription = () => {
                 <div className="space-y-4">
                     {[
                         { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose the Starter plan — $0 for the first 90 days', active: false },
-                        { step: '3', title: 'Free Period', desc: '90 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Tortrose Starter — $0 for the first 30 days', active: false },
+                        { step: '3', title: 'Free Period', desc: '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
                         { step: '4', title: 'Monthly Billing', desc: 'Only $5/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
+                        { step: '5', title: 'Bonus Expiry', desc: 'After 6 months, bonus features transition to premium plans.', active: false },
                     ].map((s, i) => (
                         <div key={i} className="flex items-start gap-3">
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active ? 'text-white' : ''}`}

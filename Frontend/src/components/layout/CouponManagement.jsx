@@ -23,7 +23,6 @@ const CouponManagement = () => {
     const [activeTab, setActiveTab] = useState('manage'); // 'manage' or 'analytics'
     const [analyticsData, setAnalyticsData] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
-    const [copiedCode, setCopiedCode] = useState(null);
 
     const [form, setForm] = useState({
         code: '',
