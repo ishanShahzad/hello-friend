@@ -33,6 +33,12 @@ export default function Checkout() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [pendingOrderData, setPendingOrderData] = useState(null);
 
+  // Coupon state
+  const [sellerCoupons, setSellerCoupons] = useState({}); // { sellerId: [coupon, ...] }
+  const [couponInputs, setCouponInputs] = useState({}); // { key: 'CODE' }
+  const [appliedCoupons, setAppliedCoupons] = useState({}); // { key: { coupon, applicableProductIds } }
+  const [couponLoading, setCouponLoading] = useState({});
+
 
   const { formatPrice } = useCurrency();
   
