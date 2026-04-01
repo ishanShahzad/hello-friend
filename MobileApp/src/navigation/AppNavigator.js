@@ -54,6 +54,7 @@ import SellerStoreSettingsScreen from '../screens/seller/SellerStoreSettingsScre
 import SellerShippingConfigurationScreen from '../screens/seller/SellerShippingConfigurationScreen';
 import SellerAnalyticsScreen from '../screens/seller/SellerAnalyticsScreen';
 import SellerSubscriptionScreen from '../screens/seller/SellerSubscriptionScreen';
+import SellerSubdomainManagementScreen from '../screens/seller/SellerSubdomainManagementScreen';
 
 // Shared Screens
 import ProductManagementScreen from '../screens/shared/ProductManagementScreen';
