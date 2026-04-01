@@ -51,6 +51,7 @@ import SellerDashboardScreen from '../screens/seller/SellerDashboardScreen';
 import SellerStoreSettingsScreen from '../screens/seller/SellerStoreSettingsScreen';
 import SellerShippingConfigurationScreen from '../screens/seller/SellerShippingConfigurationScreen';
 import SellerAnalyticsScreen from '../screens/seller/SellerAnalyticsScreen';
+import SellerSubscriptionScreen from '../screens/seller/SellerSubscriptionScreen';
 
 // Shared Screens
 import ProductManagementScreen from '../screens/shared/ProductManagementScreen';
@@ -141,6 +142,7 @@ const GuardedOrderDetailManagement = createRoleGuard(OrderDetailManagementScreen
 const GuardedSellerNotifications = createRoleGuard(SellerNotificationsScreen, ['seller', 'admin']);
 const GuardedSellerHome = createRoleGuard(SellerHomeScreen, ['seller', 'admin']);
 const GuardedNotificationSettings = createRoleGuard(NotificationSettingsScreen, ['seller', 'admin']);
+const GuardedSellerSubscription = createRoleGuard(SellerSubscriptionScreen, ['seller', 'admin']);
 
 // Helper function to calculate cart item count - exported for testing
 export const calculateCartItemCount = (cartItems) => {
@@ -397,6 +399,7 @@ export default function AppNavigator() {
       <Stack.Screen name="SellerNotifications" component={GuardedSellerNotifications} options={{ headerShown: false }} />
       <Stack.Screen name="SellerHome" component={GuardedSellerHome} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationSettings" component={GuardedNotificationSettings} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerSubscription" component={GuardedSellerSubscription} options={{ headerShown: false }} />
       <Stack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ headerShown: false }} />
 
       {/* Shared Screens (role-guarded: seller or admin) */}

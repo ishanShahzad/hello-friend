@@ -13,9 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, shadows,
-} from '../../styles/theme';
+import ChatBot from '../../components/ChatBot';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TILE_GAP = spacing.sm;
@@ -91,12 +89,17 @@ const QuickTile = ({ icon, color, label, onPress, badge }) => (
   </TouchableOpacity>
 );
 
+import {
+  colors, spacing, fontSize, borderRadius, fontWeight, typography, shadows,
+} from '../../styles/theme';
+
 export default function AdminDashboardScreen({ navigation }) {
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ totalUsers: 0, totalStores: 0, totalProducts: 0, totalOrders: 0, pendingVerifications: 0, revenue: 0 });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [showAI, setShowAI] = useState(false);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -225,6 +228,15 @@ export default function AdminDashboardScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* AI FAB */}
+      <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
+        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
+        <Ionicons name="sparkles" size={22} color={colors.white} />
+      </TouchableOpacity>
+
+      {/* AI ChatBot */}
+      <ChatBot embedded={false} dashboardRole="admin" visible={showAI} onClose={() => setShowAI(false)} navigation={navigation} />
       </SafeAreaView>
     </GlassBackground>
   );

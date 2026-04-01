@@ -15,6 +15,7 @@ import Loader from '../../components/common/Loader';
 import { EmptyOrders } from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
+import ChatBot from '../../components/ChatBot';
 import {
   colors, spacing, fontSize, borderRadius, fontWeight, typography,
 } from '../../styles/theme';
@@ -85,20 +86,26 @@ export default function SellerDashboardScreen({ navigation }) {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, pendingOrders: 0, revenue: 0 });
+  const [showAI, setShowAI] = useState(false);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const storeRes = await api.get('/api/stores/my-store').catch(() => ({ data: { store: null } }));
+      const [storeRes, productsRes, ordersRes, subRes] = await Promise.all([
+        api.get('/api/stores/my-store').catch(() => ({ data: { store: null } })),
+        api.get('/api/products/get-seller-products').catch(() => ({ data: [] })),
+        api.get('/api/order/get').catch(() => ({ data: { orders: [] } })),
+        api.get('/api/subscription/status').catch(() => ({ data: { subscription: null } })),
+      ]);
       setStore(storeRes.data?.store);
-      const productsRes = await api.get('/api/products/get-seller-products').catch(() => ({ data: [] }));
       const fetchedProducts = productsRes.data?.products || productsRes.data || [];
       setProducts(fetchedProducts);
-      const ordersRes = await api.get('/api/order/get').catch(() => ({ data: { orders: [] } }));
       const fetchedOrders = ordersRes.data?.orders || [];
       setOrders(fetchedOrders);
       setStats(calculateSellerStats(fetchedProducts, fetchedOrders));
+      setSubscription(subRes.data?.subscription);
     } catch (error) { console.error('Error fetching dashboard data:', error); }
     finally { setIsLoading(false); setRefreshing(false); }
   };
@@ -108,13 +115,16 @@ export default function SellerDashboardScreen({ navigation }) {
 
   if (isLoading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading dashboard..." /></SafeAreaView></GlassBackground>;
 
+  const isTrialExpiring = subscription?.isTrialExpiringSoon;
+  const isBlocked = subscription?.status === 'blocked';
+
   const quickActions = [
     { icon: 'cube-outline', color: colors.secondary, label: 'Products', onPress: () => navigation.navigate('SellerProductManagement'), badge: stats.totalProducts },
     { icon: 'receipt-outline', color: colors.info, label: 'Orders', onPress: () => navigation.navigate('SellerOrderManagement'), badge: stats.pendingOrders },
     { icon: 'storefront-outline', color: colors.primary, label: 'Store', onPress: () => navigation.navigate('SellerStoreSettings') },
     { icon: 'car-outline', color: colors.warning, label: 'Shipping', onPress: () => navigation.navigate('SellerShippingConfiguration') },
     { icon: 'bar-chart-outline', color: colors.success, label: 'Analytics', onPress: () => navigation.navigate('SellerAnalytics') },
-    { icon: 'notifications-outline', color: colors.error, label: 'Alerts', onPress: () => navigation.navigate('SellerNotifications') },
+    { icon: 'diamond-outline', color: '#8b5cf6', label: 'Plan', onPress: () => navigation.navigate('SellerSubscription') },
   ];
 
   return (
@@ -125,6 +135,28 @@ export default function SellerDashboardScreen({ navigation }) {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
+        {/* Subscription Warnings */}
+        {isBlocked && (
+          <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: `${colors.error}25` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="lock-closed" size={16} color={colors.error} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.error, flex: 1 }}>Store Blocked — Subscribe to reactivate</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.error} />
+            </View>
+          </TouchableOpacity>
+        )}
+        {isTrialExpiring && !isBlocked && (
+          <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}25` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="alert-circle" size={16} color={colors.warning} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.warning, flex: 1 }}>Trial expiring in {subscription?.trialDaysRemaining} days — Subscribe now</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.warning} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* ── Header ── */}
         <GlassPanel variant="strong" style={styles.header}>
           <View style={styles.headerRow}>
@@ -197,6 +229,15 @@ export default function SellerDashboardScreen({ navigation }) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* AI FAB */}
+      <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
+        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
+        <Ionicons name="sparkles" size={22} color={colors.white} />
+      </TouchableOpacity>
+
+      {/* AI ChatBot */}
+      <ChatBot embedded={false} dashboardRole="seller" visible={showAI} onClose={() => setShowAI(false)} navigation={navigation} />
       </SafeAreaView>
     </GlassBackground>
   );

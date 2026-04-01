@@ -64,6 +64,15 @@ export const API_ENDPOINTS = {
   CURRENCY: {
     GET_RATES: '/api/currency/rates',
   },
+  SUBSCRIPTION: {
+    STATUS: '/api/subscription/status',
+    CREATE_CHECKOUT: '/api/subscription/create-checkout',
+    CANCEL: '/api/subscription/cancel',
+  },
+  AI_ACTIONS: {
+    RATE_LIMIT: '/api/ai-actions/rate-limit',
+    RATE_LIMIT_INCREMENT: '/api/ai-actions/rate-limit/increment',
+  },
 };
 
 import axios from 'axios';
