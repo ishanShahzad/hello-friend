@@ -89,12 +89,17 @@ const QuickTile = ({ icon, color, label, onPress, badge }) => (
   </TouchableOpacity>
 );
 
+import {
+  colors, spacing, fontSize, borderRadius, fontWeight, typography, shadows,
+} from '../../styles/theme';
+
 export default function AdminDashboardScreen({ navigation }) {
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ totalUsers: 0, totalStores: 0, totalProducts: 0, totalOrders: 0, pendingVerifications: 0, revenue: 0 });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [showAI, setShowAI] = useState(false);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
