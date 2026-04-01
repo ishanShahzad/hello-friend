@@ -32,7 +32,26 @@ const StorePage = () => {
         if (store?._id) {
             fetchTrustStatus();
         }
-    }, [store?._id]);
+        if (store?.seller) {
+            fetchStoreCoupons(store.seller);
+        }
+    }, [store?._id, store?.seller]);
+
+    const fetchStoreCoupons = async (sellerId) => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/store/${sellerId}`);
+            setStoreCoupons(res.data.coupons || []);
+        } catch (err) {
+            console.log('No coupons for this store');
+        }
+    };
+
+    const copyCouponCode = (code) => {
+        navigator.clipboard.writeText(code);
+        setCopiedCoupon(code);
+        toast.success('Coupon code copied!');
+        setTimeout(() => setCopiedCoupon(null), 2000);
+    };
 
     const fetchStore = async () => {
         try {
