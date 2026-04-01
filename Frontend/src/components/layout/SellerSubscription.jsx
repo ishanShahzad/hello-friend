@@ -295,9 +295,10 @@ const SellerSubscription = () => {
                 <div className="space-y-4">
                     {[
                         { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose the Starter plan — $0 for the first 90 days', active: false },
-                        { step: '3', title: 'Free Period', desc: '90 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Tortrose Starter — $0 for the first 30 days', active: false },
+                        { step: '3', title: 'Free Period', desc: '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
                         { step: '4', title: 'Monthly Billing', desc: 'Only $5/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
+                        { step: '5', title: 'Bonus Expiry', desc: 'After 6 months, bonus features transition to premium plans.', active: false },
                     ].map((s, i) => (
                         <div key={i} className="flex items-start gap-3">
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active ? 'text-white' : ''}`}
