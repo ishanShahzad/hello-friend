@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, Package, Eye, Share2, ChevronRight, Home, Globe, MapPin, Users } from 'lucide-react';
+import { Store, Package, Eye, Share2, ChevronRight, Home, Globe, MapPin, Users, Ticket, Copy, Check, Calendar, Percent, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import ProductCard from '../components/common/ProductCard';
