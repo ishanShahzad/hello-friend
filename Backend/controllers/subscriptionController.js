@@ -168,7 +168,7 @@ exports.createCheckout = async (req, res) => {
             await sub.save();
         }
 
-        // Create a subscription with 90-day free trial
+        // Create a subscription with 30-day free trial
         const session = await stripe.checkout.sessions.create({
             customer: customerId,
             mode: 'subscription',
@@ -177,8 +177,8 @@ exports.createCheckout = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Tortrose Seller Plan',
-                        description: 'Seller subscription - First 90 days free, then $5/month. Cancel anytime.',
+                        name: 'Tortrose Starter',
+                        description: 'Seller subscription - First 30 days free, then $5/month. Cancel anytime.',
                     },
                     unit_amount: 500, // $5.00
                     recurring: { interval: 'month' },
@@ -186,7 +186,7 @@ exports.createCheckout = async (req, res) => {
                 quantity: 1,
             }],
             subscription_data: {
-                trial_period_days: 90,
+                trial_period_days: 30,
                 metadata: { sellerId: sellerId.toString() },
             },
             success_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?success=true`,
