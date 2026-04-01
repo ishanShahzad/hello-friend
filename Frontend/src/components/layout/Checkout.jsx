@@ -20,12 +20,18 @@ export default function Checkout() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   // Tax and Shipping state
   const [taxConfig, setTaxConfig] = useState(null);
-  const [sellerShippingMethods, setSellerShippingMethods] = useState({}); // { sellerId: { seller, methods } }
-  const [selectedShippingPerSeller, setSelectedShippingPerSeller] = useState({}); // { sellerId: method }
-  const [expandedSellers, setExpandedSellers] = useState({}); // { sellerId: boolean }
+  const [sellerShippingMethods, setSellerShippingMethods] = useState({});
+  const [selectedShippingPerSeller, setSelectedShippingPerSeller] = useState({});
+  const [expandedSellers, setExpandedSellers] = useState({});
+  
+  // Saved shipping info for auto-fill
+  const [savedShippingInfo, setSavedShippingInfo] = useState(null);
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [pendingOrderData, setPendingOrderData] = useState(null);
 
 
   const { formatPrice } = useCurrency();
