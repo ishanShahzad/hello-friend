@@ -283,6 +283,12 @@ export default function CheckoutScreen({ navigation }) {
             <View style={styles.sectionHeader}>
               <Ionicons name="location-outline" size={18} color={colors.secondary} />
               <Text style={styles.sectionTitle}>Shipping Information</Text>
+              {savedShippingInfo?.fullName && (
+                <TouchableOpacity onPress={autoFillShipping} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16 }}>
+                  <Ionicons name="flash-outline" size={14} color={colors.primary} />
+                  <Text style={{ fontSize: 12, color: colors.primary, fontWeight: fontWeight.semibold }}>Auto Fill</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {renderInput('fullName', 'Full Name', { icon: 'person-outline' })}
             {renderInput('email', 'Email Address', { icon: 'mail-outline', keyboardType: 'email-address', autoCapitalize: 'none' })}
