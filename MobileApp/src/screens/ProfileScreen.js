@@ -41,6 +41,37 @@ export const getMenuItemsForRole = (role) => {
 
 export default function ProfileScreen({ navigation }) {
   const { currentUser, logout } = useAuth();
+  const [savedShipping, setSavedShipping] = useState(null);
+  const [editingShipping, setEditingShipping] = useState(false);
+  const [shippingForm, setShippingForm] = useState({
+    fullName: '', email: '', phone: '', address: '', city: '', state: '', postalCode: '', country: 'Pakistan',
+  });
+  const [savingShipping, setSavingShipping] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) fetchShippingInfo();
+  }, [currentUser]);
+
+  const fetchShippingInfo = async () => {
+    try {
+      const res = await api.get('/api/user/shipping-info');
+      if (res.data?.shippingInfo) {
+        setSavedShipping(res.data.shippingInfo);
+        setShippingForm(res.data.shippingInfo);
+      }
+    } catch {}
+  };
+
+  const saveShippingInfo = async () => {
+    setSavingShipping(true);
+    try {
+      await api.patch('/api/user/shipping-info', { shippingInfo: shippingForm });
+      setSavedShipping(shippingForm);
+      setEditingShipping(false);
+      Toast.show({ type: 'success', text1: 'Saved!', text2: 'Shipping info updated' });
+    } catch { Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update' }); }
+    finally { setSavingShipping(false); }
+  };
 
   const handleLogout = useCallback(() => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
