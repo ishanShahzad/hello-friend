@@ -3,7 +3,7 @@
 ## Issues Fixed
 
 1. ✅ CORS configuration now properly allows credentials and specific origins
-2. ✅ Vercel.json configured with proper CORS headers for preflight requests
+2. ✅ Vercel.json configured with proper CORS headers for all API routes
 3. ✅ Explicit OPTIONS handler added for preflight requests
 4. ✅ Backend allows www.tortrose.com, tortrose.com, and localhost origins
 
@@ -16,10 +16,9 @@
 - Added proper CORS headers configuration
 
 ### Backend/vercel.json
-- Added CORS headers to route configuration
-- Configured to handle OPTIONS requests
-- Set Access-Control-Allow-Credentials to true
-- Added all necessary CORS headers
+- Added CORS headers using Vercel's headers configuration
+- Headers apply to all /api/* routes
+- Properly handles preflight OPTIONS requests at the edge
 
 ## Deployment Steps
 
@@ -55,8 +54,9 @@ vercel env add NODE_ENV production
 # Enter: production
 ```
 
-### 3. Redeploy Backend (if needed)
+### 3. Redeploy Backend
 
+After updating environment variables, redeploy:
 ```bash
 vercel --prod
 ```
@@ -86,8 +86,9 @@ After deployment:
 2. Open Developer Console (F12) → Network tab
 3. Verify:
    - No CORS errors in console
-   - API calls return 200 status
+   - API calls return 200 status (not 500)
    - Response headers include `Access-Control-Allow-Origin`
+   - Preflight OPTIONS requests return 200
 
 ## What the Fix Does
 
@@ -96,23 +97,43 @@ The backend now:
 - Accepts requests from www.tortrose.com and tortrose.com
 - Allows credentials (cookies, auth tokens)
 - Handles preflight OPTIONS requests
-- Caches CORS headers for 24 hours
+- Returns proper CORS headers for all responses
 
 ### Vercel Configuration
 The vercel.json now:
-- Adds CORS headers at the edge
-- Handles OPTIONS requests before they reach the app
-- Ensures consistent CORS behavior
+- Adds CORS headers at the edge level using Vercel's headers config
+- Applies headers to all /api/* routes
+- Ensures OPTIONS requests are handled before reaching the app
+- Provides consistent CORS behavior across all endpoints
 
 ## Troubleshooting
 
-If CORS errors persist:
+### If CORS errors persist:
 
 1. **Clear browser cache** - Hard reload (Ctrl+Shift+R or Cmd+Shift+R)
 2. **Check Vercel deployment** - Ensure latest code is deployed
 3. **Verify environment variables** - Check Vercel dashboard
 4. **Check backend logs** - Visit Vercel dashboard → Your project → Logs
-5. **Test API directly** - Visit https://genzwinners-backend.vercel.app/api/products/get-products
+
+### If you see 500 errors:
+
+1. **Check Vercel function logs** - Look for error messages
+2. **Verify database connection** - Ensure MONGO_URI is correct
+3. **Check environment variables** - All required vars must be set
+4. **Test endpoints directly** - Use Postman or curl to test API
+
+### Common Issues:
+
+**"Response to preflight request doesn't pass access control check"**
+- This means OPTIONS requests are failing
+- Verify vercel.json headers configuration is deployed
+- Check that the backend is returning 200 for OPTIONS requests
+
+**"Request failed with status code 500"**
+- Backend code is crashing
+- Check Vercel logs for error details
+- Verify all environment variables are set correctly
+- Ensure database connection is working
 
 ## Local Development
 
@@ -128,3 +149,4 @@ This allows you to develop locally without issues.
 - You must set environment variables in Vercel dashboard for production
 - The CORS configuration allows both development and production origins
 - Credentials are enabled for authenticated API requests
+- Vercel headers configuration handles CORS at the edge for better performance
