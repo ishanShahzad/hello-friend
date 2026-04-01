@@ -84,6 +84,7 @@ exports.placeOrder = async (req, res) => {
                 image: item.image,
                 price: item.price,
                 quantity: item.quantity,
+                selectedColor: item.selectedColor || null,
             })),
 
             shippingInfo: {

@@ -4,21 +4,17 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 
 exports.addToCart = async (req, res) => {
-    // console.log('add to cart id:::', req.params.id);
     const { id: userId } = req.user
     const { id } = req.params
+    const { selectedColor } = req.body || {}
 
     try {
         const existingCart = await Cart.findOne({ user: userId })
 
         if (existingCart) {
-            // res.status(200).json({ msg: 'cart found' })
-
-            const item = existingCart.cartItems.find(item => item.product.equals(id))
-            // console.log('item:::::', item);
+            const item = existingCart.cartItems.find(item => item.product.equals(id) && item.selectedColor === (selectedColor || null))
 
             if (item) {
-                // Product already in cart - don't increase quantity, just return current cart
                 await existingCart.populate('cartItems.product')
                 return res.status(200).json({ 
                     msg: "Item already in cart", 
@@ -28,11 +24,11 @@ exports.addToCart = async (req, res) => {
             }
 
             existingCart.cartItems.push({
-                product: id
+                product: id,
+                selectedColor: selectedColor || null
             })
             await existingCart.populate('cartItems.product')
             await existingCart.save()
-            // console.log(existingCart);
             return res.status(200).json({ msg: 'Item added to cart' , cart: existingCart.cartItems, totalCartPrice: existingCart.totalCartPrice})
 
         }
@@ -41,7 +37,8 @@ exports.addToCart = async (req, res) => {
             user: userId,
             cartItems: [
                 {
-                    product: id
+                    product: id,
+                    selectedColor: selectedColor || null
                 }
             ]
         })
