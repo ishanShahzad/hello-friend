@@ -362,12 +362,13 @@ exports.processTrialExpirations = async () => {
                     </div>
                     <p><strong>Subscribe now</strong> and get:</p>
                     <ul>
-                        <li>✅ First 90 days completely FREE</li>
+                        <li>✅ First 30 days completely FREE</li>
                         <li>✅ Then only $5/month — cancel anytime</li>
                         <li>✅ 100 AI messages/day (4x more!)</li>
+                        <li>✅ Bonus premium features for 6 months</li>
                         <li>✅ Uninterrupted store visibility</li>
                     </ul>
-                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 90 Days Free</a></p>`
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 30 Days Free</a></p>`
                 );
                 await sendEmail({ to: user.email, subject: `⏰ Trial Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}!`, html });
                 sub.warningEmailSent = true;
