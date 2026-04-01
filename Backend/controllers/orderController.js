@@ -5,6 +5,7 @@ const Product = require('../models/Product')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const TaxConfig = require('../models/TaxConfig');
 const { calculateTax } = require('./taxController');
+const { recordCouponUsage } = require('./couponController');
 
 
 exports.placeOrder = async (req, res) => {
