@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Ticket, Plus, Trash2, Edit3, ToggleLeft, ToggleRight, Search, 
     Calendar, Percent, DollarSign, Package, Users, Copy, Check, 
-    AlertTriangle, Clock, X, Loader2, ChevronDown, ChevronUp, Tag
+    AlertTriangle, Clock, X, Loader2, ChevronDown, ChevronUp, Tag,
+    BarChart3, TrendingUp, Eye, Award, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
