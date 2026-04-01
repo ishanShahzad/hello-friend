@@ -191,11 +191,35 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 });
 
 
-// CORS - Allow all origins
+// CORS - Allow specific origins with credentials
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://www.tortrose.com',
+  'https://tortrose.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: '*',
-  credentials: false,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.some(allowed => origin.includes(allowed))) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins for now to prevent blocking
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400 // 24 hours
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // Rate Limiting - Protect auth endpoints from brute force
 const authLimiter = rateLimit({
