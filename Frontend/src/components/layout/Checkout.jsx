@@ -487,8 +487,17 @@ export default function Checkout() {
         subtotal,
         shippingCost,
         tax,
+        couponDiscount: totalCouponDiscount,
         totalAmount,
       },
+
+      appliedCoupons: Object.values(appliedCoupons).map(c => ({
+        couponId: c._id,
+        code: c.code,
+        discountType: c.discountType,
+        discountValue: c.discountValue,
+        applicableProductIds: c.applicableProductIds,
+      })),
 
       paymentMethod:
         data.paymentMethod === "stripe"
