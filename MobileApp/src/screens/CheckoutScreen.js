@@ -365,6 +365,31 @@ export default function CheckoutScreen({ navigation }) {
           </TouchableOpacity>
         </GlassPanel>
       </KeyboardAvoidingView>
+
+      {/* Update Shipping Info Modal */}
+      <Modal visible={showUpdatePrompt} transparent animationType="fade" onRequestClose={() => setShowUpdatePrompt(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg }}>
+          <GlassPanel variant="strong" style={{ padding: spacing.xl, width: '100%', maxWidth: 360, borderRadius: 24 }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md }}>
+                <Ionicons name="location" size={28} color={colors.primary} />
+              </View>
+              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs }}>Update Shipping Info?</Text>
+              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center' }}>Your shipping details have changed. Save them for future orders?</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: glass.bgSubtle, alignItems: 'center', borderWidth: 1, borderColor: glass.borderSubtle }}
+                onPress={async () => { setShowUpdatePrompt(false); await completeOrder(pendingOrderData?.order, false); }}>
+                <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }}>No, Keep</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center' }}
+                onPress={async () => { setShowUpdatePrompt(false); await completeOrder(pendingOrderData?.order, true); }}>
+                <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' }}>Yes, Update</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassPanel>
+        </View>
+      </Modal>
     </GlassBackground>
   );
 }
