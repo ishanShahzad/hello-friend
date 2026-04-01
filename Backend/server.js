@@ -307,6 +307,29 @@ app.use((err, req, res, next) => {
   return res.status(err?.status || 500).json({ msg: err?.message || 'Internal Server Error' })
 })
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    mongoConnected: mongoose.connection.readyState === 1
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Tortrose API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      products: '/api/products',
+      auth: '/api/auth'
+    }
+  });
+});
+
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
