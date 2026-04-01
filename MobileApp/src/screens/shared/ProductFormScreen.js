@@ -132,6 +132,17 @@ export default function ProductFormScreen({ navigation, route }) {
             </View>
           </GlassPanel>
 
+          {/* Smart Tags */}
+          <GlassPanel variant="card" style={styles.section}>
+            <Text style={styles.sectionTitle}>Smart Tags</Text>
+            <SmartTagGenerator
+              productId={isEditMode ? product._id : null}
+              currentTags={tags}
+              onTagsUpdated={setTags}
+              productData={{ name: formData.name, description: formData.description, category: formData.category, brand: formData.brand }}
+            />
+          </GlassPanel>
+
           <View style={styles.submitContainer}>
             <TouchableOpacity style={[styles.submitButton, loading && { opacity: 0.6 }]} onPress={saveProduct} disabled={loading} activeOpacity={0.8}>
               {loading ? <Loader size="small" color="white" /> : (
