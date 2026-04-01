@@ -610,12 +610,22 @@ export default function Checkout() {
                 {/* SHIPPING STEP */}
                 {currentStep === 1 && (
                   <div>
-                    <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
-                      <div className="p-2 rounded-full" style={{ background: 'hsla(220, 70%, 55%, 0.12)' }}>
-                        <MapPin className="w-5 h-5" style={{ color: 'hsl(220, 70%, 55%)' }} />
-                      </div>
-                      Shipping Information
-                    </h2>
+                    <div className="flex items-center justify-between mb-4 sm:mb-6">
+                      <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                        <div className="p-2 rounded-full" style={{ background: 'hsla(220, 70%, 55%, 0.12)' }}>
+                          <MapPin className="w-5 h-5" style={{ color: 'hsl(220, 70%, 55%)' }} />
+                        </div>
+                        Shipping Information
+                      </h2>
+                      {savedShippingInfo && (
+                        <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                          onClick={handleAutoFill}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold"
+                          style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white', boxShadow: '0 0 15px -3px hsl(220, 70%, 55%, 0.3)' }}>
+                          <Zap size={14} /> Auto Fill
+                        </motion.button>
+                      )}
+                    </div>
 
                     {
                       cartItems?.cart && cartItems.cart.length >= 1 ? (
