@@ -1,5 +1,6 @@
 const express = require('express');
 const verifyToken = require('../middleware/authMiddleware');
+const bonusFeatureCheck = require('../middleware/bonusFeatureCheck');
 const {
     createCoupon,
     getSellerCoupons,
@@ -15,19 +16,19 @@ const {
 
 const router = express.Router();
 
-// Seller routes
-router.post('/create', verifyToken, createCoupon);
-router.get('/seller', verifyToken, getSellerCoupons);
-router.get('/analytics', verifyToken, getCouponAnalytics);
-router.put('/update/:id', verifyToken, updateCoupon);
-router.delete('/delete/:id', verifyToken, deleteCoupon);
-router.patch('/toggle/:id', verifyToken, toggleCoupon);
+// Seller routes (bonus feature restricted)
+router.post('/create', verifyToken, bonusFeatureCheck('Coupon Management'), createCoupon);
+router.get('/seller', verifyToken, bonusFeatureCheck('Coupon Management'), getSellerCoupons);
+router.get('/analytics', verifyToken, bonusFeatureCheck('Coupon Management'), getCouponAnalytics);
+router.put('/update/:id', verifyToken, bonusFeatureCheck('Coupon Management'), updateCoupon);
+router.delete('/delete/:id', verifyToken, bonusFeatureCheck('Coupon Management'), deleteCoupon);
+router.patch('/toggle/:id', verifyToken, bonusFeatureCheck('Coupon Management'), toggleCoupon);
 
 // Public routes (no auth needed for buyers to see available coupons)
 router.get('/product/:productId', getProductCoupons);
 router.get('/store/:sellerId', getStoreCoupons);
 
-// Checkout routes
+// Checkout routes (buyers apply coupons — no restriction)
 router.post('/validate', verifyToken, validateCoupon);
 router.post('/checkout-coupons', verifyToken, getCheckoutCoupons);
 
