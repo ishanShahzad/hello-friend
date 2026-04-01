@@ -135,6 +135,28 @@ export default function SellerDashboardScreen({ navigation }) {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
+        {/* Subscription Warnings */}
+        {isBlocked && (
+          <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: `${colors.error}25` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="lock-closed" size={16} color={colors.error} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.error, flex: 1 }}>Store Blocked — Subscribe to reactivate</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.error} />
+            </View>
+          </TouchableOpacity>
+        )}
+        {isTrialExpiring && !isBlocked && (
+          <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}25` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="alert-circle" size={16} color={colors.warning} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.warning, flex: 1 }}>Trial expiring in {subscription?.trialDaysRemaining} days — Subscribe now</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.warning} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* ── Header ── */}
         <GlassPanel variant="strong" style={styles.header}>
           <View style={styles.headerRow}>
