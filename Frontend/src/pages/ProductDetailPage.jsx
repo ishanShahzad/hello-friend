@@ -35,7 +35,7 @@ function ProductDetailPage() {
     const commentRef = useRef();
 
     const isInWishlist = product && wishlistItems?.some((item) => item._id === product._id);
-    const isInCart = product && cartItems?.cart?.some((item) => item.product?._id === product._id);
+    const isInCart = product && cartItems?.cart?.some((item) => item.product?._id === product._id && item.selectedColor === selectedColor);
 
     const displayPrice = product.discountedPrice || product.price;
     const originalPrice = product.price;
