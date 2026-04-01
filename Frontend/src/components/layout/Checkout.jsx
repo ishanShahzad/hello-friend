@@ -343,7 +343,7 @@ export default function Checkout() {
     }, 0);
   }, [selectedShippingPerSeller]);
   
-  const totalAmount = subtotal + tax + shippingCost;
+  const totalAmount = subtotal + tax + shippingCost - totalCouponDiscount;
   
   // Group cart items by seller
   const cartItemsBySeller = useMemo(() => {
