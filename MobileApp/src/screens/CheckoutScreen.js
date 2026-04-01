@@ -122,11 +122,33 @@ export default function CheckoutScreen({ navigation }) {
     return true;
   };
 
+  const autoFillShipping = () => {
+    if (savedShippingInfo) {
+      setFormData({
+        fullName: savedShippingInfo.fullName || '',
+        email: savedShippingInfo.email || '',
+        phone: savedShippingInfo.phone || '',
+        address: savedShippingInfo.address || '',
+        city: savedShippingInfo.city || '',
+        state: savedShippingInfo.state || '',
+        postalCode: savedShippingInfo.postalCode || '',
+        country: savedShippingInfo.country || 'Pakistan',
+      });
+      Toast.show({ type: 'success', text1: 'Auto-Filled!', text2: 'Shipping info loaded from your profile' });
+    }
+  };
+
+  const hasShippingInfoChanged = () => {
+    if (!savedShippingInfo) return true;
+    return Object.keys(formData).some(key => (formData[key] || '') !== (savedShippingInfo[key] || ''));
+  };
+
   const buildOrder = () => ({
     orderItems: cartItems.cart.map(item => ({
       id: item.product._id, name: item.product.name,
       image: item.product.image || item.product.images?.[0]?.url,
       price: getDiscountedPrice(item.product), quantity: item.qty || item.quantity || 1,
+      selectedColor: item.selectedColor || null,
     })),
     shippingInfo: formData,
     shippingMethod: { name: 'standard', price: shippingCost, estimatedDays: 5 },
@@ -134,6 +156,18 @@ export default function CheckoutScreen({ navigation }) {
     paymentMethod: paymentMethod === 'card' ? 'stripe' : 'cash_on_delivery',
     platform: paymentMethod === 'card' ? 'mobile' : undefined,
   });
+
+  const completeOrder = async (order, shouldSaveInfo) => {
+    if (shouldSaveInfo) {
+      try { await api.patch('/api/user/shipping-info', { shippingInfo: formData }); setSavedShippingInfo(formData); } catch {}
+    }
+    if (paymentMethod !== 'card') {
+      Toast.show({ type: 'success', text1: '🎉 Order Placed!', text2: 'Your order has been placed successfully' });
+      await api.delete('/api/cart/clear');
+      fetchCart();
+      setTimeout(() => { navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }, { name: 'Orders' }] }); }, 1200);
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (!validateForm()) return;
@@ -145,11 +179,19 @@ export default function CheckoutScreen({ navigation }) {
         const { url } = res.data;
         if (!url) throw new Error('No Stripe URL returned');
         await WebBrowser.openBrowserAsync(url, { dismissButtonStyle: 'cancel', presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
+        // Save shipping info on first order
+        if (!savedShippingInfo?.fullName) {
+          try { await api.patch('/api/user/shipping-info', { shippingInfo: formData }); setSavedShippingInfo(formData); } catch {}
+        }
       } else {
-        Toast.show({ type: 'success', text1: '🎉 Order Placed!', text2: res.data.msg || 'Your order has been placed successfully' });
-        await api.delete('/api/cart/clear');
-        fetchCart();
-        setTimeout(() => { navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }, { name: 'Orders' }] }); }, 1200);
+        // Check if info changed
+        if (savedShippingInfo?.fullName && hasShippingInfoChanged()) {
+          setPendingOrderData({ order, data: res.data });
+          setShowUpdatePrompt(true);
+        } else {
+          // First time or no change - auto-save
+          await completeOrder(order, !savedShippingInfo?.fullName);
+        }
       }
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Order Failed', text2: error.response?.data?.msg || 'Failed to place order.' });
