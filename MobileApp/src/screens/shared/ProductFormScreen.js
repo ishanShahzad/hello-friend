@@ -136,6 +136,33 @@ export default function ProductFormScreen({ navigation, route }) {
             </View>
           </GlassPanel>
 
+          {/* Color Variants */}
+          <GlassPanel variant="card" style={styles.section}>
+            <Text style={styles.sectionTitle}>Color Variants (Optional)</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+              <View style={[styles.inputContainer, { flex: 1 }]}>
+                <TextInput style={styles.input} value={newColor} onChangeText={setNewColor}
+                  placeholder="e.g., Red" placeholderTextColor={colors.textSecondary} />
+              </View>
+              <TouchableOpacity style={{ backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
+                onPress={() => { if (newColor.trim() && !productColors.includes(newColor.trim())) { setProductColors(prev => [...prev, newColor.trim()]); setNewColor(''); } }}>
+                <Ionicons name="add" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+            {productColors.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {productColors.map((c, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 }}>
+                    <Text style={{ fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.medium }}>{c}</Text>
+                    <TouchableOpacity onPress={() => setProductColors(prev => prev.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="close-circle" size={16} color={colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </GlassPanel>
+
           {/* Smart Tags */}
           <GlassPanel variant="card" style={styles.section}>
             <Text style={styles.sectionTitle}>Smart Tags</Text>
