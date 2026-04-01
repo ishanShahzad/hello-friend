@@ -801,6 +801,8 @@ const CouponManagement = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            </>
+            )}
         </div>
     );
 };
