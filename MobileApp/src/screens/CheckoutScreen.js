@@ -204,6 +204,12 @@ export default function CheckoutScreen({ navigation }) {
                   <Image source={{ uri: item.product?.image || item.product?.images?.[0]?.url }} style={styles.cartItemImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                   <View style={styles.cartItemInfo}>
                     <Text style={styles.cartItemName} numberOfLines={2}>{item.product?.name}</Text>
+                    {item.selectedColor && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="color-palette-outline" size={11} color={colors.primary} />
+                        <Text style={{ fontSize: 11, color: colors.primary }}>{item.selectedColor}</Text>
+                      </View>
+                    )}
                     <Text style={styles.cartItemQty}>Qty: {item.qty || item.quantity || 1}</Text>
                   </View>
                   <Text style={styles.cartItemPrice}>{formatPrice(price)}</Text>

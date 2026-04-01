@@ -158,6 +158,12 @@ export default function OrderDetailScreen({ route, navigation }) {
               <Image source={{ uri: item.image || 'https://via.placeholder.com/80' }} style={styles.itemImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                {item.selectedColor && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons name="color-palette-outline" size={12} color={colors.primary} />
+                    <Text style={{ fontSize: 11, color: colors.primary, fontWeight: fontWeight.medium }}>{item.selectedColor}</Text>
+                  </View>
+                )}
                 <Text style={styles.itemQty}>Qty: {item.quantity || item.qty}</Text>
                 <Text style={styles.itemPrice}>{formatPrice(item.price)}</Text>
               </View>

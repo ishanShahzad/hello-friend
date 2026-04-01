@@ -96,7 +96,7 @@ export const GlobalProvider = ({ children }) => {
     }
   };
 
-  const handleAddToCart = async (id) => {
+  const handleAddToCart = async (id, selectedColor = null) => {
     try {
       if (!currentUser) {
         Toast.show({
@@ -110,7 +110,7 @@ export const GlobalProvider = ({ children }) => {
       setIsCartLoading(true);
       setLoadingProductId(id);
 
-      const isInCart = cartItems?.cart?.some(item => item?.product?._id === id) || false;
+      const isInCart = cartItems?.cart?.some(item => item?.product?._id === id && (item.selectedColor || null) === (selectedColor || null)) || false;
 
       if (isInCart) {
         await handleRemoveCartItem(id);
@@ -119,7 +119,7 @@ export const GlobalProvider = ({ children }) => {
         return;
       }
 
-      const res = await api.post(`/api/cart/add/${id}`, {});
+      const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
 
       Toast.show({
         type: 'success',

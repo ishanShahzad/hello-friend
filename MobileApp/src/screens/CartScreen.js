@@ -102,6 +102,12 @@ export default function CartScreen({ navigation }) {
         <View style={styles.itemDetails}>
           {product.category && <Text style={styles.itemCategory}>{product.category}</Text>}
           <Text style={styles.itemName} numberOfLines={2}>{product.name}</Text>
+          {item.selectedColor && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <Ionicons name="color-palette-outline" size={12} color={colors.textSecondary} />
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Color: {item.selectedColor}</Text>
+            </View>
+          )}
           <Text style={styles.itemPrice}>{formatPrice(discountedPrice)}</Text>
           <View style={styles.bottomRow}>
             <View style={styles.quantityContainer}>
