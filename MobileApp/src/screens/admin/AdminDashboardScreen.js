@@ -137,6 +137,8 @@ export default function AdminDashboardScreen({ navigation }) {
     { icon: 'grid-outline', color: colors.warning, label: 'Products', onPress: () => navigation.navigate('AdminProductManagement') },
     { icon: 'list-outline', color: colors.success, label: 'Orders', onPress: () => navigation.navigate('AdminOrderManagement'), badge: stats.totalOrders },
     { icon: 'calculator-outline', color: colors.error, label: 'Tax Config', onPress: () => navigation.navigate('AdminTaxConfiguration') },
+    { icon: 'globe-outline', color: '#0ea5e9', label: 'Subdomains', onPress: () => navigation.navigate('AdminSubdomainManagement') },
+    { icon: 'chatbubbles-outline', color: '#f97316', label: 'Complaints', onPress: () => navigation.navigate('AdminComplaints') },
     { icon: 'notifications-outline', color: colors.warning, label: 'Notifications', onPress: () => navigation.navigate('AdminNotifications') },
     { icon: 'options-outline', color: colors.gray, label: 'Settings', onPress: () => navigation.navigate('NotificationSettings') },
   ];

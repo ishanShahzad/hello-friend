@@ -124,6 +124,7 @@ export default function SellerDashboardScreen({ navigation }) {
     { icon: 'storefront-outline', color: colors.primary, label: 'Store', onPress: () => navigation.navigate('SellerStoreSettings') },
     { icon: 'car-outline', color: colors.warning, label: 'Shipping', onPress: () => navigation.navigate('SellerShippingConfiguration') },
     { icon: 'bar-chart-outline', color: colors.success, label: 'Analytics', onPress: () => navigation.navigate('SellerAnalytics') },
+    { icon: 'globe-outline', color: '#0ea5e9', label: 'Subdomain', onPress: () => navigation.navigate('SellerSubdomainManagement') },
     { icon: 'diamond-outline', color: '#8b5cf6', label: 'Plan', onPress: () => navigation.navigate('SellerSubscription') },
   ];
 
