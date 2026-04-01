@@ -78,10 +78,17 @@ exports.getSubscriptionStatus = async (req, res) => {
         // Check and update status if trial expired
         await checkAndUpdateStatus(sub);
 
+        // Check bonus features expiry
+        if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
+            sub.bonusFeaturesActive = false;
+            await sub.save();
+        }
+
         res.json({
             subscription: {
                 status: sub.status,
                 plan: sub.plan,
+                planName: sub.planName || 'Tortrose Starter',
                 trialStartDate: sub.trialStartDate,
                 trialEndDate: sub.trialEndDate,
                 trialDaysRemaining: sub.trialDaysRemaining,
@@ -93,6 +100,8 @@ exports.getSubscriptionStatus = async (req, res) => {
                 aiMessageLimit: sub.aiMessageLimit,
                 cancelledAt: sub.cancelledAt,
                 blockedReason: sub.blockedReason,
+                bonusFeaturesActive: sub.bonusFeaturesActive,
+                bonusExpiryDate: sub.bonusExpiryDate,
             },
         });
     } catch (error) {
