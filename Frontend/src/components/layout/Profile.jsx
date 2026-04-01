@@ -26,6 +26,14 @@ const UserProfile = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isWaiting, setIsWaiting] = useState(false);
 
+    // Shipping info state
+    const [shippingInfo, setShippingInfo] = useState(null);
+    const [isEditingShipping, setIsEditingShipping] = useState(false);
+    const [shippingForm, setShippingForm] = useState({
+        fullName: '', email: '', phone: '', address: '', city: '', state: '', postalCode: '', country: 'Pakistan'
+    });
+    const [savingShipping, setSavingShipping] = useState(false);
+
     const handleInputChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
 
     const fetchUser = async () => {
