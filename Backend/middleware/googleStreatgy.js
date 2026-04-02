@@ -4,13 +4,14 @@ const User = require("../models/User");
 const dotenv = require('dotenv')
 dotenv.config()
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.clientID,
-      clientSecret: process.env.clientSecret,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    },
+if (process.env.clientID && process.env.clientSecret && process.env.GOOGLE_CALLBACK_URL) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.clientID,
+        clientSecret: process.env.clientSecret,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      },
     async (accessToken, refreshToken, profile, done) => {
       try {
         // Check if user already exists
@@ -42,6 +43,9 @@ passport.use(
     }
   )
 );
+} else {
+  console.warn('⚠️ Google OAuth not configured - missing clientID, clientSecret, or GOOGLE_CALLBACK_URL');
+}
 
 
 // Serialize & deserialize

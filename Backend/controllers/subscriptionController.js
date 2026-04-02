@@ -2,7 +2,7 @@ const SellerSubscription = require('../models/SellerSubscription');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 
 // Email template
 const subscriptionEmailTemplate = (title, bodyHtml) => `

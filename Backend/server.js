@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit')
 const express = require('express')
 const app = express()
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1))
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null
 const mongoose = require('mongoose')
 const Order = require('./models/Order')
 const Product = require('./models/Product')
@@ -14,6 +14,10 @@ const Product = require('./models/Product')
 
 
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripe) {
+    console.error("❌ Stripe not configured");
+    return res.sendStatus(500);
+  }
   const sig = req.headers["stripe-signature"];
   let event;
 
@@ -309,16 +313,22 @@ app.use('/api/ai-actions', aiActionRoutes)
 app.use('/api/subscription', subscriptionRoutes)
 app.use('/api/coupons', couponRoutes)
 
-// Run trial expiration check every hour
+// Trial expiration check - only run in non-serverless environments
 const { processTrialExpirations } = require('./controllers/subscriptionController');
-setInterval(processTrialExpirations, 60 * 60 * 1000);
-// Run once on startup after 30 seconds
-setTimeout(processTrialExpirations, 30000);
+if (process.env.VERCEL !== '1' && !process.env.VERCEL) {
+  setInterval(processTrialExpirations, 60 * 60 * 1000);
+  setTimeout(processTrialExpirations, 30000);
+}
 
-// Centralized JSON error responses
+// Centralized JSON error responses with CORS headers
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err)
   if (res.headersSent) return next(err)
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   return res.status(err?.status || 500).json({ msg: err?.message || 'Internal Server Error' })
 })
 
@@ -345,8 +355,14 @@ app.get('/', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-})
+// Only start listening in non-Vercel environments
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  })
+}
+
+// Export for Vercel serverless
+module.exports = app
 
