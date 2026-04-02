@@ -320,10 +320,15 @@ if (process.env.VERCEL !== '1' && !process.env.VERCEL) {
   setTimeout(processTrialExpirations, 30000);
 }
 
-// Centralized JSON error responses
+// Centralized JSON error responses with CORS headers
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err)
   if (res.headersSent) return next(err)
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   return res.status(err?.status || 500).json({ msg: err?.message || 'Internal Server Error' })
 })
 
