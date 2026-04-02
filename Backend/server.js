@@ -14,6 +14,10 @@ const Product = require('./models/Product')
 
 
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripe) {
+    console.error("❌ Stripe not configured");
+    return res.sendStatus(500);
+  }
   const sig = req.headers["stripe-signature"];
   let event;
 
