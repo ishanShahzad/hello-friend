@@ -350,8 +350,14 @@ app.get('/', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-})
+// Only start listening in non-Vercel environments
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  })
+}
+
+// Export for Vercel serverless
+module.exports = app
 
