@@ -259,7 +259,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 
 const ConnectDB = require('./config/db')
-ConnectDB()
+ConnectDB().catch(err => console.error('DB init error:', err.message))
 
 // Initialize Passport
 const passport = require('passport')
