@@ -55,6 +55,7 @@ exports.clearChatHistory = async (req, res) => {
         console.error('Clear chat history error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
+};
 
 // Get user context for AI personalization
 exports.getUserContext = async (req, res) => {
