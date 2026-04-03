@@ -261,6 +261,17 @@ app.use(express.urlencoded({ extended: true }));
 const ConnectDB = require('./config/db')
 ConnectDB().catch(err => console.error('DB init error:', err.message))
 
+// Middleware to ensure DB is connected before processing any API request
+app.use('/api', async (req, res, next) => {
+  try {
+    await ConnectDB();
+    next();
+  } catch (err) {
+    console.error('DB middleware connection error:', err.message);
+    return res.status(503).json({ msg: 'Database temporarily unavailable. Please retry.' });
+  }
+});
+
 // Initialize Passport
 const passport = require('passport')
 require('./middleware/googleStreatgy')
