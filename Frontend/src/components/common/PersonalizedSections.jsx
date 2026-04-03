@@ -220,26 +220,47 @@ const ProductSlider = ({ products, formatPrice }) => {
   )
 }
 
-const SectionHeader = ({ icon: Icon, title, subtitle, color, link }) => (
-  <div className="flex justify-between items-center mb-4">
-    <div className="flex items-center gap-3">
-      <div className="glass-inner p-2 rounded-xl" style={{ background: `${color}15` }}>
-        <Icon size={20} style={{ color }} />
-      </div>
-      <div>
-        <h2 className="text-lg sm:text-xl font-bold">{title}</h2>
-        {subtitle && (
-          <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{subtitle}</p>
+const CollapsibleSection = ({ icon: Icon, title, subtitle, color, bgStyle, children }) => {
+  const [open, setOpen] = useState(true)
+  return (
+    <section className="glass-panel overflow-hidden rounded-2xl" style={bgStyle}>
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="w-full flex items-center justify-between p-4 sm:p-6 pb-3 cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-3">
+          <div className="glass-inner p-2 rounded-xl" style={{ background: `${color}15` }}>
+            <Icon size={20} style={{ color }} />
+          </div>
+          <div className="text-left">
+            <h2 className="text-lg sm:text-xl font-bold">{title}</h2>
+            {subtitle && (
+              <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{subtitle}</p>
+            )}
+          </div>
+        </div>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }}>
+          <ChevronDown size={18} style={{ color: 'hsl(var(--muted-foreground))' }} />
+        </motion.div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+              {children}
+            </div>
+          </motion.div>
         )}
-      </div>
-    </div>
-    {link && (
-      <Link to={link} className="tag-pill text-xs font-medium hover:scale-105 transition-transform">
-        View All →
-      </Link>
-    )}
-  </div>
-)
+      </AnimatePresence>
+    </section>
+  )
+}
 
 const PersonalizedSections = () => {
   const { currentUser } = useAuth()
@@ -367,34 +388,29 @@ const PersonalizedSections = () => {
             ) : (
               <div className="space-y-6 sm:space-y-8">
                 {pickedForYou.length > 0 && (
-                  <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
-                    <SectionHeader icon={Sparkles} title="Picked for You" subtitle={currentUser ? "Based on your interests" : "Products you might love"} color="hsl(280, 70%, 60%)" />
+                  <CollapsibleSection icon={Sparkles} title="Picked for You" subtitle={currentUser ? "Based on your interests" : "Products you might love"} color="hsl(280, 70%, 60%)">
                     <ProductSlider products={pickedForYou} formatPrice={formatPrice} />
-                  </section>
+                  </CollapsibleSection>
                 )}
                 {priceDrops.length > 0 && (
-                  <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
-                    <SectionHeader icon={DollarSign} title="Price Drops" subtitle="Hot deals on watched items" color="hsl(0, 70%, 55%)" />
+                  <CollapsibleSection icon={DollarSign} title="Price Drops" subtitle="Hot deals on watched items" color="hsl(0, 70%, 55%)" bgStyle={{ background: 'rgba(239, 68, 68, 0.05)' }}>
                     <ProductSlider products={priceDrops} formatPrice={formatPrice} />
-                  </section>
+                  </CollapsibleSection>
                 )}
                 {trending.length > 0 && (
-                  <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
-                    <SectionHeader icon={TrendingUp} title="Trending Now" subtitle="Most popular products" color="hsl(150, 60%, 45%)" />
+                  <CollapsibleSection icon={TrendingUp} title="Trending Now" subtitle="Most popular products" color="hsl(150, 60%, 45%)">
                     <ProductSlider products={trending} formatPrice={formatPrice} />
-                  </section>
+                  </CollapsibleSection>
                 )}
                 {recentlyViewed.length > 0 && (
-                  <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
-                    <SectionHeader icon={Clock} title="Recently Viewed" subtitle="Continue where you left off" color="hsl(200, 80%, 55%)" />
+                  <CollapsibleSection icon={Clock} title="Recently Viewed" subtitle="Continue where you left off" color="hsl(200, 80%, 55%)">
                     <ProductSlider products={recentlyViewed} formatPrice={formatPrice} />
-                  </section>
+                  </CollapsibleSection>
                 )}
                 {pickedForYou.length > 4 && (
-                  <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6" style={{ background: 'rgba(236, 72, 153, 0.05)' }}>
-                    <SectionHeader icon={Gift} title="Gift Ideas" subtitle="Perfect presents for loved ones" color="hsl(330, 80%, 60%)" />
+                  <CollapsibleSection icon={Gift} title="Gift Ideas" subtitle="Perfect presents for loved ones" color="hsl(330, 80%, 60%)" bgStyle={{ background: 'rgba(236, 72, 153, 0.05)' }}>
                     <ProductSlider products={pickedForYou.slice(0, 6).sort(() => Math.random() - 0.5)} formatPrice={formatPrice} />
-                  </section>
+                  </CollapsibleSection>
                 )}
               </div>
             )}
