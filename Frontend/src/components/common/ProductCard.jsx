@@ -44,7 +44,7 @@ const ProductCard = ({
       transition={{ duration: 0.4, delay: idx * 0.05 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      className="relative glass-card water-shimmer p-2 sm:p-3 md:p-4 flex flex-col overflow-hidden group"
+      className="relative glass-card water-shimmer p-1.5 sm:p-2 md:p-3 flex flex-col overflow-hidden group"
     >
       {/* Badges */}
       <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 md:top-3 md:left-3 z-[2] flex flex-col items-start gap-1 sm:gap-1.5">
