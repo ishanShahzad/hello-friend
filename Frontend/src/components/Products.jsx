@@ -277,7 +277,7 @@ function Products() {
       </aside>
 
       {/* Product Grid */}
-      <main className='flex-1 p-4 lg:p-6'>
+      <main className='min-w-0 flex-1 p-4 lg:p-6'>
         {/* Personalized Sections */}
         <PersonalizedSections />
 
@@ -313,7 +313,7 @@ function Products() {
                 <p className='text-sm mt-1' style={{ color: 'hsl(var(--muted-foreground))' }}>Try adjusting your filters</p>
               </motion.div>
             ) : (
-              <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 lg:gap-4'>
+               <div className='grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5 sm:gap-3 lg:gap-4 items-start'>
                 {products.map((prod, idx) => (
                   <ProductCard key={prod._id} idx={idx} {...prod} />
                 ))}

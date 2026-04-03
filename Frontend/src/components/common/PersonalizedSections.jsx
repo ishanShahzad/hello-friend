@@ -5,7 +5,85 @@ import { Sparkles, TrendingUp, DollarSign, Clock, Gift, ChevronLeft, ChevronRigh
 import axios from 'axios'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrency } from '../../contexts/CurrencyContext'
-import ProductCard from './ProductCard'
+
+const SliderProductCard = ({ product, formatPrice }) => {
+  const displayPrice = product.discountedPrice || product.price
+  const hasDiscount = product.discountedPrice > 0 && product.discountedPrice < product.price
+  const discountPercentage = hasDiscount
+    ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
+    : 0
+
+  return (
+    <motion.div
+      whileHover={{ y: -6, scale: 1.02 }}
+      transition={{ duration: 0.25 }}
+      className="w-[188px] sm:w-[208px] lg:w-[224px] xl:w-[236px] shrink-0 snap-start"
+    >
+      <Link to={`/single-product/${product._id}`} className="block h-full">
+        <article className="glass-card h-full overflow-hidden p-2 sm:p-2.5">
+          <div className="relative overflow-hidden rounded-[1.25rem] glass-inner aspect-[4/4.8]">
+            <img
+              src={product.images?.[0]?.url || product.image}
+              alt={product.name}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+            />
+
+            {discountPercentage > 0 && (
+              <span
+                className="absolute left-2 top-2 rounded-full px-2 py-1 text-[10px] font-bold"
+                style={{ background: 'hsl(var(--destructive))', color: 'hsl(var(--destructive-foreground))' }}
+              >
+                -{discountPercentage}%
+              </span>
+            )}
+
+            <div className="absolute inset-x-0 bottom-0 p-2">
+              <span
+                className="inline-flex max-w-full rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  background: 'hsl(var(--background) / 0.78)',
+                  color: 'hsl(var(--muted-foreground))',
+                  border: '1px solid hsl(var(--border) / 0.65)',
+                  backdropFilter: 'blur(12px)',
+                }}
+              >
+                <span className="truncate">{product.category}</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex h-[116px] flex-col justify-between px-1 pb-1 pt-3">
+            <div>
+              <h3 className="line-clamp-2 text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                {product.name}
+              </h3>
+              <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                {product.numReviews || 0} reviews • {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+              </p>
+            </div>
+
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                  {formatPrice(displayPrice)}
+                </p>
+                {hasDiscount && (
+                  <p className="truncate text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {formatPrice(product.price)}
+                  </p>
+                )}
+              </div>
+              <span className="text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>
+                View →
+              </span>
+            </div>
+          </div>
+        </article>
+      </Link>
+    </motion.div>
+  )
+}
 
 const ProductSlider = ({ products }) => {
   const scrollRef = useRef(null)
@@ -37,11 +115,17 @@ const ProductSlider = ({ products }) => {
   const scroll = (direction) => {
     const el = scrollRef.current
     if (!el) return
-    const scrollAmount = el.clientWidth * 0.75
+    const scrollAmount = Math.max(el.clientWidth * 0.82, 320)
     el.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' })
   }
 
-  // Mouse drag support
+  const handleWheel = (e) => {
+    const el = scrollRef.current
+    if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    e.preventDefault()
+    el.scrollBy({ left: e.deltaY, behavior: 'smooth' })
+  }
+
   const handleMouseDown = (e) => {
     setIsDragging(true)
     setStartX(e.pageX - scrollRef.current.offsetLeft)
@@ -244,7 +328,7 @@ const PersonalizedSections = () => {
             <div className="h-6 w-48 bg-white/10 rounded mb-4" />
             <div className="flex gap-4 overflow-hidden">
               {[1, 2, 3, 4, 5].map(j => (
-                <div key={j} className="w-44 h-64 bg-white/5 rounded-xl shrink-0" />
+                <div key={j} className="h-72 w-[188px] shrink-0 rounded-xl bg-white/5" />
               ))}
             </div>
           </div>
@@ -256,62 +340,62 @@ const PersonalizedSections = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       {pickedForYou.length > 0 && (
-        <section className="glass-panel p-4 sm:p-6 rounded-2xl overflow-hidden">
+        <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
           <SectionHeader 
             icon={Sparkles} 
             title="Picked for You" 
             subtitle={currentUser ? "Based on your interests" : "Products you might love"}
             color="hsl(280, 70%, 60%)"
           />
-          <ProductSlider products={pickedForYou} />
+          <ProductSlider products={pickedForYou.map(product => ({ ...product, __formatPrice: formatPrice }))} />
         </section>
       )}
 
       {priceDrops.length > 0 && (
-        <section className="glass-panel p-4 sm:p-6 rounded-2xl overflow-hidden" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
+        <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
           <SectionHeader 
             icon={DollarSign} 
             title="Price Drops" 
             subtitle="Hot deals on watched items"
             color="hsl(0, 70%, 55%)"
           />
-          <ProductSlider products={priceDrops} />
+          <ProductSlider products={priceDrops.map(product => ({ ...product, __formatPrice: formatPrice }))} />
         </section>
       )}
 
       {trending.length > 0 && (
-        <section className="glass-panel p-4 sm:p-6 rounded-2xl overflow-hidden">
+        <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
           <SectionHeader 
             icon={TrendingUp} 
             title="Trending Now" 
             subtitle="Most popular products"
             color="hsl(150, 60%, 45%)"
           />
-          <ProductSlider products={trending} />
+          <ProductSlider products={trending.map(product => ({ ...product, __formatPrice: formatPrice }))} />
         </section>
       )}
 
       {recentlyViewed.length > 0 && (
-        <section className="glass-panel p-4 sm:p-6 rounded-2xl overflow-hidden">
+        <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6">
           <SectionHeader 
             icon={Clock} 
             title="Recently Viewed" 
             subtitle="Continue where you left off"
             color="hsl(200, 80%, 55%)"
           />
-          <ProductSlider products={recentlyViewed} />
+          <ProductSlider products={recentlyViewed.map(product => ({ ...product, __formatPrice: formatPrice }))} />
         </section>
       )}
 
       {pickedForYou.length > 4 && (
-        <section className="glass-panel p-4 sm:p-6 rounded-2xl overflow-hidden" style={{ background: 'rgba(236, 72, 153, 0.05)' }}>
+        <section className="glass-panel overflow-hidden rounded-2xl p-4 sm:p-6" style={{ background: 'rgba(236, 72, 153, 0.05)' }}>
           <SectionHeader 
             icon={Gift} 
             title="Gift Ideas" 
             subtitle="Perfect presents for loved ones"
             color="hsl(330, 80%, 60%)"
           />
-          <ProductSlider products={pickedForYou.slice(0, 6).sort(() => Math.random() - 0.5)} />
+          <ProductSlider products={pickedForYou.slice(0, 6).sort(() => Math.random() - 0.5).map(product => ({ ...product, __formatPrice: formatPrice }))} />
         </section>
       )}
     </div>
