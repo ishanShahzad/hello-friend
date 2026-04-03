@@ -13,7 +13,7 @@ const CartDropdown = () => {
   const { currentUser } = useAuth()
   const { formatPrice } = useCurrency()
 
-  const isEmpty = !currentUser || !cartItems?.cart || cartItems.cart.length === 0
+  const isEmpty = !cartItems?.cart || cartItems.cart.length === 0
 
   const subtotal = isEmpty ? 0 : cartItems.cart.reduce((total, item) => {
     if (!item.product) return total

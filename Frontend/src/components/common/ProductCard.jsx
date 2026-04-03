@@ -32,7 +32,6 @@ const ProductCard = ({
   };
 
   const handleAddToCartClick = () => {
-    if (!currentUser) { navigate('/login'); return; }
     handleAddToCart(_id);
   };
 

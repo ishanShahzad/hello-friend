@@ -1,10 +1,15 @@
-// src/context/GlobalContext.js
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 
 const GlobalContext = createContext();
+
+const GUEST_CART_KEY = 'guestCart';
+const getGuestCart = () => { try { const r = localStorage.getItem(GUEST_CART_KEY); return r ? JSON.parse(r) : []; } catch { return []; } };
+const saveGuestCart = (cart) => localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cart));
+const clearGuestCart = () => localStorage.removeItem(GUEST_CART_KEY);
+const calcGuestTotal = (cart) => cart.reduce((s, i) => s + ((i.product.discountedPrice || i.product.price) * i.qty), 0);
 
 
 
@@ -26,17 +31,31 @@ export const GlobalProvider = ({ children }) => {
 
     useEffect(() => {
         if (!currentUser) {
-            setCartItems({
-                totalCartPrice: 0,
-                cart: []
-            })
-            setWishlistItems([])
+            const gc = getGuestCart();
+            setCartItems({ cart: gc, totalCartPrice: calcGuestTotal(gc) });
+            setWishlistItems([]);
         }
     }, [currentUser])
 
-    // useEffect(() => {
-    //     fetchCart()
-    // }, [])
+    useEffect(() => {
+        if (currentUser) {
+            (async () => {
+                const gc = getGuestCart();
+                if (gc.length > 0) {
+                    try {
+                        const token = localStorage.getItem('jwtToken');
+                        for (const item of gc) {
+                            await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${item.product._id}`,
+                                { selectedColor: item.selectedColor || null },
+                                { headers: { Authorization: `Bearer ${token}` } });
+                        }
+                        clearGuestCart();
+                    } catch (e) { console.error('Guest cart sync failed:', e); }
+                }
+                fetchCart();
+            })();
+        }
+    }, [currentUser])
 
     const fetchWishlist = async () => {
 
@@ -103,27 +122,34 @@ export const GlobalProvider = ({ children }) => {
     
     const handleAddToCart = async (id, selectedColor = null) => {
         try {
-            // Check if user is logged in
-            if (!currentUser) {
-                toast.info('Please login to add items to cart');
-                return;
-            }
-            
             setIsCartLoading(true)
             setLoadingProductId(id)
             
-            // Check if product is already in cart (same product + same color)
             const isInCart = cartItems?.cart?.some(item => 
                 item?.product?._id === id && item?.selectedColor === selectedColor
             ) || false;
             
             if (isInCart) {
-                await handleRemoveCartItem(id);
+                await handleRemoveCartItem(id, selectedColor);
                 setIsCartLoading(false);
                 setLoadingProductId(null);
                 return;
             }
-            
+
+            if (!currentUser) {
+                try {
+                    const pRes = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}`);
+                    const pData = pRes.data.product || pRes.data;
+                    const gc = getGuestCart();
+                    gc.push({ product: pData, qty: 1, selectedColor, _id: `guest_${Date.now()}` });
+                    saveGuestCart(gc);
+                    setCartItems({ cart: gc, totalCartPrice: calcGuestTotal(gc) });
+                    toast.success('Added to cart');
+                } catch { toast.error('Failed to add to cart'); }
+                setIsCartLoading(false);
+                setLoadingProductId(null);
+                return;
+            }
 
             const token = localStorage.getItem('jwtToken')
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${id}`, 
@@ -243,9 +269,19 @@ export const GlobalProvider = ({ children }) => {
         }
     }
 
-    const handleRemoveCartItem = async (id) => {
+    const handleRemoveCartItem = async (id, selectedColor = null) => {
         try {
             setQtyUpdateId(id)
+
+            if (!currentUser) {
+                const gc = getGuestCart().filter(i => !(i.product._id === id && i.selectedColor === selectedColor));
+                saveGuestCart(gc);
+                setCartItems({ cart: gc, totalCartPrice: calcGuestTotal(gc) });
+                toast.info('Item removed from your cart');
+                setQtyUpdateId(null);
+                return;
+            }
+
             const token = localStorage.getItem('jwtToken')
             const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/cart/remove/${id}`,
                 {
