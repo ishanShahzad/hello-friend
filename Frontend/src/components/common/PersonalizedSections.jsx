@@ -85,7 +85,7 @@ const SliderProductCard = ({ product, formatPrice }) => {
   )
 }
 
-const ProductSlider = ({ products }) => {
+const ProductSlider = ({ products, formatPrice }) => {
   const scrollRef = useRef(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -142,7 +142,6 @@ const ProductSlider = ({ products }) => {
 
   return (
     <div className="relative group/slider">
-      {/* Left Arrow - always visible when scrollable */}
       <AnimatePresence>
         {canScrollLeft && (
           <motion.button
@@ -164,7 +163,6 @@ const ProductSlider = ({ products }) => {
         )}
       </AnimatePresence>
 
-      {/* Right Arrow - always visible when scrollable */}
       <AnimatePresence>
         {canScrollRight && (
           <motion.button
@@ -186,7 +184,6 @@ const ProductSlider = ({ products }) => {
         )}
       </AnimatePresence>
 
-      {/* Edge Fade Gradients */}
       {canScrollLeft && (
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 z-[5] pointer-events-none"
           style={{ background: 'linear-gradient(to right, hsl(var(--background) / 0.9), transparent)' }} />
@@ -196,11 +193,11 @@ const ProductSlider = ({ products }) => {
           style={{ background: 'linear-gradient(to left, hsl(var(--background) / 0.9), transparent)' }} />
       )}
 
-      {/* Scrollable Track */}
       <div
         ref={scrollRef}
-        className={`flex gap-3 sm:gap-4 overflow-x-auto pb-2 scroll-smooth px-1 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scroll-smooth px-1 sm:gap-4 ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -213,9 +210,9 @@ const ProductSlider = ({ products }) => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.4 }}
-            className="shrink-0 w-[160px] sm:w-[180px] md:w-[200px] lg:w-[210px]"
+            className="shrink-0"
           >
-            <ProductCard {...product} idx={idx} />
+            <SliderProductCard product={product} formatPrice={formatPrice} />
           </motion.div>
         ))}
       </div>
@@ -347,7 +344,7 @@ const PersonalizedSections = () => {
             subtitle={currentUser ? "Based on your interests" : "Products you might love"}
             color="hsl(280, 70%, 60%)"
           />
-          <ProductSlider products={pickedForYou.map(product => ({ ...product, __formatPrice: formatPrice }))} />
+          <ProductSlider products={pickedForYou} formatPrice={formatPrice} />
         </section>
       )}
 
@@ -359,7 +356,7 @@ const PersonalizedSections = () => {
             subtitle="Hot deals on watched items"
             color="hsl(0, 70%, 55%)"
           />
-          <ProductSlider products={priceDrops.map(product => ({ ...product, __formatPrice: formatPrice }))} />
+          <ProductSlider products={priceDrops} formatPrice={formatPrice} />
         </section>
       )}
 
@@ -371,7 +368,7 @@ const PersonalizedSections = () => {
             subtitle="Most popular products"
             color="hsl(150, 60%, 45%)"
           />
-          <ProductSlider products={trending.map(product => ({ ...product, __formatPrice: formatPrice }))} />
+          <ProductSlider products={trending} formatPrice={formatPrice} />
         </section>
       )}
 
@@ -383,7 +380,7 @@ const PersonalizedSections = () => {
             subtitle="Continue where you left off"
             color="hsl(200, 80%, 55%)"
           />
-          <ProductSlider products={recentlyViewed.map(product => ({ ...product, __formatPrice: formatPrice }))} />
+          <ProductSlider products={recentlyViewed} formatPrice={formatPrice} />
         </section>
       )}
 
@@ -395,7 +392,7 @@ const PersonalizedSections = () => {
             subtitle="Perfect presents for loved ones"
             color="hsl(330, 80%, 60%)"
           />
-          <ProductSlider products={pickedForYou.slice(0, 6).sort(() => Math.random() - 0.5).map(product => ({ ...product, __formatPrice: formatPrice }))} />
+          <ProductSlider products={pickedForYou.slice(0, 6).sort(() => Math.random() - 0.5)} formatPrice={formatPrice} />
         </section>
       )}
     </div>

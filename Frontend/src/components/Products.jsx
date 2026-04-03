@@ -315,7 +315,9 @@ function Products() {
             ) : (
                <div className='grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5 sm:gap-3 lg:gap-4 items-start'>
                 {products.map((prod, idx) => (
-                  <ProductCard key={prod._id} idx={idx} {...prod} />
+                  <div key={prod._id} className='mx-auto w-full max-w-[220px] min-w-0 xl:max-w-[232px]'>
+                    <ProductCard idx={idx} {...prod} />
+                  </div>
                 ))}
               </div>
             )}
