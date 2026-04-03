@@ -103,7 +103,7 @@ const ProductSlider = ({ products }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.04 }}
-            className="shrink-0 w-48 sm:w-56"
+            className="shrink-0 w-[180px] sm:w-[200px] md:w-[220px] lg:w-[230px]"
           >
             <ProductCard {...product} idx={idx} />
           </motion.div>

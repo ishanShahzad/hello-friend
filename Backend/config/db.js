@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const dotenv = require('dotenv')
 dotenv.config()
 
-let cached = global._mongooseConnection;
+let connectionPromise = null;
 
 const ConnectDB = async () => {
   if (!process.env.MONGO_URI) {
@@ -10,19 +10,30 @@ const ConnectDB = async () => {
     return;
   }
 
-  // Reuse cached connection in serverless environments
-  if (cached && cached.readyState === 1) {
+  // If already connected, return immediately
+  if (mongoose.connection.readyState === 1) {
     return;
   }
 
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    cached = mongoose.connection;
-    global._mongooseConnection = cached;
-    console.log('MongoDB Connected.');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
+  // If a connection attempt is in progress, wait for it
+  if (connectionPromise) {
+    return connectionPromise;
   }
+
+  // Start a new connection attempt
+  connectionPromise = mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  }).then(() => {
+    console.log('MongoDB Connected.');
+    connectionPromise = null;
+  }).catch((err) => {
+    console.error('❌ MongoDB connection failed:', err.message);
+    connectionPromise = null;
+    throw err;
+  });
+
+  return connectionPromise;
 }
 
 module.exports = ConnectDB
