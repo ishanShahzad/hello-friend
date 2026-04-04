@@ -559,14 +559,21 @@ export default function Checkout() {
         if (hasChanged && currentUser) return;
         
         setTimeout(async () => {
-          axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).then(() => fetchCart()).catch(error => console.error('Error clearing cart:', error));
+          if (token) {
+            axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(() => fetchCart()).catch(error => console.error('Error clearing cart:', error));
+          } else {
+            // Guest: clear local cart
+            localStorage.removeItem('guestCart');
+            fetchCart();
+          }
           navigate('/success');
         }, 1500);
         return;
       }
       
+      const stripe = await stripePromise;
       await stripe.redirectToCheckout({ sessionId: res.data.id })
 
 
