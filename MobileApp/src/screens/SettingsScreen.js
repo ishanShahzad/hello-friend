@@ -85,7 +85,8 @@ export default function SettingsScreen({ navigation }) {
           <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
             <SettingRow icon="notifications-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="Push Notifications" subtitle="Order updates and alerts" rightElement={<Switch value={notificationsEnabled} onValueChange={handleNotificationsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={notificationsEnabled ? colors.primary : colors.grayLight} />} />
-            <SettingRow icon="mail-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Email Updates" subtitle="Promotions and newsletters" showBorder={false} rightElement={<Switch value={emailUpdates} onValueChange={(v) => { setEmailUpdates(v); AsyncStorage.setItem(SETTINGS_KEYS.EMAIL_UPDATES, String(v)); }} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={emailUpdates ? colors.primary : colors.grayLight} />} />
+            <SettingRow icon="mail-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Email Updates" subtitle="Promotions and newsletters" rightElement={<Switch value={emailUpdates} onValueChange={(v) => { setEmailUpdates(v); AsyncStorage.setItem(SETTINGS_KEYS.EMAIL_UPDATES, String(v)); }} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={emailUpdates ? colors.primary : colors.grayLight} />} />
+            <SettingRow icon="options-outline" iconColor="#8B5CF6" iconBg="rgba(139,92,246,0.15)" title="Notification Preferences" subtitle="Choose which categories to receive" showBorder={false} onPress={() => navigation.navigate('NotificationPreferences')} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>SUPPORT</Text>
