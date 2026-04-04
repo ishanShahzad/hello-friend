@@ -190,13 +190,27 @@ export default function ProductManagementScreen({ navigation, route }) {
 
   return (
     <GlassBackground>
+      {/* Store Required Warning */}
+      {!isAdmin && !hasStore && (
+        <GlassPanel variant="card" style={{ margin: spacing.md, padding: spacing.lg, borderWidth: 1, borderColor: `${colors.warning}40` }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+            <Ionicons name="alert-circle" size={22} color={colors.warning} />
+            <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.warning }}>Store Required</Text>
+          </View>
+          <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.md }}>You need to create a store before adding products. Go to Store Settings to set up your store.</Text>
+          <TouchableOpacity style={{ backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: spacing.lg, borderRadius: 14, alignSelf: 'flex-start' }} onPress={() => navigation.navigate('SellerStoreSettings')}>
+            <Text style={{ color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.sm }}>Go to Store Settings</Text>
+          </TouchableOpacity>
+        </GlassPanel>
+      )}
+
       <FlatList data={filteredProducts} renderItem={renderProduct} keyExtractor={i => i._id}
         contentContainerStyle={styles.list} ListHeaderComponent={renderHeader}
-        ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : <EmptyProducts onAdd={() => navigation.navigate('ProductForm', { isAdmin })} />}
+        ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : <EmptyProducts onAdd={hasStore || isAdmin ? () => navigation.navigate('ProductForm', { isAdmin }) : undefined} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false} />
 
-      {!selectMode && (
+      {!selectMode && (hasStore || isAdmin) && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('ProductForm', { isAdmin })} activeOpacity={0.8}>
           <Ionicons name="add" size={28} color="white" />
         </TouchableOpacity>
