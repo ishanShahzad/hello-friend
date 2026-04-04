@@ -86,7 +86,7 @@ export default function TrackOrderScreen({ navigation }) {
           <Ionicons name="search-outline" size={22} color={colors.primary} />
         </GlassPanel>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
           {/* Search Form */}
           <GlassPanel variant="card" style={styles.formCard}>
             <View style={styles.inputGroup}>
