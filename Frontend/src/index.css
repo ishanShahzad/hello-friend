@@ -224,13 +224,11 @@ input, select, textarea {
 }
 
 .glass-button {
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: var(--glass-bg-strong);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow-soft), var(--glass-inner-glow);
     border-radius: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .glass-button:hover {
