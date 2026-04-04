@@ -89,6 +89,7 @@ import ContactScreen from '../screens/ContactScreen';
 import AboutScreen from '../screens/AboutScreen';
 import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TrackOrderScreen from '../screens/TrackOrderScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
