@@ -94,10 +94,7 @@ function AppRoutes() {
                 <Route path='/signup' element={<SignUp />} />
                 <Route path='/auth/google/success' element={<GoogleAuthSuccess />} />
 
-                <Route path={'/success'} element={
-                    <ProtectedRoute >
-                        <Success />
-                    </ProtectedRoute>} />
+                <Route path={'/success'} element={<Success />} />
 
                 {/* USER DASHBOARD */}
                 <Route path={'/user-dashboard'} element={
