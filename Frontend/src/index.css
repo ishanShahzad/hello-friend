@@ -175,6 +175,7 @@ input, select, textarea {
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 24px;
+    contain: layout style;
 }
 
 .glass-panel-strong {
@@ -203,17 +204,16 @@ input, select, textarea {
 
 .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 22px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    contain: layout style paint;
+    will-change: transform;
 }
 
 .glass-card:hover {
     transform: translateY(-3px) scale(1.015);
-    background: var(--glass-bg-strong);
     border-color: var(--glass-border-strong);
     box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
 }
@@ -225,13 +225,11 @@ input, select, textarea {
 }
 
 .glass-button {
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: var(--glass-bg-strong);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow-soft), var(--glass-inner-glow);
     border-radius: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .glass-button:hover {
@@ -319,7 +317,7 @@ input, select, textarea {
     border-radius: 50%;
     filter: blur(90px);
     pointer-events: none;
-    animation: orb-drift 20s ease-in-out infinite;
+    animation: orb-drift 30s ease-in-out infinite;
     will-change: transform;
     contain: strict;
     transform: translateZ(0);

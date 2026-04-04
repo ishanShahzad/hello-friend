@@ -110,8 +110,8 @@ const ProductCard = memo(({
               </div>
             )}
             {stock === 0 && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-2xl backdrop-blur-sm">
-                <span className="text-white font-semibold px-3 py-2 rounded-xl glass-panel">Out of Stock</span>
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-2xl">
+                <span className="text-white font-semibold px-3 py-2 rounded-xl" style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.15)' }}>Out of Stock</span>
               </div>
             )}
           </div>
