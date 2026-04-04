@@ -33,11 +33,28 @@ export default function BecomeSellerScreen({ navigation }) {
     return true;
   };
 
-  const handleBecomeSeller = async () => {
+  const handleStep1Next = () => {
     if (!validateForm()) return;
+    setFormStep(2);
+  };
+
+  const handleBecomeSeller = async (skipStore = false) => {
     setLoading(true);
     try {
-      const res = await api.post('/api/user/become-seller', { phoneNumber: formData.phoneNumber.trim(), address: formData.address.trim(), city: formData.city.trim(), country: formData.country.trim(), businessName: formData.businessName.trim() });
+      const socialLinks = {};
+      if (!skipStore) {
+        ['website', 'instagram', 'facebook', 'twitter'].forEach(key => {
+          if (storeData[key]) socialLinks[key] = storeData[key];
+        });
+      }
+      const payload = {
+        phoneNumber: formData.phoneNumber.trim(), address: formData.address.trim(),
+        city: formData.city.trim(), country: formData.country.trim(), businessName: formData.businessName.trim(),
+        storeName: !skipStore && storeData.storeName ? storeData.storeName.trim() : '',
+        storeDescription: !skipStore && storeData.storeDescription ? storeData.storeDescription.trim() : '',
+        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
+      };
+      const res = await api.post('/api/user/become-seller', payload);
       if (res.data.token) await SecureStore.setItemAsync('jwtToken', res.data.token);
       Toast.show({ type: 'success', text1: '🎉 Congratulations!', text2: 'You are now a seller!' });
       if (fetchAndUpdateCurrentUser) await fetchAndUpdateCurrentUser();
