@@ -1,5 +1,5 @@
 const express = require('express')
-const { registerr, login, googleCallback, sendOTP, verifyOTPAndRegister } = require('../controllers/authController')
+const { registerr, login, googleCallback, sendOTP, verifyOTPAndRegister, sendSellerOTP, verifySellerOTPAndRegister } = require('../controllers/authController')
 const passport = require('passport')
 const router = express.Router()
 
