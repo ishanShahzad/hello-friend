@@ -10,21 +10,18 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { GlobalProvider } from './src/contexts/GlobalContext';
 import { CurrencyProvider } from './src/contexts/CurrencyContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import OnboardingWalkthrough, { shouldShowOnboarding } from './src/components/OnboardingWalkthrough';
 
 // ─── Sentry Crash Reporting ──────────────────────────────────────────────────
-// Replace the DSN below with your own from https://sentry.io
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://examplePublicKey@o0.ingest.sentry.io/0',
   environment: __DEV__ ? 'development' : 'production',
-  enableInExpoDevelopment: false,   // disable in local dev to reduce noise
+  enableInExpoDevelopment: false,
   debug: false,
-  tracesSampleRate: __DEV__ ? 0 : 0.2,   // capture 20% of transactions in prod
+  tracesSampleRate: __DEV__ ? 0 : 0.2,
 });
 
-/**
- * ErrorBoundary — catches unhandled React render errors so the app
- * shows a friendly screen instead of a blank white crash.
- */
+// ─── ErrorBoundary ───────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -68,10 +65,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/**
- * OfflineBanner — slides in from top when internet connection is lost,
- * slides out when reconnected.
- */
+// ─── Offline Banner ──────────────────────────────────────────────────────────
 function OfflineBanner() {
   const [isConnected, setIsConnected] = useState(true);
   const slideAnim = React.useRef(new Animated.Value(-60)).current;
@@ -97,6 +91,13 @@ function OfflineBanner() {
       <Text style={offlineBannerStyles.text}>No internet connection</Text>
     </Animated.View>
   );
+}
+
+// ─── Notification Initializer (must be inside NavigationContainer) ───────────
+function NotificationInitializer() {
+  const useNotifications = require('./src/hooks/useNotifications').default;
+  useNotifications();
+  return null;
 }
 
 const offlineBannerStyles = StyleSheet.create({
@@ -133,10 +134,7 @@ const errorStyles = StyleSheet.create({
   retryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
-/**
- * Deep Linking Configuration
- * Maps URLs (tortrose:// and https://tortrose.com) to screens.
- */
+// ─── Deep Linking ────────────────────────────────────────────────────────────
 const linking = {
   prefixes: ['tortrose://', 'https://tortrose.com', 'http://tortrose.com'],
   config: {
@@ -171,6 +169,23 @@ const linking = {
 };
 
 function App() {
+  const [showOnboarding, setShowOnboarding] = useState(null);
+
+  useEffect(() => {
+    shouldShowOnboarding().then(setShowOnboarding);
+  }, []);
+
+  // Still checking — show nothing briefly
+  if (showOnboarding === null) return null;
+
+  if (showOnboarding) {
+    return (
+      <SafeAreaProvider>
+        <OnboardingWalkthrough onComplete={() => setShowOnboarding(false)} />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -178,6 +193,7 @@ function App() {
           <GlobalProvider>
             <CurrencyProvider>
               <NavigationContainer linking={linking}>
+                <NotificationInitializer />
                 <AppNavigator />
               </NavigationContainer>
               <Toast />
