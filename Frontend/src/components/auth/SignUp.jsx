@@ -199,6 +199,10 @@ const GlassSignUpPage = () => {
                 Already have an account?{' '}
                 <button onClick={() => navigate("/login")} className="font-medium underline" style={{ color: 'hsl(var(--primary))' }}>Log in</button>
               </div>
+              <div className="mt-3 text-center text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Want to sell on Tortrose?{' '}
+                <button onClick={() => navigate("/seller-signup")} className="font-medium underline" style={{ color: 'hsl(var(--primary))' }}>Sign up as Seller</button>
+              </div>
             </>
           )}
         </div>

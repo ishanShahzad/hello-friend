@@ -1,5 +1,7 @@
 
 const User = require('../models/User')
+const { sendEmail } = require('./mailController')
+const { sellerAccountCreatedEmail } = require('../utils/emailTemplates')
 
 exports.getUsers = async (req, res) => {
     const { role: userRole, id: _id } = req.user
@@ -195,9 +197,17 @@ exports.becomeSeller = async (req, res) => {
             { expiresIn: '7d' }
         )
 
+        // Send seller account created email
+        try {
+            const emailData = sellerAccountCreatedEmail(user.username);
+            await sendEmail({ to: user.email, ...emailData });
+        } catch (emailErr) {
+            console.error('Failed to send seller account email:', emailErr.message);
+        }
+
         res.status(200).json({ 
             message: 'Congratulations! You are now a seller',
-            token: token, // New token with seller role
+            token: token,
             user: {
                 id: user._id,
                 username: user.username,

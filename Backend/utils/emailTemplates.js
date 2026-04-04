@@ -107,7 +107,77 @@ exports.orderStatusUpdateEmail = (order, newStatus) => {
   };
 };
 
+exports.newOrderSellerEmail = (order, sellerName) => {
+  const items = order.orderItems.map(item =>
+    `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#1e293b;">${item.name} × ${item.quantity}</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #f1f5f9;color:#1e293b;font-weight:600;">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
+  ).join('');
+
+  return {
+    subject: `New Order Received - ${order.orderId}`,
+    html: wrapper(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:48px;">🛒</span>
+        <h2 style="color:#1e293b;margin:12px 0 8px;">New Order Received!</h2>
+        <p style="color:#64748b;margin:0;">Hey ${sellerName}, you have a new order.</p>
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
+        <tbody>${items}</tbody>
+      </table>
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;">
+        <p style="margin:0;color:#1e293b;font-weight:700;font-size:16px;">Total: $${order.orderSummary.totalAmount.toFixed(2)}</p>
+      </div>
+      <div style="margin-top:20px;">
+        <h3 style="color:#1e293b;margin:0 0 8px;font-size:15px;">Ship To</h3>
+        <p style="color:#64748b;margin:0;line-height:1.6;">${order.shippingInfo.fullName}<br/>${order.shippingInfo.address}<br/>${order.shippingInfo.city}, ${order.shippingInfo.state} ${order.shippingInfo.postalCode}</p>
+      </div>
+      <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">Log in to your seller dashboard to manage this order.</p>
+    `)
+  };
+};
+
+exports.sellerAccountCreatedEmail = (userName) => {
+  return {
+    subject: 'Your Seller Account is Ready! 🎉',
+    html: wrapper(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:48px;">🏪</span>
+        <h2 style="color:#1e293b;margin:12px 0 8px;">Welcome, Seller ${userName}!</h2>
+        <p style="color:#64748b;margin:0 0 24px;">Your seller account has been successfully created on Tortrose.</p>
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">What's Next?</h3>
+        <ul style="color:#64748b;margin:0;padding-left:20px;line-height:2;">
+          <li>Set up your store from the Seller Dashboard</li>
+          <li>Add your first products</li>
+          <li>Configure shipping methods</li>
+          <li>Start receiving orders!</li>
+        </ul>
+      </div>
+      <div style="text-align:center;">
+        <a href="${process.env.FRONTEND_URL || 'https://tortrose.com'}/seller-dashboard" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Go to Seller Dashboard</a>
+      </div>
+    `)
+  };
+};
+
 exports.welcomeEmail = (userName) => {
+  return {
+    subject: 'Welcome to Tortrose! 🎉',
+    html: wrapper(`
+      <h2 style="color:#1e293b;margin:0 0 8px;">Welcome, ${userName}! 👋</h2>
+      <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Tortrose. We're excited to have you on board!</p>
+      <p style="color:#64748b;margin:0 0 24px;">Browse our amazing products from verified sellers and enjoy a seamless shopping experience.</p>
+      <div style="text-align:center;">
+        <a href="${process.env.FRONTEND_URL || 'https://tortrose.com'}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
+      </div>
+    `)
+  };
+};
   return {
     subject: 'Welcome to Tortrose! 🎉',
     html: wrapper(`

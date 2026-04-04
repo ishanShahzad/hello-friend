@@ -3,7 +3,7 @@ const OTP = require("../models/OTP");
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const { sendEmail } = require('./mailController')
-const { welcomeEmail } = require('../utils/emailTemplates');
+const { welcomeEmail, sellerAccountCreatedEmail } = require('../utils/emailTemplates');
 
 
 // Step 1: Send OTP to email
@@ -318,5 +318,100 @@ exports.googleCallback = async (req, res) => {
             return res.redirect('tortrose://auth/google/error');
         }
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
-    }
 }
+
+// Send OTP for seller registration
+exports.sendSellerOTP = async (req, res) => {
+    const { username, email, password, phoneNumber, address, city, country, businessName } = req.body;
+
+    try {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({ msg: 'E-mail is already taken.' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        await OTP.deleteMany({ email });
+
+        const otpDoc = new OTP({
+            email,
+            otp,
+            userData: {
+                username,
+                email,
+                password,
+                role: 'seller',
+                isVerified: true
+            }
+        });
+        // Store seller info in a separate field via the OTP doc
+        otpDoc._sellerInfo = { phoneNumber, address, city, country, businessName };
+        await otpDoc.save();
+
+        // Reuse same OTP email template
+        const html = `
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Verify Your Email</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f4f4f4;margin:0;padding:0}.container{max-width:600px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:30px 20px;text-align:center}.header h1{margin:0;font-size:24px}.content{padding:30px 20px;color:#333}.otp-box{background:#f8f9fa;border:2px solid #667eea;border-radius:8px;padding:20px;text-align:center;margin:25px 0}.otp-code{font-size:36px;font-weight:700;color:#667eea;letter-spacing:8px;font-family:'Courier New',monospace}.footer{background:#f8f9fa;padding:20px;text-align:center;font-size:12px;color:#666;border-top:1px solid #e0e0e0}</style></head>
+<body><div class="container"><div class="header"><h1>Verify Your Seller Account</h1></div>
+<div class="content"><p>Hello <strong>${username}</strong>,</p>
+<p>Thank you for signing up as a seller on Tortrose. Please use the code below to verify your email:</p>
+<div class="otp-box"><p style="margin:0 0 10px;color:#666;font-size:14px;font-weight:600">VERIFICATION CODE</p>
+<div class="otp-code">${otp}</div>
+<p style="margin:10px 0 0;color:#999;font-size:12px">This code expires in 10 minutes</p></div>
+<p style="color:#999;font-size:13px;margin-top:25px;padding-top:20px;border-top:1px solid #e0e0e0"><strong>Didn't request this?</strong> You can safely ignore this email.</p></div>
+<div class="footer"><p style="margin:0">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</p></div></div></body></html>`;
+
+        await sendEmail({ to: email, subject: 'Verify Your Seller Account - Tortrose', text: `Your OTP: ${otp}. Valid for 10 minutes.`, html });
+
+        res.status(200).json({ msg: 'OTP sent to your email. Please verify to complete seller registration.', email });
+    } catch (error) {
+        console.error('Send seller OTP error:', error.message);
+        await OTP.deleteMany({ email });
+        res.status(500).json({ msg: 'Failed to send OTP. Please try again.' });
+    }
+};
+
+// Verify OTP and create seller
+exports.verifySellerOTPAndRegister = async (req, res) => {
+    const { email, otp, phoneNumber, address, city, country, businessName } = req.body;
+
+    try {
+        const otpDoc = await OTP.findOne({ email, otp });
+        if (!otpDoc) return res.status(400).json({ msg: 'Invalid or expired OTP.' });
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            await OTP.deleteOne({ _id: otpDoc._id });
+            return res.status(409).json({ msg: 'E-mail is already taken.' });
+        }
+
+        const userData = { ...otpDoc.userData, isVerified: true };
+        const newUser = new User(userData);
+        newUser.sellerInfo = {
+            phoneNumber: phoneNumber?.trim() || '',
+            address: address?.trim() || '',
+            city: city?.trim() || '',
+            country: country?.trim() || '',
+            businessName: businessName?.trim() || ''
+        };
+        await newUser.save();
+        await OTP.deleteOne({ _id: otpDoc._id });
+
+        const payload = { id: newUser._id, username: newUser.username, email: newUser.email, role: newUser.role, avatar: newUser.avatar };
+        const token = jwt.sign(payload, process.env.JWT_SECRET);
+
+        // Send seller welcome email
+        try {
+            const emailData = sellerAccountCreatedEmail(newUser.username);
+            await sendEmail({ to: newUser.email, ...emailData });
+        } catch (emailErr) {
+            console.error('Failed to send seller welcome email:', emailErr.message);
+        }
+
+        res.status(200).json({ msg: 'Seller account created successfully!', token, user: payload });
+    } catch (error) {
+        console.error('Verify seller OTP error:', error);
+        res.status(500).json({ msg: 'Verification failed. Please try again.' });
+    }
+};
