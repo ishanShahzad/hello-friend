@@ -26,6 +26,7 @@ function Navbar() {
     const navLinks = [
         { label: 'Home', to: '/', icon: <Home size={18} /> },
         { label: 'Stores', to: '/stores', icon: <Store size={18} /> },
+        { label: 'Track Order', to: '/track-order', icon: <Package size={18} /> },
     ];
 
     return (
