@@ -34,7 +34,21 @@ export default function TrackOrderScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [showItems, setShowItems] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { formatPrice } = useCurrency();
+
+  const onRefresh = useCallback(async () => {
+    if (!email.trim() || !orderId.trim() || !order) return;
+    setRefreshing(true);
+    try {
+      const res = await api.get(`/api/order/track?email=${encodeURIComponent(email)}&orderId=${encodeURIComponent(orderId)}`);
+      setOrder(res.data.order);
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Refresh Failed', text2: err.response?.data?.msg || 'Could not refresh order' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [email, orderId, order]);
 
   const handleTrack = async () => {
     if (!email.trim() || !orderId.trim()) {
