@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import NavDropdown from "../common/Dropdown";
-import { ShoppingCart, Menu, X, Store, Home, LogIn, Sun, Moon } from "lucide-react";
+import { ShoppingCart, Menu, X, Store, Home, LogIn, Sun, Moon, Package } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import WishlistDropdown from "../common/Wishlist";
 import { useTheme } from "../../contexts/ThemeContext";
