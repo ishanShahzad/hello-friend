@@ -8,6 +8,9 @@ Allow: /faq
 Allow: /become-seller
 Allow: /terms
 Allow: /privacy
+Allow: /track-order
+Allow: /single-product/
+Allow: /store/
 
 Disallow: /admin-dashboard
 Disallow: /seller-dashboard
@@ -19,6 +22,16 @@ Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password
 Disallow: /reset-password
+Disallow: /seller-signup
+Disallow: /google-auth-success
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
 
 Sitemap: https://tortrose.com/sitemap.xml
 Sitemap: https://tortrose.com/sitemap-index.xml
