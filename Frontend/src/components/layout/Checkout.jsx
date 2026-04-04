@@ -512,16 +512,12 @@ export default function Checkout() {
     console.log("Order Object:", order);
 
     try {
-      const stripe = await stripePromise
       const token = localStorage.getItem("jwtToken");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}api/order/place`,
         { order },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers }
       );
 
       console.log(res.data);
@@ -563,14 +559,21 @@ export default function Checkout() {
         if (hasChanged && currentUser) return;
         
         setTimeout(async () => {
-          axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).then(() => fetchCart()).catch(error => console.error('Error clearing cart:', error));
+          if (token) {
+            axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(() => fetchCart()).catch(error => console.error('Error clearing cart:', error));
+          } else {
+            // Guest: clear local cart
+            localStorage.removeItem('guestCart');
+            fetchCart();
+          }
           navigate('/success');
         }, 1500);
         return;
       }
       
+      const stripe = await stripePromise;
       await stripe.redirectToCheckout({ sessionId: res.data.id })
 
 

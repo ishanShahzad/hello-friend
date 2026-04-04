@@ -12,7 +12,7 @@ exports.placeOrder = async (req, res) => {
     const { order } = req.body;
     // console.log(order);
 
-    const { id: userId } = req.user;
+    const userId = req.user?.id || null;
 
     try {
         if (
@@ -79,7 +79,8 @@ exports.placeOrder = async (req, res) => {
 
 
         const newOrder = new Order({
-            user: userId,
+            ...(userId ? { user: userId } : {}),
+            guestEmail: !userId ? order.shippingInfo.email : null,
             orderId: `ORD-${Date.now()}`,
 
             orderItems: order.orderItems.map((item) => ({
@@ -135,7 +136,7 @@ exports.placeOrder = async (req, res) => {
         await newOrder.save();
 
         // Record coupon usage
-        if (order.appliedCoupons && order.appliedCoupons.length > 0) {
+        if (userId && order.appliedCoupons && order.appliedCoupons.length > 0) {
             for (const couponData of order.appliedCoupons) {
                 if (couponData.couponId) {
                     await recordCouponUsage(couponData.couponId, userId);

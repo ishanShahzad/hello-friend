@@ -82,11 +82,8 @@ function AppRoutes() {
                     <Route path='/contact' element={<ContactPage />} />
                     <Route path='/faq' element={<FAQPage />} />
 
-                    {/* PROTECTED ROUTES - Checkout requires login */}
-                    <Route path={'/checkout'} element={
-                        <ProtectedRoute >
-                            <Checkout />
-                        </ProtectedRoute>} />
+                    {/* Checkout - accessible to everyone (guest & logged in) */}
+                    <Route path={'/checkout'} element={<Checkout />} />
 
 
 
@@ -97,10 +94,7 @@ function AppRoutes() {
                 <Route path='/signup' element={<SignUp />} />
                 <Route path='/auth/google/success' element={<GoogleAuthSuccess />} />
 
-                <Route path={'/success'} element={
-                    <ProtectedRoute >
-                        <Success />
-                    </ProtectedRoute>} />
+                <Route path={'/success'} element={<Success />} />
 
                 {/* USER DASHBOARD */}
                 <Route path={'/user-dashboard'} element={
