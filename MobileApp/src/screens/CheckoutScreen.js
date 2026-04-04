@@ -413,6 +413,7 @@ export default function CheckoutScreen({ navigation }) {
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Subtotal</Text><Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{shippingLabel}</Text><Text style={[styles.summaryValue, shippingCost === 0 && { color: colors.success }]}>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</Text></View>
             {tax > 0 && <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{taxLabel}</Text><Text style={styles.summaryValue}>{formatPrice(tax)}</Text></View>}
+            {couponDiscount > 0 && <View style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: colors.success }]}>Coupon Discount</Text><Text style={[styles.summaryValue, { color: colors.success }]}>-{formatPrice(couponDiscount)}</Text></View>}
             <View style={styles.divider} />
             <View style={styles.summaryRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatPrice(totalAmount)}</Text></View>
           </GlassPanel>
