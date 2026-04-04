@@ -451,3 +451,14 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
         res.status(500).json({ msg: 'Verification failed. Please try again.' });
     }
 };
+
+
+module.exports = {
+    sendOTP,
+    verifyOTP,
+    login,
+    googleAuth,
+    googleAuthCallback,
+    sendSellerOTP,
+    verifySellerOTP
+};
