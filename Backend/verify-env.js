@@ -76,7 +76,7 @@ if (missingRequired.length > 0) {
     console.log(`   - ${varName}`);
   });
   console.log('\n⚠️  Your application may not work correctly!');
-  console.log('📝 Please set these variables in your .env file or Vercel dashboard.\n');
+  console.log('📝 Please set these variables in your .env file or Heroku Config Vars.\n');
   process.exit(1);
 } else {
   console.log('\n✅ All required environment variables are set!');
