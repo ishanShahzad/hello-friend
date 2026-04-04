@@ -46,8 +46,16 @@ export default function ProductManagementScreen({ navigation, route }) {
   const [bulkPriceType, setBulkPriceType] = useState('percentage');
   const [bulkPriceValue, setBulkPriceValue] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [hasStore, setHasStore] = useState(true);
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => { fetchProducts(); if (!isAdmin) checkStore(); }, []);
+
+  const checkStore = async () => {
+    try {
+      const res = await api.get('/api/stores/my-store');
+      setHasStore(!!res.data?.store);
+    } catch { setHasStore(false); }
+  };
 
   const fetchProducts = async () => {
     try {
