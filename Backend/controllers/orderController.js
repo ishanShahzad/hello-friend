@@ -137,6 +137,14 @@ exports.placeOrder = async (req, res) => {
 
         await newOrder.save();
 
+        // Send order confirmation email
+        try {
+            const emailData = orderConfirmationEmail(newOrder);
+            await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+        } catch (emailErr) {
+            console.error('Failed to send order confirmation email:', emailErr.message);
+        }
+
         // Record coupon usage
         if (userId && order.appliedCoupons && order.appliedCoupons.length > 0) {
             for (const couponData of order.appliedCoupons) {
