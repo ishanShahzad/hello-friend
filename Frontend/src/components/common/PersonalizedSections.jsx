@@ -204,16 +204,10 @@ const ProductSlider = ({ products, formatPrice }) => {
         onMouseLeave={handleMouseUp}
       >
         <style>{`.group\\/slider div::-webkit-scrollbar { display: none; }`}</style>
-        {products.map((product, idx) => (
-          <motion.div
-            key={product._id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05, duration: 0.4 }}
-            className="shrink-0"
-          >
+        {products.map((product) => (
+          <div key={product._id} className="shrink-0">
             <SliderProductCard product={product} formatPrice={formatPrice} />
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>
