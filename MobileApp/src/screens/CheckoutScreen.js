@@ -149,6 +149,38 @@ export default function CheckoutScreen({ navigation }) {
     return Object.keys(formData).some(key => (formData[key] || '') !== (savedShippingInfo[key] || ''));
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) { Toast.show({ type: 'error', text1: 'Enter a coupon code' }); return; }
+    setCouponLoading(true);
+    try {
+      const productIds = cartItems.cart.map(item => item.product._id);
+      const res = await api.post('/api/coupons/validate', { code: couponCode.trim(), productIds });
+      if (res.data.valid) {
+        const coupon = res.data.coupon;
+        let discount = 0;
+        cartItems.cart.forEach(item => {
+          if (coupon.applicableProductIds.includes(item.product._id)) {
+            const price = getDiscountedPrice(item.product);
+            const qty = item.qty || item.quantity || 1;
+            if (coupon.discountType === 'percentage') discount += (price * qty * coupon.discountValue) / 100;
+            else discount += coupon.discountValue;
+          }
+        });
+        if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) discount = coupon.maxDiscountAmount;
+        setCouponDiscount(discount);
+        setAppliedCoupon(coupon);
+        Toast.show({ type: 'success', text1: 'Coupon Applied!', text2: `${coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatPrice(coupon.discountValue)} off` });
+      }
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Invalid Coupon', text2: err.response?.data?.msg || 'Coupon not valid' });
+    } finally { setCouponLoading(false); }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null); setCouponDiscount(0); setCouponCode('');
+    Toast.show({ type: 'info', text1: 'Coupon removed' });
+  };
+
   const buildOrder = () => ({
     orderItems: cartItems.cart.map(item => ({
       id: item.product._id, name: item.product.name,
@@ -158,7 +190,8 @@ export default function CheckoutScreen({ navigation }) {
     })),
     shippingInfo: formData,
     shippingMethod: { name: 'standard', price: shippingCost, estimatedDays: 5 },
-    orderSummary: { subtotal, shippingCost, tax, totalAmount },
+    orderSummary: { subtotal, shippingCost, tax, couponDiscount, totalAmount },
+    appliedCoupons: appliedCoupon ? [{ couponId: appliedCoupon._id, code: appliedCoupon.code, discountType: appliedCoupon.discountType, discountValue: appliedCoupon.discountValue, applicableProductIds: appliedCoupon.applicableProductIds }] : [],
     paymentMethod: paymentMethod === 'card' ? 'stripe' : 'cash_on_delivery',
     platform: paymentMethod === 'card' ? 'mobile' : undefined,
   });
