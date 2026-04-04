@@ -152,6 +152,7 @@ const GuardedSellerHome = createRoleGuard(SellerHomeScreen, ['seller', 'admin'])
 const GuardedNotificationSettings = createRoleGuard(NotificationSettingsScreen, ['seller', 'admin']);
 const GuardedSellerSubscription = createRoleGuard(SellerSubscriptionScreen, ['seller', 'admin']);
 const GuardedSellerSubdomainManagement = createRoleGuard(SellerSubdomainManagementScreen, ['seller', 'admin']);
+const GuardedSellerCouponManagement = createRoleGuard(SellerCouponManagementScreen, ['seller', 'admin']);
 
 // Helper function to calculate cart item count - exported for testing
 export const calculateCartItemCount = (cartItems) => {
