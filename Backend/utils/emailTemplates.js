@@ -178,15 +178,3 @@ exports.welcomeEmail = (userName) => {
     `)
   };
 };
-  return {
-    subject: 'Welcome to Tortrose! 🎉',
-    html: wrapper(`
-      <h2 style="color:#1e293b;margin:0 0 8px;">Welcome, ${userName}! 👋</h2>
-      <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Tortrose. We're excited to have you on board!</p>
-      <p style="color:#64748b;margin:0 0 24px;">Browse our amazing products from verified sellers and enjoy a seamless shopping experience.</p>
-      <div style="text-align:center;">
-        <a href="${process.env.FRONTEND_URL || 'https://tortrose.com'}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
-      </div>
-    `)
-  };
-};
