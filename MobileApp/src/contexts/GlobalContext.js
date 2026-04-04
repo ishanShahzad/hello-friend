@@ -286,6 +286,8 @@ export const GlobalProvider = ({ children }) => {
         isCartLoading,
         loadingProductId,
         qtyUpdateId,
+        unreadNotifCount,
+        refreshUnreadCount,
       }}
     >
       {children}
