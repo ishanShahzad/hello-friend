@@ -440,6 +440,15 @@ exports.updateStatus = async (req, res) => {
 
         await order.save()
 
+        // Send status update email
+        try {
+            const updatedOrder = await Order.findById(_id);
+            const emailData = orderStatusUpdateEmail(updatedOrder, newStatus);
+            await sendEmail({ to: updatedOrder.shippingInfo.email, ...emailData });
+        } catch (emailErr) {
+            console.error('Failed to send status update email:', emailErr.message);
+        }
+
         res.status(200).json({ msg: 'Updated status successfully' })
     } catch (error) {
         console.error(error.message);
