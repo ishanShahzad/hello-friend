@@ -318,7 +318,8 @@ exports.googleCallback = async (req, res) => {
             return res.redirect('tortrose://auth/google/error');
         }
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
-}
+    }
+};
 
 // Send OTP for seller registration
 exports.sendSellerOTP = async (req, res) => {
@@ -455,10 +456,10 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
 
 module.exports = {
     sendOTP,
-    verifyOTP,
+    verifyOTPAndRegister,
+    registerr,
     login,
-    googleAuth,
-    googleAuthCallback,
+    googleCallback,
     sendSellerOTP,
-    verifySellerOTP
+    verifySellerOTPAndRegister
 };
