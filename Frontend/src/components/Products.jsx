@@ -1,26 +1,26 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import axios from 'axios'
 import Loader from './common/Loader'
 import ProductCard from './common/ProductCard'
 import StoreSearch from './common/StoreSearch'
-import { PackageX, RefreshCw, Filter, X, Sparkles } from 'lucide-react'
-import ErrorPage from './layout/ErrorPage'
+import { PackageX, RefreshCw, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import PersonalizedSections from './common/PersonalizedSections'
-import { toast } from 'react-toastify'
 import { useAuth } from '../contexts/AuthContext'
 import CurrencySelector from './common/CurrencySelector'
 import { useCurrency } from '../contexts/CurrencyContext'
 import SEOHead from './common/SEOHead'
 
+const PRODUCTS_PER_PAGE = 24
 
 function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const priceRangeRef = useRef(null)
   const navigate = useNavigate()
@@ -36,27 +36,16 @@ function Products() {
   const [categories, setCategories] = useState([])
   const [search, setSearch] = useState("")
   const [brands, setBrands] = useState([])
+  const filtersRef = useRef(filters)
+  const initialFetchDone = useRef(false)
 
   useEffect(() => { if (search === '') fetchProducts() }, [search])
 
-  const fetchProducts = async () => {
-    setLoading(true); setError(null)
-    try {
-      const query = serializeFilters()
-      navigate(`${location.pathname}?${query}`)
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
-      setProducts(res.data.products || [])
-    } catch (err) { console.log(err); setError(err) }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchProducts() }, [])
-  useEffect(() => { fetchProducts() }, [JSON.stringify(filters)])
-
-  const serializeFilters = () => {
+  const serializeFilters = useCallback(() => {
+    const f = filtersRef.current
     let params = new URLSearchParams()
-    Object.keys(filters || {}).forEach((key) => {
-      const value = filters[key]
+    Object.keys(f || {}).forEach((key) => {
+      const value = f[key]
       if (Array.isArray(value)) {
         if (key === 'priceRange') params.append(key, value.join(','))
         else value.forEach(item => params.append(key, item))
@@ -64,7 +53,34 @@ function Products() {
     })
     if (search !== '') params.append('search', search)
     return params.toString()
-  }
+  }, [search])
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      const query = serializeFilters()
+      navigate(`${location.pathname}?${query}`, { replace: true })
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
+      setProducts(res.data.products || [])
+      setCurrentPage(1)
+    } catch (err) { console.log(err); setError(err) }
+    finally { setLoading(false) }
+  }, [serializeFilters, navigate, location.pathname])
+
+  useEffect(() => {
+    if (!initialFetchDone.current) {
+      initialFetchDone.current = true
+      fetchProducts()
+    }
+  }, [])
+
+  useEffect(() => {
+    const prev = JSON.stringify(filtersRef.current)
+    filtersRef.current = filters
+    if (initialFetchDone.current && prev !== JSON.stringify(filters)) {
+      fetchProducts()
+    }
+  }, [JSON.stringify(filters)])
 
   useEffect(() => {
     const fetchFilters = async () => {
@@ -87,16 +103,38 @@ function Products() {
     }
   }
 
+  // Pagination
+  const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE)
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE
+    return products.slice(start, start + PRODUCTS_PER_PAGE)
+  }, [products, currentPage])
+
+  const goToPage = (page) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const pageNumbers = useMemo(() => {
+    const pages = []
+    const maxVisible = 5
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2))
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1)
+    for (let i = start; i <= end; i++) pages.push(i)
+    return pages
+  }, [currentPage, totalPages])
+
   if (error) return (
     <div className='w-full h flex justify-center items-center flex-col gap-4'>
       <h1 className='text-2xl font-bold'>Error Occurred</h1>
       <p className='text-xl font-semibold' style={{ color: 'hsl(var(--primary))' }}>{error.message}</p>
-      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}
+      <button
         onClick={() => window.location.reload()}
-        className='flex gap-3 px-4 py-2 rounded-xl font-semibold cursor-pointer glow-soft'
+        className='flex gap-3 px-4 py-2 rounded-xl font-semibold cursor-pointer glow-soft transition-transform active:scale-95 hover:scale-105'
         style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
         Reload <RefreshCw />
-      </motion.button>
+      </button>
     </div>
   )
 
@@ -206,11 +244,11 @@ function Products() {
       )}
 
       {/* Reset Button */}
-      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+      <button
         onClick={() => { reset({ categories: [], brands: [], search: '', priceRange: ['0', '5000'] }); if (priceRangeRef.current) priceRangeRef.current.value = 0; }}
-        className='w-full py-2.5 rounded-xl glass-button font-semibold text-sm' style={{ color: 'hsl(var(--primary))' }}>
+        className='w-full py-2.5 rounded-xl glass-button font-semibold text-sm transition-transform active:scale-[0.97] hover:scale-[1.02]' style={{ color: 'hsl(var(--primary))' }}>
         Reset All Filters
-      </motion.button>
+      </button>
     </div>
   )
 
@@ -244,13 +282,13 @@ function Products() {
       />
       {/* Mobile Filter Toggle */}
       <div className='lg:hidden fixed bottom-6 right-6 z-40'>
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+        <button
           onClick={() => setIsFilterOpen(true)}
-          className='pl-4 pr-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-semibold text-sm glow-soft'
+          className='pl-4 pr-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-semibold text-sm glow-soft transition-transform active:scale-95 hover:scale-105'
           style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
           <Filter size={18} />
           Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-        </motion.button>
+        </button>
       </div>
 
       {/* Mobile Filter Overlay */}
@@ -304,22 +342,77 @@ function Products() {
         ) : (
           <>
             {products.length === 0 ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className='flex flex-col items-center justify-center h-64'>
+              <div className='flex flex-col items-center justify-center h-64'>
                 <div className='glass-inner p-6 rounded-2xl mb-4'>
                   <PackageX size={48} strokeWidth={1.5} style={{ color: 'hsl(var(--muted-foreground))' }} />
                 </div>
                 <p className='text-lg font-semibold'>No products found</p>
                 <p className='text-sm mt-1' style={{ color: 'hsl(var(--muted-foreground))' }}>Try adjusting your filters</p>
-              </motion.div>
-            ) : (
-               <div className='grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5 sm:gap-3 lg:gap-4 items-start'>
-                {products.map((prod, idx) => (
-                  <div key={prod._id} className='mx-auto w-full max-w-[220px] min-w-0 xl:max-w-[232px]'>
-                    <ProductCard idx={idx} {...prod} />
-                  </div>
-                ))}
               </div>
+            ) : (
+              <>
+                <div className='grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5 sm:gap-3 lg:gap-4 items-start'>
+                  {paginatedProducts.map((prod, idx) => (
+                    <div key={prod._id} className='mx-auto w-full max-w-[220px] min-w-0 xl:max-w-[232px]'>
+                      <ProductCard idx={idx} {...prod} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className='flex items-center justify-center gap-2 mt-10 mb-6 flex-wrap'>
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className='p-2 rounded-xl glass-button disabled:opacity-30 disabled:cursor-not-allowed transition-transform active:scale-90 hover:scale-105'
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    {pageNumbers[0] > 1 && (
+                      <>
+                        <button onClick={() => goToPage(1)} className='w-10 h-10 rounded-xl glass-button text-sm font-semibold transition-transform active:scale-90 hover:scale-105'>1</button>
+                        {pageNumbers[0] > 2 && <span className='px-1' style={{ color: 'hsl(var(--muted-foreground))' }}>…</span>}
+                      </>
+                    )}
+
+                    {pageNumbers.map(page => (
+                      <button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className={`w-10 h-10 rounded-xl text-sm font-semibold transition-transform active:scale-90 hover:scale-105 ${
+                          page === currentPage ? 'glow-soft text-white' : 'glass-button'
+                        }`}
+                        style={page === currentPage ? {
+                          background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                        } : {}}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    {pageNumbers[pageNumbers.length - 1] < totalPages && (
+                      <>
+                        {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && <span className='px-1' style={{ color: 'hsl(var(--muted-foreground))' }}>…</span>}
+                        <button onClick={() => goToPage(totalPages)} className='w-10 h-10 rounded-xl glass-button text-sm font-semibold transition-transform active:scale-90 hover:scale-105'>{totalPages}</button>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className='p-2 rounded-xl glass-button disabled:opacity-30 disabled:cursor-not-allowed transition-transform active:scale-90 hover:scale-105'
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+
+                    <span className='ml-3 text-xs font-medium' style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
