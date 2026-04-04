@@ -53,9 +53,10 @@ function PrivacyPolicy() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="Privacy Policy"
-        description="Learn how Tortrose collects, uses, and protects your personal data. Your privacy matters to us."
+        title="Privacy Policy — Data Protection & Security"
+        description="Learn how Tortrose collects, uses, and protects your personal data. We use bank-level SSL encryption, never sell your data, and give you full control over your privacy. Read our comprehensive privacy policy for online shopping safety."
         canonical="/privacy"
+        keywords="tortrose privacy policy, tortrose data protection, tortrose security, tortrose cookies, online shopping privacy, marketplace privacy, e-commerce privacy, data security, personal data, GDPR, user data protection, secure shopping"
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}

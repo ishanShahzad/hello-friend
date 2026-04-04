@@ -162,13 +162,14 @@ const StorePage = () => {
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
-                    title={store?.storeName || 'Store'}
+                    title={`${store?.storeName || 'Store'} — Shop Products Online`}
                     description={store?.description
-                        ? `${store.description.slice(0, 140)} — Shop on Tortrose.`
-                        : `Shop products from ${store?.storeName} on Tortrose. Verified independent seller.`}
+                        ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Tortrose marketplace. Verified seller, secure checkout, worldwide shipping.`
+                        : `Shop unique products from ${store?.storeName} on Tortrose. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
                     canonical={`/store/${slug}`}
                     ogImage={store?.logo || undefined}
-                    ogImageAlt={`${store?.storeName} store logo`}
+                    ogImageAlt={`${store?.storeName} — Shop on Tortrose Marketplace`}
+                    keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, tortrose store, verified seller, trusted store, online shop, independent seller`}
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'Store',
