@@ -90,6 +90,7 @@ export default function SettingsScreen({ navigation }) {
 
           <Text style={styles.sectionLabel}>SUPPORT</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
+            <SettingRow icon="navigate-outline" iconColor={colors.warning} iconBg="rgba(245,158,11,0.15)" title="Track Order" subtitle="Track your order with email & order ID" onPress={() => navigation.navigate('TrackOrder')} />
             <SettingRow icon="mail-outline" iconColor={colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="Get in touch with us" onPress={() => navigation.navigate('Contact')} />
             <SettingRow icon="help-circle-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="FAQ" subtitle="Frequently asked questions" onPress={() => navigation.navigate('FAQ')} />
             <SettingRow icon="information-circle-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Tortrose" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
