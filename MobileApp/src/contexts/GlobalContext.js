@@ -1,9 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import api from '../config/api';
 import { useAuth } from './AuthContext';
 
 const GlobalContext = createContext();
+
+const NOTIF_STORE_KEY = 'notification_inbox';
+const NOTIF_READ_KEY = 'notifications_read_ids';
 
 export const GlobalProvider = ({ children }) => {
   const { currentUser } = useAuth();
@@ -16,6 +21,52 @@ export const GlobalProvider = ({ children }) => {
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [loadingProductId, setLoadingProductId] = useState(null);
   const [qtyUpdateId, setQtyUpdateId] = useState(null);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const notifListenerRef = useRef(null);
+
+  // Track unread notification count globally
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const [storedRaw, readRaw] = await Promise.all([
+        AsyncStorage.getItem(NOTIF_STORE_KEY),
+        AsyncStorage.getItem(NOTIF_READ_KEY),
+      ]);
+      const stored = storedRaw ? JSON.parse(storedRaw) : [];
+      const readSet = readRaw ? new Set(JSON.parse(readRaw)) : new Set();
+      
+      // Also count order-based unread if logged in
+      let orderUnread = 0;
+      if (currentUser) {
+        try {
+          const res = await api.get('/api/order/user-orders');
+          const orders = res.data?.orders || [];
+          orders.forEach(o => {
+            const status = (o.orderStatus || o.status || '').toLowerCase();
+            if (status === 'delivered' && !readSet.has(`${o._id}_delivered_0`)) orderUnread++;
+            if (status === 'cancelled' && !readSet.has(`${o._id}_cancelled_0`)) orderUnread++;
+          });
+        } catch {}
+      }
+      
+      const pushUnread = stored.filter(n => !readSet.has(n.id) && !n.read).length;
+      setUnreadNotifCount(pushUnread + orderUnread);
+    } catch {
+      setUnreadNotifCount(0);
+    }
+  }, [currentUser]);
+
+  // Listen for incoming notifications to bump count
+  useEffect(() => {
+    refreshUnreadCount();
+    
+    notifListenerRef.current = Notifications.addNotificationReceivedListener(() => {
+      setUnreadNotifCount(prev => prev + 1);
+    });
+
+    return () => {
+      if (notifListenerRef.current) Notifications.removeNotificationSubscription(notifListenerRef.current);
+    };
+  }, [refreshUnreadCount]);
 
   useEffect(() => {
     if (!currentUser) {
