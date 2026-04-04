@@ -42,13 +42,19 @@ export default function CheckoutScreen({ navigation }) {
   const [taxLabel, setTaxLabel] = useState('Tax');
   const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+
   const getDiscountedPrice = (product) => product?.discountedPrice || product?.price || 0;
 
   const subtotal = cartItems?.cart?.reduce((total, item) => {
     return total + (getDiscountedPrice(item.product) * (item.qty || item.quantity || 1));
   }, 0) || 0;
 
-  const totalAmount = subtotal + shippingCost + tax;
+  const totalAmount = subtotal + shippingCost + tax - couponDiscount;
 
   // Fetch saved shipping info
   useEffect(() => {
