@@ -343,6 +343,36 @@ export default function CheckoutScreen({ navigation }) {
             </View>
           </GlassPanel>
 
+          {/* Coupon Code */}
+          <GlassPanel variant="card" style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pricetag-outline" size={18} color="#f97316" />
+              <Text style={styles.sectionTitle}>Coupon Code</Text>
+            </View>
+            {appliedCoupon ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(34,197,94,0.1)', padding: spacing.md, borderRadius: 14, gap: spacing.sm }}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.success }}>{appliedCoupon.code}</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>
+                    {appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% off` : `${formatPrice(appliedCoupon.discountValue)} off`} · Saving {formatPrice(couponDiscount)}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleRemoveCoupon}><Ionicons name="close-circle" size={22} color={colors.error} /></TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <Ionicons name="pricetag-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.inputIcon} />
+                  <TextInput style={styles.input} placeholder="Enter coupon code" placeholderTextColor="rgba(255,255,255,0.35)" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
+                </View>
+                <TouchableOpacity style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.lg, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }} onPress={handleApplyCoupon} disabled={couponLoading}>
+                  {couponLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.sm }}>Apply</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+          </GlassPanel>
+
           {/* Payment Method */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
