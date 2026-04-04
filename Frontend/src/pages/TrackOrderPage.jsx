@@ -4,6 +4,7 @@ import { Search, Package, Truck, CheckCircle, Clock, XCircle, Mail, Hash, Chevro
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useCurrency } from "../contexts/CurrencyContext";
+import SEOHead from "../components/common/SEOHead";
 
 const statusSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 const statusConfig = {
