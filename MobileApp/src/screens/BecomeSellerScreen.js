@@ -17,7 +17,9 @@ export default function BecomeSellerScreen({ navigation }) {
   const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formStep, setFormStep] = useState(1); // 1: seller info, 2: store setup
   const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', country: '', businessName: '' });
+  const [storeData, setStoreData] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '' });
 
   useEffect(() => { if (currentUser?.role === 'seller' || currentUser?.role === 'admin') navigation.replace('SellerDashboard'); }, [currentUser]);
 
