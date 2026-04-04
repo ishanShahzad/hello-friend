@@ -7,7 +7,8 @@ const TaxConfig = require('../models/TaxConfig');
 const { calculateTax } = require('./taxController');
 const { recordCouponUsage } = require('./couponController');
 const { sendEmail } = require('./mailController');
-const { orderConfirmationEmail, orderStatusUpdateEmail } = require('../utils/emailTemplates');
+const { orderConfirmationEmail, orderStatusUpdateEmail, newOrderSellerEmail } = require('../utils/emailTemplates');
+const User = require('../models/User');
 
 
 exports.placeOrder = async (req, res) => {
