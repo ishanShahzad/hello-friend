@@ -438,6 +438,8 @@ export default function AppNavigator() {
       />
       <Stack.Screen name="TrustedStores" component={TrustedStoresScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BecomeSeller" component={BecomeSellerScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerSignUp" component={SellerSignUpScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="TrackOrder" component={TrackOrderScreen} options={{ headerShown: false }} />
 
       {/* Informational Screens */}
       <Stack.Screen name="FAQ" component={FAQScreen} options={{ headerShown: false }} />
