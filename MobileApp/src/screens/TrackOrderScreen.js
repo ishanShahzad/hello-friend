@@ -3,10 +3,10 @@
  * Liquid Glass Design
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +34,21 @@ export default function TrackOrderScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [showItems, setShowItems] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { formatPrice } = useCurrency();
+
+  const onRefresh = useCallback(async () => {
+    if (!email.trim() || !orderId.trim() || !order) return;
+    setRefreshing(true);
+    try {
+      const res = await api.get(`/api/order/track?email=${encodeURIComponent(email)}&orderId=${encodeURIComponent(orderId)}`);
+      setOrder(res.data.order);
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Refresh Failed', text2: err.response?.data?.msg || 'Could not refresh order' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [email, orderId, order]);
 
   const handleTrack = async () => {
     if (!email.trim() || !orderId.trim()) {
@@ -72,7 +86,7 @@ export default function TrackOrderScreen({ navigation }) {
           <Ionicons name="search-outline" size={22} color={colors.primary} />
         </GlassPanel>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
           {/* Search Form */}
           <GlassPanel variant="card" style={styles.formCard}>
             <View style={styles.inputGroup}>
