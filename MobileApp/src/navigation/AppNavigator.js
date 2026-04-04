@@ -27,6 +27,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
+import SellerSignUpScreen from '../screens/auth/SellerSignUpScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 // Main Screens
