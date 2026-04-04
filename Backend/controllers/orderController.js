@@ -136,7 +136,7 @@ exports.placeOrder = async (req, res) => {
         await newOrder.save();
 
         // Record coupon usage
-        if (order.appliedCoupons && order.appliedCoupons.length > 0) {
+        if (userId && order.appliedCoupons && order.appliedCoupons.length > 0) {
             for (const couponData of order.appliedCoupons) {
                 if (couponData.couponId) {
                     await recordCouponUsage(couponData.couponId, userId);
