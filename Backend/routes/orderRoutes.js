@@ -18,6 +18,7 @@ const optionalAuth = async (req, res, next) => {
 }
 
 router.post('/place', optionalAuth, placeOrder)
+router.get('/track', trackGuestOrder)
 router.get('/get', verifyToken, getOrders)
 router.get('/user-orders', verifyToken, getUserOrders)
 router.patch('/update-status/:id', verifyToken, updateStatus)

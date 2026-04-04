@@ -540,6 +540,31 @@ exports.getOrderDetail = async (req, res) => {
     }
 }
 
+// Guest order tracking by email + orderId
+exports.trackGuestOrder = async (req, res) => {
+    const { email, orderId } = req.query;
+    
+    if (!email || !orderId) {
+        return res.status(400).json({ msg: 'Email and Order ID are required' });
+    }
+
+    try {
+        const order = await Order.findOne({
+            orderId: orderId,
+            'shippingInfo.email': email.toLowerCase().trim()
+        });
+
+        if (!order) {
+            return res.status(404).json({ msg: 'Order not found. Please check your email and order ID.' });
+        }
+
+        res.status(200).json({ msg: 'Order found', order });
+    } catch (error) {
+        console.error('Error tracking guest order:', error);
+        res.status(500).json({ msg: 'Server error while tracking order' });
+    }
+};
+
 
 exports.cancelOrder = async (req, res) => {
     const { id: _id } = req.params
