@@ -6,6 +6,8 @@ const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STR
 const TaxConfig = require('../models/TaxConfig');
 const { calculateTax } = require('./taxController');
 const { recordCouponUsage } = require('./couponController');
+const { sendEmail } = require('./mailController');
+const { orderConfirmationEmail, orderStatusUpdateEmail } = require('../utils/emailTemplates');
 
 
 exports.placeOrder = async (req, res) => {
