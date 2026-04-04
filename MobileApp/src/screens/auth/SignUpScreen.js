@@ -162,6 +162,11 @@ export default function SignUpScreen({ navigation }) {
               <Text style={styles.loginText}>Already have an account?</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}><Text style={styles.loginLink}> Sign In</Text></TouchableOpacity>
             </View>
+
+            <View style={[styles.loginRow, { marginTop: spacing.md }]}>
+              <Text style={styles.loginText}>Want to sell?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('SellerSignUp')}><Text style={styles.loginLink}> Register as Seller</Text></TouchableOpacity>
+            </View>
           </GlassPanel>
 
           <Text style={styles.footerText}>By creating an account, you agree to our Terms of Service and Privacy Policy</Text>

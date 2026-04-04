@@ -27,6 +27,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
+import SellerSignUpScreen from '../screens/auth/SellerSignUpScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 // Main Screens
@@ -55,6 +56,7 @@ import SellerShippingConfigurationScreen from '../screens/seller/SellerShippingC
 import SellerAnalyticsScreen from '../screens/seller/SellerAnalyticsScreen';
 import SellerSubscriptionScreen from '../screens/seller/SellerSubscriptionScreen';
 import SellerSubdomainManagementScreen from '../screens/seller/SellerSubdomainManagementScreen';
+import SellerCouponManagementScreen from '../screens/seller/SellerCouponManagementScreen';
 
 // Shared Screens
 import ProductManagementScreen from '../screens/shared/ProductManagementScreen';
@@ -87,6 +89,7 @@ import ContactScreen from '../screens/ContactScreen';
 import AboutScreen from '../screens/AboutScreen';
 import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TrackOrderScreen from '../screens/TrackOrderScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -149,6 +152,7 @@ const GuardedSellerHome = createRoleGuard(SellerHomeScreen, ['seller', 'admin'])
 const GuardedNotificationSettings = createRoleGuard(NotificationSettingsScreen, ['seller', 'admin']);
 const GuardedSellerSubscription = createRoleGuard(SellerSubscriptionScreen, ['seller', 'admin']);
 const GuardedSellerSubdomainManagement = createRoleGuard(SellerSubdomainManagementScreen, ['seller', 'admin']);
+const GuardedSellerCouponManagement = createRoleGuard(SellerCouponManagementScreen, ['seller', 'admin']);
 
 // Helper function to calculate cart item count - exported for testing
 export const calculateCartItemCount = (cartItems) => {
@@ -409,6 +413,7 @@ export default function AppNavigator() {
       <Stack.Screen name="NotificationSettings" component={GuardedNotificationSettings} options={{ headerShown: false }} />
       <Stack.Screen name="SellerSubscription" component={GuardedSellerSubscription} options={{ headerShown: false }} />
       <Stack.Screen name="SellerSubdomainManagement" component={GuardedSellerSubdomainManagement} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerCouponManagement" component={GuardedSellerCouponManagement} options={{ headerShown: false }} />
       <Stack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ headerShown: false }} />
 
       {/* Shared Screens (role-guarded: seller or admin) */}
@@ -433,6 +438,8 @@ export default function AppNavigator() {
       />
       <Stack.Screen name="TrustedStores" component={TrustedStoresScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BecomeSeller" component={BecomeSellerScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerSignUp" component={SellerSignUpScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="TrackOrder" component={TrackOrderScreen} options={{ headerShown: false }} />
 
       {/* Informational Screens */}
       <Stack.Screen name="FAQ" component={FAQScreen} options={{ headerShown: false }} />

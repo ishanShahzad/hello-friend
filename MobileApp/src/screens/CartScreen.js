@@ -42,7 +42,6 @@ export default function CartScreen({ navigation }) {
   };
 
   const handleCheckout = () => {
-    if (!currentUser) { navigation.navigate('Login'); return; }
     if (!cartItems?.cart || cartItems.cart.length === 0) { Alert.alert('Empty Cart', 'Please add items to your cart before checkout'); return; }
     navigation.navigate('Checkout');
   };

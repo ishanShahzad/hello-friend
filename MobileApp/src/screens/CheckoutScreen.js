@@ -42,13 +42,19 @@ export default function CheckoutScreen({ navigation }) {
   const [taxLabel, setTaxLabel] = useState('Tax');
   const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+
   const getDiscountedPrice = (product) => product?.discountedPrice || product?.price || 0;
 
   const subtotal = cartItems?.cart?.reduce((total, item) => {
     return total + (getDiscountedPrice(item.product) * (item.qty || item.quantity || 1));
   }, 0) || 0;
 
-  const totalAmount = subtotal + shippingCost + tax;
+  const totalAmount = subtotal + shippingCost + tax - couponDiscount;
 
   // Fetch saved shipping info
   useEffect(() => {
@@ -143,6 +149,38 @@ export default function CheckoutScreen({ navigation }) {
     return Object.keys(formData).some(key => (formData[key] || '') !== (savedShippingInfo[key] || ''));
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) { Toast.show({ type: 'error', text1: 'Enter a coupon code' }); return; }
+    setCouponLoading(true);
+    try {
+      const productIds = cartItems.cart.map(item => item.product._id);
+      const res = await api.post('/api/coupons/validate', { code: couponCode.trim(), productIds });
+      if (res.data.valid) {
+        const coupon = res.data.coupon;
+        let discount = 0;
+        cartItems.cart.forEach(item => {
+          if (coupon.applicableProductIds.includes(item.product._id)) {
+            const price = getDiscountedPrice(item.product);
+            const qty = item.qty || item.quantity || 1;
+            if (coupon.discountType === 'percentage') discount += (price * qty * coupon.discountValue) / 100;
+            else discount += coupon.discountValue;
+          }
+        });
+        if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) discount = coupon.maxDiscountAmount;
+        setCouponDiscount(discount);
+        setAppliedCoupon(coupon);
+        Toast.show({ type: 'success', text1: 'Coupon Applied!', text2: `${coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatPrice(coupon.discountValue)} off` });
+      }
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Invalid Coupon', text2: err.response?.data?.msg || 'Coupon not valid' });
+    } finally { setCouponLoading(false); }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null); setCouponDiscount(0); setCouponCode('');
+    Toast.show({ type: 'info', text1: 'Coupon removed' });
+  };
+
   const buildOrder = () => ({
     orderItems: cartItems.cart.map(item => ({
       id: item.product._id, name: item.product.name,
@@ -152,7 +190,8 @@ export default function CheckoutScreen({ navigation }) {
     })),
     shippingInfo: formData,
     shippingMethod: { name: 'standard', price: shippingCost, estimatedDays: 5 },
-    orderSummary: { subtotal, shippingCost, tax, totalAmount },
+    orderSummary: { subtotal, shippingCost, tax, couponDiscount, totalAmount },
+    appliedCoupons: appliedCoupon ? [{ couponId: appliedCoupon._id, code: appliedCoupon.code, discountType: appliedCoupon.discountType, discountValue: appliedCoupon.discountValue, applicableProductIds: appliedCoupon.applicableProductIds }] : [],
     paymentMethod: paymentMethod === 'card' ? 'stripe' : 'cash_on_delivery',
     platform: paymentMethod === 'card' ? 'mobile' : undefined,
   });
@@ -304,6 +343,36 @@ export default function CheckoutScreen({ navigation }) {
             </View>
           </GlassPanel>
 
+          {/* Coupon Code */}
+          <GlassPanel variant="card" style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pricetag-outline" size={18} color="#f97316" />
+              <Text style={styles.sectionTitle}>Coupon Code</Text>
+            </View>
+            {appliedCoupon ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(34,197,94,0.1)', padding: spacing.md, borderRadius: 14, gap: spacing.sm }}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.success }}>{appliedCoupon.code}</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>
+                    {appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% off` : `${formatPrice(appliedCoupon.discountValue)} off`} · Saving {formatPrice(couponDiscount)}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleRemoveCoupon}><Ionicons name="close-circle" size={22} color={colors.error} /></TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <Ionicons name="pricetag-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.inputIcon} />
+                  <TextInput style={styles.input} placeholder="Enter coupon code" placeholderTextColor="rgba(255,255,255,0.35)" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
+                </View>
+                <TouchableOpacity style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.lg, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }} onPress={handleApplyCoupon} disabled={couponLoading}>
+                  {couponLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.sm }}>Apply</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+          </GlassPanel>
+
           {/* Payment Method */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -344,6 +413,7 @@ export default function CheckoutScreen({ navigation }) {
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Subtotal</Text><Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{shippingLabel}</Text><Text style={[styles.summaryValue, shippingCost === 0 && { color: colors.success }]}>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</Text></View>
             {tax > 0 && <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{taxLabel}</Text><Text style={styles.summaryValue}>{formatPrice(tax)}</Text></View>}
+            {couponDiscount > 0 && <View style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: colors.success }]}>Coupon Discount</Text><Text style={[styles.summaryValue, { color: colors.success }]}>-{formatPrice(couponDiscount)}</Text></View>}
             <View style={styles.divider} />
             <View style={styles.summaryRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatPrice(totalAmount)}</Text></View>
           </GlassPanel>
