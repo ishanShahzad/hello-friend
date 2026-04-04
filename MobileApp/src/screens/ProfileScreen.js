@@ -42,6 +42,7 @@ export const getMenuItemsForRole = (role) => {
 
 export default function ProfileScreen({ navigation }) {
   const { currentUser, logout } = useAuth();
+  const { unreadNotifCount } = useGlobal();
   const [savedShipping, setSavedShipping] = useState(null);
   const [editingShipping, setEditingShipping] = useState(false);
   const [shippingForm, setShippingForm] = useState({
