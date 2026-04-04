@@ -147,37 +147,73 @@ export default function BecomeSellerScreen({ navigation }) {
             </>
           ) : (
             <GlassPanel variant="card" style={{ padding: spacing.lg }}>
-              <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' }}>Seller Information</Text>
-              <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Please provide your contact details</Text>
+              {formStep === 1 ? (
+                <>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' }}>Seller Information</Text>
+                  <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 1 of 2 — Contact details</Text>
 
-              {[
-                { key: 'phoneNumber', icon: 'call', label: 'Phone Number *', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
-                { key: 'businessName', icon: 'storefront', label: 'Business Name (Optional)', placeholder: 'Your brand name' },
-                { key: 'address', icon: 'location', label: 'Address *', placeholder: 'Street address' },
-              ].map(({ key, icon, label, placeholder, keyboard }) => (
-                <View key={key} style={styles.inputGroup}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                    <Ionicons name={icon} size={16} color={colors.primary} /><Text style={styles.label}>{label}</Text>
+                  {[
+                    { key: 'phoneNumber', icon: 'call', label: 'Phone Number *', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
+                    { key: 'businessName', icon: 'storefront', label: 'Business Name (Optional)', placeholder: 'Your brand name' },
+                    { key: 'address', icon: 'location', label: 'Address *', placeholder: 'Street address' },
+                  ].map(({ key, icon, label, placeholder, keyboard }) => (
+                    <View key={key} style={styles.inputGroup}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <Ionicons name={icon} size={16} color={colors.primary} /><Text style={styles.label}>{label}</Text>
+                      </View>
+                      <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={formData[key]} onChangeText={v => handleInputChange(key, v)} keyboardType={keyboard || 'default'} />
+                    </View>
+                  ))}
+
+                  <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                    {[{ key: 'city', label: 'City *', placeholder: 'Your city' }, { key: 'country', label: 'Country *', placeholder: 'Your country' }].map(({ key, label, placeholder }) => (
+                      <View key={key} style={[styles.inputGroup, { flex: 1 }]}>
+                        <Text style={styles.label}>{label}</Text>
+                        <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={formData[key]} onChangeText={v => handleInputChange(key, v)} />
+                      </View>
+                    ))}
                   </View>
-                  <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={formData[key]} onChangeText={v => handleInputChange(key, v)} keyboardType={keyboard || 'default'} />
-                </View>
-              ))}
 
-              <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                {[{ key: 'city', label: 'City *', placeholder: 'Your city' }, { key: 'country', label: 'Country *', placeholder: 'Your country' }].map(({ key, label, placeholder }) => (
-                  <View key={key} style={[styles.inputGroup, { flex: 1 }]}>
-                    <Text style={styles.label}>{label}</Text>
-                    <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={formData[key]} onChangeText={v => handleInputChange(key, v)} />
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
+                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setShowForm(false)}><Text style={{ fontWeight: fontWeight.semibold, color: colors.text }}>Back</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.submitFormBtn} onPress={handleStep1Next}>
+                      <Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Next: Store Setup</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#fff" />
+                    </TouchableOpacity>
                   </View>
-                ))}
-              </View>
+                </>
+              ) : (
+                <>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' }}>Store Setup</Text>
+                  <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 2 of 2 — Set up your store (optional)</Text>
 
-              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
-                <TouchableOpacity style={styles.backFormBtn} onPress={() => setShowForm(false)}><Text style={{ fontWeight: fontWeight.semibold, color: colors.text }}>Back</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.submitFormBtn, loading && { opacity: 0.6 }]} onPress={handleBecomeSeller} disabled={loading}>
-                  {loading ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="storefront" size={18} color="#fff" /><Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Activate Account</Text></>}
-                </TouchableOpacity>
-              </View>
+                  {[
+                    { key: 'storeName', icon: 'storefront', label: 'Store Name', placeholder: 'My Awesome Store' },
+                    { key: 'storeDescription', icon: 'document-text', label: 'Store Description', placeholder: 'What do you sell?' },
+                    { key: 'website', icon: 'globe-outline', label: 'Website (Optional)', placeholder: 'https://yourwebsite.com' },
+                    { key: 'instagram', icon: 'logo-instagram', label: 'Instagram (Optional)', placeholder: '@yourbrand' },
+                    { key: 'facebook', icon: 'logo-facebook', label: 'Facebook (Optional)', placeholder: 'facebook.com/yourbrand' },
+                    { key: 'twitter', icon: 'logo-twitter', label: 'Twitter (Optional)', placeholder: '@yourbrand' },
+                  ].map(({ key, icon, label, placeholder }) => (
+                    <View key={key} style={styles.inputGroup}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <Ionicons name={icon} size={16} color={colors.primary} /><Text style={styles.label}>{label}</Text>
+                      </View>
+                      <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={storeData[key]} onChangeText={v => setStoreData(prev => ({ ...prev, [key]: v }))} autoCapitalize="none" />
+                    </View>
+                  ))}
+
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
+                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setFormStep(1)}><Text style={{ fontWeight: fontWeight.semibold, color: colors.text }}>Back</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.submitFormBtn, { flex: 1 }, loading && { opacity: 0.6 }]} onPress={() => handleBecomeSeller(true)} disabled={loading}>
+                      {loading ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="play-skip-forward" size={16} color="#fff" /><Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Skip</Text></>}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.submitFormBtn, loading && { opacity: 0.6 }]} onPress={() => handleBecomeSeller(false)} disabled={loading}>
+                      {loading ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="storefront" size={18} color="#fff" /><Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Create</Text></>}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </GlassPanel>
           )}
         </ScrollView>
