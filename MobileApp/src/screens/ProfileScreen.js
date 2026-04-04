@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useGlobal } from '../contexts/GlobalContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import {
@@ -41,6 +42,7 @@ export const getMenuItemsForRole = (role) => {
 
 export default function ProfileScreen({ navigation }) {
   const { currentUser, logout } = useAuth();
+  const { unreadNotifCount } = useGlobal();
   const [savedShipping, setSavedShipping] = useState(null);
   const [editingShipping, setEditingShipping] = useState(false);
   const [shippingForm, setShippingForm] = useState({
@@ -161,6 +163,11 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons name={item.icon} size={20} color={item.color || colors.primary} />
               </View>
               <Text style={styles.menuRowText}>{item.title}</Text>
+              {item.id === 'notifications' && unreadNotifCount > 0 && (
+                <View style={{ backgroundColor: colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6, marginRight: spacing.sm }}>
+                  <Text style={{ color: 'white', fontSize: 11, fontWeight: fontWeight.bold }}>{unreadNotifCount > 99 ? '99+' : unreadNotifCount}</Text>
+                </View>
+              )}
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           ))}
