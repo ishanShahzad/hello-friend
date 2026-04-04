@@ -82,6 +82,7 @@ function AppRoutes() {
                     <Route path='/about' element={<AboutPage />} />
                     <Route path='/contact' element={<ContactPage />} />
                     <Route path='/faq' element={<FAQPage />} />
+                    <Route path='/track-order' element={<TrackOrderPage />} />
 
                     {/* Checkout - accessible to everyone (guest & logged in) */}
                     <Route path={'/checkout'} element={<Checkout />} />

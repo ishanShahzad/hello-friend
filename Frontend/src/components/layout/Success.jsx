@@ -12,7 +12,25 @@ export default function Success() {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
     if (sessionId) fetchSession(sessionId);
+
+    // Clear cart after successful order
+    clearCart();
   }, []);
+
+  const clearCart = async () => {
+    try {
+      const token = localStorage.getItem('jwtToken');
+      if (token) {
+        await axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      // Always clear guest cart
+      localStorage.removeItem('guestCart');
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+    }
+  };
 
   const fetchSession = async (sessionId) => {
     try {
@@ -61,16 +79,28 @@ export default function Success() {
           </motion.div>
         )}
 
-        <Link to="/">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.95 }}
-            className="mt-8 px-6 py-3 rounded-xl font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}
-          >
-            Continue Shopping
-          </motion.button>
-        </Link>
+        <div className="flex gap-3 justify-center mt-8">
+          <Link to="/">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 rounded-xl font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}
+            >
+              Continue Shopping
+            </motion.button>
+          </Link>
+          <Link to="/track-order">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 rounded-xl font-semibold glass-button"
+              style={{ color: 'hsl(var(--foreground))' }}
+            >
+              Track Order
+            </motion.button>
+          </Link>
+        </div>
       </motion.div>
     </div>
   );
