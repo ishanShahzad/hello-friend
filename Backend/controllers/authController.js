@@ -209,6 +209,14 @@ exports.verifyOTPAndRegister = async (req, res) => {
         }
 
         const token = jwt.sign(payload, process.env.JWT_SECRET);
+
+        // Send welcome email
+        try {
+            const emailData = welcomeEmail(newUser.username);
+            await sendEmail({ to: newUser.email, ...emailData });
+        } catch (emailErr) {
+            console.error('Failed to send welcome email:', emailErr.message);
+        }
         
         res.status(200).json({ 
             msg: 'Email verified! Sign up successful.', 
