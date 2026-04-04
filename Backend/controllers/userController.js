@@ -151,7 +151,7 @@ exports.updateUser = async (req, res) => {
 // Become a seller - update user role and save seller information
 exports.becomeSeller = async (req, res) => {
     const { id: _id } = req.user
-    const { phoneNumber, address, city, country, businessName } = req.body
+    const { phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks } = req.body
 
     try {
         // Check if user exists
@@ -188,6 +188,40 @@ exports.becomeSeller = async (req, res) => {
         }
         
         await user.save()
+
+        // Auto-create store if storeName is provided
+        if (storeName && storeName.trim().length >= 3) {
+            try {
+                const Store = require('../models/Store')
+                const { initializeSubscription } = require('./subscriptionController')
+                
+                let slug = storeName.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+                let existingStore = await Store.findOne({ storeSlug: slug })
+                let counter = 1
+                while (existingStore) {
+                    slug = `${slug}-${counter}`
+                    existingStore = await Store.findOne({ storeSlug: slug })
+                    counter++
+                }
+
+                const newStore = new Store({
+                    seller: user._id,
+                    storeName: storeName.trim(),
+                    storeSlug: slug,
+                    description: storeDescription?.trim() || '',
+                    socialLinks: socialLinks || {},
+                    address: {
+                        street: address?.trim() || '',
+                        city: city?.trim() || '',
+                        country: country?.trim() || ''
+                    }
+                })
+                await newStore.save()
+                await initializeSubscription(user._id)
+            } catch (storeErr) {
+                console.error('Auto-create store error:', storeErr.message)
+            }
+        }
 
         // Generate new JWT token with updated role
         const jwt = require('jsonwebtoken')

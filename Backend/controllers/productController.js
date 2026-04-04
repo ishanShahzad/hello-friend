@@ -184,15 +184,19 @@ exports.editProduct = async (req, res) => {
 exports.addProduct = async (req, res) => {
     const { product } = req.body
     const { role, id: userId } = req.user
-    console.log('=== ADD PRODUCT DEBUG ===');
-    console.log('User role:', role);
-    console.log('User ID:', userId);
-    console.log('Product data:', product);
 
     try {
         if (role !== 'admin' && role !== 'seller') {
-            console.log('Authorization failed - role is:', role);
             return res.status(403).json({ msg: 'Unauthorized to add product' })
+        }
+
+        // Sellers must have a store before adding products
+        if (role === 'seller') {
+            const Store = require('../models/Store');
+            const store = await Store.findOne({ seller: userId });
+            if (!store) {
+                return res.status(403).json({ msg: 'You must create a store before adding products. Go to Store Settings to set up your store.' });
+            }
         }
         
         const newProduct = new Product({

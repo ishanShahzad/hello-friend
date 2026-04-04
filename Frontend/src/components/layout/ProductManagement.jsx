@@ -1,17 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Filter, Package, Tag, CheckSquare, Square, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Package, Tag, CheckSquare, Square, Trash2, Store, AlertTriangle } from "lucide-react";
 import Loader from '../common/Loader'
 import ProductCard from "./ProductCard";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import BulkDiscountModal from "./BulkDiscountModal";
+import axios from "axios";
 
 const ProductManagement = () => {
     const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts } = useOutletContext();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
+    const [hasStore, setHasStore] = useState(true);
+    const [storeLoading, setStoreLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkStore = async () => {
+            try {
+                const token = localStorage.getItem('jwtToken');
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/store/my-store`, { headers: { Authorization: `Bearer ${token}` } });
+                setHasStore(!!res.data?.store);
+            } catch { setHasStore(false); }
+            finally { setStoreLoading(false); }
+        };
+        checkStore();
+    }, []);
 
     const handleToggleSelectMode = () => { setSelectMode(!selectMode); setSelectedProducts([]); };
     const handleSelectProduct = (product) => { setSelectedProducts(prev => prev.find(p => p._id === product._id) ? prev.filter(p => p._id !== product._id) : [...prev, product]); };
@@ -20,6 +36,25 @@ const ProductManagement = () => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className='p-3 sm:p-4 lg:p-6'>
+            {/* No Store Warning */}
+            {!storeLoading && !hasStore && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-6 mb-4 sm:mb-6 flex flex-col sm:flex-row items-center gap-4"
+                    style={{ borderLeft: '4px solid hsl(45, 93%, 47%)' }}>
+                    <div className="p-3 rounded-2xl" style={{ background: 'rgba(245, 158, 11, 0.12)' }}>
+                        <AlertTriangle size={28} style={{ color: 'hsl(45, 93%, 47%)' }} />
+                    </div>
+                    <div className="flex-1 text-center sm:text-left">
+                        <h3 className="font-bold text-base mb-1" style={{ color: 'hsl(var(--foreground))' }}>Store Required</h3>
+                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>You need to create a store before you can add products. Set up your store to get started.</p>
+                    </div>
+                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/seller-dashboard/store-settings')}
+                        className="px-5 py-2.5 rounded-xl font-semibold text-white text-sm whitespace-nowrap"
+                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
+                        <Store size={16} className="inline mr-1.5" /> Create Store
+                    </motion.button>
+                </motion.div>
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 mt-4 sm:mt-6">
                 <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Product Management</h2>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
@@ -38,8 +73,10 @@ const ProductManagement = () => {
                         <span>{selectMode ? 'Cancel' : 'Select'}</span>
                     </motion.button>
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleCreateProduct}
-                        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white transition-all"
-                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
+                        disabled={!hasStore}
+                        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}
+                        title={!hasStore ? 'Create a store first' : 'Add new product'}>
                         <Plus size={16} className="sm:w-5 sm:h-5" /> <span>Add</span>
                     </motion.button>
                 </div>

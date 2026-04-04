@@ -374,7 +374,7 @@ exports.sendSellerOTP = async (req, res) => {
 
 // Verify OTP and create seller
 exports.verifySellerOTPAndRegister = async (req, res) => {
-    const { email, otp, phoneNumber, address, city, country, businessName } = req.body;
+    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks } = req.body;
 
     try {
         const otpDoc = await OTP.findOne({ email, otp });
@@ -397,6 +397,42 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
         };
         await newUser.save();
         await OTP.deleteOne({ _id: otpDoc._id });
+
+        // Auto-create store if storeName is provided
+        if (storeName && storeName.trim().length >= 3) {
+            try {
+                const Store = require('../models/Store');
+                const { initializeSubscription } = require('./subscriptionController');
+                
+                // Generate unique slug
+                let slug = storeName.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+                let existingStore = await Store.findOne({ storeSlug: slug });
+                let counter = 1;
+                while (existingStore) {
+                    slug = `${slug}-${counter}`;
+                    existingStore = await Store.findOne({ storeSlug: slug });
+                    counter++;
+                }
+
+                const newStore = new Store({
+                    seller: newUser._id,
+                    storeName: storeName.trim(),
+                    storeSlug: slug,
+                    description: storeDescription?.trim() || '',
+                    socialLinks: socialLinks || {},
+                    address: {
+                        street: address?.trim() || '',
+                        city: city?.trim() || '',
+                        country: country?.trim() || ''
+                    }
+                });
+                await newStore.save();
+                await initializeSubscription(newUser._id);
+            } catch (storeErr) {
+                console.error('Auto-create store error:', storeErr.message);
+                // Don't fail registration if store creation fails
+            }
+        }
 
         const payload = { id: newUser._id, username: newUser.username, email: newUser.email, role: newUser.role, avatar: newUser.avatar };
         const token = jwt.sign(payload, process.env.JWT_SECRET);
