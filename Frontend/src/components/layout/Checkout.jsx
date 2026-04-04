@@ -512,16 +512,12 @@ export default function Checkout() {
     console.log("Order Object:", order);
 
     try {
-      const stripe = await stripePromise
       const token = localStorage.getItem("jwtToken");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}api/order/place`,
         { order },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers }
       );
 
       console.log(res.data);
