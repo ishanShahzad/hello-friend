@@ -1,11 +1,16 @@
 User-agent: *
 Allow: /
 Allow: /stores
+Allow: /trusted-stores
 Allow: /about
 Allow: /contact
 Allow: /faq
 Allow: /become-seller
-Allow: /trusted-stores
+Allow: /terms
+Allow: /privacy
+Allow: /track-order
+Allow: /single-product/
+Allow: /store/
 
 Disallow: /admin-dashboard
 Disallow: /seller-dashboard
@@ -18,4 +23,9 @@ Disallow: /signup
 Disallow: /forgot-password
 Disallow: /reset-password
 
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
 Sitemap: https://tortrose.com/sitemap.xml
+Sitemap: https://tortrose.com/sitemap-index.xml

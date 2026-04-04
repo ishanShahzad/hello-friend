@@ -3,8 +3,9 @@ import { Helmet } from 'react-helmet-async';
 const SITE_NAME    = 'Tortrose';
 const SITE_URL     = 'https://tortrose.com';
 const TWITTER_SITE = '@TortroseHQ';
-const DEFAULT_DESC = 'Tortrose — A modern marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support and global shipping.';
+const DEFAULT_DESC = 'Tortrose — A modern online shopping marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support, best deals, discounts, and worldwide shipping.';
 const DEFAULT_IMG  = `${SITE_URL}/og-image.png`;
+const DEFAULT_KEYWORDS = 'tortrose, tortrose marketplace, tortrose.com, online shopping, buy online, shop online, e-commerce, marketplace, online store, trusted sellers, verified sellers, independent sellers, secure checkout, multi-currency, global shipping, best deals, discounts, coupons, electronics, fashion, home decor, beauty products, accessories, jewelry, shoes, clothing, gadgets, trending products, new arrivals, best sellers, affordable shopping, free shipping, fast delivery, order tracking, wishlist, product reviews, seller dashboard, become a seller, sell online';
 
 export default function SEOHead({
   title,
@@ -14,18 +15,21 @@ export default function SEOHead({
   ogImage   = DEFAULT_IMG,
   ogImageAlt,
   noindex   = false,
+  keywords,
   jsonLd,
   children,
 }) {
-  const fullTitle    = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Modern Marketplace for Independent Sellers`;
+  const fullTitle    = title ? `${title} | ${SITE_NAME} — Online Shopping Marketplace` : `${SITE_NAME} — Online Shopping Marketplace | Buy Products from Trusted Sellers`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : null;
   const imageAlt     = ogImageAlt || fullTitle;
+  const allKeywords  = keywords ? `${keywords}, ${DEFAULT_KEYWORDS}` : DEFAULT_KEYWORDS;
 
   return (
     <Helmet>
       {/* ── Primary ───────────────────────────── */}
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
+      <meta name="keywords" content={allKeywords} />
       <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'} />
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
@@ -44,6 +48,7 @@ export default function SEOHead({
       {/* ── Twitter Card ──────────────────────── */}
       <meta name="twitter:card"        content="summary_large_image" />
       <meta name="twitter:site"        content={TWITTER_SITE} />
+      <meta name="twitter:creator"     content={TWITTER_SITE} />
       <meta name="twitter:title"       content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image"       content={ogImage} />

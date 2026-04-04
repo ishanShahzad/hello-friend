@@ -106,9 +106,10 @@ function FAQPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="FAQ — Help Center"
-        description="Find answers to common questions about shopping, payments, shipping, returns, selling, and trust on Tortrose."
+        title="FAQ — Help Center & Common Questions"
+        description="Find answers to frequently asked questions about shopping on Tortrose. Learn about payments, shipping, returns, selling, order tracking, trust system, account management, and more. Get help with your Tortrose shopping experience."
         canonical="/faq"
+        keywords="tortrose FAQ, tortrose help, tortrose questions, how to shop on tortrose, tortrose shipping, tortrose returns, tortrose payments, tortrose refund, tortrose seller FAQ, how to sell on tortrose, tortrose order tracking, tortrose trust system, tortrose verified stores, online shopping FAQ, marketplace help, e-commerce FAQ"
         jsonLd={faqJsonLd}
       />
       <motion.div

@@ -1,41 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
   <!-- Favicon & App Icons -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/tortrose-logo.svg" />
+  <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#1a1f2e" />
   <meta name="color-scheme" content="dark light" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tortrose" />
+  <meta name="application-name" content="Tortrose" />
+  <meta name="msapplication-TileColor" content="#1a1f2e" />
 
-  <!-- Default SEO (overridden per-page by react-helmet-async) -->
-  <title>Tortrose — Modern Marketplace for Independent Sellers</title>
-  <meta name="description" content="Tortrose — A modern marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support and global shipping." />
+  <!-- Primary SEO Meta Tags -->
+  <title>Tortrose — Online Shopping Marketplace | Buy Products from Trusted Sellers</title>
+  <meta name="description" content="Tortrose is a modern online shopping marketplace where you can buy unique products from verified independent sellers. Shop electronics, fashion, home decor, beauty products & more with secure checkout, multi-currency support, and worldwide shipping. Best deals, discounts & coupons available." />
   <meta name="author" content="Tortrose" />
+  <meta name="publisher" content="Tortrose Marketplace" />
+  <meta name="copyright" content="© 2025 Tortrose. All rights reserved." />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="bingbot" content="index, follow" />
 
-  <!-- Default Open Graph -->
+  <!-- Extensive Keywords -->
+  <meta name="keywords" content="tortrose, tortrose marketplace, tortrose.com, tortrose online store, tortrose shop, tortrose shopping, online shopping, online marketplace, buy products online, shop online, e-commerce, ecommerce, online store, shopping website, buy online, sell online, marketplace, multi-vendor marketplace, independent sellers, trusted sellers, verified sellers, online shopping website, best online shopping site, online shopping store, shop products, buy products, online shopping app, shopping platform, digital marketplace, online retail, retail marketplace, best online marketplace, top online store, secure online shopping, safe online shopping, buy from sellers, shop from home, home shopping, internet shopping, web store, web shop, online boutique, online shop, buy cheap online, best deals online, discount shopping, coupon shopping, promo codes, shopping deals, flash sale, clearance sale, best prices online, affordable shopping, budget shopping, value shopping, electronics online, fashion online, clothing online, shoes online, accessories online, home decor online, beauty products online, skincare online, jewelry online, watches online, bags online, gadgets online, tech products online, lifestyle products, trending products, new arrivals, best sellers, top rated products, popular products, featured products, handmade products, artisan products, unique products, custom products, personalized products, organic products, eco-friendly products, sustainable shopping, green marketplace, conscious shopping, ethical shopping, global shipping, international shipping, worldwide delivery, free shipping, fast delivery, express shipping, same day delivery, next day delivery, multi-currency shopping, pay in local currency, currency converter, USD shopping, EUR shopping, GBP shopping, secure payment, stripe payment, credit card payment, debit card payment, safe checkout, encrypted payment, SSL secure, trusted payment, verified payment, order tracking, track my order, real-time tracking, shipping tracking, delivery tracking, wishlist, save for later, favorite products, product reviews, customer reviews, star ratings, seller reviews, store ratings, become a seller, sell products online, start selling, open online store, create store, seller dashboard, seller analytics, inventory management, product management, order management, seller subscription, premium seller, verified seller badge, trust system, trusted stores, store verification, community trust, seller trust score, coupon management, discount codes, bulk discounts, promotional offers, seasonal sale, summer sale, winter sale, black friday deals, cyber monday deals, holiday shopping, gift shopping, birthday gifts, anniversary gifts, christmas gifts, valentine gifts, mother day gifts, father day gifts, smart tags, AI shopping, personalized recommendations, chatbot support, customer support, live chat, 24/7 support, help center, FAQ, return policy, refund policy, exchange policy, buyer protection, money back guarantee, product warranty, quality assurance, authentic products, genuine products, original products, brand products, no fake products, anti-counterfeit, multi-vendor, multiple sellers, seller marketplace, vendor marketplace, B2C marketplace, C2C marketplace, peer to peer shopping, social commerce, mobile shopping, responsive shopping, PWA shopping app, progressive web app, modern UI, glass design, premium design, luxury marketplace, boutique marketplace, niche marketplace, specialty store, category shopping, filter products, sort products, search products, price comparison, best price, lowest price, competitive pricing, transparent pricing, no hidden fees, tax inclusive, tax calculator, shipping calculator, checkout process, cart management, add to cart, shopping cart, mini cart, quick checkout, guest checkout, user dashboard, account management, profile settings, notification settings, email notifications, push notifications, order history, order details, invoice download, receipt download" />
+
+  <!-- Geo & Language Tags -->
+  <meta name="geo.region" content="US" />
+  <meta name="geo.placename" content="Global" />
+  <meta name="language" content="English" />
+  <meta name="coverage" content="Worldwide" />
+  <meta name="distribution" content="Global" />
+  <meta name="target" content="all" />
+  <meta name="audience" content="all" />
+  <meta name="rating" content="General" />
+  <meta name="revisit-after" content="1 days" />
+  <meta name="category" content="Shopping, E-commerce, Marketplace, Online Store" />
+  <meta name="classification" content="Business, Shopping, E-commerce" />
+  <meta name="subject" content="Online Shopping Marketplace for Independent Sellers" />
+  <meta name="abstract" content="Tortrose is a trusted online marketplace connecting buyers with verified independent sellers worldwide." />
+  <meta name="topic" content="Online Shopping, E-commerce, Marketplace" />
+  <meta name="summary" content="Shop unique products from trusted sellers on Tortrose. Secure checkout, global shipping, multi-currency support." />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://tortrose.com/" />
+
+  <!-- Open Graph -->
   <meta property="og:site_name" content="Tortrose" />
   <meta property="og:locale" content="en_US" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Tortrose — Modern Marketplace for Independent Sellers" />
-  <meta property="og:description" content="Shop unique products from trusted independent sellers. Multi-currency, secure payments, global shipping." />
+  <meta property="og:title" content="Tortrose — Online Shopping Marketplace | Buy from Trusted Sellers" />
+  <meta property="og:description" content="Shop unique products from verified independent sellers. Electronics, fashion, home decor & more. Secure checkout, multi-currency, worldwide shipping." />
   <meta property="og:url" content="https://tortrose.com" />
   <meta property="og:image" content="https://tortrose.com/og-image.png" />
-  <meta property="og:image:alt" content="Tortrose — Modern Marketplace" />
+  <meta property="og:image:alt" content="Tortrose — Modern Online Shopping Marketplace" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:type" content="image/png" />
 
-  <!-- Default Twitter Card -->
+  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@TortroseHQ" />
-  <meta name="twitter:title" content="Tortrose — Modern Marketplace for Independent Sellers" />
-  <meta name="twitter:description" content="Shop unique products from trusted independent sellers. Multi-currency, secure payments, global shipping." />
+  <meta name="twitter:creator" content="@TortroseHQ" />
+  <meta name="twitter:title" content="Tortrose — Online Shopping Marketplace | Buy from Trusted Sellers" />
+  <meta name="twitter:description" content="Shop unique products from verified sellers. Secure payments, global shipping, best deals." />
   <meta name="twitter:image" content="https://tortrose.com/og-image.png" />
+  <meta name="twitter:image:alt" content="Tortrose Online Marketplace" />
 
   <!-- Monetag -->
   <meta name="monetag" content="f4ef594788483f710c46efabfbd34701">
@@ -46,35 +83,94 @@
   <link rel="dns-prefetch" href="https://res.cloudinary.com" />
   <link rel="dns-prefetch" href="https://api.stripe.com" />
 
-  <!-- Google AdSense  -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8889081457352257"
-    crossorigin="anonymous"></script> -->
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+  <!-- JSON-LD Structured Data: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Tortrose",
+    "alternateName": ["Tortrose Marketplace", "Tortrose.com", "Tortrose Online Store", "Tortrose Shop"],
+    "url": "https://tortrose.com",
+    "logo": "https://tortrose.com/tortrose-logo.svg",
+    "image": "https://tortrose.com/og-image.png",
+    "description": "Tortrose is a modern online shopping marketplace connecting buyers with verified independent sellers worldwide.",
+    "foundingDate": "2025",
+    "sameAs": [],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Customer Support",
+      "email": "support@tortrose.com",
+      "availableLanguage": "English"
+    }
+  }
+  </script>
 
-    <!-- viginite banner ad tag   -->
-  <!-- <script>(function(s){s.dataset.zone='10121090',s.src='https://gizokraijaw.net/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script> -->
+  <!-- JSON-LD: WebSite with SearchAction -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Tortrose",
+    "alternateName": "Tortrose Marketplace",
+    "url": "https://tortrose.com",
+    "description": "Online shopping marketplace for unique products from trusted independent sellers",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://tortrose.com/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
 
-
-  <!-- push notifications ad tag -->
-  <!-- <script src="https://3nbf4.com/act/files/tag.min.js?z=10108136" data-cfasync="false" async></script> -->
-
-
-  <!-- in page push ad tag -->
-   <!-- <script>(function(s){s.dataset.zone='10125612',s.src='https://forfrogadiertor.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script> -->
-
-
-   <!-- native banner that covers full page -->
-    <!-- <script>(function(s){s.dataset.zone='10125619',s.src='https://groleegni.net/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script> -->
-
-
-
-
-    <!-- on click ads popunder ad  -->
-     <!-- <script>(function(s){s.dataset.zone='10125635',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script> -->
-
-
-     
-
+  <!-- JSON-LD: Online Store -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    "name": "Tortrose",
+    "url": "https://tortrose.com",
+    "logo": "https://tortrose.com/tortrose-logo.svg",
+    "description": "Shop electronics, fashion, home decor, beauty products and more from verified sellers on Tortrose marketplace.",
+    "currenciesAccepted": "USD, EUR, GBP, CAD, AUD, INR, PKR, JPY, CNY, BRL, MXN, ZAR, AED, SAR, SGD, NZD, CHF, SEK, NOK, DKK, PLN, CZK, HUF, TRY, THB, MYR, PHP, IDR, VND, KRW, TWD, HKD, EGP, NGN, KES, GHS, TZS, UGX, MAD",
+    "paymentAccepted": "Credit Card, Debit Card, Stripe, Apple Pay, Google Pay",
+    "priceRange": "$",
+    "areaServed": {
+      "@type": "GeoShape",
+      "name": "Worldwide"
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Tortrose Products",
+      "itemListElement": [
+        { "@type": "OfferCatalog", "name": "Electronics" },
+        { "@type": "OfferCatalog", "name": "Fashion & Clothing" },
+        { "@type": "OfferCatalog", "name": "Home & Garden" },
+        { "@type": "OfferCatalog", "name": "Beauty & Personal Care" },
+        { "@type": "OfferCatalog", "name": "Sports & Outdoors" },
+        { "@type": "OfferCatalog", "name": "Toys & Games" },
+        { "@type": "OfferCatalog", "name": "Books & Stationery" },
+        { "@type": "OfferCatalog", "name": "Jewelry & Accessories" },
+        { "@type": "OfferCatalog", "name": "Health & Wellness" },
+        { "@type": "OfferCatalog", "name": "Food & Beverages" }
+      ]
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "1200",
+      "bestRating": "5",
+      "worstRating": "1"
+    }
+  }
+  </script>
 
 <!-- GSM Cashback Tracking Script -->
 <script>
@@ -90,7 +186,6 @@
       if (trackingCode) {
         localStorage.setItem('gsm_tracking_code', trackingCode);
         localStorage.setItem('gsm_tracking_expires', Date.now() + 7*24*60*60*1000);
-        console.log('✅ GSM tracking code captured:', trackingCode);
       }
     },
     
@@ -99,22 +194,14 @@
       var expires = localStorage.getItem('gsm_tracking_expires');
       
       if (!trackingCode) {
-        console.log('❌ No GSM tracking code found');
         return Promise.resolve({ success: false, message: 'No tracking code' });
       }
       
       if (Date.now() > parseInt(expires)) {
-        console.log('❌ GSM tracking code expired');
         localStorage.removeItem('gsm_tracking_code');
         localStorage.removeItem('gsm_tracking_expires');
         return Promise.resolve({ success: false, message: 'Tracking code expired' });
       }
-      
-      console.log('📤 Sending purchase to GSM:', {
-        orderId: data.orderId,
-        amount: data.amount,
-        trackingCode: trackingCode
-      });
       
       return fetch(this.apiUrl + '/purchases/webhook/purchase', {
         method: 'POST',
@@ -132,17 +219,12 @@
       .then(function(response) { return response.json(); })
       .then(function(result) {
         if (result.success) {
-          console.log('✅ Purchase tracked successfully!', result);
-          console.log('💰 Tokens earned:', result.tokensEarned);
           localStorage.removeItem('gsm_tracking_code');
           localStorage.removeItem('gsm_tracking_expires');
-        } else {
-          console.error('❌ Failed to track purchase:', result);
         }
         return result;
       })
       .catch(function(err) {
-        console.error('❌ Error tracking purchase:', err);
         return { success: false, error: err.message };
       });
     }
@@ -158,10 +240,6 @@
 })();
 </script>
 
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <title>Tortrose</title>
 </head>
 

@@ -34,20 +34,26 @@ function ContactPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="Contact Us"
-        description="Get in touch with the Tortrose team. Email support@tortrose.com — we respond within 24 hours for all support and seller inquiries."
+        title="Contact Us — Customer Support & Help"
+        description="Contact the Tortrose support team for help with orders, shipping, payments, seller inquiries, and more. Email support@tortrose.com — we respond within 24 hours. Live chat available Mon–Fri 9AM–6PM EST."
         canonical="/contact"
+        keywords="contact tortrose, tortrose support, tortrose help, tortrose customer service, tortrose email, support@tortrose.com, tortrose phone, tortrose live chat, order help, shipping help, payment help, seller support, buyer support, complaint, feedback"
         jsonLd={{
           '@context': 'https://schema.org',
-          '@type': 'Organization',
-          name: 'Tortrose',
-          url: 'https://tortrose.com',
-          contactPoint: {
-            '@type': 'ContactPoint',
-            email: 'support@tortrose.com',
-            contactType: 'customer support',
-            availableLanguage: 'English',
-            areaServed: 'Worldwide',
+          '@type': 'ContactPage',
+          name: 'Contact Tortrose',
+          url: 'https://tortrose.com/contact',
+          mainEntity: {
+            '@type': 'Organization',
+            name: 'Tortrose',
+            url: 'https://tortrose.com',
+            contactPoint: {
+              '@type': 'ContactPoint',
+              email: 'support@tortrose.com',
+              contactType: 'customer support',
+              availableLanguage: 'English',
+              areaServed: 'Worldwide',
+            },
           },
         }}
       />

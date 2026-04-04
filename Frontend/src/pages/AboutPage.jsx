@@ -24,9 +24,23 @@ function AboutPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="About Us"
-        description="Learn about Tortrose — a modern marketplace built on trust for independent sellers and conscious shoppers worldwide."
+        title="About Tortrose — Our Story & Mission"
+        description="Learn about Tortrose — a modern online shopping marketplace built on trust, connecting independent sellers with conscious shoppers worldwide. Discover our mission to make e-commerce fair, transparent, and community-driven with verified sellers, secure payments, and global shipping."
         canonical="/about"
+        keywords="about tortrose, tortrose story, tortrose mission, tortrose marketplace about, who is tortrose, tortrose company, tortrose team, online marketplace mission, trusted marketplace, community marketplace, independent sellers platform, fair e-commerce, transparent shopping"
+        jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'AboutPage',
+            name: 'About Tortrose',
+            description: 'Learn about Tortrose marketplace and our mission to empower independent sellers.',
+            url: 'https://tortrose.com/about',
+            mainEntity: {
+                '@type': 'Organization',
+                name: 'Tortrose',
+                url: 'https://tortrose.com',
+                description: 'Modern online shopping marketplace for independent sellers',
+            },
+        }}
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}

@@ -4,6 +4,7 @@ import { Search, Package, Truck, CheckCircle, Clock, XCircle, Mail, Hash, Chevro
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useCurrency } from "../contexts/CurrencyContext";
+import SEOHead from "../components/common/SEOHead";
 
 const statusSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 const statusConfig = {
@@ -16,6 +17,21 @@ const statusConfig = {
 };
 
 export default function TrackOrderPage() {
+  const [email, setEmail] = useState("");
+  return (
+    <>
+      <SEOHead
+        title="Track Your Order — Real-Time Order Tracking"
+        description="Track your Tortrose order in real-time. Enter your email and order ID to see live shipping status, delivery updates, and estimated arrival time. Fast, easy, and transparent order tracking."
+        canonical="/track-order"
+        keywords="track order, order tracking, tortrose order tracking, track my order, order status, shipping status, delivery tracking, where is my order, order updates, track package, tortrose tracking, real-time tracking"
+      />
+      <TrackOrderContent />
+    </>
+  );
+}
+
+function TrackOrderContent() {
   const [email, setEmail] = useState("");
   const [orderId, setOrderId] = useState("");
   const [order, setOrder] = useState(null);

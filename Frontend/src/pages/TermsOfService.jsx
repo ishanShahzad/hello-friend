@@ -53,9 +53,10 @@ function TermsOfService() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="Terms of Service"
-        description="Read the Tortrose Terms of Service governing your use of our marketplace platform, user accounts, seller obligations, and more."
+        title="Terms of Service — User Agreement"
+        description="Read the Tortrose Terms of Service. Understand your rights and responsibilities as a buyer or seller on our online marketplace, including account policies, payment terms, refund guidelines, and intellectual property rules."
         canonical="/terms"
+        keywords="tortrose terms of service, tortrose terms, tortrose user agreement, tortrose policies, tortrose rules, marketplace terms, e-commerce terms, seller terms, buyer terms, refund policy, return policy, payment terms"
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
