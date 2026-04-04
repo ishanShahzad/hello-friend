@@ -48,6 +48,7 @@ import PrivacyPolicy from '../pages/PrivacyPolicy'
 import AboutPage from '../pages/AboutPage'
 import ContactPage from '../pages/ContactPage'
 import FAQPage from '../pages/FAQPage'
+import TrackOrderPage from '../pages/TrackOrderPage'
 
 function AppRoutes() {
     const navigate = useNavigate()
