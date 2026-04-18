@@ -211,6 +211,20 @@ export default function HomeScreen({ navigation }) {
           <TortroseLogo width={140} height={32} />
           <View style={styles.heroTopRight}>
             <CurrencySelector />
+            <TouchableOpacity
+              style={styles.bellIconBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+              {unreadNotifCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             {!currentUser ? (
               <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
                 <Ionicons name="person-outline" size={16} color={colors.primary} />
