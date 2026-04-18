@@ -403,83 +403,93 @@ export default function NotificationsScreen({ navigation }) {
   }, [handlePress, handleMarkGroupRead, handleDismiss, handleDismissGroup, renderRightActions]);
 
   return (
-    <GlassBackground>
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <GlassPanel variant="floating" style={styles.heroHeader}>
-          <TouchableOpacity style={styles.heroBackBtn} onPress={() => { refreshUnreadCount(); navigation.goBack(); }} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.heroCenter}>
-            <Text style={styles.heroTitle}>Inbox</Text>
-            {unreadCount > 0 && <View style={styles.heroBadge}><Text style={styles.heroBadgeText}>{unreadCount}</Text></View>}
-          </View>
-          <View style={styles.heroActions}>
-            {unreadCount > 0 && (
-              <TouchableOpacity style={styles.heroActionBtn} onPress={handleMarkAllRead}>
-                <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.heroActionBtn} onPress={() => navigation.navigate('NotificationPreferences')}>
-              <Ionicons name="settings-outline" size={18} color={colors.text} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GlassBackground>
+        <SafeAreaView style={styles.container}>
+          {/* Header */}
+          <GlassPanel variant="floating" style={styles.heroHeader}>
+            <TouchableOpacity style={styles.heroBackBtn} onPress={() => { refreshUnreadCount(); navigation.goBack(); }} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
             </TouchableOpacity>
-            {notifications.length > 0 && (
-              <TouchableOpacity style={styles.heroActionBtn} onPress={handleClearAll}>
-                <Ionicons name="trash-outline" size={18} color={colors.error} />
+            <View style={styles.heroCenter}>
+              <Text style={styles.heroTitle}>Inbox</Text>
+              {unreadCount > 0 && <View style={styles.heroBadge}><Text style={styles.heroBadgeText}>{unreadCount}</Text></View>}
+            </View>
+            <View style={styles.heroActions}>
+              {unreadCount > 0 && (
+                <TouchableOpacity style={styles.heroActionBtn} onPress={handleMarkAllRead}>
+                  <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.heroActionBtn} onPress={() => navigation.navigate('NotificationPreferences')}>
+                <Ionicons name="settings-outline" size={18} color={colors.text} />
               </TouchableOpacity>
-            )}
-          </View>
-        </GlassPanel>
+              {notifications.length > 0 && (
+                <TouchableOpacity style={styles.heroActionBtn} onPress={handleClearAll}>
+                  <Ionicons name="trash-outline" size={18} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </GlassPanel>
 
-        {/* Category Filter Chips */}
-        <FlatList
-          horizontal
-          data={CATEGORIES}
-          keyExtractor={c => c.key}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipList}
-          renderItem={({ item: cat }) => {
-            const isActive = activeCategory === cat.key;
-            const badge = cat.key === 'all' ? unreadCount : (unreadByCategory[cat.key] || 0);
-            return (
-              <TouchableOpacity style={[styles.chip, isActive && styles.chipActive]} onPress={() => setActiveCategory(cat.key)} activeOpacity={0.7}>
-                <Ionicons name={cat.icon} size={14} color={isActive ? colors.white : colors.textSecondary} />
-                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{cat.label}</Text>
-                {badge > 0 && (
-                  <View style={[styles.chipBadge, isActive && styles.chipBadgeActive]}>
-                    <Text style={[styles.chipBadgeText, isActive && { color: colors.primary }]}>{badge}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          }}
-        />
-
-        {/* Notification List */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Ionicons name="notifications-outline" size={40} color={colors.primaryLight} />
-            <Text style={styles.loadingText}>Loading notifications...</Text>
-          </View>
-        ) : (
+          {/* Category Filter Chips */}
           <FlatList
-            data={grouped}
-            keyExtractor={(item, idx) => item.type === 'group' ? `g_${item.orderId}` : `s_${item.item.id}`}
-            renderItem={renderGroupedItem}
-            contentContainerStyle={[styles.listContent, grouped.length === 0 && styles.listContentEmpty]}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconWrap}><Ionicons name="notifications-off-outline" size={56} color={colors.primaryLight} /></View>
-                <Text style={styles.emptyTitle}>{activeCategory === 'all' ? 'No notifications yet' : `No ${activeCategory} notifications`}</Text>
-                <Text style={styles.emptySubtitle}>We'll notify you about orders, deals, and more</Text>
-              </View>
-            }
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} colors={[colors.primary]} tintColor={colors.primary} />}
+            horizontal
+            data={CATEGORIES}
+            keyExtractor={c => c.key}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipList}
+            renderItem={({ item: cat }) => {
+              const isActive = activeCategory === cat.key;
+              const badge = cat.key === 'all' ? unreadCount : (unreadByCategory[cat.key] || 0);
+              return (
+                <TouchableOpacity style={[styles.chip, isActive && styles.chipActive]} onPress={() => setActiveCategory(cat.key)} activeOpacity={0.7}>
+                  <Ionicons name={cat.icon} size={14} color={isActive ? colors.white : colors.textSecondary} />
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{cat.label}</Text>
+                  {badge > 0 && (
+                    <View style={[styles.chipBadge, isActive && styles.chipBadgeActive]}>
+                      <Text style={[styles.chipBadgeText, isActive && { color: colors.primary }]}>{badge}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
           />
-        )}
-      </SafeAreaView>
-    </GlassBackground>
+
+          {/* Notification List */}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Ionicons name="notifications-outline" size={40} color={colors.primaryLight} />
+              <Text style={styles.loadingText}>Loading notifications...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={grouped}
+              keyExtractor={(item, idx) => item.type === 'group' ? `g_${item.orderId}` : `s_${item.item.id}`}
+              renderItem={renderGroupedItem}
+              contentContainerStyle={[styles.listContent, grouped.length === 0 && styles.listContentEmpty]}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                grouped.length > 0 ? (
+                  <View style={styles.swipeHint}>
+                    <Ionicons name="swap-horizontal-outline" size={12} color={colors.textLight} />
+                    <Text style={styles.swipeHintText}>Swipe left on a notification to dismiss</Text>
+                  </View>
+                ) : null
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <View style={styles.emptyIconWrap}><Ionicons name="notifications-off-outline" size={56} color={colors.primaryLight} /></View>
+                  <Text style={styles.emptyTitle}>{activeCategory === 'all' ? 'No notifications yet' : `No ${activeCategory} notifications`}</Text>
+                  <Text style={styles.emptySubtitle}>We'll notify you about orders, deals, and more</Text>
+                </View>
+              }
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} colors={[colors.primary]} tintColor={colors.primary} />}
+            />
+          )}
+        </SafeAreaView>
+      </GlassBackground>
+    </GestureHandlerRootView>
   );
 }
 
