@@ -554,4 +554,10 @@ const styles = StyleSheet.create({
   emptyIconWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
   emptyTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
   emptySubtitle: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+
+  // Swipe-to-dismiss
+  swipeAction: { backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center', width: 90, marginBottom: spacing.sm, borderRadius: borderRadius.lg, marginLeft: spacing.sm },
+  swipeActionText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, marginTop: 2 },
+  swipeHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.sm, opacity: 0.7 },
+  swipeHintText: { fontSize: fontSize.xs, color: colors.textLight, fontStyle: 'italic' },
 });
