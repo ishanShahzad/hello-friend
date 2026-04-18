@@ -9,6 +9,7 @@ import {
   View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity,
   RefreshControl, Animated, LayoutAnimation, UIManager, Platform,
 } from 'react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
