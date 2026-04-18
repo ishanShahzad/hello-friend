@@ -234,7 +234,7 @@ function TabBarIcon({ route, focused, color, size }) {
 
 // Bottom Tab Navigator for main app - accessible to all users (guests included)
 function MainTabs() {
-  const { cartItems } = useGlobal();
+  const { cartItems, unreadNotifCount } = useGlobal();
   const cartCount = calculateCartItemCount(cartItems);
   const insets = useSafeAreaInsets();
 
@@ -246,6 +246,7 @@ function MainTabs() {
             <View style={styles.tabIconContainer}>
               <TabBarIcon route={route} focused={focused} color={color} size={24} />
               {route.name === 'Cart' && <CartBadge count={cartCount} />}
+              {route.name === 'Account' && <CartBadge count={unreadNotifCount} />}
             </View>
           );
         },
