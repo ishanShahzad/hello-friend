@@ -45,7 +45,7 @@ import {
 
 export default function HomeScreen({ navigation }) {
   const { currentUser } = useAuth();
-  const { fetchCart } = useGlobal();
+  const { fetchCart, unreadNotifCount } = useGlobal();
   const { formatPrice } = useCurrency();
   const [showAI, setShowAI] = useState(false);
   
@@ -211,6 +211,20 @@ export default function HomeScreen({ navigation }) {
           <TortroseLogo width={140} height={32} />
           <View style={styles.heroTopRight}>
             <CurrencySelector />
+            <TouchableOpacity
+              style={styles.bellIconBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+              {unreadNotifCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             {!currentUser ? (
               <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
                 <Ionicons name="person-outline" size={16} color={colors.primary} />
@@ -594,6 +608,9 @@ const styles = StyleSheet.create({
   loginButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
   loginButtonText: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   cartIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center' },
+  bellIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  bellBadge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.white },
+  bellBadgeText: { color: colors.white, fontSize: 10, fontWeight: fontWeight.bold },
   greetingSection: { paddingBottom: spacing.md },
   greetingText: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.xs },
   greetingSubtext: { fontSize: fontSize.sm, color: colors.textSecondary },
