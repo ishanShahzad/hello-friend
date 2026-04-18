@@ -303,40 +303,104 @@ export default function NotificationsScreen({ navigation }) {
   }, [persistReadIds]);
 
   const handleClearAll = useCallback(async () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setNotifications([]);
     readIds.current.clear();
     await AsyncStorage.multiRemove([NOTIF_STORE_KEY, NOTIF_READ_KEY]).catch(() => {});
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
+  // Dismiss a single notification (swipe action)
+  const handleDismiss = useCallback(async (notifId) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    readIds.current.add(notifId);
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+    try {
+      const stored = await AsyncStorage.getItem(NOTIF_STORE_KEY);
+      if (stored) {
+        const arr = JSON.parse(stored).filter(n => n.id !== notifId);
+        await AsyncStorage.setItem(NOTIF_STORE_KEY, JSON.stringify(arr));
+      }
+      await AsyncStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds.current]));
+    } catch {}
+    refreshUnreadCount();
+  }, [refreshUnreadCount]);
+
+  // Dismiss all items in a group
+  const handleDismissGroup = useCallback(async (ids) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    ids.forEach(id => readIds.current.add(id));
+    setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
+    try {
+      const stored = await AsyncStorage.getItem(NOTIF_STORE_KEY);
+      if (stored) {
+        const arr = JSON.parse(stored).filter(n => !ids.includes(n.id));
+        await AsyncStorage.setItem(NOTIF_STORE_KEY, JSON.stringify(arr));
+      }
+      await AsyncStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds.current]));
+    } catch {}
+    refreshUnreadCount();
+  }, [refreshUnreadCount]);
+
+  // Right swipe action UI
+  const renderRightActions = useCallback((progress, dragX) => {
+    const scale = dragX.interpolate({ inputRange: [-100, 0], outputRange: [1, 0.5], extrapolate: 'clamp' });
+    const opacity = dragX.interpolate({ inputRange: [-100, -20, 0], outputRange: [1, 0.7, 0], extrapolate: 'clamp' });
+    return (
+      <Animated.View style={[styles.swipeAction, { opacity }]}>
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+          <Ionicons name="trash-outline" size={24} color={colors.white} />
+          <Text style={styles.swipeActionText}>Dismiss</Text>
+        </Animated.View>
+      </Animated.View>
+    );
+  }, []);
+
   const renderGroupedItem = useCallback(({ item: group }) => {
     if (group.type === 'group' && group.items.length > 1) {
-      return <OrderGroupCard group={group} onPress={handlePress} onMarkRead={handleMarkGroupRead} readIds={readIds.current} />;
+      const ids = group.items.map(i => i.id);
+      return (
+        <Swipeable
+          renderRightActions={renderRightActions}
+          onSwipeableOpen={() => handleDismissGroup(ids)}
+          rightThreshold={60}
+          overshootRight={false}
+        >
+          <OrderGroupCard group={group} onPress={handlePress} onMarkRead={handleMarkGroupRead} readIds={readIds.current} />
+        </Swipeable>
+      );
     }
     // Single notification
     const item = group.type === 'group' ? group.items[0] : group.item;
     const meta = NOTIFICATION_META[item.category] || NOTIFICATION_META.system;
     return (
-      <TouchableOpacity onPress={() => handlePress(item)} activeOpacity={0.75}>
-        <GlassPanel variant="card" style={[styles.notifCard, !item.read && styles.notifCardUnread]}>
-          {!item.read && <View style={styles.unreadDot} />}
-          <View style={[styles.notifIcon, { backgroundColor: meta.bg }]}>
-            <Ionicons name={meta.icon} size={22} color={meta.color} />
-          </View>
-          <View style={styles.notifContent}>
-            <Text style={[styles.notifTitle, !item.read && { fontWeight: fontWeight.bold }]} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
-            <View style={styles.notifFooter}>
-              <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
-              <View style={[styles.categoryTag, { backgroundColor: meta.bg }]}>
-                <Text style={[styles.categoryTagText, { color: meta.color }]}>{item.category}</Text>
+      <Swipeable
+        renderRightActions={renderRightActions}
+        onSwipeableOpen={() => handleDismiss(item.id)}
+        rightThreshold={60}
+        overshootRight={false}
+      >
+        <TouchableOpacity onPress={() => handlePress(item)} activeOpacity={0.75}>
+          <GlassPanel variant="card" style={[styles.notifCard, !item.read && styles.notifCardUnread]}>
+            {!item.read && <View style={styles.unreadDot} />}
+            <View style={[styles.notifIcon, { backgroundColor: meta.bg }]}>
+              <Ionicons name={meta.icon} size={22} color={meta.color} />
+            </View>
+            <View style={styles.notifContent}>
+              <Text style={[styles.notifTitle, !item.read && { fontWeight: fontWeight.bold }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
+              <View style={styles.notifFooter}>
+                <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
+                <View style={[styles.categoryTag, { backgroundColor: meta.bg }]}>
+                  <Text style={[styles.categoryTagText, { color: meta.color }]}>{item.category}</Text>
+                </View>
               </View>
             </View>
-          </View>
-        </GlassPanel>
-      </TouchableOpacity>
+          </GlassPanel>
+        </TouchableOpacity>
+      </Swipeable>
     );
-  }, [handlePress, handleMarkGroupRead]);
+  }, [handlePress, handleMarkGroupRead, handleDismiss, handleDismissGroup, renderRightActions]);
 
   return (
     <GlassBackground>
