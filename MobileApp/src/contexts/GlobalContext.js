@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 import api from '../config/api';
 import { useAuth } from './AuthContext';
 
@@ -102,6 +103,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.get(`/api/products/add-to-wishlist/${id}`);
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -131,6 +133,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.delete(`/api/products/delete-from-wishlist/${id}`);
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       Toast.show({
         type: 'info',
         text1: 'Removed',
@@ -172,6 +175,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       Toast.show({
         type: 'success',
         text1: 'Success',
