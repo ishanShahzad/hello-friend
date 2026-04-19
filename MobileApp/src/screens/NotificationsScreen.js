@@ -313,6 +313,7 @@ export default function NotificationsScreen({ navigation }) {
 
   // Dismiss a single notification (swipe action)
   const handleDismiss = useCallback(async (notifId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     readIds.current.add(notifId);
     setNotifications(prev => prev.filter(n => n.id !== notifId));
