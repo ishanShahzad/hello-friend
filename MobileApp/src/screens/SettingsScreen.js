@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../config/api';
+import { HAPTICS_KEY, setHapticsEnabled, isHapticsEnabled, impact as hapticImpact, Haptics } from '../utils/haptics';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
@@ -36,17 +37,30 @@ export default function SettingsScreen({ navigation }) {
   const { logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
+  const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const [notifVal, emailVal, { status }] = await Promise.all([AsyncStorage.getItem(SETTINGS_KEYS.NOTIFICATIONS), AsyncStorage.getItem(SETTINGS_KEYS.EMAIL_UPDATES), Notifications.getPermissionsAsync()]);
+        const [notifVal, emailVal, hapticsVal, { status }] = await Promise.all([
+          AsyncStorage.getItem(SETTINGS_KEYS.NOTIFICATIONS),
+          AsyncStorage.getItem(SETTINGS_KEYS.EMAIL_UPDATES),
+          AsyncStorage.getItem(HAPTICS_KEY),
+          Notifications.getPermissionsAsync(),
+        ]);
         setNotificationsEnabled(status === 'granted' && (notifVal !== null ? notifVal === 'true' : true));
         if (emailVal !== null) setEmailUpdates(emailVal === 'true');
+        if (hapticsVal !== null) setHapticsEnabledState(hapticsVal === 'true');
       } catch (err) { console.error('Failed to load settings:', err); }
     };
     loadSettings();
+  }, []);
+
+  const handleHapticsChange = useCallback((value) => {
+    setHapticsEnabledState(value);
+    setHapticsEnabled(value);
+    if (value) hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
   const handleNotificationsChange = useCallback(async (value) => {
@@ -82,6 +96,11 @@ export default function SettingsScreen({ navigation }) {
         </GlassPanel>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.sectionLabel}>PREFERENCES</Text>
+          <GlassPanel variant="card" style={styles.settingCard}>
+            <SettingRow icon="phone-portrait-outline" iconColor="#EC4899" iconBg="rgba(236,72,153,0.15)" title="Haptic Feedback" subtitle="Vibration on taps and gestures" showBorder={false} rightElement={<Switch value={hapticsEnabled} onValueChange={handleHapticsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={hapticsEnabled ? colors.primary : colors.grayLight} />} />
+          </GlassPanel>
+
           <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
             <SettingRow icon="notifications-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="Push Notifications" subtitle="Order updates and alerts" rightElement={<Switch value={notificationsEnabled} onValueChange={handleNotificationsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={notificationsEnabled ? colors.primary : colors.grayLight} />} />
