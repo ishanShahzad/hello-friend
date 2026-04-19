@@ -421,8 +421,9 @@ export default function NotificationsScreen({ navigation }) {
             </View>
             <View style={styles.heroActions}>
               {unreadCount > 0 && (
-                <TouchableOpacity style={styles.heroActionBtn} onPress={handleMarkAllRead}>
-                  <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
+                <TouchableOpacity style={styles.markAllPill} onPress={handleMarkAllRead} activeOpacity={0.8}>
+                  <Ionicons name="checkmark-done" size={14} color={colors.white} />
+                  <Text style={styles.markAllPillText}>Mark all read</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.heroActionBtn} onPress={() => navigation.navigate('NotificationPreferences')}>
