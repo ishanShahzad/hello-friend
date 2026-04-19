@@ -96,6 +96,11 @@ export default function SettingsScreen({ navigation }) {
         </GlassPanel>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.sectionLabel}>PREFERENCES</Text>
+          <GlassPanel variant="card" style={styles.settingCard}>
+            <SettingRow icon="phone-portrait-outline" iconColor="#EC4899" iconBg="rgba(236,72,153,0.15)" title="Haptic Feedback" subtitle="Vibration on taps and gestures" showBorder={false} rightElement={<Switch value={hapticsEnabled} onValueChange={handleHapticsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={hapticsEnabled ? colors.primary : colors.grayLight} />} />
+          </GlassPanel>
+
           <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
             <SettingRow icon="notifications-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="Push Notifications" subtitle="Order updates and alerts" rightElement={<Switch value={notificationsEnabled} onValueChange={handleNotificationsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={notificationsEnabled ? colors.primary : colors.grayLight} />} />
