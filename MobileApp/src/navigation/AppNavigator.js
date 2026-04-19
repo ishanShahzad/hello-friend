@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { View, Text, StyleSheet, Animated, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { selection as hapticSelection } from '../utils/haptics';
 import { 
   colors, 
   spacing, 
@@ -244,7 +244,7 @@ function MainTabs() {
     <Tab.Navigator
       screenListeners={{
         tabPress: () => {
-          Haptics.selectionAsync().catch(() => {});
+          hapticSelection();
         },
       }}
       screenOptions={({ route }) => ({
