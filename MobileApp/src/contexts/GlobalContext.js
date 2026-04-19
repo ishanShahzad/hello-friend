@@ -103,6 +103,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.get(`/api/products/add-to-wishlist/${id}`);
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       Toast.show({
         type: 'success',
         text1: 'Success',
