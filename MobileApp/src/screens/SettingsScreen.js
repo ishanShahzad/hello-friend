@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../config/api';
+import { HAPTICS_KEY, setHapticsEnabled, isHapticsEnabled, impact as hapticImpact, Haptics } from '../utils/haptics';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
