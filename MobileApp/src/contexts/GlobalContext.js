@@ -133,6 +133,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.delete(`/api/products/delete-from-wishlist/${id}`);
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       Toast.show({
         type: 'info',
         text1: 'Removed',
