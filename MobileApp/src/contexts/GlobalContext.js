@@ -175,6 +175,7 @@ export const GlobalProvider = ({ children }) => {
 
       const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       Toast.show({
         type: 'success',
         text1: 'Success',
