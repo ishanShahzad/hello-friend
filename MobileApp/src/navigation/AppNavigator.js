@@ -242,6 +242,11 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: () => {
+          Haptics.selectionAsync().catch(() => {});
+        },
+      }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           return (
