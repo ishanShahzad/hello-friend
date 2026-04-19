@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
+import { impact as hapticImpact, notify as hapticNotify } from '../utils/haptics';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -296,7 +297,7 @@ export default function NotificationsScreen({ navigation }) {
   }, [persistReadIds]);
 
   const handleMarkAllRead = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    hapticNotify(Haptics.NotificationFeedbackType.Success);
     setNotifications(prev => {
       prev.forEach(n => readIds.current.add(n.id));
       return prev.map(n => ({ ...n, read: true }));
@@ -314,7 +315,7 @@ export default function NotificationsScreen({ navigation }) {
 
   // Dismiss a single notification (swipe action)
   const handleDismiss = useCallback(async (notifId) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     readIds.current.add(notifId);
     setNotifications(prev => prev.filter(n => n.id !== notifId));
@@ -331,7 +332,7 @@ export default function NotificationsScreen({ navigation }) {
 
   // Dismiss all items in a group
   const handleDismissGroup = useCallback(async (ids) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     ids.forEach(id => readIds.current.add(id));
     setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
