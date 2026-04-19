@@ -247,7 +247,7 @@ function MainTabs() {
             <View style={styles.tabIconContainer}>
               <TabBarIcon route={route} focused={focused} color={color} size={24} />
               {route.name === 'Cart' && <CartBadge count={cartCount} />}
-              {route.name === 'Account' && <CartBadge count={unreadNotifCount} />}
+              {route.name === 'Notifications' && <CartBadge count={unreadNotifCount} />}
             </View>
           );
         },
@@ -281,9 +281,9 @@ function MainTabs() {
         options={{ tabBarLabel: 'Cart' }}
       />
       <Tab.Screen 
-        name="Wishlist" 
-        component={WishlistScreen}
-        options={{ tabBarLabel: 'Wishlist' }}
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{ tabBarLabel: 'Alerts' }}
       />
       <Tab.Screen 
         name="Account" 
