@@ -37,6 +37,7 @@ export default function SettingsScreen({ navigation }) {
   const { logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
+  const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
