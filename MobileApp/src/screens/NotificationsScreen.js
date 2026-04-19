@@ -296,6 +296,7 @@ export default function NotificationsScreen({ navigation }) {
   }, [persistReadIds]);
 
   const handleMarkAllRead = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setNotifications(prev => {
       prev.forEach(n => readIds.current.add(n.id));
       return prev.map(n => ({ ...n, read: true }));
