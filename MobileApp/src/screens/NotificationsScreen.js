@@ -510,6 +510,8 @@ const styles = StyleSheet.create({
   heroBadgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   heroActions: { flexDirection: 'row', gap: spacing.xs },
   heroActionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
+  markAllPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, height: 32, borderRadius: 16, backgroundColor: colors.primary },
+  markAllPillText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   chipList: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
