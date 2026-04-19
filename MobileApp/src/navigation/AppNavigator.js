@@ -389,6 +389,11 @@ export default function AppNavigator() {
         component={OrderDetailScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="Wishlist"
+        component={WishlistScreen}
+        options={{ headerShown: false }}
+      />
 
       {/* Admin Dashboard (role-guarded: admin only) */}
       <Stack.Screen name="AdminDashboard" component={GuardedAdminDashboard} options={{ headerShown: false }} />
