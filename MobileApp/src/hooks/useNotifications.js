@@ -82,7 +82,7 @@ export default function useNotifications() {
         if (data.productId) {
           navigation.navigate('ProductDetail', { productId: data.productId });
         } else {
-          navigation.navigate('MainTabs', { screen: 'Wishlist' });
+          navigation.navigate('Wishlist');
         }
         break;
 

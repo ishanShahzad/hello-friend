@@ -168,6 +168,7 @@ export const getTabIconName = (routeName, focused) => {
     Stores: { active: 'storefront', inactive: 'storefront-outline' },
     Cart: { active: 'cart', inactive: 'cart-outline' },
     Wishlist: { active: 'heart', inactive: 'heart-outline' },
+    Notifications: { active: 'notifications', inactive: 'notifications-outline' },
     Account: { active: 'person', inactive: 'person-outline' },
   };
   const icons = iconMap[routeName] || { active: 'help', inactive: 'help-outline' };
@@ -246,7 +247,7 @@ function MainTabs() {
             <View style={styles.tabIconContainer}>
               <TabBarIcon route={route} focused={focused} color={color} size={24} />
               {route.name === 'Cart' && <CartBadge count={cartCount} />}
-              {route.name === 'Account' && <CartBadge count={unreadNotifCount} />}
+              {route.name === 'Notifications' && <CartBadge count={unreadNotifCount} />}
             </View>
           );
         },
@@ -280,9 +281,9 @@ function MainTabs() {
         options={{ tabBarLabel: 'Cart' }}
       />
       <Tab.Screen 
-        name="Wishlist" 
-        component={WishlistScreen}
-        options={{ tabBarLabel: 'Wishlist' }}
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{ tabBarLabel: 'Alerts' }}
       />
       <Tab.Screen 
         name="Account" 
@@ -386,6 +387,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="OrderDetail"
         component={OrderDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Wishlist"
+        component={WishlistScreen}
         options={{ headerShown: false }}
       />
 
