@@ -330,6 +330,7 @@ export default function NotificationsScreen({ navigation }) {
 
   // Dismiss all items in a group
   const handleDismissGroup = useCallback(async (ids) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     ids.forEach(id => readIds.current.add(id));
     setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
