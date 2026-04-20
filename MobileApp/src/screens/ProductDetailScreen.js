@@ -19,6 +19,7 @@ import { Loader, InlineLoader } from '../components/common';
 import VerifiedBadge from '../components/VerifiedBadge';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { trackProductView } from '../utils/recentlyViewed';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
@@ -48,6 +49,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchProduct();
+    if (productId) trackProductView(productId);
     Animated.spring(bottomBarAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }).start();
   }, [productId]);
 
