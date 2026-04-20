@@ -91,111 +91,98 @@ export const GlobalProvider = ({ children }) => {
     }
   };
 
-  const handleAddToWishlist = async (id) => {
+  // Optimistic wishlist toggle: instantly flip icon, rollback on failure.
+  const handleAddToWishlist = async (id, productHint = null) => {
+    if (!currentUser) {
+      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add items to wishlist' });
+      return;
+    }
+    const previous = wishlistItems;
+    const optimistic = wishlistItems.some((it) => it?._id === id)
+      ? wishlistItems
+      : [...wishlistItems, productHint ? { ...productHint, _id: id } : { _id: id }];
+    setWishlistItems(optimistic);
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
     try {
-      if (!currentUser) {
-        Toast.show({
-          type: 'info',
-          text1: 'Login Required',
-          text2: 'Please login to add items to wishlist'
-        });
-        return;
-      }
-
       const res = await api.get(`/api/products/add-to-wishlist/${id}`);
-
-      hapticImpact(Haptics.ImpactFeedbackStyle.Light);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: res.data.msg
-      });
-
+      Toast.show({ type: 'success', text1: 'Saved', text2: res.data.msg });
+      // Reconcile with server truth in background.
       fetchWishlist();
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: err.response?.data?.msg || 'Error adding to wishlist'
-      });
+      setWishlistItems(previous);
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.msg || 'Error adding to wishlist' });
     }
   };
 
   const handleDeleteFromWishlist = async (id) => {
+    if (!currentUser) {
+      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to manage wishlist' });
+      return;
+    }
+    const previous = wishlistItems;
+    setWishlistItems(wishlistItems.filter((it) => it?._id !== id));
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
     try {
-      if (!currentUser) {
-        Toast.show({
-          type: 'info',
-          text1: 'Login Required',
-          text2: 'Please login to manage wishlist'
-        });
-        return;
-      }
-
       const res = await api.delete(`/api/products/delete-from-wishlist/${id}`);
-
-      hapticImpact(Haptics.ImpactFeedbackStyle.Light);
-      Toast.show({
-        type: 'info',
-        text1: 'Removed',
-        text2: res.data.msg
-      });
-
+      Toast.show({ type: 'info', text1: 'Removed', text2: res.data.msg });
       fetchWishlist();
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: err.response?.data?.msg || 'Error removing from wishlist'
-      });
+      setWishlistItems(previous);
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.msg || 'Error removing from wishlist' });
     }
   };
 
-  const handleAddToCart = async (id, selectedColor = null) => {
+  const handleAddToCart = async (id, selectedColor = null, productHint = null) => {
+    if (!currentUser) {
+      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add items to cart' });
+      return;
+    }
+
+    const isInCart = cartItems?.cart?.some(
+      (item) => item?.product?._id === id && (item.selectedColor || null) === (selectedColor || null)
+    ) || false;
+
+    if (isInCart) {
+      await handleRemoveCartItem(id);
+      return;
+    }
+
+    setIsCartLoading(true);
+    setLoadingProductId(id);
+
+    // Optimistic: append a temp cart line so the button flips to "In Cart" immediately.
+    const previousCart = cartItems;
+    if (productHint) {
+      const tempLine = {
+        _id: `__optim_${id}_${Date.now()}`,
+        qty: 1,
+        selectedColor: selectedColor || null,
+        product: { ...productHint, _id: id },
+        __optimistic: true,
+      };
+      const optimistic = {
+        cart: [...(cartItems?.cart || []), tempLine],
+        totalCartPrice: (cartItems?.totalCartPrice || 0) + (productHint.discountedPrice || productHint.price || 0),
+      };
+      setCartItems(optimistic);
+    }
+
+    hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
+
     try {
-      if (!currentUser) {
-        Toast.show({
-          type: 'info',
-          text1: 'Login Required',
-          text2: 'Please login to add items to cart'
-        });
-        return;
-      }
-
-      setIsCartLoading(true);
-      setLoadingProductId(id);
-
-      const isInCart = cartItems?.cart?.some(item => item?.product?._id === id && (item.selectedColor || null) === (selectedColor || null)) || false;
-
-      if (isInCart) {
-        await handleRemoveCartItem(id);
-        setIsCartLoading(false);
-        setLoadingProductId(null);
-        return;
-      }
-
       const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
-
-      hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: res.data.msg
-      });
-
+      Toast.show({ type: 'success', text1: 'Added', text2: res.data.msg });
       setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
     } catch (error) {
       console.error(error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.response?.data?.msg || 'Failed to add to cart'
-      });
+      setCartItems(previousCart);
+      Toast.show({ type: 'error', text1: 'Error', text2: error.response?.data?.msg || 'Failed to add to cart' });
     } finally {
       setIsCartLoading(false);
       setLoadingProductId(null);
     }
   };
+
 
   const fetchCart = async () => {
     try {

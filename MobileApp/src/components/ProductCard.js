@@ -64,10 +64,10 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
   const handleWishlistToggle = () => {
     if (!currentUser) { navigation.navigate('Login'); return; }
     Animated.sequence([Animated.timing(heartScale, { toValue: 1.3, duration: 100, useNativeDriver: true }), Animated.timing(heartScale, { toValue: 1, duration: 100, useNativeDriver: true })]).start();
-    isInWishlist ? handleDeleteFromWishlist(_id) : handleAddToWishlist(_id);
+    isInWishlist ? handleDeleteFromWishlist(_id) : handleAddToWishlist(_id, product);
   };
 
-  const handleAddToCartClick = () => { if (!currentUser) { navigation.navigate('Login'); return; } handleAddToCart(_id); };
+  const handleAddToCartClick = () => { if (!currentUser) { navigation.navigate('Login'); return; } handleAddToCart(_id, null, product); };
   const imageSource = images?.[0]?.url || image;
   const isLoading = isCartLoading && loadingProductId === _id;
 
@@ -94,7 +94,13 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
         {/* Actions */}
         <View style={styles.actionsContainer}>
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-            <TouchableOpacity style={[styles.actionButton, isInWishlist && styles.actionButtonActive]} onPress={handleWishlistToggle} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              style={[styles.actionButton, isInWishlist && styles.actionButtonActive]}
+              onPress={handleWishlistToggle}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+              accessibilityRole="button"
+            >
               <Ionicons name={isInWishlist ? 'heart' : 'heart-outline'} size={16} color={isInWishlist ? colors.heart : colors.text} />
             </TouchableOpacity>
           </Animated.View>

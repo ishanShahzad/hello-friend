@@ -1,0 +1,108 @@
+/**
+ * PriceRangeFilter — dual-input price range selector with quick presets.
+ * Lightweight (no native slider library required).
+ */
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useCurrency } from '../../contexts/CurrencyContext';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+
+const PRESETS = [
+  { label: 'Under $25', min: 0, max: 25 },
+  { label: '$25 - $100', min: 25, max: 100 },
+  { label: '$100 - $500', min: 100, max: 500 },
+  { label: 'Over $500', min: 500, max: 99999 },
+];
+
+export default function PriceRangeFilter({ min, max, onChange }) {
+  const { formatPrice } = useCurrency();
+  const [minStr, setMinStr] = useState(min ? String(min) : '');
+  const [maxStr, setMaxStr] = useState(max ? String(max) : '');
+
+  useEffect(() => {
+    setMinStr(min ? String(min) : '');
+    setMaxStr(max ? String(max) : '');
+  }, [min, max]);
+
+  const commit = (newMin, newMax) => {
+    const m = parseFloat(newMin) || 0;
+    const x = parseFloat(newMax) || 0;
+    onChange?.({ min: m, max: x > 0 ? x : null });
+  };
+
+  const applyPreset = (preset) => {
+    setMinStr(String(preset.min));
+    setMaxStr(String(preset.max));
+    commit(preset.min, preset.max);
+  };
+
+  return (
+    <View>
+      <View style={styles.inputRow}>
+        <View style={styles.inputBox}>
+          <Text style={styles.inputLabel}>Min</Text>
+          <TextInput
+            value={minStr}
+            onChangeText={(v) => { setMinStr(v); commit(v, maxStr); }}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={colors.textLight}
+            style={styles.input}
+            accessibilityLabel="Minimum price"
+          />
+        </View>
+        <View style={styles.dash}><Ionicons name="remove" size={16} color={colors.textSecondary} /></View>
+        <View style={styles.inputBox}>
+          <Text style={styles.inputLabel}>Max</Text>
+          <TextInput
+            value={maxStr}
+            onChangeText={(v) => { setMaxStr(v); commit(minStr, v); }}
+            keyboardType="numeric"
+            placeholder="Any"
+            placeholderTextColor={colors.textLight}
+            style={styles.input}
+            accessibilityLabel="Maximum price"
+          />
+        </View>
+      </View>
+
+      <View style={styles.presetRow}>
+        {PRESETS.map((p) => {
+          const active = String(min) === String(p.min) && String(max) === String(p.max);
+          return (
+            <TouchableOpacity
+              key={p.label}
+              style={[styles.presetChip, active && styles.presetChipActive]}
+              onPress={() => applyPreset(p)}
+              accessibilityLabel={p.label}
+            >
+              <Text style={[styles.presetText, active && styles.presetTextActive]}>{p.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  inputBox: {
+    flex: 1,
+    backgroundColor: 'rgba(99,102,241,0.06)',
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.15)',
+  },
+  inputLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: fontWeight.semibold, letterSpacing: 0.5 },
+  input: { fontSize: fontSize.lg, color: colors.text, fontWeight: fontWeight.semibold, padding: 0, paddingTop: 2 },
+  dash: { paddingHorizontal: spacing.xs },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  presetChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: colors.light, borderWidth: 1, borderColor: 'transparent' },
+  presetChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  presetText: { fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
+  presetTextActive: { color: colors.white, fontWeight: fontWeight.bold },
+});
