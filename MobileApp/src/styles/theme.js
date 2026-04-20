@@ -897,10 +897,15 @@ export const glass = {
   backgroundInner: Platform.OS === 'ios' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
   border: 'rgba(255,255,255,0.5)',
   borderStrong: 'rgba(255,255,255,0.65)',
+  borderSubtle: 'rgba(255,255,255,0.25)',
   innerGlow: 'rgba(255,255,255,0.2)',
   blur: 40,
   blurStrong: 60,
   gradientBackground: ['#eef2ff', '#e0e7ff', '#dbeafe', '#ede9fe', '#e0e7ff'],
+  // Convenience aliases used widely across screens
+  bg: Platform.OS === 'ios' ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.72)',
+  bgSubtle: Platform.OS === 'ios' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.5)',
+  bgStrong: Platform.OS === 'ios' ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.85)',
 };
 
 // =============================================================================
