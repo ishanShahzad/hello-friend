@@ -31,7 +31,14 @@ const productSchema = mongoose.Schema(
         numReviews: { type: Number, default: 0 },
         isFeatured: { type: Boolean, default: false }, 
         tags: [String],
-        colors: [{ type: String }], // Optional color variants e.g. ['Red', 'Blue', 'Black']
+        colors: [{ type: String }], // Legacy: kept for backward compatibility
+        // Flexible seller-defined option groups (Size, Color, Material, etc.)
+        // Each group: { name: 'Size', values: ['S','M','L'] }
+        optionGroups: [{
+            _id: false,
+            name: { type: String, required: true },
+            values: [{ type: String }],
+        }],
         seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Track who created the product
         returnPolicy: {
             useStorePolicy: { type: Boolean, default: true }, // true = inherit from store

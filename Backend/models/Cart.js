@@ -15,6 +15,12 @@ const cartItemSchema = mongoose.Schema({
         type: String,
         default: null
     },
+    // Flexible options map e.g. { Size: 'L', Color: 'Red', Material: 'Cotton' }
+    selectedOptions: {
+        type: Map,
+        of: String,
+        default: undefined,
+    },
 })
 
 const cartSchema = mongoose.Schema({
