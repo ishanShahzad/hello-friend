@@ -375,7 +375,7 @@ exports.sendSellerOTP = async (req, res) => {
 
 // Verify OTP and create seller
 exports.verifySellerOTPAndRegister = async (req, res) => {
-    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks } = req.body;
+    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, sellerType } = req.body;
 
     try {
         const otpDoc = await OTP.findOne({ email, otp });
@@ -419,6 +419,7 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
                     seller: newUser._id,
                     storeName: storeName.trim(),
                     storeSlug: slug,
+                    sellerType: sellerType === 'brand' ? 'brand' : 'store',
                     description: storeDescription?.trim() || '',
                     socialLinks: socialLinks || {},
                     address: {
