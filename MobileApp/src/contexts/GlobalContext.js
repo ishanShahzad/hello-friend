@@ -1,296 +1,38 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import Toast from 'react-native-toast-message';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
-import * as Haptics from 'expo-haptics';
-import { impact as hapticImpact } from '../utils/haptics';
-import api from '../config/api';
-import { useAuth } from './AuthContext';
+/**
+ * GlobalContext — backwards-compatible facade composing the three split contexts.
+ * Delegates to WishlistContext, CartContext, and NotificationCountContext so that
+ * `useGlobal()` continues working everywhere it's already imported.
+ *
+ * New code should import directly from the dedicated context files
+ * (`useWishlist`, `useCart`, `useNotificationCount`).
+ */
+import React, { createContext, useContext } from 'react';
+import { WishlistProvider, useWishlist } from './WishlistContext';
+import { CartProvider, useCart } from './CartContext';
+import { NotificationCountProvider, useNotificationCount } from './NotificationCountContext';
 
 const GlobalContext = createContext();
 
-const NOTIF_STORE_KEY = 'notification_inbox';
-const NOTIF_READ_KEY = 'notifications_read_ids';
-
-export const GlobalProvider = ({ children }) => {
-  const { currentUser } = useAuth();
-  
-  const [wishlistItems, setWishlistItems] = useState([]);
-  const [cartItems, setCartItems] = useState({
-    totalCartPrice: 0,
-    cart: []
-  });
-  const [isCartLoading, setIsCartLoading] = useState(false);
-  const [loadingProductId, setLoadingProductId] = useState(null);
-  const [qtyUpdateId, setQtyUpdateId] = useState(null);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
-  const notifListenerRef = useRef(null);
-
-  // Track unread notification count globally
-  const refreshUnreadCount = useCallback(async () => {
-    try {
-      const [storedRaw, readRaw] = await Promise.all([
-        AsyncStorage.getItem(NOTIF_STORE_KEY),
-        AsyncStorage.getItem(NOTIF_READ_KEY),
-      ]);
-      const stored = storedRaw ? JSON.parse(storedRaw) : [];
-      const readSet = readRaw ? new Set(JSON.parse(readRaw)) : new Set();
-      
-      // Also count order-based unread if logged in
-      let orderUnread = 0;
-      if (currentUser) {
-        try {
-          const res = await api.get('/api/order/user-orders');
-          const orders = res.data?.orders || [];
-          orders.forEach(o => {
-            const status = (o.orderStatus || o.status || '').toLowerCase();
-            if (status === 'delivered' && !readSet.has(`${o._id}_delivered_0`)) orderUnread++;
-            if (status === 'cancelled' && !readSet.has(`${o._id}_cancelled_0`)) orderUnread++;
-          });
-        } catch {}
-      }
-      
-      const pushUnread = stored.filter(n => !readSet.has(n.id) && !n.read).length;
-      setUnreadNotifCount(pushUnread + orderUnread);
-    } catch {
-      setUnreadNotifCount(0);
-    }
-  }, [currentUser]);
-
-  // Listen for incoming notifications to bump count
-  useEffect(() => {
-    refreshUnreadCount();
-    
-    notifListenerRef.current = Notifications.addNotificationReceivedListener(() => {
-      setUnreadNotifCount(prev => prev + 1);
-    });
-
-    return () => {
-      if (notifListenerRef.current) Notifications.removeNotificationSubscription(notifListenerRef.current);
-    };
-  }, [refreshUnreadCount]);
-
-  useEffect(() => {
-    if (!currentUser) {
-      setCartItems({ totalCartPrice: 0, cart: [] });
-      setWishlistItems([]);
-    }
-  }, [currentUser]);
-
-  const fetchWishlist = async () => {
-    try {
-      const res = await api.get('/api/products/get-wishlist');
-      setWishlistItems(res.data.wishlist);
-    } catch (error) {
-      console.error(error.response?.data?.msg);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.response?.data?.msg || 'Failed to fetch wishlist'
-      });
-    }
-  };
-
-  // Optimistic wishlist toggle: instantly flip icon, rollback on failure.
-  const handleAddToWishlist = async (id, productHint = null) => {
-    if (!currentUser) {
-      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add items to wishlist' });
-      return;
-    }
-    const previous = wishlistItems;
-    const optimistic = wishlistItems.some((it) => it?._id === id)
-      ? wishlistItems
-      : [...wishlistItems, productHint ? { ...productHint, _id: id } : { _id: id }];
-    setWishlistItems(optimistic);
-    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      const res = await api.get(`/api/products/add-to-wishlist/${id}`);
-      Toast.show({ type: 'success', text1: 'Saved', text2: res.data.msg });
-      // Reconcile with server truth in background.
-      fetchWishlist();
-    } catch (err) {
-      setWishlistItems(previous);
-      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.msg || 'Error adding to wishlist' });
-    }
-  };
-
-  const handleDeleteFromWishlist = async (id) => {
-    if (!currentUser) {
-      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to manage wishlist' });
-      return;
-    }
-    const previous = wishlistItems;
-    setWishlistItems(wishlistItems.filter((it) => it?._id !== id));
-    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      const res = await api.delete(`/api/products/delete-from-wishlist/${id}`);
-      Toast.show({ type: 'info', text1: 'Removed', text2: res.data.msg });
-      fetchWishlist();
-    } catch (err) {
-      setWishlistItems(previous);
-      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.msg || 'Error removing from wishlist' });
-    }
-  };
-
-  const handleAddToCart = async (id, selectedColor = null, productHint = null) => {
-    if (!currentUser) {
-      Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add items to cart' });
-      return;
-    }
-
-    const isInCart = cartItems?.cart?.some(
-      (item) => item?.product?._id === id && (item.selectedColor || null) === (selectedColor || null)
-    ) || false;
-
-    if (isInCart) {
-      await handleRemoveCartItem(id);
-      return;
-    }
-
-    setIsCartLoading(true);
-    setLoadingProductId(id);
-
-    // Optimistic: append a temp cart line so the button flips to "In Cart" immediately.
-    const previousCart = cartItems;
-    if (productHint) {
-      const tempLine = {
-        _id: `__optim_${id}_${Date.now()}`,
-        qty: 1,
-        selectedColor: selectedColor || null,
-        product: { ...productHint, _id: id },
-        __optimistic: true,
-      };
-      const optimistic = {
-        cart: [...(cartItems?.cart || []), tempLine],
-        totalCartPrice: (cartItems?.totalCartPrice || 0) + (productHint.discountedPrice || productHint.price || 0),
-      };
-      setCartItems(optimistic);
-    }
-
-    hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
-      Toast.show({ type: 'success', text1: 'Added', text2: res.data.msg });
-      setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
-    } catch (error) {
-      console.error(error);
-      setCartItems(previousCart);
-      Toast.show({ type: 'error', text1: 'Error', text2: error.response?.data?.msg || 'Failed to add to cart' });
-    } finally {
-      setIsCartLoading(false);
-      setLoadingProductId(null);
-    }
-  };
-
-
-  const fetchCart = async () => {
-    try {
-      setIsCartLoading(true);
-      if (!currentUser) {
-        setIsCartLoading(false);
-        return;
-      }
-
-      const res = await api.get('/api/cart/get');
-
-      setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
-    } catch (error) {
-      if (error.response?.status !== 403) {
-        console.error(error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: error.response?.data?.msg || 'Failed to fetch cart'
-        });
-      }
-    } finally {
-      setIsCartLoading(false);
-    }
-  };
-
-  const handleQtyInc = async (id) => {
-    try {
-      setQtyUpdateId(id);
-      const res = await api.patch(`/api/cart/qty-inc/${id}`, {});
-      setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
-    } catch (error) {
-      console.error(error?.response?.data?.msg || 'Failed to increase quantity');
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.response?.data?.msg || 'Failed to increase quantity'
-      });
-    } finally {
-      setQtyUpdateId(null);
-    }
-  };
-
-  const handleQtyDec = async (id) => {
-    try {
-      setQtyUpdateId(id);
-      const res = await api.patch(`/api/cart/qty-dec/${id}`, {});
-      setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
-    } catch (error) {
-      console.error(error?.response?.data?.msg || 'Failed to decrease quantity');
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.response?.data?.msg || 'Failed to decrease quantity'
-      });
-    } finally {
-      setQtyUpdateId(null);
-    }
-  };
-
-  const handleRemoveCartItem = async (id) => {
-    try {
-      setQtyUpdateId(id);
-      const res = await api.delete(`/api/cart/remove/${id}`);
-
-      setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
-      
-      Toast.show({
-        type: 'info',
-        text1: 'Removed',
-        text2: res.data?.msg || 'Item removed from your cart'
-      });
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setQtyUpdateId(null);
-    }
-  };
-
-  return (
-    <GlobalContext.Provider
-      value={{
-        fetchWishlist,
-        wishlistItems,
-        handleAddToWishlist,
-        handleDeleteFromWishlist,
-        fetchCart,
-        handleAddToCart,
-        cartItems,
-        handleQtyInc,
-        handleQtyDec,
-        handleRemoveCartItem,
-        isCartLoading,
-        loadingProductId,
-        qtyUpdateId,
-        unreadNotifCount,
-        refreshUnreadCount,
-      }}
-    >
-      {children}
-    </GlobalContext.Provider>
-  );
+const GlobalAggregator = ({ children }) => {
+  const wishlist = useWishlist();
+  const cart = useCart();
+  const counts = useNotificationCount();
+  const value = { ...wishlist, ...cart, ...counts };
+  return <GlobalContext.Provider value={value}>{children}</GlobalContext.Provider>;
 };
 
+export const GlobalProvider = ({ children }) => (
+  <NotificationCountProvider>
+    <WishlistProvider>
+      <CartProvider>
+        <GlobalAggregator>{children}</GlobalAggregator>
+      </CartProvider>
+    </WishlistProvider>
+  </NotificationCountProvider>
+);
+
 export const useGlobal = () => {
-  const context = useContext(GlobalContext);
-  if (!context) {
-    throw new Error('useGlobal must be used within GlobalProvider');
-  }
-  return context;
+  const ctx = useContext(GlobalContext);
+  if (!ctx) throw new Error('useGlobal must be used within GlobalProvider');
+  return ctx;
 };

@@ -12,6 +12,7 @@ import { CurrencyProvider } from './src/contexts/CurrencyContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingWalkthrough, { shouldShowOnboarding } from './src/components/OnboardingWalkthrough';
+import { isBiometricEnabled, isBiometricAvailable, authenticateBiometric } from './src/utils/biometricLock';
 
 // ─── Sentry Crash Reporting ──────────────────────────────────────────────────
 Sentry.init({
@@ -169,6 +170,50 @@ const linking = {
   },
 };
 
+function BiometricGate({ children }) {
+  const [locked, setLocked] = useState(null); // null = checking, true = locked, false = open
+
+  const tryUnlock = React.useCallback(async () => {
+    const ok = await authenticateBiometric('Unlock Tortrose');
+    if (ok) setLocked(false);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const enabled = await isBiometricEnabled();
+      if (!enabled) { setLocked(false); return; }
+      const available = await isBiometricAvailable();
+      if (!available) { setLocked(false); return; }
+      setLocked(true);
+      tryUnlock();
+    })();
+  }, [tryUnlock]);
+
+  if (locked === null) return null;
+  if (locked) {
+    return (
+      <View style={biometricStyles.container}>
+        <Ionicons name="lock-closed" size={56} color="#6366f1" />
+        <Text style={biometricStyles.title}>Tortrose is locked</Text>
+        <Text style={biometricStyles.subtitle}>Authenticate to continue</Text>
+        <TouchableOpacity style={biometricStyles.btn} onPress={tryUnlock} activeOpacity={0.85}>
+          <Ionicons name="finger-print" size={20} color="#fff" />
+          <Text style={biometricStyles.btnText}>Unlock</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  return children;
+}
+
+const biometricStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 32, gap: 12 },
+  title: { fontSize: 22, fontWeight: '700', color: '#fff', marginTop: 16 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 24 },
+  btn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#6366f1', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14 },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
+
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(null);
 
@@ -193,18 +238,20 @@ function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <GlobalProvider>
-              <CurrencyProvider>
-                <NavigationContainer linking={linking}>
-                  <NotificationInitializer />
-                  <AppNavigator />
-                </NavigationContainer>
-                <Toast />
-                <OfflineBanner />
-              </CurrencyProvider>
-            </GlobalProvider>
-          </AuthProvider>
+          <BiometricGate>
+            <AuthProvider>
+              <GlobalProvider>
+                <CurrencyProvider>
+                  <NavigationContainer linking={linking}>
+                    <NotificationInitializer />
+                    <AppNavigator />
+                  </NavigationContainer>
+                  <Toast />
+                  <OfflineBanner />
+                </CurrencyProvider>
+              </GlobalProvider>
+            </AuthProvider>
+          </BiometricGate>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

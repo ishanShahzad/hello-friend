@@ -87,7 +87,20 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
 
   return (
     <Animated.View style={[styles.animatedContainer, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
-      <TouchableOpacity style={[styles.container, { backgroundColor: g.bg, borderColor: g.border }]} onPress={onPress} activeOpacity={0.9} disabled={isOutOfStock}>
+      <TouchableOpacity
+        style={[styles.container, { backgroundColor: g.bg, borderColor: g.border }]}
+        onPress={onPress}
+        onLongPress={() => {
+          if (isOutOfStock) return;
+          if (!currentUser) { navigation.navigate('Login'); return; }
+          import('expo-haptics').then((H) => H.impactAsync?.(H.ImpactFeedbackStyle.Heavy)).catch(() => {});
+          handleAddToCart(_id, null, product);
+        }}
+        delayLongPress={350}
+        accessibilityHint="Long-press to quick-add to cart"
+        activeOpacity={0.9}
+        disabled={isOutOfStock}
+      >
         {/* Badges */}
         <View style={styles.badgesContainer}>
           {isFeatured && <View style={styles.featuredBadge}><Ionicons name="flash" size={10} color="#fff" /><Text style={styles.badgeText}>Featured</Text></View>}

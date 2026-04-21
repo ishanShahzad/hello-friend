@@ -14,6 +14,7 @@ import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { isBiometricEnabled, setBiometricEnabled, isBiometricAvailable, authenticateBiometric } from '../utils/biometricLock';
 
 const APP_VERSION = '1.0.0';
 
@@ -35,15 +36,16 @@ function SettingRow({ icon, iconColor, iconBg, title, subtitle, onPress, rightEl
 const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_UPDATES: 'settings_email_updates' };
 
 export default function SettingsScreen({ navigation }) {
-  const { palette } = useTheme();
+  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const styles = buildStyles(palette);
 
   const { logout } = useAuth();
-  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [biometricOn, setBiometricOn] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -60,6 +62,21 @@ export default function SettingsScreen({ navigation }) {
       } catch (err) { console.error('Failed to load settings:', err); }
     };
     loadSettings();
+    (async () => {
+      const [avail, on] = await Promise.all([isBiometricAvailable(), isBiometricEnabled()]);
+      setBiometricAvailable(avail);
+      setBiometricOn(on);
+    })();
+  }, []);
+
+  const handleBiometricToggle = useCallback(async (value) => {
+    if (value) {
+      const ok = await authenticateBiometric('Enable biometric lock');
+      if (!ok) return;
+    }
+    await setBiometricEnabled(value);
+    setBiometricOn(value);
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const handleHapticsChange = useCallback((value) => {
@@ -105,7 +122,7 @@ export default function SettingsScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.settingCard}>
             <View style={styles.appearanceRow}>
               <View style={[styles.settingIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
-                <Ionicons name="contrast-outline" size={20} color={palette.palette.colors.primary} />
+                <Ionicons name="contrast-outline" size={20} color={palette.colors.primary} />
               </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Theme</Text>
@@ -126,18 +143,18 @@ export default function SettingsScreen({ navigation }) {
                     activeOpacity={0.8}
                     style={[
                       styles.segment,
-                      active && { backgroundColor: palette.palette.colors.primary, borderColor: palette.palette.colors.primary },
+                      active && { backgroundColor: palette.colors.primary, borderColor: palette.colors.primary },
                     ]}
                   >
                     <Ionicons
                       name={opt.icon}
                       size={16}
-                      color={active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary}
+                      color={active ? palette.colors.textInverse : palette.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary },
+                        { color: active ? palette.colors.textInverse : palette.colors.textSecondary },
                       ]}
                     >
                       {opt.label}
@@ -146,6 +163,27 @@ export default function SettingsScreen({ navigation }) {
                 );
               })}
             </View>
+          </GlassPanel>
+
+          <Text style={styles.sectionLabel}>SECURITY</Text>
+          <GlassPanel variant="card" style={styles.settingCard}>
+            <SettingRow
+              icon="finger-print-outline"
+              iconColor={palette.colors.primary}
+              iconBg="rgba(99,102,241,0.15)"
+              title="Biometric App Lock"
+              subtitle={biometricAvailable ? 'Use Face ID / fingerprint to open the app' : 'Not available on this device'}
+              showBorder={false}
+              rightElement={
+                <Switch
+                  value={biometricOn}
+                  onValueChange={handleBiometricToggle}
+                  disabled={!biometricAvailable}
+                  trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }}
+                  thumbColor={biometricOn ? palette.colors.primary : palette.colors.grayLight}
+                />
+              }
+            />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>PREFERENCES</Text>
