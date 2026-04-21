@@ -185,8 +185,27 @@ export default function ProductDetailScreen({ route, navigation }) {
 
             <Text style={styles.description}>{product.description}</Text>
 
-            {/* Color Variants */}
-            {product.colors?.length > 0 && (
+            {/* Dynamic Product Options (Size, Color, Material...) */}
+            {product.optionGroups?.length > 0 ? (
+              <View style={{ marginTop: spacing.md }}>
+                {product.optionGroups.map((group) => (
+                  <View key={group.name} style={styles.colorSection}>
+                    <Text style={styles.colorLabel}>{group.name}: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedOptions[group.name] || `Select ${group.name.toLowerCase()}`}</Text></Text>
+                    <View style={styles.colorRow}>
+                      {group.values.map((val) => {
+                        const active = selectedOptions[group.name] === val;
+                        return (
+                          <TouchableOpacity key={val} onPress={() => setSelectedOptions(prev => ({ ...prev, [group.name]: active ? undefined : val }))}
+                            style={[styles.colorChip, active && styles.colorChipActive]}>
+                            <Text style={[styles.colorChipText, active && styles.colorChipTextActive]}>{val}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : product.colors?.length > 0 && (
               <View style={styles.colorSection}>
                 <Text style={styles.colorLabel}>Color: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedColor || 'Select a color'}</Text></Text>
                 <View style={styles.colorRow}>
