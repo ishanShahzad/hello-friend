@@ -718,11 +718,99 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
 // ============================
 // Product Form (Glass Design)
 // ============================
+// Flexible Option Groups Builder (Size, Color, Material, etc.)
+// ============================
+const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
+    const [newGroupName, setNewGroupName] = useState("");
+    const [valueDrafts, setValueDrafts] = useState({}); // { groupIdx: 'draft text' }
+
+    const groups = product.optionGroups || [];
+    const update = (next) => setProduct({ ...product, optionGroups: next });
+
+    const addGroup = () => {
+        const n = newGroupName.trim();
+        if (!n) return;
+        if (groups.some(g => g.name.toLowerCase() === n.toLowerCase())) return;
+        update([...groups, { name: n, values: [] }]);
+        setNewGroupName("");
+    };
+    const removeGroup = (idx) => update(groups.filter((_, i) => i !== idx));
+    const renameGroup = (idx, name) => update(groups.map((g, i) => i === idx ? { ...g, name } : g));
+    const addValue = (idx) => {
+        const v = (valueDrafts[idx] || '').trim();
+        if (!v) return;
+        update(groups.map((g, i) => i === idx ? { ...g, values: g.values.includes(v) ? g.values : [...g.values, v] } : g));
+        setValueDrafts({ ...valueDrafts, [idx]: '' });
+    };
+    const removeValue = (idx, v) => update(groups.map((g, i) => i === idx ? { ...g, values: g.values.filter(x => x !== v) } : g));
+
+    return (
+        <div className="space-y-3">
+            {groups.map((g, idx) => (
+                <div key={idx} className="glass-inner rounded-xl p-3 space-y-2">
+                    <div className="flex gap-2 items-center">
+                        <input type="text" disabled={disabled} value={g.name}
+                            onChange={(e) => renameGroup(idx, e.target.value)}
+                            className="glass-input flex-1 text-sm font-semibold"
+                            placeholder="Option name (e.g. Size)" />
+                        <button type="button" disabled={disabled} onClick={() => removeGroup(idx)}
+                            className="p-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0,72%,55%)' }}
+                            title="Remove option">
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="flex gap-2">
+                        <input type="text" disabled={disabled}
+                            value={valueDrafts[idx] || ''}
+                            onChange={(e) => setValueDrafts({ ...valueDrafts, [idx]: e.target.value })}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addValue(idx); } }}
+                            className="glass-input flex-1 text-sm"
+                            placeholder={`Add a value (e.g. S, M, L or Red, Blue)`} />
+                        <motion.button type="button" disabled={disabled} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                            onClick={() => addValue(idx)}
+                            className="px-3 py-2 rounded-lg text-white font-medium text-sm"
+                            style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(260,60%,60%))' }}>
+                            Add
+                        </motion.button>
+                    </div>
+                    {g.values.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {g.values.map((v) => (
+                                <span key={v} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                                    style={{ background: 'rgba(99,102,241,0.12)', color: 'hsl(220,70%,55%)' }}>
+                                    {v}
+                                    <button type="button" disabled={disabled} onClick={() => removeValue(idx, v)}
+                                        className="ml-1.5" style={{ color: 'hsl(220,70%,55%)' }}>
+                                        <X size={11} />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
+            <div className="flex gap-2">
+                <input type="text" disabled={disabled} value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGroup(); } }}
+                    className="glass-input flex-1 text-sm"
+                    placeholder="New option name (e.g. Size, Color, Material)" />
+                <motion.button type="button" disabled={disabled} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={addGroup}
+                    className="px-4 py-2 rounded-xl text-white font-medium text-sm"
+                    style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(170,50%,40%))' }}>
+                    + Option
+                </motion.button>
+            </div>
+        </div>
+    );
+};
+
+// ============================
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
-    const [newColor, setNewColor] = useState("");
 
     const handleAddTag = () => {
         if (newTag.trim() && !product.tags.includes(newTag.trim())) {
@@ -731,13 +819,6 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
         }
     };
     const handleRemoveTag = (tagToRemove) => setProduct({ ...product, tags: product.tags.filter(tag => tag !== tagToRemove) });
-    const handleAddColor = () => {
-        if (newColor.trim() && !(product.colors || []).includes(newColor.trim())) {
-            setProduct({ ...product, colors: [...(product.colors || []), newColor.trim()] });
-            setNewColor("");
-        }
-    };
-    const handleRemoveColor = (c) => setProduct({ ...product, colors: (product.colors || []).filter(color => color !== c) });
     const handleAddImage = () => {
         if (newImage.trim()) {
             setProduct({ ...product, images: [...product.images, { url: newImage.trim() }] });
