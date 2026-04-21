@@ -13,6 +13,7 @@ import { HAPTICS_KEY, setHapticsEnabled, isHapticsEnabled, impact as hapticImpac
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const APP_VERSION = '1.0.0';
 
@@ -35,6 +36,7 @@ const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_U
 
 export default function SettingsScreen({ navigation }) {
   const { logout } = useAuth();
+  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
@@ -96,6 +98,53 @@ export default function SettingsScreen({ navigation }) {
         </GlassPanel>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.sectionLabel}>APPEARANCE</Text>
+          <GlassPanel variant="card" style={styles.settingCard}>
+            <View style={styles.appearanceRow}>
+              <View style={[styles.settingIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
+                <Ionicons name="contrast-outline" size={20} color={palette.colors.primary} />
+              </View>
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Theme</Text>
+                <Text style={styles.settingSubtitle}>Light, dark, or follow system</Text>
+              </View>
+            </View>
+            <View style={styles.segmented}>
+              {[
+                { key: 'light', label: 'Light', icon: 'sunny-outline' },
+                { key: 'dark', label: 'Dark', icon: 'moon-outline' },
+                { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
+              ].map((opt) => {
+                const active = themeMode === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    onPress={() => { setThemeMode(opt.key); hapticImpact(Haptics.ImpactFeedbackStyle.Light); }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.segment,
+                      active && { backgroundColor: palette.colors.primary, borderColor: palette.colors.primary },
+                    ]}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={16}
+                      color={active ? palette.colors.textInverse : palette.colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: active ? palette.colors.textInverse : palette.colors.textSecondary },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </GlassPanel>
+
           <Text style={styles.sectionLabel}>PREFERENCES</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
             <SettingRow icon="phone-portrait-outline" iconColor="#EC4899" iconBg="rgba(236,72,153,0.15)" title="Haptic Feedback" subtitle="Vibration on taps and gestures" showBorder={false} rightElement={<Switch value={hapticsEnabled} onValueChange={handleHapticsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={hapticsEnabled ? colors.primary : colors.grayLight} />} />
@@ -158,4 +207,26 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', paddingVertical: spacing.xxl },
   footerText: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.xs },
   footerVersion: { fontSize: fontSize.xs, color: colors.textLight },
+  appearanceRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md },
+  segmented: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: borderRadius.lg,
+    padding: 4,
+    gap: 4,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    gap: 6,
+  },
+  segmentText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
 });
