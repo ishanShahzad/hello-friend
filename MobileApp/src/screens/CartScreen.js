@@ -14,9 +14,13 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { Loader, InlineLoader, EmptyCart, LoginRequired, CartItemSkeleton } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function CartScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const { cartItems, fetchCart, handleRemoveCartItem, handleQtyInc, handleQtyDec, isCartLoading, qtyUpdateId } = useGlobal();
   const { formatPrice } = useCurrency();
@@ -103,23 +107,23 @@ export default function CartScreen({ navigation }) {
           <Text style={styles.itemName} numberOfLines={2}>{product.name}</Text>
           {item.selectedColor && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-              <Ionicons name="color-palette-outline" size={12} color={colors.textSecondary} />
-              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Color: {item.selectedColor}</Text>
+              <Ionicons name="color-palette-outline" size={12} color={palette.colors.textSecondary} />
+              <Text style={{ fontSize: 11, color: palette.colors.textSecondary }}>Color: {item.selectedColor}</Text>
             </View>
           )}
           <Text style={styles.itemPrice}>{formatPrice(discountedPrice)}</Text>
           <View style={styles.bottomRow}>
             <View style={styles.quantityContainer}>
               <TouchableOpacity style={styles.qtyButton} onPress={() => handleQtyDec(itemId)} disabled={isUpdating}>
-                <Ionicons name="remove" size={16} color={colors.primary} />
+                <Ionicons name="remove" size={16} color={palette.colors.primary} />
               </TouchableOpacity>
               <Text style={styles.qtyText}>{qty}</Text>
               <TouchableOpacity style={styles.qtyButton} onPress={() => handleQtyInc(itemId)}>
-                <Ionicons name="add" size={16} color={colors.primary} />
+                <Ionicons name="add" size={16} color={palette.colors.primary} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveCartItem(product._id)} disabled={isUpdating}>
-              <Ionicons name="trash-outline" size={18} color={colors.error} />
+              <Ionicons name="trash-outline" size={18} color={palette.colors.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -144,7 +148,7 @@ export default function CartScreen({ navigation }) {
             renderItem={renderCartItem}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
             ListHeaderComponent={heroHeader}
             ListFooterComponent={
               <GlassPanel variant="panel" style={styles.orderSummary}>
@@ -171,9 +175,9 @@ export default function CartScreen({ navigation }) {
             <Text style={styles.footerTotalValue}>{formatPrice(subtotal)}</Text>
           </View>
           <TouchableOpacity style={[styles.checkoutButton, isCartLoading && { opacity: 0.6 }]} onPress={handleCheckout} disabled={isCartLoading} activeOpacity={0.85}>
-            <Ionicons name="lock-closed-outline" size={18} color={colors.white} />
+            <Ionicons name="lock-closed-outline" size={18} color={palette.colors.white} />
             <Text style={styles.checkoutButtonText}>Secure Checkout</Text>
-            <Ionicons name="arrow-forward" size={18} color={colors.white} />
+            <Ionicons name="arrow-forward" size={18} color={palette.colors.white} />
           </TouchableOpacity>
         </GlassPanel>
       </SafeAreaView>
@@ -181,39 +185,39 @@ export default function CartScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   heroHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroBadge: { backgroundColor: 'rgba(99,102,241,0.15)', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  heroBadgeText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  heroBadgeText: { color: p.colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   listContent: { padding: spacing.md, paddingBottom: 140 },
   cartItem: { flexDirection: 'row', padding: spacing.md, marginBottom: spacing.md, position: 'relative', overflow: 'hidden' },
   itemOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 10, flexDirection: 'row', gap: spacing.sm, borderRadius: 22 },
-  overlayText: { color: colors.primary, fontWeight: fontWeight.medium, fontSize: fontSize.sm },
+  overlayText: { color: p.colors.primary, fontWeight: fontWeight.medium, fontSize: fontSize.sm },
   itemImage: { width: 90, height: 90, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.1)' },
   itemDetails: { flex: 1, marginLeft: spacing.md },
-  itemCategory: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  itemName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.xs, lineHeight: 20 },
-  itemPrice: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm },
+  itemCategory: { fontSize: fontSize.xs, color: p.colors.primary, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  itemName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.xs, lineHeight: 20 },
+  itemPrice: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.sm },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   quantityContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: borderRadius.full, paddingHorizontal: spacing.xs, paddingVertical: spacing.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   qtyButton: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
-  qtyText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary, paddingHorizontal: spacing.md, minWidth: 30, textAlign: 'center' },
+  qtyText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.primary, paddingHorizontal: spacing.md, minWidth: 30, textAlign: 'center' },
   removeButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(239,68,68,0.1)', justifyContent: 'center', alignItems: 'center' },
   orderSummary: { padding: spacing.lg, marginBottom: spacing.md },
-  summaryTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.15)' },
+  summaryTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.15)' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  summaryLabel: { fontSize: fontSize.md, color: colors.textSecondary },
-  summaryValue: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
-  summaryValueSmall: { fontSize: fontSize.sm, color: colors.textSecondary, fontStyle: 'italic' },
+  summaryLabel: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  summaryValue: { fontSize: fontSize.md, color: p.colors.text, fontWeight: fontWeight.medium },
+  summaryValueSmall: { fontSize: fontSize.sm, color: p.colors.textSecondary, fontStyle: 'italic' },
   totalRow: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', paddingTop: spacing.sm, marginTop: spacing.xs, marginBottom: 0 },
-  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary },
+  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.primary },
   footer: { position: 'absolute', bottom: 0, left: spacing.md, right: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, paddingBottom: spacing.xl, marginBottom: spacing.sm },
   footerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  footerTotalLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  footerTotalValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  checkoutButton: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: borderRadius.xl, justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
-  checkoutButtonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  footerTotalLabel: { fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
+  footerTotalValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  checkoutButton: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: spacing.md, borderRadius: borderRadius.xl, justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
+  checkoutButtonText: { color: p.colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
 });

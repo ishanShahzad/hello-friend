@@ -16,11 +16,15 @@ import api from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, fontWeight, glass, shadows } from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, shadows } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const STEPS = ['Account', 'Business', 'Store', 'Verify'];
 
 export default function SellerSignUpScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { setCurrentUser } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -102,7 +106,7 @@ export default function SellerSignUpScreen({ navigation }) {
     <View style={styles.inputGroup}>
       {opts.label && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-          {opts.icon && <Ionicons name={opts.icon} size={14} color={colors.primary} />}
+          {opts.icon && <Ionicons name={opts.icon} size={14} color={palette.colors.primary} />}
           <Text style={styles.label}>{opts.label}</Text>
         </View>
       )}
@@ -130,7 +134,7 @@ export default function SellerSignUpScreen({ navigation }) {
           {/* Header */}
           <GlassPanel variant="floating" style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => step > 0 ? setStep(step - 1) : navigation.goBack()}>
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
+              <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Seller Registration</Text>
@@ -142,7 +146,7 @@ export default function SellerSignUpScreen({ navigation }) {
 
           {error ? (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Ionicons name="alert-circle" size={16} color={palette.colors.error} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
@@ -204,8 +208,8 @@ export default function SellerSignUpScreen({ navigation }) {
 
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
                 <TouchableOpacity style={styles.skipBtn} onPress={() => handleStoreNext(true)}>
-                  {loading ? <ActivityIndicator color={colors.text} size="small" /> : (
-                    <><Ionicons name="play-skip-forward" size={16} color={colors.text} /><Text style={styles.skipBtnText}>Skip</Text></>
+                  {loading ? <ActivityIndicator color={palette.colors.text} size="small" /> : (
+                    <><Ionicons name="play-skip-forward" size={16} color={palette.colors.text} /><Text style={styles.skipBtnText}>Skip</Text></>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.nextBtn, { flex: 2 }]} onPress={() => handleStoreNext(false)} disabled={loading}>
@@ -222,7 +226,7 @@ export default function SellerSignUpScreen({ navigation }) {
             <GlassPanel variant="card" style={styles.formCard}>
               <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
                 <View style={styles.otpIcon}>
-                  <Ionicons name="shield-checkmark" size={36} color={colors.primary} />
+                  <Ionicons name="shield-checkmark" size={36} color={palette.colors.primary} />
                 </View>
                 <Text style={styles.formTitle}>Verify Your Email</Text>
                 <Text style={styles.formSubtitle}>We sent a code to {accountForm.email}</Text>
@@ -252,38 +256,38 @@ export default function SellerSignUpScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginBottom: spacing.md },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   stepRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.md },
   stepItem: { alignItems: 'center', flex: 1, position: 'relative' },
-  stepDot: { width: 30, height: 30, borderRadius: 15, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: glass.borderSubtle },
-  stepDotActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  stepNum: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textSecondary },
+  stepDot: { width: 30, height: 30, borderRadius: 15, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: p.glass.borderSubtle },
+  stepDotActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  stepNum: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary },
   stepNumActive: { color: '#fff' },
-  stepLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 4, fontWeight: fontWeight.medium },
-  stepLabelActive: { color: colors.primary },
-  stepLine: { position: 'absolute', top: 15, left: '65%', right: '-35%', height: 2, backgroundColor: glass.borderSubtle },
-  stepLineActive: { backgroundColor: colors.primary },
+  stepLabel: { fontSize: 10, color: p.colors.textSecondary, marginTop: 4, fontWeight: fontWeight.medium },
+  stepLabelActive: { color: p.colors.primary },
+  stepLine: { position: 'absolute', top: 15, left: '65%', right: '-35%', height: 2, backgroundColor: p.glass.borderSubtle },
+  stepLineActive: { backgroundColor: p.colors.primary },
   errorBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: 'rgba(239,68,68,0.1)', padding: spacing.md, borderRadius: 14, marginBottom: spacing.md },
-  errorText: { fontSize: fontSize.sm, color: colors.error, flex: 1 },
+  errorText: { fontSize: fontSize.sm, color: p.colors.error, flex: 1 },
   formCard: { padding: spacing.lg },
-  formTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center' },
-  formSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.lg },
+  formTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, textAlign: 'center' },
+  formSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.lg },
   inputGroup: { marginBottom: spacing.md },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: glass.borderSubtle },
-  input: { flex: 1, padding: spacing.md, fontSize: fontSize.md, color: colors.text },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16, marginTop: spacing.md, ...shadows.md },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  input: { flex: 1, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text },
+  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingVertical: 14, borderRadius: 16, marginTop: spacing.md, ...shadows.md },
   nextBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
-  skipBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: glass.bgSubtle, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: glass.borderSubtle },
-  skipBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  skipBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: p.glass.bgSubtle, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  skipBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
   otpIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
   resendBtn: { alignItems: 'center', marginTop: spacing.lg },
-  resendText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  resendText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
-  loginText: { fontSize: fontSize.md, color: colors.textSecondary },
-  loginLink: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
+  loginText: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  loginLink: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.primary },
 });

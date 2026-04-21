@@ -12,9 +12,13 @@ import Toast from 'react-native-toast-message';
 import api from '../../config/api';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -45,10 +49,10 @@ export default function ForgotPasswordScreen({ navigation }) {
           {/* Header */}
           <GlassPanel variant="floating" style={styles.topHeader}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
+              <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.logoRow}>
-              <View style={styles.logoIcon}><Ionicons name="storefront" size={18} color={colors.primary} /></View>
+              <View style={styles.logoIcon}><Ionicons name="storefront" size={18} color={palette.colors.primary} /></View>
               <Text style={styles.logoText}>Tortrose</Text>
             </View>
             <View style={{ width: 36 }} />
@@ -57,7 +61,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           {/* Hero */}
           <GlassPanel variant="strong" style={styles.hero}>
             <View style={styles.heroIconWrap}>
-              <Ionicons name={isSuccess ? 'checkmark-circle' : 'lock-open-outline'} size={32} color={colors.primary} />
+              <Ionicons name={isSuccess ? 'checkmark-circle' : 'lock-open-outline'} size={32} color={palette.colors.primary} />
             </View>
             <Text style={styles.heroTitle}>{isSuccess ? 'Email Sent! 📧' : 'Reset Password 🔐'}</Text>
             <Text style={styles.heroSub}>{isSuccess ? `We sent a reset link to\n${email}` : "Enter your email and we'll send a reset link"}</Text>
@@ -70,7 +74,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email Address</Text>
                   <View style={[styles.inputContainer, error && styles.inputError]}>
-                    <Ionicons name="mail-outline" size={18} color={error ? colors.error : 'rgba(255,255,255,0.4)'} style={{ marginRight: spacing.sm }} />
+                    <Ionicons name="mail-outline" size={18} color={error ? palette.colors.error : 'rgba(255,255,255,0.4)'} style={{ marginRight: spacing.sm }} />
                     <TextInput style={styles.input} placeholder="john@example.com" placeholderTextColor="rgba(255,255,255,0.3)"
                       value={email} onChangeText={(t) => { setEmail(t); if (error) setError(''); }} keyboardType="email-address" autoCapitalize="none" />
                   </View>
@@ -80,16 +84,16 @@ export default function ForgotPasswordScreen({ navigation }) {
                   {isLoading ? <ActivityIndicator color="#fff" /> : <><Ionicons name="send" size={16} color="#fff" /><Text style={styles.submitText}>Send Reset Link</Text></>}
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.backToLogin} onPress={() => navigation.navigate('Login')}>
-                  <Ionicons name="arrow-back" size={14} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: fontWeight.semibold }}>Back to Sign In</Text>
+                  <Ionicons name="arrow-back" size={14} color={palette.colors.primary} /><Text style={{ color: palette.colors.primary, fontWeight: fontWeight.semibold }}>Back to Sign In</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-                <View style={styles.successIcon}><Ionicons name="mail-open" size={48} color={colors.success} /></View>
-                <Text style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md }}>Check your inbox!</Text>
-                <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, lineHeight: 22 }}>Click the link in the email to create a new password. Expires in 15 minutes.</Text>
+                <View style={styles.successIcon}><Ionicons name="mail-open" size={48} color={palette.colors.success} /></View>
+                <Text style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: palette.colors.text, marginBottom: spacing.md }}>Check your inbox!</Text>
+                <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, lineHeight: 22 }}>Click the link in the email to create a new password. Expires in 15 minutes.</Text>
                 <TouchableOpacity style={styles.tryAgainBtn} onPress={() => { setIsSuccess(false); setEmail(''); setError(''); }}>
-                  <Ionicons name="refresh" size={16} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: fontWeight.semibold }}>Try a Different Email</Text>
+                  <Ionicons name="refresh" size={16} color={palette.colors.primary} /><Text style={{ color: palette.colors.primary, fontWeight: fontWeight.semibold }}>Try a Different Email</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Login')}>
                   <Text style={{ color: '#fff', fontWeight: fontWeight.semibold }}>Return to Sign In</Text><Ionicons name="arrow-forward" size={16} color="#fff" />
@@ -99,8 +103,8 @@ export default function ForgotPasswordScreen({ navigation }) {
 
             <View style={styles.divider} />
             <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-              <Text style={{ color: colors.textSecondary }}>Remember your password?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}><Text style={{ color: colors.primary, fontWeight: fontWeight.bold }}> Sign In</Text></TouchableOpacity>
+              <Text style={{ color: palette.colors.textSecondary }}>Remember your password?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}><Text style={{ color: palette.colors.primary, fontWeight: fontWeight.bold }}> Sign In</Text></TouchableOpacity>
             </View>
           </GlassPanel>
         </ScrollView>
@@ -109,28 +113,28 @@ export default function ForgotPasswordScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginBottom: spacing.md },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  logoIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
   hero: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   heroIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
-  heroTitle: { fontSize: 26, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
-  heroSub: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  heroTitle: { fontSize: 26, fontWeight: fontWeight.extrabold, color: p.colors.text, marginBottom: spacing.sm, textAlign: 'center' },
+  heroSub: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   card: { padding: spacing.xl },
   inputGroup: { marginBottom: spacing.lg },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, borderRadius: 16, borderWidth: 1.5, borderColor: glass.borderSubtle, paddingHorizontal: spacing.md, height: 52 },
-  inputError: { borderColor: colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
-  input: { flex: 1, fontSize: fontSize.md, color: colors.text },
-  errorText: { fontSize: fontSize.sm, color: colors.error, marginTop: 4 },
-  submitBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.md, marginBottom: spacing.md },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, borderRadius: 16, borderWidth: 1.5, borderColor: p.glass.borderSubtle, paddingHorizontal: spacing.md, height: 52 },
+  inputError: { borderColor: p.colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
+  input: { flex: 1, fontSize: fontSize.md, color: p.colors.text },
+  errorText: { fontSize: fontSize.sm, color: p.colors.error, marginTop: 4 },
+  submitBtn: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.md, marginBottom: spacing.md },
   submitText: { color: '#fff', fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   backToLogin: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.md, gap: 4 },
   successIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(34,197,94,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xl },
   tryAgainBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingVertical: spacing.md, borderRadius: 16, gap: spacing.sm, width: '100%', marginBottom: spacing.md },
-  loginBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: 16, gap: spacing.sm, width: '100%', ...shadows.md },
-  divider: { height: 1, backgroundColor: glass.borderSubtle, marginVertical: spacing.xl },
+  loginBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: p.colors.primary, paddingVertical: spacing.md, borderRadius: 16, gap: spacing.sm, width: '100%', ...shadows.md },
+  divider: { height: 1, backgroundColor: p.glass.borderSubtle, marginVertical: spacing.xl },
 });

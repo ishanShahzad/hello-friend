@@ -12,12 +12,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../config/api';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
 export default function OTPVerificationScreen({ route, navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { email, name } = route.params || {};
   const { verifyOTP, signup } = useAuth();
 
@@ -75,10 +79,10 @@ export default function OTPVerificationScreen({ route, navigation }) {
           {/* Header */}
           <GlassPanel variant="floating" style={styles.topHeader}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
+              <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.logoRow}>
-              <View style={styles.logoIcon}><Ionicons name="storefront" size={18} color={colors.primary} /></View>
+              <View style={styles.logoIcon}><Ionicons name="storefront" size={18} color={palette.colors.primary} /></View>
               <Text style={styles.logoText}>Tortrose</Text>
             </View>
             <View style={{ width: 36 }} />
@@ -86,9 +90,9 @@ export default function OTPVerificationScreen({ route, navigation }) {
 
           {/* Hero */}
           <GlassPanel variant="strong" style={styles.hero}>
-            <View style={styles.otpIconCircle}><Ionicons name="mail-open-outline" size={36} color={colors.primary} /></View>
+            <View style={styles.otpIconCircle}><Ionicons name="mail-open-outline" size={36} color={palette.colors.primary} /></View>
             <Text style={styles.heroTitle}>Verify Your Email</Text>
-            <Text style={styles.heroSub}>We sent a 6-digit code to{'\n'}<Text style={{ fontWeight: fontWeight.bold, color: colors.text }}>{maskedEmail}</Text></Text>
+            <Text style={styles.heroSub}>We sent a 6-digit code to{'\n'}<Text style={{ fontWeight: fontWeight.bold, color: palette.colors.text }}>{maskedEmail}</Text></Text>
           </GlassPanel>
 
           {/* OTP Card */}
@@ -108,15 +112,15 @@ export default function OTPVerificationScreen({ route, navigation }) {
               {isVerifying ? <ActivityIndicator color="#fff" size="small" /> : <><Text style={styles.verifyText}>Verify & Create Account</Text><Ionicons name="checkmark-circle" size={18} color="#fff" /></>}
             </TouchableOpacity>
             <View style={styles.resendRow}>
-              <Text style={{ fontSize: fontSize.md, color: colors.textSecondary }}>Didn't receive the code? </Text>
-              {countdown > 0 ? <Text style={{ fontSize: fontSize.md, color: colors.textSecondary }}>Resend in {countdown}s</Text> :
+              <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary }}>Didn't receive the code? </Text>
+              {countdown > 0 ? <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary }}>Resend in {countdown}s</Text> :
                 <TouchableOpacity onPress={handleResend} disabled={isResending}>
-                  {isResending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ fontSize: fontSize.md, color: colors.primary, fontWeight: fontWeight.bold }}>Resend Code</Text>}
+                  {isResending ? <ActivityIndicator size="small" color={palette.colors.primary} /> : <Text style={{ fontSize: fontSize.md, color: palette.colors.primary, fontWeight: fontWeight.bold }}>Resend Code</Text>}
                 </TouchableOpacity>}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: spacing.md }}>
               <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.3)" />
-              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>Check your spam folder if you don't see it</Text>
+              <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>Check your spam folder if you don't see it</Text>
             </View>
           </GlassPanel>
         </ScrollView>
@@ -125,24 +129,24 @@ export default function OTPVerificationScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginBottom: spacing.md },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  logoIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
   hero: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   otpIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
-  heroTitle: { fontSize: 26, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
-  heroSub: { fontSize: fontSize.md, color: colors.textSecondary, lineHeight: 24, textAlign: 'center' },
+  heroTitle: { fontSize: 26, fontWeight: fontWeight.extrabold, color: p.colors.text, marginBottom: spacing.sm, textAlign: 'center' },
+  heroSub: { fontSize: fontSize.md, color: p.colors.textSecondary, lineHeight: 24, textAlign: 'center' },
   card: { padding: spacing.xl },
-  codeLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.lg, textAlign: 'center' },
+  codeLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.lg, textAlign: 'center' },
   otpRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  otpBox: { width: 46, height: 54, borderRadius: 14, borderWidth: 2, borderColor: glass.border, backgroundColor: glass.bgSubtle, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  otpBoxFilled: { borderColor: colors.primary, backgroundColor: 'rgba(99,102,241,0.08)' },
-  otpBoxError: { borderColor: colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
-  errorText: { fontSize: fontSize.sm, color: colors.error, textAlign: 'center', marginBottom: spacing.md },
-  verifyBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.md, marginBottom: spacing.xl, marginTop: spacing.md },
+  otpBox: { width: 46, height: 54, borderRadius: 14, borderWidth: 2, borderColor: p.glass.border, backgroundColor: p.glass.bgSubtle, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  otpBoxFilled: { borderColor: p.colors.primary, backgroundColor: 'rgba(99,102,241,0.08)' },
+  otpBoxError: { borderColor: p.colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
+  errorText: { fontSize: fontSize.sm, color: p.colors.error, textAlign: 'center', marginBottom: spacing.md },
+  verifyBtn: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.md, marginBottom: spacing.xl, marginTop: spacing.md },
   verifyText: { color: '#fff', fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   resendRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

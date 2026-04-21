@@ -13,7 +13,8 @@ import { ProductCardSkeleton } from '../components/common/Skeleton';
 import { EmptyStores, EmptySearch } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const filterStoresByQuery = (stores, query) => {
   if (!query || !query.trim()) return stores;
@@ -22,6 +23,9 @@ export const filterStoresByQuery = (stores, query) => {
 };
 
 export default function StoresListingScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const [stores, setStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,17 +75,17 @@ export default function StoresListingScreen({ navigation }) {
                   </View>
                   {currentUser && (
                     <TouchableOpacity style={styles.trustedButton} onPress={() => navigation.navigate('TrustedStores')} activeOpacity={0.8}>
-                      <Ionicons name="heart" size={15} color={colors.heart} />
+                      <Ionicons name="heart" size={15} color={palette.colors.heart} />
                       <Text style={styles.trustedButtonText}>Trusted</Text>
                     </TouchableOpacity>
                   )}
                 </View>
                 <View style={styles.searchBox}>
-                  <Ionicons name="search" size={18} color={colors.textSecondary} />
-                  <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
+                  <Ionicons name="search" size={18} color={palette.colors.textSecondary} />
+                  <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={palette.colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
                   {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                      <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                      <Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -96,7 +100,7 @@ export default function StoresListingScreen({ navigation }) {
               <StoreCard store={{ _id: item._id, storeName: item.storeName, storeSlug: item.storeSlug, description: item.storeDescription || item.description, logo: item.storeLogo || item.logo, banner: item.storeBanner || item.banner, trustCount: item.trustCount || 0, verification: { isVerified: item.isVerified }, productCount: item.productCount || 0, views: item.views || 0 }} index={index} showTrustButton={!!currentUser} showDescription={true} showStats={true} />
             </View>
           )}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
           ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : <EmptyStores onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
         />
@@ -105,19 +109,19 @@ export default function StoresListingScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   heroHeader: { paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm },
   heroTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 2 },
-  heroSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 2 },
+  heroSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   trustedButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
-  trustedButtonText: { color: colors.heart, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  trustedButtonText: { color: p.colors.heart, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, height: 46, gap: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  searchInput: { flex: 1, fontSize: fontSize.md, color: p.colors.text },
   resultsRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  resultsText: { fontSize: fontSize.sm, color: colors.textSecondary },
-  resultsCount: { fontWeight: fontWeight.bold, color: colors.text },
+  resultsText: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  resultsCount: { fontWeight: fontWeight.bold, color: p.colors.text },
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   cardWrapper: { flex: 1, marginBottom: spacing.sm },

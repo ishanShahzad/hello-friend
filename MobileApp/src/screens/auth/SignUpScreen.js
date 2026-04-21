@@ -11,9 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function SignUpScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { signup, googleSignIn } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -77,10 +81,10 @@ export default function SignUpScreen({ navigation }) {
           {/* Header */}
           <View style={styles.topHeader}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.logoRow}>
-              <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={colors.white} /></View>
+              <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={palette.colors.white} /></View>
               <Text style={styles.logoText}>Tortrose</Text>
             </View>
             <View style={{ width: 40 }} />
@@ -98,9 +102,9 @@ export default function SignUpScreen({ navigation }) {
               <View key={field} style={styles.inputGroup}>
                 <Text style={styles.label}>{label}</Text>
                 <View style={inputStyle(field)}>
-                  <Ionicons name={icon} size={20} color={focused[field] ? colors.primary : colors.grayLight} style={styles.inputIcon} />
+                  <Ionicons name={icon} size={20} color={focused[field] ? palette.colors.primary : palette.colors.grayLight} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input} placeholder={placeholder} placeholderTextColor={colors.grayLight}
+                    style={styles.input} placeholder={placeholder} placeholderTextColor={palette.colors.grayLight}
                     value={field === 'name' ? name : email}
                     onChangeText={(v) => setField(field, v)}
                     onFocus={() => setFocused(f => ({ ...f, [field]: true }))}
@@ -116,12 +120,12 @@ export default function SignUpScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
               <View style={inputStyle('password')}>
-                <Ionicons name="lock-closed-outline" size={20} color={focused.password ? colors.primary : colors.grayLight} style={styles.inputIcon} />
-                <TextInput style={styles.input} placeholder="Min. 6 characters" placeholderTextColor={colors.grayLight}
+                <Ionicons name="lock-closed-outline" size={20} color={focused.password ? palette.colors.primary : palette.colors.grayLight} style={styles.inputIcon} />
+                <TextInput style={styles.input} placeholder="Min. 6 characters" placeholderTextColor={palette.colors.grayLight}
                   secureTextEntry={!showPassword} value={password} onChangeText={(v) => setField('password', v)}
                   onFocus={() => setFocused(f => ({ ...f, password: true }))} onBlur={() => setFocused(f => ({ ...f, password: false }))} />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.grayLight} />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={palette.colors.grayLight} />
                 </TouchableOpacity>
               </View>
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
@@ -131,20 +135,20 @@ export default function SignUpScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirm Password</Text>
               <View style={inputStyle('confirmPassword')}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={focused.confirmPassword ? colors.primary : colors.grayLight} style={styles.inputIcon} />
-                <TextInput style={styles.input} placeholder="Re-enter password" placeholderTextColor={colors.grayLight}
+                <Ionicons name="shield-checkmark-outline" size={20} color={focused.confirmPassword ? palette.colors.primary : palette.colors.grayLight} style={styles.inputIcon} />
+                <TextInput style={styles.input} placeholder="Re-enter password" placeholderTextColor={palette.colors.grayLight}
                   secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={(v) => setField('confirmPassword', v)}
                   onFocus={() => setFocused(f => ({ ...f, confirmPassword: true }))} onBlur={() => setFocused(f => ({ ...f, confirmPassword: false }))} />
                 <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.grayLight} />
+                  <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={palette.colors.grayLight} />
                 </TouchableOpacity>
               </View>
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
             </View>
 
             <TouchableOpacity style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]} onPress={handleSignUp} disabled={isLoading} activeOpacity={0.85}>
-              {isLoading ? <ActivityIndicator color={colors.white} size="small" /> : (
-                <><Text style={styles.signUpButtonText}>Create Account</Text><Ionicons name="arrow-forward" size={20} color={colors.white} /></>
+              {isLoading ? <ActivityIndicator color={palette.colors.white} size="small" /> : (
+                <><Text style={styles.signUpButtonText}>Create Account</Text><Ionicons name="arrow-forward" size={20} color={palette.colors.white} /></>
               )}
             </TouchableOpacity>
 
@@ -176,40 +180,40 @@ export default function SignUpScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingBottom: spacing.xxxl },
   topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.xxxl, paddingBottom: spacing.sm },
   backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroSection: { paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, paddingBottom: spacing.xl },
-  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.sm },
-  heroSubtitle: { fontSize: fontSize.md, color: colors.textSecondary, lineHeight: 22 },
+  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: p.colors.text, marginBottom: spacing.sm },
+  heroSubtitle: { fontSize: fontSize.md, color: p.colors.textSecondary, lineHeight: 22 },
   card: { marginHorizontal: spacing.lg, padding: spacing.xxl, marginBottom: spacing.lg },
   inputGroup: { marginBottom: spacing.md },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm, letterSpacing: 0.3 },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm, letterSpacing: 0.3 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: borderRadius.xl, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: spacing.md, height: 56 },
-  inputFocused: { borderColor: colors.primary, backgroundColor: 'rgba(255,255,255,0.8)' },
-  inputError: { borderColor: colors.error, backgroundColor: colors.errorSubtle },
+  inputFocused: { borderColor: p.colors.primary, backgroundColor: 'rgba(255,255,255,0.8)' },
+  inputError: { borderColor: p.colors.error, backgroundColor: p.colors.errorSubtle },
   inputIcon: { marginRight: spacing.sm },
-  input: { flex: 1, fontSize: fontSize.md, color: colors.text, paddingVertical: 0 },
+  input: { flex: 1, fontSize: fontSize.md, color: p.colors.text, paddingVertical: 0 },
   eyeButton: { padding: spacing.sm },
-  errorText: { fontSize: fontSize.sm, color: colors.error, marginTop: spacing.xs, marginLeft: spacing.xs },
-  signUpButton: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.xl, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.primaryMd, marginBottom: spacing.xl, marginTop: spacing.sm },
+  errorText: { fontSize: fontSize.sm, color: p.colors.error, marginTop: spacing.xs, marginLeft: spacing.xs },
+  signUpButton: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.xl, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.primaryMd, marginBottom: spacing.xl, marginTop: spacing.sm },
   signUpButtonDisabled: { opacity: 0.7 },
-  signUpButtonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.bold },
+  signUpButtonText: { color: p.colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   divider: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
-  dividerText: { marginHorizontal: spacing.md, fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  dividerText: { marginHorizontal: spacing.md, fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
   googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', borderRadius: borderRadius.xl, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: spacing.sm },
   googleButtonDisabled: { opacity: 0.7 },
   googleIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#4285F4', alignItems: 'center', justifyContent: 'center' },
-  googleIconText: { color: colors.white, fontSize: fontSize.md, fontWeight: fontWeight.bold, lineHeight: 20 },
-  googleButtonText: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.semibold },
+  googleIconText: { color: p.colors.white, fontSize: fontSize.md, fontWeight: fontWeight.bold, lineHeight: 20 },
+  googleButtonText: { fontSize: fontSize.md, color: p.colors.text, fontWeight: fontWeight.semibold },
   loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  loginText: { fontSize: fontSize.md, color: colors.textSecondary },
-  loginLink: { fontSize: fontSize.md, color: colors.primary, fontWeight: fontWeight.bold },
-  footerText: { fontSize: fontSize.xs, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xxl, marginTop: spacing.md },
+  loginText: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  loginLink: { fontSize: fontSize.md, color: p.colors.primary, fontWeight: fontWeight.bold },
+  footerText: { fontSize: fontSize.xs, color: p.colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xxl, marginTop: spacing.md },
 });

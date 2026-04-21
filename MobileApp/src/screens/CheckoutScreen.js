@@ -19,9 +19,13 @@ import { Loader, InlineLoader } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { trackCheckoutStep, trackPaymentEvent, trackError } from '../utils/breadcrumbs';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function CheckoutScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const { cartItems, fetchCart } = useGlobal();
   const { formatPrice } = useCurrency();
@@ -251,7 +255,7 @@ export default function CheckoutScreen({ navigation }) {
     return (
       <View style={[styles.inputGroup, options.halfWidth && styles.halfInput]}>
         <View style={[styles.inputContainer, hasError && styles.inputContainerError]}>
-          {options.icon && <Ionicons name={options.icon} size={18} color={hasError ? colors.error : 'rgba(255,255,255,0.5)'} style={styles.inputIcon} />}
+          {options.icon && <Ionicons name={options.icon} size={18} color={hasError ? palette.colors.error : 'rgba(255,255,255,0.5)'} style={styles.inputIcon} />}
           <TextInput
             style={styles.input} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.35)"
             value={formData[field]} onChangeText={(value) => handleInputChange(field, value)}
@@ -286,14 +290,14 @@ export default function CheckoutScreen({ navigation }) {
         {/* Glass Header */}
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color={colors.text} />
+            <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Checkout</Text>
             <Text style={styles.headerSubtitle}>{cartItems.cart.length} items · {formatPrice(totalAmount)}</Text>
           </View>
           <View style={styles.lockIcon}>
-            <Ionicons name="lock-closed" size={18} color={colors.primary} />
+            <Ionicons name="lock-closed" size={18} color={palette.colors.primary} />
           </View>
         </GlassPanel>
 
@@ -301,7 +305,7 @@ export default function CheckoutScreen({ navigation }) {
           {/* Order Items */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="bag-outline" size={18} color={colors.primary} />
+              <Ionicons name="bag-outline" size={18} color={palette.colors.primary} />
               <Text style={styles.sectionTitle}>Order Items</Text>
               <View style={styles.badge}><Text style={styles.badgeText}>{cartItems.cart.length}</Text></View>
             </View>
@@ -314,8 +318,8 @@ export default function CheckoutScreen({ navigation }) {
                     <Text style={styles.cartItemName} numberOfLines={2}>{item.product?.name}</Text>
                     {item.selectedColor && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                        <Ionicons name="color-palette-outline" size={11} color={colors.primary} />
-                        <Text style={{ fontSize: 11, color: colors.primary }}>{item.selectedColor}</Text>
+                        <Ionicons name="color-palette-outline" size={11} color={palette.colors.primary} />
+                        <Text style={{ fontSize: 11, color: palette.colors.primary }}>{item.selectedColor}</Text>
                       </View>
                     )}
                     <Text style={styles.cartItemQty}>Qty: {item.qty || item.quantity || 1}</Text>
@@ -329,12 +333,12 @@ export default function CheckoutScreen({ navigation }) {
           {/* Shipping Info */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="location-outline" size={18} color={colors.secondary} />
+              <Ionicons name="location-outline" size={18} color={palette.colors.secondary} />
               <Text style={styles.sectionTitle}>Shipping Information</Text>
               {savedShippingInfo?.fullName && (
                 <TouchableOpacity onPress={autoFillShipping} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16 }}>
-                  <Ionicons name="flash-outline" size={14} color={colors.primary} />
-                  <Text style={{ fontSize: 12, color: colors.primary, fontWeight: fontWeight.semibold }}>Auto Fill</Text>
+                  <Ionicons name="flash-outline" size={14} color={palette.colors.primary} />
+                  <Text style={{ fontSize: 12, color: palette.colors.primary, fontWeight: fontWeight.semibold }}>Auto Fill</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -360,14 +364,14 @@ export default function CheckoutScreen({ navigation }) {
             </View>
             {appliedCoupon ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(34,197,94,0.1)', padding: spacing.md, borderRadius: 14, gap: spacing.sm }}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Ionicons name="checkmark-circle" size={20} color={palette.colors.success} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.success }}>{appliedCoupon.code}</Text>
-                  <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.success }}>{appliedCoupon.code}</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>
                     {appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% off` : `${formatPrice(appliedCoupon.discountValue)} off`} · Saving {formatPrice(couponDiscount)}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={handleRemoveCoupon}><Ionicons name="close-circle" size={22} color={colors.error} /></TouchableOpacity>
+                <TouchableOpacity onPress={handleRemoveCoupon}><Ionicons name="close-circle" size={22} color={palette.colors.error} /></TouchableOpacity>
               </View>
             ) : (
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -375,7 +379,7 @@ export default function CheckoutScreen({ navigation }) {
                   <Ionicons name="pricetag-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.inputIcon} />
                   <TextInput style={styles.input} placeholder="Enter coupon code" placeholderTextColor="rgba(255,255,255,0.35)" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
                 </View>
-                <TouchableOpacity style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.lg, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }} onPress={handleApplyCoupon} disabled={couponLoading}>
+                <TouchableOpacity style={{ backgroundColor: palette.colors.primary, paddingHorizontal: spacing.lg, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }} onPress={handleApplyCoupon} disabled={couponLoading}>
                   {couponLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.sm }}>Apply</Text>}
                 </TouchableOpacity>
               </View>
@@ -385,14 +389,14 @@ export default function CheckoutScreen({ navigation }) {
           {/* Payment Method */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="card-outline" size={18} color={colors.info} />
+              <Ionicons name="card-outline" size={18} color={palette.colors.info} />
               <Text style={styles.sectionTitle}>Payment Method</Text>
             </View>
             <TouchableOpacity style={[styles.paymentOption, paymentMethod === 'cash_on_delivery' && styles.paymentSelected]} onPress={() => setPaymentMethod('cash_on_delivery')}>
               <View style={[styles.radio, paymentMethod === 'cash_on_delivery' && styles.radioSelected]}>
                 {paymentMethod === 'cash_on_delivery' && <View style={styles.radioInner} />}
               </View>
-              <Ionicons name="cash-outline" size={22} color={colors.success} />
+              <Ionicons name="cash-outline" size={22} color={palette.colors.success} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.paymentTitle}>Cash on Delivery</Text>
                 <Text style={styles.paymentSub}>Pay when you receive your order</Text>
@@ -403,26 +407,26 @@ export default function CheckoutScreen({ navigation }) {
               <View style={[styles.radio, paymentMethod === 'card' && styles.radioSelected]}>
                 {paymentMethod === 'card' && <View style={styles.radioInner} />}
               </View>
-              <Ionicons name="card-outline" size={22} color={colors.primary} />
+              <Ionicons name="card-outline" size={22} color={palette.colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.paymentTitle}>Credit / Debit Card</Text>
                 <Text style={styles.paymentSub}>Secure payment via Stripe</Text>
               </View>
-              <Ionicons name="shield-checkmark-outline" size={16} color={colors.success} />
+              <Ionicons name="shield-checkmark-outline" size={16} color={palette.colors.success} />
             </TouchableOpacity>
           </GlassPanel>
 
           {/* Order Summary */}
           <GlassPanel variant="card" style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="receipt-outline" size={18} color={colors.warning} />
+              <Ionicons name="receipt-outline" size={18} color={palette.colors.warning} />
               <Text style={styles.sectionTitle}>Order Summary</Text>
               {summaryLoading && <Loader size="small" />}
             </View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Subtotal</Text><Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text></View>
-            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{shippingLabel}</Text><Text style={[styles.summaryValue, shippingCost === 0 && { color: colors.success }]}>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</Text></View>
+            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{shippingLabel}</Text><Text style={[styles.summaryValue, shippingCost === 0 && { color: palette.colors.success }]}>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</Text></View>
             {tax > 0 && <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{taxLabel}</Text><Text style={styles.summaryValue}>{formatPrice(tax)}</Text></View>}
-            {couponDiscount > 0 && <View style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: colors.success }]}>Coupon Discount</Text><Text style={[styles.summaryValue, { color: colors.success }]}>-{formatPrice(couponDiscount)}</Text></View>}
+            {couponDiscount > 0 && <View style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: palette.colors.success }]}>Coupon Discount</Text><Text style={[styles.summaryValue, { color: palette.colors.success }]}>-{formatPrice(couponDiscount)}</Text></View>}
             <View style={styles.divider} />
             <View style={styles.summaryRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatPrice(totalAmount)}</Text></View>
           </GlassPanel>
@@ -451,17 +455,17 @@ export default function CheckoutScreen({ navigation }) {
           <GlassPanel variant="strong" style={{ padding: spacing.xl, width: '100%', maxWidth: 360, borderRadius: 24 }}>
             <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
               <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md }}>
-                <Ionicons name="location" size={28} color={colors.primary} />
+                <Ionicons name="location" size={28} color={palette.colors.primary} />
               </View>
-              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs }}>Update Shipping Info?</Text>
-              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center' }}>Your shipping details have changed. Save them for future orders?</Text>
+              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginBottom: spacing.xs }}>Update Shipping Info?</Text>
+              <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, textAlign: 'center' }}>Your shipping details have changed. Save them for future orders?</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
-              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: glass.bgSubtle, alignItems: 'center', borderWidth: 1, borderColor: glass.borderSubtle }}
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: palette.glass.bgSubtle, alignItems: 'center', borderWidth: 1, borderColor: palette.glass.borderSubtle }}
                 onPress={async () => { setShowUpdatePrompt(false); await completeOrder(pendingOrderData?.order, false); }}>
-                <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }}>No, Keep</Text>
+                <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: palette.colors.text }}>No, Keep</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center' }}
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: palette.colors.primary, alignItems: 'center' }}
                 onPress={async () => { setShowUpdatePrompt(false); await completeOrder(pendingOrderData?.order, true); }}>
                 <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' }}>Yes, Update</Text>
               </TouchableOpacity>
@@ -473,52 +477,52 @@ export default function CheckoutScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  lockIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
+  lockIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
   section: { marginBottom: spacing.md, padding: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, gap: spacing.sm },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text, flex: 1 },
   badge: { backgroundColor: 'rgba(99,102,241,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-  badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
-  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: glass.borderSubtle },
-  cartItemImage: { width: 52, height: 52, borderRadius: 12, backgroundColor: glass.bgSubtle },
+  badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.primary },
+  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: p.glass.borderSubtle },
+  cartItemImage: { width: 52, height: 52, borderRadius: 12, backgroundColor: p.glass.bgSubtle },
   cartItemInfo: { flex: 1, marginLeft: spacing.md },
-  cartItemName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text, marginBottom: 2 },
-  cartItemQty: { fontSize: fontSize.xs, color: colors.textSecondary },
-  cartItemPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  cartItemName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: p.colors.text, marginBottom: 2 },
+  cartItemQty: { fontSize: fontSize.xs, color: p.colors.textSecondary },
+  cartItemPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.text },
   inputGroup: { marginBottom: spacing.md },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: glass.borderSubtle, paddingHorizontal: spacing.md },
-  inputContainerError: { borderColor: colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: p.glass.borderSubtle, paddingHorizontal: spacing.md },
+  inputContainerError: { borderColor: p.colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
   inputIcon: { marginRight: spacing.sm },
-  input: { flex: 1, paddingVertical: 13, fontSize: fontSize.md, color: colors.text },
-  errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 4, marginLeft: 4 },
+  input: { flex: 1, paddingVertical: 13, fontSize: fontSize.md, color: p.colors.text },
+  errorText: { fontSize: fontSize.xs, color: p.colors.error, marginTop: 4, marginLeft: 4 },
   row: { flexDirection: 'row', gap: spacing.md },
   halfInput: { flex: 1 },
-  paymentOption: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, padding: spacing.md, borderRadius: 16, borderWidth: 1.5, borderColor: glass.borderSubtle, gap: spacing.md },
-  paymentSelected: { borderColor: colors.primary, backgroundColor: 'rgba(99,102,241,0.08)' },
+  paymentOption: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, padding: spacing.md, borderRadius: 16, borderWidth: 1.5, borderColor: p.glass.borderSubtle, gap: spacing.md },
+  paymentSelected: { borderColor: p.colors.primary, backgroundColor: 'rgba(99,102,241,0.08)' },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
-  radioSelected: { borderColor: colors.primary },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  paymentTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  paymentSub: { fontSize: fontSize.sm, color: colors.textSecondary },
+  radioSelected: { borderColor: p.colors.primary },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: p.colors.primary },
+  paymentTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  paymentSub: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  summaryLabel: { fontSize: fontSize.md, color: colors.textSecondary },
-  summaryValue: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
-  divider: { height: 1, backgroundColor: glass.borderSubtle, marginVertical: spacing.md },
-  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary },
+  summaryLabel: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  summaryValue: { fontSize: fontSize.md, color: p.colors.text, fontWeight: fontWeight.medium },
+  divider: { height: 1, backgroundColor: p.glass.borderSubtle, marginVertical: spacing.md },
+  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.primary },
   footer: { position: 'absolute', bottom: 0, left: spacing.md, right: spacing.md, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.lg, marginBottom: spacing.sm },
-  footerLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
-  footerValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  placeOrderBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: spacing.xl, borderRadius: 16, alignItems: 'center', gap: spacing.sm, ...shadows.md },
+  footerLabel: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  footerValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  placeOrderBtn: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: 14, paddingHorizontal: spacing.xl, borderRadius: 16, alignItems: 'center', gap: spacing.sm, ...shadows.md },
   placeOrderText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   emptyCard: { alignItems: 'center', padding: spacing.xxl },
-  emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.xl },
-  shopButton: { backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: spacing.xl, borderRadius: 16 },
+  emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: p.colors.text, marginTop: spacing.lg, marginBottom: spacing.xl },
+  shopButton: { backgroundColor: p.colors.primary, paddingVertical: 14, paddingHorizontal: spacing.xl, borderRadius: 16 },
   shopButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
 });
