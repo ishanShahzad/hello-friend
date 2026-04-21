@@ -173,7 +173,9 @@ async function callAI(messages, userContext, role) {
 // ─── Main Component ───
 export default function ChatBot({ embedded = false, dashboardRole = null, visible = true, onClose, navigation }) {
   const { currentUser } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const styles = makeStyles(palette);
   const effectiveRole = dashboardRole || currentUser?.role || 'user';
   const roleInfo = ROLE_TITLES[effectiveRole] || ROLE_TITLES.user;
 
