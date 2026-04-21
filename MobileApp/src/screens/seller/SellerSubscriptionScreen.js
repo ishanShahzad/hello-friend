@@ -12,17 +12,16 @@ import api from '../../config/api';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import Loader from '../../components/common/Loader';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const STATUS_MAP = {
-  trial: { label: 'Free Trial', color: colors.primary, icon: 'time-outline' },
-  free_period: { label: '90-Day Free', color: colors.success, icon: 'sparkles-outline' },
-  active: { label: 'Active', color: colors.success, icon: 'checkmark-circle-outline' },
-  past_due: { label: 'Past Due', color: colors.warning, icon: 'alert-circle-outline' },
-  blocked: { label: 'Blocked', color: colors.error, icon: 'lock-closed-outline' },
-  cancelled: { label: 'Cancelled', color: colors.gray, icon: 'close-circle-outline' },
+  trial: { label: 'Free Trial', color: palette.colors.primary, icon: 'time-outline' },
+  free_period: { label: '90-Day Free', color: palette.colors.success, icon: 'sparkles-outline' },
+  active: { label: 'Active', color: palette.colors.success, icon: 'checkmark-circle-outline' },
+  past_due: { label: 'Past Due', color: palette.colors.warning, icon: 'alert-circle-outline' },
+  blocked: { label: 'Blocked', color: palette.colors.error, icon: 'lock-closed-outline' },
+  cancelled: { label: 'Cancelled', color: palette.colors.gray, icon: 'close-circle-outline' },
 };
 
 const FEATURES = [
@@ -41,6 +40,9 @@ const STEPS = [
 ];
 
 export default function SellerSubscriptionScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -120,7 +122,7 @@ export default function SellerSubscriptionScreen({ navigation }) {
         {/* Header */}
         <View style={styles.navBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <Text style={styles.navTitle}>Subscription</Text>
           <View style={{ width: 36 }} />
@@ -129,14 +131,14 @@ export default function SellerSubscriptionScreen({ navigation }) {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSubscription(); }} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSubscription(); }} tintColor={palette.colors.primary} />}
         >
           {/* Blocked Banner */}
           {isBlocked && (
             <GlassPanel variant="card" style={styles.blockedBanner}>
               <View style={styles.blockedRow}>
                 <View style={styles.blockedIconWrap}>
-                  <Ionicons name="lock-closed" size={20} color={colors.error} />
+                  <Ionicons name="lock-closed" size={20} color={palette.colors.error} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.blockedTitle}>Store Temporarily Blocked</Text>
@@ -145,11 +147,11 @@ export default function SellerSubscriptionScreen({ navigation }) {
                   </Text>
                   <View style={styles.blockedTags}>
                     <View style={styles.blockedTag}>
-                      <Ionicons name="storefront-outline" size={11} color={colors.error} />
+                      <Ionicons name="storefront-outline" size={11} color={palette.colors.error} />
                       <Text style={styles.blockedTagText}>Store hidden</Text>
                     </View>
                     <View style={styles.blockedTag}>
-                      <Ionicons name="cube-outline" size={11} color={colors.error} />
+                      <Ionicons name="cube-outline" size={11} color={palette.colors.error} />
                       <Text style={styles.blockedTagText}>Products hidden</Text>
                     </View>
                   </View>
@@ -173,8 +175,8 @@ export default function SellerSubscriptionScreen({ navigation }) {
           {/* Current Plan */}
           <GlassPanel variant="strong" style={styles.planCard}>
             <View style={styles.planHeader}>
-              <View style={[styles.planIcon, { backgroundColor: isSubscribed ? colors.success : colors.primary }]}>
-                <Ionicons name="diamond-outline" size={22} color={colors.white} />
+              <View style={[styles.planIcon, { backgroundColor: isSubscribed ? palette.colors.success : palette.colors.primary }]}>
+                <Ionicons name="diamond-outline" size={22} color={palette.colors.white} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.planTitle}>
@@ -200,7 +202,7 @@ export default function SellerSubscriptionScreen({ navigation }) {
 
             {/* AI Limit Info */}
             <View style={styles.aiLimitRow}>
-              <Ionicons name="chatbubbles-outline" size={16} color={colors.primary} />
+              <Ionicons name="chatbubbles-outline" size={16} color={palette.colors.primary} />
               <View style={{ flex: 1, marginLeft: spacing.sm }}>
                 <Text style={styles.aiLimitTitle}>AI Messages</Text>
                 <Text style={styles.aiLimitDesc}>
@@ -213,9 +215,9 @@ export default function SellerSubscriptionScreen({ navigation }) {
 
           {/* Pricing Card */}
           {showSubscribeButton && (
-            <GlassPanel variant="strong" style={[styles.pricingCard, { borderColor: `${colors.primary}40`, borderWidth: 2 }]}>
+            <GlassPanel variant="strong" style={[styles.pricingCard, { borderColor: `${palette.colors.primary}40`, borderWidth: 2 }]}>
               <View style={styles.pricingBadge}>
-                <Ionicons name="sparkles" size={12} color={colors.success} />
+                <Ionicons name="sparkles" size={12} color={palette.colors.success} />
                 <Text style={styles.pricingBadgeText}>90 DAYS FREE</Text>
               </View>
 
@@ -229,7 +231,7 @@ export default function SellerSubscriptionScreen({ navigation }) {
               {FEATURES.map((f, i) => (
                 <View key={i} style={styles.featureRow}>
                   <View style={styles.featureIcon}>
-                    <Ionicons name={f.icon} size={14} color={colors.success} />
+                    <Ionicons name={f.icon} size={14} color={palette.colors.success} />
                   </View>
                   <Text style={styles.featureText}>{f.text}</Text>
                 </View>
@@ -242,12 +244,12 @@ export default function SellerSubscriptionScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 {checkoutLoading ? (
-                  <ActivityIndicator color={colors.white} size="small" />
+                  <ActivityIndicator color={palette.colors.white} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="card-outline" size={16} color={colors.white} />
+                    <Ionicons name="card-outline" size={16} color={palette.colors.white} />
                     <Text style={styles.subscribeBtnText}>Subscribe Now — 90 Days Free</Text>
-                    <Ionicons name="arrow-forward" size={16} color={colors.white} />
+                    <Ionicons name="arrow-forward" size={16} color={palette.colors.white} />
                   </>
                 )}
               </TouchableOpacity>
@@ -267,7 +269,7 @@ export default function SellerSubscriptionScreen({ navigation }) {
                     <Text style={[styles.stepNum, isActive && styles.stepNumActive]}>{s.step}</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: spacing.md }}>
-                    <Text style={[styles.stepTitle, isActive && { color: colors.text }]}>{s.title}</Text>
+                    <Text style={[styles.stepTitle, isActive && { color: palette.colors.text }]}>{s.title}</Text>
                     <Text style={styles.stepDesc}>{s.desc}</Text>
                   </View>
                 </View>
@@ -282,63 +284,63 @@ export default function SellerSubscriptionScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center' },
-  navTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  navTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
-  blockedBanner: { marginBottom: spacing.lg, padding: spacing.lg, backgroundColor: `${colors.error}08`, borderColor: `${colors.error}25`, borderWidth: 1 },
+  blockedBanner: { marginBottom: spacing.lg, padding: spacing.lg, backgroundColor: `${p.colors.error}08`, borderColor: `${p.colors.error}25`, borderWidth: 1 },
   blockedRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  blockedIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: `${colors.error}15`, justifyContent: 'center', alignItems: 'center' },
-  blockedTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.error },
-  blockedDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  blockedIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: `${p.colors.error}15`, justifyContent: 'center', alignItems: 'center' },
+  blockedTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.error },
+  blockedDesc: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
   blockedTags: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  blockedTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${colors.error}10`, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: borderRadius.md },
-  blockedTagText: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.error },
+  blockedTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${p.colors.error}10`, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: borderRadius.md },
+  blockedTagText: { fontSize: 10, fontWeight: fontWeight.medium, color: p.colors.error },
 
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  pageTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  pageSubtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  pageTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  pageSubtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full },
   statusText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 
   planCard: { padding: spacing.lg, marginBottom: spacing.lg },
   planHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   planIcon: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  planTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  planDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  cancelBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, backgroundColor: `${colors.error}10` },
-  cancelBtnText: { fontSize: fontSize.xs, color: colors.error, fontWeight: fontWeight.semibold },
+  planTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.text },
+  planDesc: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
+  cancelBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, backgroundColor: `${p.colors.error}10` },
+  cancelBtnText: { fontSize: fontSize.xs, color: p.colors.error, fontWeight: fontWeight.semibold },
 
-  aiLimitRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.primary}08` },
-  aiLimitTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.text },
-  aiLimitDesc: { fontSize: 10, color: colors.textSecondary },
+  aiLimitRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${p.colors.primary}08` },
+  aiLimitTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.text },
+  aiLimitDesc: { fontSize: 10, color: p.colors.textSecondary },
 
   pricingCard: { padding: spacing.lg, marginBottom: spacing.lg, alignItems: 'center' },
-  pricingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${colors.success}12`, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full, marginBottom: spacing.md },
-  pricingBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.success },
+  pricingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${p.colors.success}12`, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full, marginBottom: spacing.md },
+  pricingBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.success },
   pricingPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs, marginBottom: spacing.xs },
-  pricingOld: { fontSize: fontSize.md, color: colors.textSecondary, textDecorationLine: 'line-through' },
-  pricingNew: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: colors.text },
-  pricingPeriod: { fontSize: fontSize.sm, color: colors.textSecondary },
-  pricingAfter: { fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: spacing.lg },
+  pricingOld: { fontSize: fontSize.md, color: p.colors.textSecondary, textDecorationLine: 'line-through' },
+  pricingNew: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: p.colors.text },
+  pricingPeriod: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  pricingAfter: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginBottom: spacing.lg },
 
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xs, alignSelf: 'stretch' },
-  featureIcon: { width: 24, height: 24, borderRadius: 8, backgroundColor: `${colors.success}12`, justifyContent: 'center', alignItems: 'center' },
-  featureText: { fontSize: fontSize.xs, color: colors.text, flex: 1 },
+  featureIcon: { width: 24, height: 24, borderRadius: 8, backgroundColor: `${p.colors.success}12`, justifyContent: 'center', alignItems: 'center' },
+  featureText: { fontSize: fontSize.xs, color: p.colors.text, flex: 1 },
 
-  subscribeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: spacing.md + 2, borderRadius: borderRadius.lg, marginTop: spacing.lg, alignSelf: 'stretch' },
-  subscribeBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.white },
-  stripeNote: { fontSize: 9, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm },
+  subscribeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingVertical: spacing.md + 2, borderRadius: borderRadius.lg, marginTop: spacing.lg, alignSelf: 'stretch' },
+  subscribeBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.white },
+  stripeNote: { fontSize: 9, color: p.colors.textSecondary, textAlign: 'center', marginTop: spacing.sm },
 
   timelineCard: { padding: spacing.lg, marginBottom: spacing.lg },
-  timelineTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
+  timelineTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.md },
   stepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md },
   stepCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center' },
-  stepCircleActive: { backgroundColor: colors.primary },
-  stepNum: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textSecondary },
-  stepNumActive: { color: colors.white },
-  stepTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textSecondary },
-  stepDesc: { fontSize: 10, color: colors.textSecondary, marginTop: 1 },
+  stepCircleActive: { backgroundColor: p.colors.primary },
+  stepNum: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary },
+  stepNumActive: { color: p.colors.white },
+  stepTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary },
+  stepDesc: { fontSize: 10, color: p.colors.textSecondary, marginTop: 1 },
 });

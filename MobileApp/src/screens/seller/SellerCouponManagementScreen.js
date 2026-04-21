@@ -15,9 +15,13 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import Loader from '../../components/common/Loader';
-import { colors, spacing, fontSize, fontWeight, borderRadius, glass, shadows } from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, shadows } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function SellerCouponManagementScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { formatPrice } = useCurrency();
   const [coupons, setCoupons] = useState([]);
   const [products, setProducts] = useState([]);
@@ -115,11 +119,11 @@ export default function SellerCouponManagementScreen({ navigation }) {
       <GlassPanel variant="card" style={styles.couponCard}>
         <View style={styles.couponHeader}>
           <View style={[styles.couponBadge, { backgroundColor: item.isActive && !isExpired ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' }]}>
-            <Text style={[styles.couponCode, { color: item.isActive && !isExpired ? colors.success : colors.error }]}>{item.code}</Text>
+            <Text style={[styles.couponCode, { color: item.isActive && !isExpired ? palette.colors.success : palette.colors.error }]}>{item.code}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TouchableOpacity onPress={() => handleEdit(item)}><Ionicons name="create-outline" size={20} color={colors.primary} /></TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(item._id)}><Ionicons name="trash-outline" size={20} color={colors.error} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => handleEdit(item)}><Ionicons name="create-outline" size={20} color={palette.colors.primary} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDelete(item._id)}><Ionicons name="trash-outline" size={20} color={palette.colors.error} /></TouchableOpacity>
           </View>
         </View>
         <Text style={styles.couponDiscount}>
@@ -128,11 +132,11 @@ export default function SellerCouponManagementScreen({ navigation }) {
         {item.description ? <Text style={styles.couponDesc} numberOfLines={2}>{item.description}</Text> : null}
         <View style={styles.couponMeta}>
           <Text style={styles.metaText}>Used: {item.usedCount || 0}{item.maxUses ? `/${item.maxUses}` : ''}</Text>
-          {item.expiryDate && <Text style={[styles.metaText, isExpired && { color: colors.error }]}>{isExpired ? 'Expired' : `Expires: ${new Date(item.expiryDate).toLocaleDateString()}`}</Text>}
+          {item.expiryDate && <Text style={[styles.metaText, isExpired && { color: palette.colors.error }]}>{isExpired ? 'Expired' : `Expires: ${new Date(item.expiryDate).toLocaleDateString()}`}</Text>}
         </View>
         <View style={styles.couponFooter}>
           <Text style={styles.metaText}>{item.applicableTo === 'all' ? 'All Products' : `${item.applicableProducts?.length || 0} Products`}</Text>
-          <Switch value={item.isActive} onValueChange={() => handleToggle(item)} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={item.isActive ? colors.primary : colors.grayLight} />
+          <Switch value={item.isActive} onValueChange={() => handleToggle(item)} trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }} thumbColor={item.isActive ? palette.colors.primary : palette.colors.grayLight} />
         </View>
       </GlassPanel>
     );
@@ -145,7 +149,7 @@ export default function SellerCouponManagementScreen({ navigation }) {
       {/* Header */}
       <GlassPanel variant="floating" style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Coupons</Text>
@@ -171,12 +175,12 @@ export default function SellerCouponManagementScreen({ navigation }) {
           renderItem={renderCoupon}
           keyExtractor={item => item._id}
           contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
           ListEmptyComponent={
             <GlassPanel variant="card" style={{ alignItems: 'center', padding: spacing.xxl }}>
               <Ionicons name="pricetag-outline" size={48} color="rgba(255,255,255,0.3)" />
-              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md }}>No Coupons</Text>
-              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs }}>Create your first coupon to attract customers</Text>
+              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.md }}>No Coupons</Text>
+              <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginTop: spacing.xs }}>Create your first coupon to attract customers</Text>
             </GlassPanel>
           }
         />
@@ -186,23 +190,23 @@ export default function SellerCouponManagementScreen({ navigation }) {
             <>
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
                 {[
-                  { label: 'Total Coupons', value: analyticsData.totalCoupons || coupons.length, icon: 'pricetag', color: colors.primary },
-                  { label: 'Total Uses', value: analyticsData.totalUses || 0, icon: 'people', color: colors.info },
-                  { label: 'Revenue Impact', value: formatPrice(analyticsData.totalDiscount || 0), icon: 'trending-up', color: colors.success },
+                  { label: 'Total Coupons', value: analyticsData.totalCoupons || coupons.length, icon: 'pricetag', color: palette.colors.primary },
+                  { label: 'Total Uses', value: analyticsData.totalUses || 0, icon: 'people', color: palette.colors.info },
+                  { label: 'Revenue Impact', value: formatPrice(analyticsData.totalDiscount || 0), icon: 'trending-up', color: palette.colors.success },
                 ].map((stat, i) => (
                   <GlassPanel key={i} variant="card" style={{ flex: 1, alignItems: 'center', padding: spacing.md }}>
                     <Ionicons name={stat.icon} size={22} color={stat.color} />
-                    <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xs }}>{stat.value}</Text>
-                    <Text style={{ fontSize: 10, color: colors.textSecondary, textAlign: 'center' }}>{stat.label}</Text>
+                    <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.xs }}>{stat.value}</Text>
+                    <Text style={{ fontSize: 10, color: palette.colors.textSecondary, textAlign: 'center' }}>{stat.label}</Text>
                   </GlassPanel>
                 ))}
               </View>
               {analyticsData.topCoupons?.map((c, i) => (
                 <GlassPanel key={i} variant="card" style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm }}>
-                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, width: 30 }}>#{i + 1}</Text>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.primary, width: 30 }}>#{i + 1}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text }}>{c.code}</Text>
-                    <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>{c.usedCount} uses · {formatPrice(c.totalDiscount || 0)} discount</Text>
+                    <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.text }}>{c.code}</Text>
+                    <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>{c.usedCount} uses · {formatPrice(c.totalDiscount || 0)} discount</Text>
                   </View>
                 </GlassPanel>
               ))}
@@ -210,8 +214,8 @@ export default function SellerCouponManagementScreen({ navigation }) {
           ) : (
             <GlassPanel variant="card" style={{ alignItems: 'center', padding: spacing.xxl }}>
               <Ionicons name="bar-chart-outline" size={48} color="rgba(255,255,255,0.3)" />
-              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md }}>No Analytics Yet</Text>
-              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>Analytics will appear once coupons are used</Text>
+              <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.md }}>No Analytics Yet</Text>
+              <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>Analytics will appear once coupons are used</Text>
             </GlassPanel>
           )}
         </ScrollView>
@@ -224,7 +228,7 @@ export default function SellerCouponManagementScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{editingCoupon ? 'Edit Coupon' : 'Create Coupon'}</Text>
               <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={palette.colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
@@ -310,39 +314,39 @@ export default function SellerCouponManagementScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', ...shadows.md },
-  tabRow: { flexDirection: 'row', marginHorizontal: spacing.md, marginVertical: spacing.md, backgroundColor: glass.bgSubtle, borderRadius: 14, padding: 4 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSub: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', ...shadows.md },
+  tabRow: { flexDirection: 'row', marginHorizontal: spacing.md, marginVertical: spacing.md, backgroundColor: p.glass.bgSubtle, borderRadius: 14, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textSecondary },
+  tabActive: { backgroundColor: p.colors.primary },
+  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.textSecondary },
   tabTextActive: { color: '#fff' },
   couponCard: { padding: spacing.lg, marginBottom: spacing.md },
   couponHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   couponBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
   couponCode: { fontSize: fontSize.md, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  couponDiscount: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 },
-  couponDesc: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.sm },
+  couponDiscount: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 4 },
+  couponDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginBottom: spacing.sm },
   couponMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  metaText: { fontSize: fontSize.xs, color: colors.textSecondary },
-  couponFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: glass.borderSubtle },
+  metaText: { fontSize: fontSize.xs, color: p.colors.textSecondary },
+  couponFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { maxHeight: '90%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  fieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 6, marginTop: spacing.sm },
-  modalInput: { backgroundColor: glass.bgSubtle, borderRadius: 14, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: glass.borderSubtle, marginBottom: spacing.sm },
-  typeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, backgroundColor: glass.bgSubtle, borderWidth: 1, borderColor: glass.borderSubtle },
-  typeBtnActive: { backgroundColor: 'rgba(99,102,241,0.15)', borderColor: colors.primary },
-  typeBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textSecondary },
-  typeBtnTextActive: { color: colors.primary },
-  productChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: glass.bgSubtle, borderWidth: 1, borderColor: glass.borderSubtle, marginRight: spacing.sm },
-  productChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  productChipText: { fontSize: fontSize.sm, color: colors.text, maxWidth: 120 },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16, marginTop: spacing.lg, ...shadows.md },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  fieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: 6, marginTop: spacing.sm },
+  modalInput: { backgroundColor: p.glass.bgSubtle, borderRadius: 14, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, borderWidth: 1, borderColor: p.glass.borderSubtle, marginBottom: spacing.sm },
+  typeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  typeBtnActive: { backgroundColor: 'rgba(99,102,241,0.15)', borderColor: p.colors.primary },
+  typeBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.textSecondary },
+  typeBtnTextActive: { color: p.colors.primary },
+  productChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle, marginRight: spacing.sm },
+  productChipSelected: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  productChipText: { fontSize: fontSize.sm, color: p.colors.text, maxWidth: 120 },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingVertical: 14, borderRadius: 16, marginTop: spacing.lg, ...shadows.md },
   saveBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
 });

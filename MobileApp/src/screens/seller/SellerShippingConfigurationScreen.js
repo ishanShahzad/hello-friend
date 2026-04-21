@@ -13,11 +13,13 @@ import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function SellerShippingConfigurationScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,10 +79,10 @@ export default function SellerShippingConfigurationScreen({ navigation }) {
   return (
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
         
         <GlassPanel variant="floating" style={styles.header}>
-          <View style={styles.headerIcon}><Ionicons name="car-outline" size={28} color={colors.primary} /></View>
+          <View style={styles.headerIcon}><Ionicons name="car-outline" size={28} color={palette.colors.primary} /></View>
           <Text style={styles.headerTitle}>Shipping Configuration</Text>
           <Text style={styles.headerSubtitle}>Manage your shipping methods</Text>
         </GlassPanel>
@@ -100,7 +102,7 @@ export default function SellerShippingConfigurationScreen({ navigation }) {
           ) : (
             shippingMethods.map((method, index) => (
               <GlassPanel key={method._id || index} variant="card" style={styles.methodCard}>
-                <View style={styles.methodIcon}><Ionicons name="cube-outline" size={24} color={colors.primary} /></View>
+                <View style={styles.methodIcon}><Ionicons name="cube-outline" size={24} color={palette.colors.primary} /></View>
                 <View style={styles.methodInfo}>
                   <Text style={styles.methodName}>{method.name}</Text>
                   <View style={{ flexDirection: 'row', gap: spacing.md }}>
@@ -108,8 +110,8 @@ export default function SellerShippingConfigurationScreen({ navigation }) {
                     <Text style={styles.methodDays}>{method.estimatedDays} {method.estimatedDays === 1 ? 'day' : 'days'}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleEdit(method)}><Ionicons name="create-outline" size={20} color={colors.primary} /></TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(method)}><Ionicons name="trash-outline" size={20} color={colors.error} /></TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => handleEdit(method)}><Ionicons name="create-outline" size={20} color={palette.colors.primary} /></TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(method)}><Ionicons name="trash-outline" size={20} color={palette.colors.error} /></TouchableOpacity>
               </GlassPanel>
             ))
           )}
@@ -118,22 +120,22 @@ export default function SellerShippingConfigurationScreen({ navigation }) {
             <GlassPanel variant="card" style={styles.formSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>{editingMethod ? 'Edit Method' : 'Add Method'}</Text>
-                <TouchableOpacity onPress={resetForm}><Ionicons name="close" size={24} color={colors.textSecondary} /></TouchableOpacity>
+                <TouchableOpacity onPress={resetForm}><Ionicons name="close" size={24} color={palette.colors.textSecondary} /></TouchableOpacity>
               </View>
-              <Text style={styles.label}>Name <Text style={{ color: colors.error }}>*</Text></Text>
+              <Text style={styles.label}>Name <Text style={{ color: palette.colors.error }}>*</Text></Text>
               <TextInput style={[styles.input, errors.name && styles.inputError]} value={formData.name}
                 onChangeText={(v) => { setFormData(p => ({ ...p, name: v })); if (errors.name) setErrors(p => ({ ...p, name: null })); }}
-                placeholder="e.g., Standard Shipping" placeholderTextColor={colors.textSecondary} />
+                placeholder="e.g., Standard Shipping" placeholderTextColor={palette.colors.textSecondary} />
               <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.label}>Price ($) *</Text>
                   <TextInput style={[styles.input, errors.price && styles.inputError]} value={formData.price}
-                    onChangeText={(v) => { setFormData(p => ({ ...p, price: v })); }} placeholder="0.00" placeholderTextColor={colors.textSecondary} keyboardType="decimal-pad" />
+                    onChangeText={(v) => { setFormData(p => ({ ...p, price: v })); }} placeholder="0.00" placeholderTextColor={palette.colors.textSecondary} keyboardType="decimal-pad" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.label}>Est. Days *</Text>
                   <TextInput style={[styles.input, errors.estimatedDays && styles.inputError]} value={formData.estimatedDays}
-                    onChangeText={(v) => { setFormData(p => ({ ...p, estimatedDays: v })); }} placeholder="3" placeholderTextColor={colors.textSecondary} keyboardType="number-pad" />
+                    onChangeText={(v) => { setFormData(p => ({ ...p, estimatedDays: v })); }} placeholder="3" placeholderTextColor={palette.colors.textSecondary} keyboardType="number-pad" />
                 </View>
               </View>
               <TouchableOpacity style={[styles.submitButton, saving && { opacity: 0.6 }]} onPress={saveMethod} disabled={saving} activeOpacity={0.8}>
@@ -152,28 +154,28 @@ export default function SellerShippingConfigurationScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   header: { alignItems: 'center', margin: spacing.lg, padding: spacing.xl },
   headerIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  headerTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.xs },
-  headerSubtitle: { ...typography.body, color: colors.textSecondary },
+  headerTitle: { ...typography.h2, color: p.colors.text, marginBottom: spacing.xs },
+  headerSubtitle: { ...typography.body, color: p.colors.textSecondary },
   content: { paddingHorizontal: spacing.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  sectionTitle: { ...typography.h4, color: colors.text },
-  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
+  sectionTitle: { ...typography.h4, color: p.colors.text },
+  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
   addButtonText: { ...typography.bodySemibold, color: 'white', fontSize: fontSize.sm },
   methodCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm },
   methodIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
   methodInfo: { flex: 1 },
-  methodName: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.xs },
-  methodPrice: { ...typography.bodySmall, color: colors.primary, fontWeight: fontWeight.semibold },
-  methodDays: { ...typography.bodySmall, color: colors.textSecondary },
+  methodName: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.xs },
+  methodPrice: { ...typography.bodySmall, color: p.colors.primary, fontWeight: fontWeight.semibold },
+  methodDays: { ...typography.bodySmall, color: p.colors.textSecondary },
   actionBtn: { width: 36, height: 36, borderRadius: borderRadius.md, backgroundColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center', marginLeft: spacing.xs },
   formSection: { padding: spacing.lg, marginTop: spacing.md },
-  label: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.sm },
-  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  inputError: { borderColor: colors.error },
-  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg, marginTop: spacing.lg },
+  label: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.sm },
+  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  inputError: { borderColor: p.colors.error },
+  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg, marginTop: spacing.lg },
   submitButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'white' },
 });

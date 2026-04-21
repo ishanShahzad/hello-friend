@@ -14,11 +14,13 @@ import api from '../../config/api';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography,
-} from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function SellerSubdomainManagementScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState(null);
@@ -77,8 +79,8 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
   if (!data) return (
     <GlassBackground>
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Ionicons name="globe-outline" size={48} color={colors.textLight} />
-        <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, marginTop: spacing.md }}>No subdomain data. Create a store first.</Text>
+        <Ionicons name="globe-outline" size={48} color={palette.colors.textLight} />
+        <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, marginTop: spacing.md }}>No subdomain data. Create a store first.</Text>
       </SafeAreaView>
     </GlassBackground>
   );
@@ -87,10 +89,10 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
   const isActive = subdomain.isActive;
 
   const stats = [
-    { label: 'Views', value: analytics.totalViews || 0, icon: 'eye-outline', color: colors.primary },
-    { label: 'Orders', value: analytics.totalOrders || 0, icon: 'receipt-outline', color: colors.success },
-    { label: 'Revenue', value: `$${(analytics.totalRevenue || 0).toLocaleString()}`, icon: 'cash-outline', color: colors.info },
-    { label: 'Conversion', value: `${analytics.conversionRate || 0}%`, icon: 'trending-up-outline', color: colors.secondary },
+    { label: 'Views', value: analytics.totalViews || 0, icon: 'eye-outline', color: palette.colors.primary },
+    { label: 'Orders', value: analytics.totalOrders || 0, icon: 'receipt-outline', color: palette.colors.success },
+    { label: 'Revenue', value: `$${(analytics.totalRevenue || 0).toLocaleString()}`, icon: 'cash-outline', color: palette.colors.info },
+    { label: 'Conversion', value: `${analytics.conversionRate || 0}%`, icon: 'trending-up-outline', color: palette.colors.secondary },
   ];
 
   return (
@@ -99,7 +101,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
         {/* Header */}
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View>
             <Text style={styles.title}>Subdomain Management</Text>
@@ -110,7 +112,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         >
           {/* Status Card */}
           <GlassPanel variant="strong" style={styles.statusCard}>
@@ -119,7 +121,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
                 <Image source={{ uri: subdomain.logo }} style={styles.storeLogo} />
               ) : (
                 <View style={[styles.storeLogo, styles.logoPlaceholder]}>
-                  <Ionicons name="globe" size={24} color={colors.white} />
+                  <Ionicons name="globe" size={24} color={palette.colors.white} />
                 </View>
               )}
               <View style={styles.statusInfo}>
@@ -127,21 +129,21 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
                 <View style={styles.urlRow}>
                   <Text style={styles.urlText}>{subdomain.url}</Text>
                   <TouchableOpacity onPress={() => copyUrl(subdomain.url)}>
-                    <Ionicons name="copy-outline" size={14} color={colors.textSecondary} />
+                    <Ionicons name="copy-outline" size={14} color={palette.colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: isActive ? `${colors.success}15` : `${colors.warning}15` }]}>
-              <Ionicons name={isActive ? 'checkmark-circle' : 'lock-closed'} size={16} color={isActive ? colors.success : colors.warning} />
-              <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: isActive ? colors.success : colors.warning }}>
+            <View style={[styles.statusBadge, { backgroundColor: isActive ? `${palette.colors.success}15` : `${palette.colors.warning}15` }]}>
+              <Ionicons name={isActive ? 'checkmark-circle' : 'lock-closed'} size={16} color={isActive ? palette.colors.success : palette.colors.warning} />
+              <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: isActive ? palette.colors.success : palette.colors.warning }}>
                 {isActive ? 'Active & Live' : 'Inactive'}
               </Text>
             </View>
 
             {!isActive && (
               <View style={styles.inactiveWarning}>
-                <Ionicons name="alert-triangle" size={16} color={colors.warning} />
+                <Ionicons name="alert-triangle" size={16} color={palette.colors.warning} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.warningTitle}>Subdomain not active</Text>
                   <Text style={styles.warningText}>
@@ -151,7 +153,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
                   </Text>
                   <TouchableOpacity onPress={() => navigation.navigate('SellerStoreSettings')} style={styles.warningBtn}>
                     <Text style={styles.warningBtnText}>Go to Store Settings</Text>
-                    <Ionicons name="arrow-forward" size={12} color={colors.white} />
+                    <Ionicons name="arrow-forward" size={12} color={palette.colors.white} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -162,7 +164,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.editPanel}>
             <View style={styles.editHeader}>
               <Text style={styles.sectionTitle}>
-                <Ionicons name="pencil" size={16} color={colors.text} /> Change Subdomain
+                <Ionicons name="pencil" size={16} color={palette.colors.text} /> Change Subdomain
               </Text>
               {!editing && (
                 <TouchableOpacity onPress={() => setEditing(true)} style={styles.editBtn}>
@@ -180,21 +182,21 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
                     value={newSlug}
                     onChangeText={(t) => { setNewSlug(sanitize(t)); setSlugAvailable(null); }}
                     placeholder="your-store"
-                    placeholderTextColor={colors.textLight}
+                    placeholderTextColor={palette.colors.textLight}
                     autoCapitalize="none"
                     maxLength={50}
                   />
                   <Text style={styles.slugSuffix}>.tortrose.com</Text>
                   <View style={styles.slugCheck}>
-                    {slugChecking ? <ActivityIndicator size="small" color={colors.textSecondary} />
-                      : slugAvailable === true ? <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                      : slugAvailable === false ? <Ionicons name="close-circle" size={16} color={colors.error} />
+                    {slugChecking ? <ActivityIndicator size="small" color={palette.colors.textSecondary} />
+                      : slugAvailable === true ? <Ionicons name="checkmark-circle" size={16} color={palette.colors.success} />
+                      : slugAvailable === false ? <Ionicons name="close-circle" size={16} color={palette.colors.error} />
                       : null}
                   </View>
                 </View>
                 <View style={styles.editActions}>
                   <TouchableOpacity onPress={handleSave} disabled={saving || slugAvailable === false || !newSlug || newSlug.length < 3} style={[styles.saveBtn, (saving || slugAvailable === false) && { opacity: 0.5 }]}>
-                    {saving ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="checkmark" size={16} color={colors.white} />}
+                    {saving ? <ActivityIndicator size="small" color={palette.colors.white} /> : <Ionicons name="checkmark" size={16} color={palette.colors.white} />}
                     <Text style={styles.saveBtnText}>Save</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => { setEditing(false); setNewSlug(subdomain.slug); setSlugAvailable(null); }} style={styles.cancelBtn}>
@@ -204,10 +206,10 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
               </View>
             ) : (
               <View style={styles.currentSlug}>
-                <Ionicons name="globe-outline" size={16} color={colors.primary} />
+                <Ionicons name="globe-outline" size={16} color={palette.colors.primary} />
                 <Text style={styles.currentSlugText}>{subdomain.url}</Text>
                 <TouchableOpacity onPress={() => copyUrl(subdomain.url)}>
-                  <Ionicons name="copy-outline" size={14} color={colors.textSecondary} />
+                  <Ionicons name="copy-outline" size={14} color={palette.colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             )}
@@ -229,7 +231,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
           {/* Info */}
           <GlassPanel variant="card" style={styles.infoPanel}>
             <Text style={styles.sectionTitle}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.text} /> About Subdomains
+              <Ionicons name="information-circle-outline" size={16} color={palette.colors.text} /> About Subdomains
             </Text>
             {[
               { q: 'What is a subdomain?', a: 'A custom URL like yourstore.tortrose.com for direct store access.' },
@@ -250,50 +252,50 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   headerBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.gray}10`, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: fontSize.xl, fontWeight: fontWeight.extrabold, color: colors.text },
-  subtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: `${p.colors.gray}10`, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: fontSize.xl, fontWeight: fontWeight.extrabold, color: p.colors.text },
+  subtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   statusCard: { padding: spacing.lg, marginBottom: spacing.md },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   storeLogo: { width: 52, height: 52, borderRadius: borderRadius.xl },
-  logoPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  logoPlaceholder: { backgroundColor: p.colors.primary, alignItems: 'center', justifyContent: 'center' },
   statusInfo: { flex: 1 },
-  storeName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  storeName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
   urlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
-  urlText: { fontSize: fontSize.sm, color: colors.primary, fontFamily: 'monospace' },
+  urlText: { fontSize: fontSize.sm, color: p.colors.primary, fontFamily: 'monospace' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, alignSelf: 'flex-start', marginTop: spacing.md },
-  inactiveWarning: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md, backgroundColor: `${colors.warning}08`, borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: `${colors.warning}20` },
-  warningTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.warning },
-  warningText: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
-  warningBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, alignSelf: 'flex-start', marginTop: spacing.sm },
-  warningBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.white },
+  inactiveWarning: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md, backgroundColor: `${p.colors.warning}08`, borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: `${p.colors.warning}20` },
+  warningTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.warning },
+  warningText: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 4, lineHeight: 18 },
+  warningBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: p.colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, alignSelf: 'flex-start', marginTop: spacing.sm },
+  warningBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.white },
   editPanel: { padding: spacing.lg, marginBottom: spacing.md },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  editBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, backgroundColor: `${colors.gray}10` },
-  editBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  slugInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.gray}06`, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: `${colors.gray}15`, overflow: 'hidden' },
-  slugPrefix: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, fontSize: fontSize.sm, color: colors.textSecondary, backgroundColor: `${colors.gray}08`, borderRightWidth: 1, borderRightColor: `${colors.gray}15` },
-  slugInput: { flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.md, fontSize: fontSize.sm, color: colors.text, fontFamily: 'monospace' },
-  slugSuffix: { paddingHorizontal: spacing.sm, fontSize: fontSize.sm, color: colors.textSecondary },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  editBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, backgroundColor: `${p.colors.gray}10` },
+  editBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  slugInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: `${p.colors.gray}06`, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: `${p.colors.gray}15`, overflow: 'hidden' },
+  slugPrefix: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, fontSize: fontSize.sm, color: p.colors.textSecondary, backgroundColor: `${p.colors.gray}08`, borderRightWidth: 1, borderRightColor: `${p.colors.gray}15` },
+  slugInput: { flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.md, fontSize: fontSize.sm, color: p.colors.text, fontFamily: 'monospace' },
+  slugSuffix: { paddingHorizontal: spacing.sm, fontSize: fontSize.sm, color: p.colors.textSecondary },
   slugCheck: { paddingHorizontal: spacing.sm },
   editActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
-  saveBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.white },
-  cancelBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: `${colors.gray}10` },
-  cancelBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  currentSlug: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: `${colors.gray}06`, borderRadius: borderRadius.lg, padding: spacing.md },
-  currentSlugText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, fontFamily: 'monospace', flex: 1 },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: p.colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
+  saveBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.white },
+  cancelBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: `${p.colors.gray}10` },
+  cancelBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  currentSlug: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: `${p.colors.gray}06`, borderRadius: borderRadius.lg, padding: spacing.md },
+  currentSlugText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, fontFamily: 'monospace', flex: 1 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   statCard: { flex: 1, minWidth: '45%', padding: spacing.md, alignItems: 'center' },
   statIcon: { width: 40, height: 40, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  statValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, color: colors.text },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  statValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, color: p.colors.text },
+  statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
   infoPanel: { padding: spacing.lg, marginBottom: spacing.md },
-  faqItem: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: `${colors.gray}08` },
-  faqQ: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  faqA: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
+  faqItem: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: `${p.colors.gray}08` },
+  faqQ: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  faqA: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 4, lineHeight: 18 },
 });

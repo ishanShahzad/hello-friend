@@ -14,9 +14,8 @@ import Loader from '../../components/common/Loader';
 import { EmptyProducts, EmptySearch } from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const filterProductsByQuery = (products, query) => {
   if (!query?.trim()) return products;
@@ -25,12 +24,15 @@ export const filterProductsByQuery = (products, query) => {
 };
 
 const getStockStatus = (stock) => {
-  if (stock === 0) return { label: 'Out of Stock', color: colors.error };
-  if (stock <= 5) return { label: 'Low Stock', color: colors.warning };
-  return { label: 'In Stock', color: colors.success };
+  if (stock === 0) return { label: 'Out of Stock', color: palette.colors.error };
+  if (stock <= 5) return { label: 'Low Stock', color: palette.colors.warning };
+  return { label: 'In Stock', color: palette.colors.success };
 };
 
 export default function ProductManagementScreen({ navigation, route }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { isAdmin } = route.params || {};
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +132,7 @@ export default function ProductManagementScreen({ navigation, route }) {
             {item.images?.[0] ? (
               <Image source={{ uri: item.images[0] }} style={styles.productImage} contentFit="cover" />
             ) : (
-              <View style={[styles.productImage, styles.imagePlaceholder]}><Ionicons name="cube-outline" size={24} color={colors.textSecondary} /></View>
+              <View style={[styles.productImage, styles.imagePlaceholder]}><Ionicons name="cube-outline" size={24} color={palette.colors.textSecondary} /></View>
             )}
           </View>
           <View style={styles.productInfo}>
@@ -145,10 +147,10 @@ export default function ProductManagementScreen({ navigation, route }) {
           </View>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProductForm', { product: item, isAdmin })}>
-              <Ionicons name="create-outline" size={22} color={colors.primary} />
+              <Ionicons name="create-outline" size={22} color={palette.colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={() => deleteProduct(item._id, item.name)} disabled={isDeleting}>
-              <Ionicons name="trash-outline" size={22} color={isDeleting ? colors.textSecondary : colors.error} />
+              <Ionicons name="trash-outline" size={22} color={isDeleting ? palette.colors.textSecondary : palette.colors.error} />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -160,7 +162,7 @@ export default function ProductManagementScreen({ navigation, route }) {
     <View style={styles.headerContainer}>
       {selectMode ? (
         <GlassPanel variant="floating" style={styles.bulkBar}>
-          <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedProducts([]); }}><Ionicons name="close" size={20} color={colors.text} /></TouchableOpacity>
+          <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedProducts([]); }}><Ionicons name="close" size={20} color={palette.colors.text} /></TouchableOpacity>
           <Text style={styles.bulkCountText}>{selectedProducts.length} selected</Text>
           {selectedProducts.length > 0 && (
             <TouchableOpacity style={styles.bulkActionsBtn} onPress={() => setBulkModalVisible(true)}>
@@ -171,14 +173,14 @@ export default function ProductManagementScreen({ navigation, route }) {
       ) : (
         <>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
-            <TextInput style={styles.searchInput} placeholder="Search products..." placeholderTextColor={colors.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
-            {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={colors.textSecondary} /></TouchableOpacity>}
+            <Ionicons name="search" size={20} color={palette.colors.textSecondary} />
+            <TextInput style={styles.searchInput} placeholder="Search products..." placeholderTextColor={palette.colors.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
+            {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={palette.colors.textSecondary} /></TouchableOpacity>}
           </View>
           <View style={styles.resultsRow}>
             <Text style={styles.resultsText}><Text style={styles.resultsCount}>{filteredProducts.length}</Text> products</Text>
             <TouchableOpacity style={styles.selectModeBtn} onPress={() => setSelectMode(true)}>
-              <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} /><Text style={styles.selectModeBtnText}>Select</Text>
+              <Ionicons name="checkmark-circle-outline" size={16} color={palette.colors.primary} /><Text style={styles.selectModeBtnText}>Select</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -192,13 +194,13 @@ export default function ProductManagementScreen({ navigation, route }) {
     <GlassBackground>
       {/* Store Required Warning */}
       {!isAdmin && !hasStore && (
-        <GlassPanel variant="card" style={{ margin: spacing.md, padding: spacing.lg, borderWidth: 1, borderColor: `${colors.warning}40` }}>
+        <GlassPanel variant="card" style={{ margin: spacing.md, padding: spacing.lg, borderWidth: 1, borderColor: `${palette.colors.warning}40` }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-            <Ionicons name="alert-circle" size={22} color={colors.warning} />
-            <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.warning }}>Store Required</Text>
+            <Ionicons name="alert-circle" size={22} color={palette.colors.warning} />
+            <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.warning }}>Store Required</Text>
           </View>
-          <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.md }}>You need to create a store before adding products. Go to Store Settings to set up your store.</Text>
-          <TouchableOpacity style={{ backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: spacing.lg, borderRadius: 14, alignSelf: 'flex-start' }} onPress={() => navigation.navigate('SellerStoreSettings')}>
+          <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginBottom: spacing.md }}>You need to create a store before adding products. Go to Store Settings to set up your store.</Text>
+          <TouchableOpacity style={{ backgroundColor: palette.colors.primary, paddingVertical: 12, paddingHorizontal: spacing.lg, borderRadius: 14, alignSelf: 'flex-start' }} onPress={() => navigation.navigate('SellerStoreSettings')}>
             <Text style={{ color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.sm }}>Go to Store Settings</Text>
           </TouchableOpacity>
         </GlassPanel>
@@ -207,7 +209,7 @@ export default function ProductManagementScreen({ navigation, route }) {
       <FlatList data={filteredProducts} renderItem={renderProduct} keyExtractor={i => i._id}
         contentContainerStyle={styles.list} ListHeaderComponent={renderHeader}
         ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : <EmptyProducts onAdd={hasStore || isAdmin ? () => navigation.navigate('ProductForm', { isAdmin }) : undefined} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         showsVerticalScrollIndicator={false} />
 
       {!selectMode && (hasStore || isAdmin) && (
@@ -221,12 +223,12 @@ export default function ProductManagementScreen({ navigation, route }) {
         <GlassPanel variant="strong" style={styles.bulkModalSheet}>
           <View style={styles.bulkModalTitleRow}>
             <Text style={styles.bulkModalTitle}>Bulk Actions · {selectedProducts.length} products</Text>
-            <TouchableOpacity onPress={() => setBulkModalVisible(false)}><Ionicons name="close" size={22} color={colors.text} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setBulkModalVisible(false)}><Ionicons name="close" size={22} color={palette.colors.text} /></TouchableOpacity>
           </View>
           <View style={styles.bulkTabRow}>
             {[{ key: 'discount', label: 'Discount', icon: 'pricetag-outline' }, { key: 'price', label: 'Price', icon: 'cash-outline' }, { key: 'remove', label: 'Remove', icon: 'trash-outline' }].map(tab => (
               <TouchableOpacity key={tab.key} style={[styles.bulkTab, bulkTab === tab.key && styles.bulkTabActive]} onPress={() => setBulkTab(tab.key)}>
-                <Ionicons name={tab.icon} size={16} color={bulkTab === tab.key ? 'white' : colors.textSecondary} />
+                <Ionicons name={tab.icon} size={16} color={bulkTab === tab.key ? 'white' : palette.colors.textSecondary} />
                 <Text style={[styles.bulkTabText, bulkTab === tab.key && { color: 'white' }]}>{tab.label}</Text>
               </TouchableOpacity>
             ))}
@@ -242,7 +244,7 @@ export default function ProductManagementScreen({ navigation, route }) {
                 ))}
               </View>
               <Text style={styles.label}>Discount Value</Text>
-              <TextInput style={styles.input} value={bulkDiscountValue} onChangeText={setBulkDiscountValue} keyboardType="decimal-pad" placeholder={bulkDiscountType === 'percentage' ? 'e.g. 20' : 'e.g. 10.00'} placeholderTextColor={colors.textSecondary} />
+              <TextInput style={styles.input} value={bulkDiscountValue} onChangeText={setBulkDiscountValue} keyboardType="decimal-pad" placeholder={bulkDiscountType === 'percentage' ? 'e.g. 20' : 'e.g. 10.00'} placeholderTextColor={palette.colors.textSecondary} />
               <TouchableOpacity style={[styles.submitButton, bulkLoading && { opacity: 0.6 }]} onPress={handleBulkDiscount} disabled={bulkLoading}>
                 {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Apply Discount</Text>}
               </TouchableOpacity>
@@ -259,7 +261,7 @@ export default function ProductManagementScreen({ navigation, route }) {
                 ))}
               </View>
               <Text style={styles.label}>{bulkPriceType === 'set' ? 'New Price' : 'Change Value'}</Text>
-              <TextInput style={styles.input} value={bulkPriceValue} onChangeText={setBulkPriceValue} keyboardType="decimal-pad" placeholder={bulkPriceType === 'percentage' ? 'e.g. 10 or -10' : bulkPriceType === 'fixed' ? 'e.g. 5 or -5' : 'e.g. 99.99'} placeholderTextColor={colors.textSecondary} />
+              <TextInput style={styles.input} value={bulkPriceValue} onChangeText={setBulkPriceValue} keyboardType="decimal-pad" placeholder={bulkPriceType === 'percentage' ? 'e.g. 10 or -10' : bulkPriceType === 'fixed' ? 'e.g. 5 or -5' : 'e.g. 99.99'} placeholderTextColor={palette.colors.textSecondary} />
               <TouchableOpacity style={[styles.submitButton, bulkLoading && { opacity: 0.6 }]} onPress={handleBulkPriceUpdate} disabled={bulkLoading}>
                 {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Update Prices</Text>}
               </TouchableOpacity>
@@ -267,12 +269,12 @@ export default function ProductManagementScreen({ navigation, route }) {
           )}
           {bulkTab === 'remove' && (
             <View style={{ padding: spacing.lg, alignItems: 'center' }}>
-              <Ionicons name="trash-outline" size={32} color={colors.error} style={{ marginBottom: spacing.md }} />
+              <Ionicons name="trash-outline" size={32} color={palette.colors.error} style={{ marginBottom: spacing.md }} />
               <Text style={[styles.label, { textAlign: 'center' }]}>Remove All Discounts</Text>
-              <Text style={{ ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg }}>
+              <Text style={{ ...typography.bodySmall, color: palette.colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg }}>
                 This will remove all discounts from {selectedProducts.length} selected product(s). Prices will revert to original values.
               </Text>
-              <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.error }, bulkLoading && { opacity: 0.6 }]} onPress={handleRemoveDiscount} disabled={bulkLoading}>
+              <TouchableOpacity style={[styles.submitButton, { backgroundColor: palette.colors.error }, bulkLoading && { opacity: 0.6 }]} onPress={handleRemoveDiscount} disabled={bulkLoading}>
                 {bulkLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Remove Discounts</Text>}
               </TouchableOpacity>
             </View>
@@ -283,52 +285,52 @@ export default function ProductManagementScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   headerContainer: { paddingBottom: spacing.sm },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.md, height: 44, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: colors.text },
+  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: p.colors.text },
   resultsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  resultsText: { ...typography.bodySmall, color: colors.textSecondary },
-  resultsCount: { fontWeight: fontWeight.bold, color: colors.text },
+  resultsText: { ...typography.bodySmall, color: p.colors.textSecondary },
+  resultsCount: { fontWeight: fontWeight.bold, color: p.colors.text },
   selectModeBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  selectModeBtnText: { ...typography.bodySmall, color: colors.primary },
+  selectModeBtnText: { ...typography.bodySmall, color: p.colors.primary },
   bulkBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', margin: spacing.lg, padding: spacing.md },
-  bulkCountText: { ...typography.bodySemibold, color: colors.text },
-  bulkActionsBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
+  bulkCountText: { ...typography.bodySemibold, color: p.colors.text },
+  bulkActionsBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: p.colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
   bulkActionsBtnText: { ...typography.bodySmall, color: 'white', fontWeight: fontWeight.semibold },
   list: { paddingHorizontal: spacing.md, paddingBottom: 100, flexGrow: 1 },
   productCard: { marginBottom: spacing.sm },
-  productCardSelected: { borderWidth: 2, borderColor: colors.primary },
+  productCardSelected: { borderWidth: 2, borderColor: p.colors.primary },
   productCardInner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm },
-  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxChecked: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
   imageContainer: { marginRight: spacing.md },
   productImage: { width: 60, height: 60, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.06)' },
   imagePlaceholder: { justifyContent: 'center', alignItems: 'center' },
   productInfo: { flex: 1 },
-  productName: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.xs },
+  productName: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.xs },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-  productPrice: { ...typography.bodySemibold, color: colors.primary },
-  originalPrice: { ...typography.bodySmall, color: colors.textSecondary, textDecorationLine: 'line-through' },
+  productPrice: { ...typography.bodySemibold, color: p.colors.primary },
+  originalPrice: { ...typography.bodySmall, color: p.colors.textSecondary, textDecorationLine: 'line-through' },
   stockBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.md },
   stockText: { ...typography.caption, fontWeight: fontWeight.semibold },
   actions: { gap: spacing.sm },
   actionButton: { width: 36, height: 36, borderRadius: borderRadius.md, backgroundColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center' },
-  fab: { position: 'absolute', right: spacing.lg, bottom: 100, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  fab: { position: 'absolute', right: spacing.lg, bottom: 100, width: 56, height: 56, borderRadius: 28, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: p.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
   bulkModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   bulkModalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.lg },
   bulkModalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  bulkModalTitle: { ...typography.h4, color: colors.text },
+  bulkModalTitle: { ...typography.h4, color: p.colors.text },
   bulkTabRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   bulkTab: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)' },
-  bulkTabActive: { backgroundColor: colors.primary },
-  bulkTabText: { ...typography.bodySmall, color: colors.textSecondary },
-  label: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.sm },
-  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: spacing.md },
-  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md },
+  bulkTabActive: { backgroundColor: p.colors.primary },
+  bulkTabText: { ...typography.bodySmall, color: p.colors.textSecondary },
+  label: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.sm },
+  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: spacing.md },
+  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md },
   submitButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'white' },
   typeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   typeBtn: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
-  typeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  typeBtnText: { ...typography.bodySemibold, color: colors.textSecondary },
+  typeBtnActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  typeBtnText: { ...typography.bodySemibold, color: p.colors.textSecondary },
 });
