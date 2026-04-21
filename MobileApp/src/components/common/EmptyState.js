@@ -9,7 +9,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import GlassPanel from './GlassPanel';
-import { colors as defaultColors, spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const ACCENT_GRADIENTS = {
