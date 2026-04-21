@@ -122,7 +122,7 @@ export default function SettingsScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.settingCard}>
             <View style={styles.appearanceRow}>
               <View style={[styles.settingIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
-                <Ionicons name="contrast-outline" size={20} color={palette.palette.colors.primary} />
+                <Ionicons name="contrast-outline" size={20} color={palette.colors.primary} />
               </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Theme</Text>
@@ -143,18 +143,18 @@ export default function SettingsScreen({ navigation }) {
                     activeOpacity={0.8}
                     style={[
                       styles.segment,
-                      active && { backgroundColor: palette.palette.colors.primary, borderColor: palette.palette.colors.primary },
+                      active && { backgroundColor: palette.colors.primary, borderColor: palette.colors.primary },
                     ]}
                   >
                     <Ionicons
                       name={opt.icon}
                       size={16}
-                      color={active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary}
+                      color={active ? palette.colors.textInverse : palette.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary },
+                        { color: active ? palette.colors.textInverse : palette.colors.textSecondary },
                       ]}
                     >
                       {opt.label}
