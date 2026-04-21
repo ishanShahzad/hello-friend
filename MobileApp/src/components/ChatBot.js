@@ -6,18 +6,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal,
-  KeyboardAvoidingView, Platform, Animated, Alert, ActivityIndicator, ScrollView, Linking,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import api from '../config/api';
-import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '../contexts/AuthContext';
-import { useCurrency } from '../contexts/CurrencyContext';
-import GlassPanel from './common/GlassPanel';
 import {
-  colors, spacing, fontSize, borderRadius, fontWeight,
+  spacing, fontSize, borderRadius, fontWeight,
 } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const AI_CHAT_URL = 'https://tveuvogqzovgsdfnexkw.supabase.co/functions/v1/ai-chat';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZXV2b2dxem92Z3NkZm5leGt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MjEzNzksImV4cCI6MjA5MDI5NzM3OX0.cxcLp93P2VGW4Zv_JVNKgNbZA135dEMkRaGaz_FnoZM';
@@ -172,7 +170,9 @@ async function callAI(messages, userContext, role) {
 // ─── Main Component ───
 export default function ChatBot({ embedded = false, dashboardRole = null, visible = true, onClose, navigation }) {
   const { currentUser } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const styles = makeStyles(palette);
   const effectiveRole = dashboardRole || currentUser?.role || 'user';
   const roleInfo = ROLE_TITLES[effectiveRole] || ROLE_TITLES.user;
 
@@ -335,11 +335,11 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
       <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Ionicons name="sparkles" size={12} color={colors.white} />
+            <Ionicons name="sparkles" size={12} color="#fff" />
           </View>
         )}
         <View style={[styles.msgBubble, isUser ? styles.userBubble : styles.botBubble]}>
-          <Text style={[styles.msgText, isUser && { color: colors.white }]}>{item.content}</Text>
+          <Text style={[styles.msgText, isUser && { color: '#fff' }]}>{item.content}</Text>
           {/* Tool results */}
           {item.toolResults?.map((tr, i) => (
             <View key={i}>
@@ -353,46 +353,46 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
                         <Text style={styles.productName} numberOfLines={1}>{p.name}</Text>
                         <Text style={styles.productPrice}>${(p.discountedPrice || p.price || 0).toFixed(2)}</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={14} color={colors.grayLight} />
+                      <Ionicons name="chevron-forward" size={14} color={c.textLight} />
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
               {tr.name === 'navigate' && tr.result.navigated && (
                 <View style={styles.actionResult}>
-                  <Ionicons name="arrow-forward-circle" size={14} color={colors.primary} />
+                  <Ionicons name="arrow-forward-circle" size={14} color={c.primary} />
                   <Text style={styles.actionResultText}>Navigated to {tr.result.label}</Text>
                 </View>
               )}
               {tr.name === 'show_style_advice' && tr.result.styleAdvice && (
                 <View style={styles.styleCard}>
                   <View style={styles.styleCardHeader}>
-                    <Ionicons name="color-palette" size={14} color="#8b5cf6" />
+                    <Ionicons name="color-palette" size={14} color={c.secondary} />
                     <Text style={styles.styleCardTitle}>Style Advice — {tr.result.styleAdvice.occasion}</Text>
                   </View>
                   <Text style={styles.styleCardText}>{tr.result.styleAdvice.advice}</Text>
                   {tr.result.styleAdvice.colorPalette?.length > 0 && (
                     <View style={styles.colorRow}>
-                      {tr.result.styleAdvice.colorPalette.map((c, ci) => (
+                      {tr.result.styleAdvice.colorPalette.map((cl, ci) => (
                         <View key={ci} style={styles.colorSwatch}>
-                          <View style={[styles.colorDot, { backgroundColor: c.color }]} />
-                          <Text style={styles.colorName}>{c.name}</Text>
+                          <View style={[styles.colorDot, { backgroundColor: cl.color }]} />
+                          <Text style={styles.colorName}>{cl.name}</Text>
                         </View>
                       ))}
                     </View>
                   )}
                   {tr.result.styleAdvice.tips?.map((tip, ti) => (
                     <View key={ti} style={styles.tipRow}>
-                      <Ionicons name="sparkles" size={10} color="#8b5cf6" />
+                      <Ionicons name="sparkles" size={10} color={c.secondary} />
                       <Text style={styles.tipText}>{tip}</Text>
                     </View>
                   ))}
                 </View>
               )}
               {!['search_products', 'navigate', 'show_style_advice', 'suggest_outfit', 'get_my_orders', 'get_order_detail', 'get_my_complaints'].includes(tr.name) && tr.result?.msg && (
-                <View style={[styles.actionResult, { backgroundColor: `${colors.success}10`, borderColor: `${colors.success}25` }]}>
-                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                  <Text style={[styles.actionResultText, { color: colors.success }]}>{tr.result.msg}</Text>
+                <View style={[styles.actionResult, { backgroundColor: c.successSubtle, borderColor: c.successLighter }]}>
+                  <Ionicons name="checkmark-circle" size={14} color={c.success} />
+                  <Text style={[styles.actionResultText, { color: c.success }]}>{tr.result.msg}</Text>
                 </View>
               )}
             </View>
@@ -400,7 +400,7 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
         </View>
         {isUser && (
           <View style={styles.userAvatar}>
-            <Ionicons name="person" size={12} color={colors.grayLight} />
+            <Ionicons name="person" size={12} color={c.textSecondary} />
           </View>
         )}
       </View>
@@ -414,28 +414,28 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <Ionicons name="sparkles" size={18} color={colors.white} />
+          <Ionicons name="sparkles" size={18} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{roleInfo.title}</Text>
           <View style={styles.headerSubRow}>
             <Text style={styles.headerSubtitle}>{roleInfo.subtitle}</Text>
             {rateLimit.limit > 0 && (
-              <View style={[styles.rateBadge, rateLimit.remaining <= 3 && { backgroundColor: `${colors.error}15` }]}>
-                <Text style={[styles.rateBadgeText, rateLimit.remaining <= 3 && { color: colors.error }]}>{rateLimit.remaining} left</Text>
+              <View style={[styles.rateBadge, rateLimit.remaining <= 3 && { backgroundColor: c.errorSubtle }]}>
+                <Text style={[styles.rateBadgeText, rateLimit.remaining <= 3 && { color: c.error }]}>{rateLimit.remaining} left</Text>
               </View>
             )}
           </View>
         </View>
-        <TouchableOpacity onPress={() => setTtsEnabled(!ttsEnabled)} style={styles.headerBtn}>
-          <Ionicons name={ttsEnabled ? 'volume-high' : 'volume-mute'} size={16} color={ttsEnabled ? colors.primary : colors.grayLight} />
+        <TouchableOpacity onPress={() => setTtsEnabled(!ttsEnabled)} style={styles.headerBtn} accessibilityLabel="Toggle voice">
+          <Ionicons name={ttsEnabled ? 'volume-high' : 'volume-mute'} size={16} color={ttsEnabled ? c.primary : c.textLight} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={clearChat} style={styles.headerBtn}>
-          <Ionicons name="trash-outline" size={16} color={colors.grayLight} />
+        <TouchableOpacity onPress={clearChat} style={styles.headerBtn} accessibilityLabel="Clear chat">
+          <Ionicons name="trash-outline" size={16} color={c.textLight} />
         </TouchableOpacity>
         {!embedded && onClose && (
-          <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-            <Ionicons name="close" size={18} color={colors.grayLight} />
+          <TouchableOpacity onPress={onClose} style={styles.headerBtn} accessibilityLabel="Close">
+            <Ionicons name="close" size={18} color={c.textLight} />
           </TouchableOpacity>
         )}
       </View>
@@ -451,9 +451,9 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
         showsVerticalScrollIndicator={false}
         ListFooterComponent={loading ? (
           <View style={styles.typingRow}>
-            <View style={styles.botAvatar}><Ionicons name="sparkles" size={12} color={colors.white} /></View>
+            <View style={styles.botAvatar}><Ionicons name="sparkles" size={12} color="#fff" /></View>
             <View style={styles.typingBubble}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={c.primary} />
               <Text style={styles.typingText}>AI is thinking...</Text>
             </View>
           </View>
@@ -478,7 +478,7 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
           value={input}
           onChangeText={setInput}
           placeholder={effectiveRole === 'seller' ? 'Ask your business assistant...' : effectiveRole === 'admin' ? 'Command the platform...' : 'Ask your stylist...'}
-          placeholderTextColor={colors.grayLight}
+          placeholderTextColor={c.textLight}
           returnKeyType="send"
           onSubmitEditing={() => sendMessage()}
           editable={!loading}
@@ -488,8 +488,9 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
           onPress={() => sendMessage()}
           disabled={!input.trim() || loading}
           style={[styles.sendBtn, (!input.trim() || loading) && { opacity: 0.4 }]}
+          accessibilityLabel="Send message"
         >
-          <Ionicons name="send" size={16} color={colors.white} />
+          <Ionicons name="send" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -510,68 +511,72 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
   );
 }
 
-const styles = StyleSheet.create({
-  // Embedded
-  embeddedContainer: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', backgroundColor: colors.white },
+const makeStyles = (palette) => {
+  const c = palette.colors;
+  const g = palette.glass;
+  return StyleSheet.create({
+    // Embedded
+    embeddedContainer: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', backgroundColor: c.surface },
 
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { height: '85%', backgroundColor: colors.white, borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl, overflow: 'hidden' },
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+    modalContent: { height: '85%', backgroundColor: c.surface, borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl, overflow: 'hidden' },
 
-  // Header
-  header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, paddingHorizontal: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(0,0,0,0.08)', backgroundColor: `${colors.primary}06` },
-  headerIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm },
-  headerTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  headerSubtitle: { fontSize: 10, color: colors.textSecondary },
-  rateBadge: { backgroundColor: `${colors.primary}12`, paddingHorizontal: 6, paddingVertical: 1, borderRadius: borderRadius.full },
-  rateBadgeText: { fontSize: 9, fontWeight: fontWeight.semibold, color: colors.primary },
-  headerBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center', marginLeft: spacing.xs },
+    // Header
+    header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, paddingHorizontal: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, backgroundColor: c.primarySubtle },
+    headerIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: c.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm },
+    headerTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: c.text },
+    headerSubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    headerSubtitle: { fontSize: 10, color: c.textSecondary },
+    rateBadge: { backgroundColor: c.primarySubtle, paddingHorizontal: 6, paddingVertical: 1, borderRadius: borderRadius.full },
+    rateBadgeText: { fontSize: 9, fontWeight: fontWeight.semibold, color: c.primary },
+    headerBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: g.bgSubtle, justifyContent: 'center', alignItems: 'center', marginLeft: spacing.xs },
 
-  // Messages
-  messageList: { padding: spacing.md, paddingBottom: spacing.lg },
-  msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: spacing.sm, gap: spacing.xs },
-  msgRowUser: { justifyContent: 'flex-end' },
-  botAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  userAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center' },
-  msgBubble: { maxWidth: '78%', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
-  userBubble: { backgroundColor: colors.primary, borderBottomRightRadius: borderRadius.xs },
-  botBubble: { backgroundColor: 'rgba(0,0,0,0.04)', borderBottomLeftRadius: borderRadius.xs },
-  msgText: { fontSize: fontSize.sm, lineHeight: 20, color: colors.text },
+    // Messages
+    messageList: { padding: spacing.md, paddingBottom: spacing.lg },
+    msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: spacing.sm, gap: spacing.xs },
+    msgRowUser: { justifyContent: 'flex-end' },
+    botAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: c.primary, justifyContent: 'center', alignItems: 'center' },
+    userAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: g.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+    msgBubble: { maxWidth: '78%', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
+    userBubble: { backgroundColor: c.primary, borderBottomRightRadius: borderRadius.xs },
+    botBubble: { backgroundColor: g.bgSubtle, borderBottomLeftRadius: borderRadius.xs, borderWidth: 1, borderColor: g.borderSubtle },
+    msgText: { fontSize: fontSize.sm, lineHeight: 20, color: c.text },
 
-  // Tool results
-  productResults: { marginTop: spacing.sm, gap: spacing.xs },
-  productItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: borderRadius.md, backgroundColor: 'rgba(0,0,0,0.03)' },
-  productDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
-  productName: { fontSize: 11, fontWeight: fontWeight.medium, color: colors.text },
-  productPrice: { fontSize: 10, fontWeight: fontWeight.semibold, color: colors.primary },
-  actionResult: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs, padding: spacing.sm, borderRadius: borderRadius.md, backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}15` },
-  actionResultText: { fontSize: 11, fontWeight: fontWeight.medium, color: colors.primary },
+    // Tool results
+    productResults: { marginTop: spacing.sm, gap: spacing.xs },
+    productItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: borderRadius.md, backgroundColor: g.bgSubtle },
+    productDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
+    productName: { fontSize: 11, fontWeight: fontWeight.medium, color: c.text },
+    productPrice: { fontSize: 10, fontWeight: fontWeight.semibold, color: c.primary },
+    actionResult: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs, padding: spacing.sm, borderRadius: borderRadius.md, backgroundColor: c.primarySubtle, borderWidth: 1, borderColor: c.primaryLighter },
+    actionResultText: { fontSize: 11, fontWeight: fontWeight.medium, color: c.primary },
 
-  // Style card
-  styleCard: { marginTop: spacing.sm, borderRadius: borderRadius.lg, overflow: 'hidden', backgroundColor: 'rgba(139,92,246,0.06)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.15)' },
-  styleCardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.sm, backgroundColor: 'rgba(139,92,246,0.08)' },
-  styleCardTitle: { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.text },
-  styleCardText: { fontSize: 11, color: colors.text, padding: spacing.sm, lineHeight: 18 },
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
-  colorSwatch: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  colorDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
-  colorName: { fontSize: 9, color: colors.textSecondary },
-  tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, paddingHorizontal: spacing.sm, paddingBottom: 4 },
-  tipText: { fontSize: 10, color: colors.textSecondary, flex: 1 },
+    // Style card
+    styleCard: { marginTop: spacing.sm, borderRadius: borderRadius.lg, overflow: 'hidden', backgroundColor: c.secondarySubtle, borderWidth: 1, borderColor: c.secondaryLighter },
+    styleCardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.sm, backgroundColor: c.secondarySubtle },
+    styleCardTitle: { fontSize: 11, fontWeight: fontWeight.semibold, color: c.text },
+    styleCardText: { fontSize: 11, color: c.text, padding: spacing.sm, lineHeight: 18 },
+    colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
+    colorSwatch: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    colorDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: c.border },
+    colorName: { fontSize: 9, color: c.textSecondary },
+    tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, paddingHorizontal: spacing.sm, paddingBottom: 4 },
+    tipText: { fontSize: 10, color: c.textSecondary, flex: 1 },
 
-  // Typing
-  typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, marginBottom: spacing.sm },
-  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: 'rgba(0,0,0,0.04)' },
-  typingText: { fontSize: 11, color: colors.textSecondary },
+    // Typing
+    typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, marginBottom: spacing.sm },
+    typingBubble: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: g.bgSubtle },
+    typingText: { fontSize: 11, color: c.textSecondary },
 
-  // Chips
-  chipsContainer: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: spacing.xs },
-  chip: { backgroundColor: `${colors.primary}10`, borderWidth: 1, borderColor: `${colors.primary}18`, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: borderRadius.full },
-  chipText: { fontSize: 11, fontWeight: fontWeight.medium, color: colors.primary },
+    // Chips
+    chipsContainer: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: spacing.xs },
+    chip: { backgroundColor: c.primarySubtle, borderWidth: 1, borderColor: c.primaryLighter, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: borderRadius.full },
+    chipText: { fontSize: 11, fontWeight: fontWeight.medium, color: c.primary },
 
-  // Input
-  inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.08)', gap: spacing.sm },
-  input: { flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: Platform.OS === 'ios' ? spacing.sm + 2 : spacing.sm, fontSize: fontSize.sm, color: colors.text },
-  sendBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-});
+    // Input
+    inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, gap: spacing.sm, backgroundColor: c.surface },
+    input: { flex: 1, backgroundColor: g.bgSubtle, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: Platform.OS === 'ios' ? spacing.sm + 2 : spacing.sm, fontSize: fontSize.sm, color: c.text, borderWidth: 1, borderColor: g.borderSubtle },
+    sendBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: c.primary, justifyContent: 'center', alignItems: 'center' },
+  });
+};
