@@ -26,7 +26,7 @@ export default function SellerStoreSettingsScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [store, setStore] = useState(null);
-  const [formData, setFormData] = useState({ storeName: '', description: '' });
+  const [formData, setFormData] = useState({ storeName: '', description: '', sellerType: 'store' });
   const [logo, setLogo] = useState(null);
   const [banner, setBanner] = useState(null);
   const [errors, setErrors] = useState({});
@@ -42,7 +42,7 @@ export default function SellerStoreSettingsScreen({ navigation }) {
       const response = await api.get('/api/stores/my-store');
       const storeData = response.data?.store || response.data;
       setStore(storeData);
-      setFormData({ storeName: storeData?.name || storeData?.storeName || '', description: storeData?.description || '' });
+      setFormData({ storeName: storeData?.name || storeData?.storeName || '', description: storeData?.description || '', sellerType: storeData?.sellerType || 'store' });
       setLogo(storeData?.logo || null);
       setBanner(storeData?.banner || null);
     } catch (error) { console.error('Error fetching settings:', error); }
@@ -98,7 +98,7 @@ export default function SellerStoreSettingsScreen({ navigation }) {
     if (!formData.storeName.trim()) { setErrors({ storeName: 'Store name is required' }); return; }
     setSaving(true);
     try {
-      await api.put('/api/stores/update', { storeName: formData.storeName.trim(), description: formData.description.trim(), logo, banner });
+      await api.put('/api/stores/update', { storeName: formData.storeName.trim(), description: formData.description.trim(), sellerType: formData.sellerType || 'store', logo, banner });
       Alert.alert('Success', 'Store settings saved successfully');
     } catch (error) { Alert.alert('Error', error.response?.data?.message || 'Failed to save settings'); }
     finally { setSaving(false); }
@@ -183,6 +183,37 @@ export default function SellerStoreSettingsScreen({ navigation }) {
           <TextInput style={[styles.input, styles.textArea]} value={formData.description}
             onChangeText={(v) => updateField('description', v)} placeholder="Describe your store..." placeholderTextColor={palette.colors.textSecondary}
             multiline numberOfLines={4} textAlignVertical="top" />
+
+          <Text style={[styles.label, { marginTop: spacing.lg }]}>Listing Type</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            {['store', 'brand'].map(t => {
+              const active = formData.sellerType === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => updateField('sellerType', t)}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1,
+                    paddingVertical: spacing.md,
+                    borderRadius: borderRadius.lg,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6,
+                    backgroundColor: active ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.06)',
+                    borderWidth: 1,
+                    borderColor: active ? palette.colors.primary : 'rgba(255,255,255,0.15)',
+                  }}
+                >
+                  <Ionicons name={t === 'brand' ? 'pricetag-outline' : 'storefront-outline'} size={16} color={active ? palette.colors.primary : palette.colors.textSecondary} />
+                  <Text style={{ color: active ? palette.colors.primary : palette.colors.textSecondary, fontWeight: '600' }}>
+                    {t === 'brand' ? 'Brand' : 'Store'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </GlassPanel>
 
         <View style={styles.submitContainer}>

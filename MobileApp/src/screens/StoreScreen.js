@@ -99,6 +99,12 @@ export default function StoreScreen({ route, navigation }) {
             <Text style={styles.storeName} numberOfLines={2}>{store.name}</Text>
             {isVerified && <VerifiedBadge size="md" style={{ marginLeft: 6 }} />}
           </View>
+          <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginBottom: spacing.sm, backgroundColor: store?.sellerType === 'brand' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)', borderWidth: 1, borderColor: store?.sellerType === 'brand' ? 'rgba(16,185,129,0.35)' : 'rgba(59,130,246,0.35)' }}>
+            <Ionicons name={store?.sellerType === 'brand' ? 'pricetag' : 'storefront'} size={11} color={store?.sellerType === 'brand' ? '#10b981' : '#3b82f6'} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: store?.sellerType === 'brand' ? '#10b981' : '#3b82f6' }}>
+              {store?.sellerType === 'brand' ? 'Brand' : 'Store'}
+            </Text>
+          </View>
           <TouchableOpacity onPress={() => setTrustSheetVisible(true)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(99,102,241,0.08)' }}>
             <Ionicons name="heart" size={14} color={palette.colors.heart} />
             <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginLeft: 4 }}>{store.trustCount || 0} trusters</Text>
