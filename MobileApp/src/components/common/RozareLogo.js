@@ -54,14 +54,14 @@ export default function RozareLogo({ width = 140, height = 36, showText = true }
         {showText && (
           <SvgText
             x="62"
-            y="38"
+            y="37"
             fontFamily="System"
-            fontSize="28"
-            fontWeight="800"
-            letterSpacing="-1.1"
+            fontSize="24"
+            fontWeight="900"
+            letterSpacing="1.6"
             fill="url(#rzGrad)"
           >
-            Rozare
+            ROZARE
           </SvgText>
         )}
       </Svg>
