@@ -1,6 +1,6 @@
 /**
  * RozareLogo — gem-tile R monogram with orbital arc
- * Modern, distinctive brand mark matching website indigo-purple theme.
+ * Modern, distinctive brand mark with Ocean Breeze colors.
  */
 
 import React from 'react';
@@ -20,13 +20,13 @@ export default function RozareLogo({ width = 140, height = 36, showText = true }
       >
         <Defs>
           <LinearGradient id="rzGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#4F46E5" />
-            <Stop offset="55%" stopColor="#6366F1" />
-            <Stop offset="100%" stopColor="#8B5CF6" />
+            <Stop offset="0%" stopColor="#14B8A6" />
+            <Stop offset="50%" stopColor="#0EA5E9" />
+            <Stop offset="100%" stopColor="#6366F1" />
           </LinearGradient>
           <LinearGradient id="rzGradSoft" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#4F46E5" stopOpacity="0.18" />
-            <Stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.18" />
+            <Stop offset="0%" stopColor="#14B8A6" stopOpacity="0.18" />
+            <Stop offset="100%" stopColor="#6366F1" stopOpacity="0.18" />
           </LinearGradient>
         </Defs>
 
