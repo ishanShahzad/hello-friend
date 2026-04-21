@@ -79,16 +79,24 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, on
             <Text style={[styles.itemCount, { color: c.textSecondary }]}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
             <Text style={[styles.totalAmount, { color: c.primary }]}>{formatPrice(orderSummary.totalAmount)}</Text>
           </View>
-          {onWhatsApp && (
-            <TouchableOpacity
-              onPress={(e) => { e.stopPropagation && e.stopPropagation(); onWhatsApp(order); }}
-              activeOpacity={0.7}
-              style={styles.waButton}
-              accessibilityLabel="Verify on WhatsApp"
-            >
-              <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-            </TouchableOpacity>
-          )}
+          {onWhatsApp && (() => {
+            const confirmedByEmail = order?.confirmation?.confirmedAt && order?.confirmation?.confirmedVia === 'email';
+            return (
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation && e.stopPropagation(); if (!confirmedByEmail) onWhatsApp(order); }}
+                activeOpacity={confirmedByEmail ? 1 : 0.7}
+                disabled={!!confirmedByEmail}
+                style={[styles.waButton, confirmedByEmail && { backgroundColor: 'rgba(34,197,94,0.18)' }]}
+                accessibilityLabel={confirmedByEmail ? 'Confirmed via email' : 'Verify on WhatsApp'}
+              >
+                <Ionicons
+                  name={confirmedByEmail ? 'checkmark-circle' : 'logo-whatsapp'}
+                  size={18}
+                  color={confirmedByEmail ? '#22C55E' : '#25D366'}
+                />
+              </TouchableOpacity>
+            );
+          })()}
           <Ionicons name="chevron-forward" size={20} color={c.textLight} />
         </View>
       </GlassPanel>

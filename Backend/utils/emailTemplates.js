@@ -165,6 +165,75 @@ exports.sellerAccountCreatedEmail = (userName) => {
   };
 };
 
+exports.buyerOrderConfirmationRequestEmail = (order, confirmUrl) => {
+  const items = order.orderItems.map(item =>
+    `<tr>
+      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+        <strong style="color:#1e293b;">${item.name}</strong><br/>
+        <span style="color:#94a3b8;font-size:13px;">Qty: ${item.quantity} × $${item.price.toFixed(2)}</span>
+      </td>
+      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-weight:600;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>`
+  ).join('');
+
+  return {
+    subject: `Please confirm your order ${order.orderId}`,
+    html: wrapper(`
+      <h2 style="color:#1e293b;margin:0 0 8px;">Confirm your order</h2>
+      <p style="color:#64748b;margin:0 0 24px;">Hi ${order.shippingInfo.fullName}, please confirm you'd like to proceed with your Cash on Delivery order. The link expires in 48 hours.</p>
+
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
+        <tbody>${items}</tbody>
+      </table>
+
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;">
+        <table style="width:100%;">
+          <tr><td style="padding:4px 0;color:#64748b;">Subtotal</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.subtotal.toFixed(2)}</td></tr>
+          <tr><td style="padding:4px 0;color:#64748b;">Shipping</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.shippingCost.toFixed(2)}</td></tr>
+          ${order.orderSummary.tax > 0 ? `<tr><td style="padding:4px 0;color:#64748b;">Tax</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.tax.toFixed(2)}</td></tr>` : ''}
+          <tr><td style="padding:8px 0 0;font-weight:700;color:#1e293b;border-top:2px solid #e2e8f0;">Total</td><td style="text-align:right;padding:8px 0 0;font-weight:700;color:${brandColor};font-size:18px;border-top:2px solid #e2e8f0;">$${order.orderSummary.totalAmount.toFixed(2)}</td></tr>
+        </table>
+      </div>
+
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;">Review &amp; Confirm Order</a>
+      </div>
+
+      <p style="color:#94a3b8;margin:24px 0 0;font-size:12px;text-align:center;">If you didn't place this order, you can safely ignore this email or click the link to decline it.</p>
+    `)
+  };
+};
+
+exports.sellerOrderConfirmedByBuyerEmail = (order, sellerName) => {
+  return {
+    subject: `Buyer confirmed order ${order.orderId} ✅`,
+    html: wrapper(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:48px;">✅</span>
+        <h2 style="color:#1e293b;margin:12px 0 8px;">Buyer Confirmed Order</h2>
+        <p style="color:#64748b;margin:0;">Hi ${sellerName || 'Seller'}, the buyer confirmed their order via email — no manual verification needed.</p>
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
+        <div style="margin-top:12px;display:inline-block;background:#22c55e;color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;">Confirmed via Email</div>
+      </div>
+      <p style="color:#64748b;margin:0;line-height:1.6;">
+        <strong style="color:#1e293b;">Customer:</strong> ${order.shippingInfo.fullName}<br/>
+        <strong style="color:#1e293b;">Total:</strong> $${order.orderSummary.totalAmount.toFixed(2)}<br/>
+        <strong style="color:#1e293b;">Confirmed at:</strong> ${new Date(order.confirmation?.confirmedAt || Date.now()).toLocaleString()}
+      </p>
+      <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">The order status is now <strong>Confirmed</strong>. You can begin processing it.</p>
+    `)
+  };
+};
+
 exports.welcomeEmail = (userName) => {
   return {
     subject: 'Welcome to Rozare! 🎉',

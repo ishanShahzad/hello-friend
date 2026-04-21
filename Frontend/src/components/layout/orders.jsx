@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle } from 'lucide-react';
-import { openWhatsAppVerify, hasWhatsAppPhone } from '../../utils/whatsapp';
+import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
@@ -177,21 +177,26 @@ const OrderManagement = () => {
                                                     <div className="flex items-center gap-3 justify-end">
                                                         {(() => {
                                                             const hasPhone = hasWhatsAppPhone(order);
+                                                            const confirmed = isOrderConfirmedByBuyer(order);
+                                                            const enabled = hasPhone && !confirmed;
+                                                            const title = confirmed
+                                                                ? `Buyer confirmed via email${order.confirmation?.confirmedAt ? ' · ' + new Date(order.confirmation.confirmedAt).toLocaleDateString() : ''}`
+                                                                : (hasPhone ? 'Verify on WhatsApp' : 'No phone number on file');
                                                             return (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
-                                                                    disabled={!hasPhone}
-                                                                    title={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (enabled) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!enabled}
+                                                                    title={title}
                                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-full transition-all"
                                                                     style={{
-                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
-                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
-                                                                        cursor: hasPhone ? 'pointer' : 'not-allowed',
-                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                        background: confirmed ? 'rgba(16, 185, 129, 0.18)' : (hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)'),
+                                                                        color: confirmed ? 'hsl(150, 60%, 40%)' : (hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))'),
+                                                                        cursor: enabled ? 'pointer' : 'not-allowed',
+                                                                        opacity: enabled ? 1 : 0.7,
                                                                     }}
                                                                 >
-                                                                    <MessageCircle size={14} />
+                                                                    {confirmed ? <CheckCircle size={14} /> : <MessageCircle size={14} />}
                                                                 </button>
                                                             );
                                                         })()}
@@ -239,20 +244,22 @@ const OrderManagement = () => {
                                                     <div className="flex items-center gap-2">
                                                         {(() => {
                                                             const hasPhone = hasWhatsAppPhone(order);
+                                                            const confirmed = isOrderConfirmedByBuyer(order);
+                                                            const enabled = hasPhone && !confirmed;
                                                             return (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
-                                                                    disabled={!hasPhone}
-                                                                    aria-label={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (enabled) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!enabled}
+                                                                    aria-label={confirmed ? 'Confirmed via email' : (hasPhone ? 'Verify on WhatsApp' : 'No phone number on file')}
                                                                     className="inline-flex items-center justify-center w-7 h-7 rounded-full"
                                                                     style={{
-                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
-                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
-                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                        background: confirmed ? 'rgba(16, 185, 129, 0.18)' : (hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)'),
+                                                                        color: confirmed ? 'hsl(150, 60%, 40%)' : (hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))'),
+                                                                        opacity: enabled ? 1 : 0.7,
                                                                     }}
                                                                 >
-                                                                    <MessageCircle size={12} />
+                                                                    {confirmed ? <CheckCircle size={12} /> : <MessageCircle size={12} />}
                                                                 </button>
                                                             );
                                                         })()}
