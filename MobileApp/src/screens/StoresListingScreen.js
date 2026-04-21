@@ -1,14 +1,14 @@
 /**
  * StoresListingScreen — Liquid Glass Design
+ * With filter sheet (sort + verified-only) for full feature parity with web.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, RefreshControl, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 import StoreCard from '../components/common/StoreCard';
-import Loader from '../components/common/Loader';
 import { ProductCardSkeleton } from '../components/common/Skeleton';
 import { EmptyStores, EmptySearch } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
@@ -16,10 +16,24 @@ import GlassPanel from '../components/common/GlassPanel';
 import { spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
+const SORT_OPTIONS = [
+  { key: 'newest', label: 'Newest', icon: 'time-outline' },
+  { key: 'trusted', label: 'Most Trusted', icon: 'heart-outline' },
+  { key: 'popular', label: 'Most Popular', icon: 'flame-outline' },
+  { key: 'name', label: 'A → Z', icon: 'text-outline' },
+];
+
 export const filterStoresByQuery = (stores, query) => {
   if (!query || !query.trim()) return stores;
   const q = query.toLowerCase().trim();
-  return stores.filter(s => s.storeName?.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q));
+  return stores.filter(s => s.storeName?.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q) || s.storeDescription?.toLowerCase().includes(q));
+};
+
+export const filterStores = (stores, { query, verifiedOnly, minTrust }) => {
+  let out = filterStoresByQuery(stores, query);
+  if (verifiedOnly) out = out.filter(s => s.isVerified || s.verification?.isVerified);
+  if (minTrust > 0) out = out.filter(s => (s.trustCount || 0) >= minTrust);
+  return out;
 };
 
 export default function StoresListingScreen({ navigation }) {
@@ -32,6 +46,9 @@ export default function StoresListingScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [showFilters, setShowFilters] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [minTrust, setMinTrust] = useState(0);
 
   useEffect(() => { fetchStores(); }, [sortBy]);
 
@@ -42,7 +59,11 @@ export default function StoresListingScreen({ navigation }) {
   };
 
   const onRefresh = useCallback(() => { setRefreshing(true); fetchStores(); }, [sortBy]);
-  const filteredStores = filterStoresByQuery(stores, searchQuery);
+  const filteredStores = useMemo(() => filterStores(stores, { query: searchQuery, verifiedOnly, minTrust }), [stores, searchQuery, verifiedOnly, minTrust]);
+
+  const activeFilterCount = (verifiedOnly ? 1 : 0) + (minTrust > 0 ? 1 : 0) + (sortBy !== 'newest' ? 1 : 0);
+
+  const resetFilters = () => { setVerifiedOnly(false); setMinTrust(0); setSortBy('newest'); };
 
   if (isLoading) return (
     <GlassBackground>
@@ -69,27 +90,71 @@ export default function StoresListingScreen({ navigation }) {
             <View>
               <GlassPanel variant="floating" style={styles.heroHeader}>
                 <View style={styles.heroTitleRow}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.heroTitle}>Discover Stores</Text>
                     <Text style={styles.heroSubtitle}>Explore amazing sellers & products</Text>
                   </View>
                   {currentUser && (
-                    <TouchableOpacity style={styles.trustedButton} onPress={() => navigation.navigate('TrustedStores')} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.trustedButton} onPress={() => navigation.navigate('TrustedStores')} activeOpacity={0.8} accessibilityLabel="View trusted stores">
                       <Ionicons name="heart" size={15} color={palette.colors.heart} />
                       <Text style={styles.trustedButtonText}>Trusted</Text>
                     </TouchableOpacity>
                   )}
                 </View>
-                <View style={styles.searchBox}>
-                  <Ionicons name="search" size={18} color={palette.colors.textSecondary} />
-                  <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={palette.colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                      <Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} />
-                    </TouchableOpacity>
-                  )}
+                <View style={styles.searchRow}>
+                  <View style={styles.searchBox}>
+                    <Ionicons name="search" size={18} color={palette.colors.textSecondary} />
+                    <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={palette.colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.filterIconBtn, activeFilterCount > 0 && styles.filterIconBtnActive]}
+                    onPress={() => setShowFilters(true)}
+                    accessibilityLabel="Open filters"
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? '#fff' : palette.colors.primary} />
+                    {activeFilterCount > 0 && (
+                      <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </GlassPanel>
+
+              {/* Active filter chips */}
+              {(verifiedOnly || minTrust > 0 || sortBy !== 'newest') && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeChipsRow}>
+                  {sortBy !== 'newest' && (
+                    <TouchableOpacity style={styles.activeChip} onPress={() => setSortBy('newest')} activeOpacity={0.7}>
+                      <Ionicons name={SORT_OPTIONS.find(o => o.key === sortBy)?.icon || 'swap-vertical'} size={12} color={palette.colors.primary} />
+                      <Text style={styles.activeChipText}>{SORT_OPTIONS.find(o => o.key === sortBy)?.label}</Text>
+                      <Ionicons name="close" size={12} color={palette.colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                  {verifiedOnly && (
+                    <TouchableOpacity style={styles.activeChip} onPress={() => setVerifiedOnly(false)} activeOpacity={0.7}>
+                      <Ionicons name="shield-checkmark" size={12} color={palette.colors.primary} />
+                      <Text style={styles.activeChipText}>Verified Only</Text>
+                      <Ionicons name="close" size={12} color={palette.colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                  {minTrust > 0 && (
+                    <TouchableOpacity style={styles.activeChip} onPress={() => setMinTrust(0)} activeOpacity={0.7}>
+                      <Ionicons name="heart" size={12} color={palette.colors.primary} />
+                      <Text style={styles.activeChipText}>{minTrust}+ trusters</Text>
+                      <Ionicons name="close" size={12} color={palette.colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.clearAllChip} onPress={resetFilters} activeOpacity={0.7}>
+                    <Text style={styles.clearAllText}>Clear all</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+
               <View style={styles.resultsRow}>
                 <Text style={styles.resultsText}>{searchQuery ? 'Found ' : ''}<Text style={styles.resultsCount}>{filteredStores.length}</Text> {filteredStores.length === 1 ? 'store' : 'stores'}{searchQuery ? '' : ' available'}</Text>
               </View>
@@ -104,6 +169,75 @@ export default function StoresListingScreen({ navigation }) {
           ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : <EmptyStores onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
         />
+
+        {/* Filter Sheet */}
+        <Modal visible={showFilters} animationType="slide" transparent onRequestClose={() => setShowFilters(false)}>
+          <View style={styles.sheetOverlay}>
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowFilters(false)} activeOpacity={1} />
+            <GlassPanel variant="strong" style={styles.sheet}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Filter & Sort</Text>
+                <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.sheetClose} accessibilityLabel="Close">
+                  <Ionicons name="close" size={20} color={palette.colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+                {/* Sort */}
+                <Text style={styles.sectionLabel}>Sort by</Text>
+                <View style={styles.optionGrid}>
+                  {SORT_OPTIONS.map((opt) => {
+                    const active = sortBy === opt.key;
+                    return (
+                      <TouchableOpacity key={opt.key} style={[styles.optionTile, active && styles.optionTileActive]} onPress={() => setSortBy(opt.key)} activeOpacity={0.85}>
+                        <Ionicons name={opt.icon} size={18} color={active ? '#fff' : palette.colors.primary} />
+                        <Text style={[styles.optionTileText, active && styles.optionTileTextActive]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Trust threshold */}
+                <Text style={styles.sectionLabel}>Trust threshold</Text>
+                <View style={styles.presetRow}>
+                  {[0, 5, 10, 50, 100].map((n) => {
+                    const active = minTrust === n;
+                    return (
+                      <TouchableOpacity key={n} style={[styles.preset, active && styles.presetActive]} onPress={() => setMinTrust(n)} activeOpacity={0.85}>
+                        <Text style={[styles.presetText, active && styles.presetTextActive]}>{n === 0 ? 'Any' : `${n}+`}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Verified toggle */}
+                <TouchableOpacity style={styles.toggleRow} onPress={() => setVerifiedOnly(!verifiedOnly)} activeOpacity={0.85}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                    <Ionicons name="shield-checkmark" size={18} color={palette.colors.info} />
+                    <View>
+                      <Text style={styles.toggleLabel}>Verified Stores Only</Text>
+                      <Text style={styles.toggleSubLabel}>Show only verified merchants</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.switch, verifiedOnly && styles.switchActive]}>
+                    <View style={[styles.switchKnob, verifiedOnly && styles.switchKnobActive]} />
+                  </View>
+                </TouchableOpacity>
+              </ScrollView>
+
+              {/* Footer */}
+              <View style={styles.sheetFooter}>
+                <TouchableOpacity style={styles.resetBtn} onPress={resetFilters} activeOpacity={0.85}>
+                  <Text style={styles.resetBtnText}>Reset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.applyBtn} onPress={() => setShowFilters(false)} activeOpacity={0.85}>
+                  <Text style={styles.applyBtnText}>Show {filteredStores.length} stores</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassPanel>
+          </View>
+        </Modal>
       </SafeAreaView>
     </GlassBackground>
   );
@@ -117,12 +251,53 @@ const buildStyles = (p) => StyleSheet.create({
   heroSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   trustedButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
   trustedButtonText: { color: p.colors.heart, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  searchBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, height: 46, gap: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, height: 46, gap: spacing.sm, borderRadius: borderRadius.xl, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
   searchInput: { flex: 1, fontSize: fontSize.md, color: p.colors.text },
+  filterIconBtn: { width: 46, height: 46, borderRadius: borderRadius.xl, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  filterIconBtnActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  filterBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: p.colors.error, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  filterBadgeText: { fontSize: 10, fontWeight: fontWeight.bold, color: '#fff' },
+  activeChipsRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: spacing.xs, flexDirection: 'row' },
+  activeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: borderRadius.full, backgroundColor: p.colors.primarySubtle, borderWidth: 1, borderColor: p.colors.primaryLighter, marginRight: spacing.xs },
+  activeChipText: { fontSize: fontSize.xs, color: p.colors.primary, fontWeight: fontWeight.semibold },
+  clearAllChip: { paddingHorizontal: spacing.md, paddingVertical: 6, justifyContent: 'center' },
+  clearAllText: { fontSize: fontSize.xs, color: p.colors.error, fontWeight: fontWeight.semibold },
   resultsRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   resultsText: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   resultsCount: { fontWeight: fontWeight.bold, color: p.colors.text },
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   cardWrapper: { flex: 1, marginBottom: spacing.sm },
+
+  // Filter sheet
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '80%' },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: p.glass.borderStrong, alignSelf: 'center', marginBottom: spacing.md },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  sheetTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  sheetClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing.md, marginBottom: spacing.sm },
+  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  optionTile: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle, minWidth: '47%', flex: 1 },
+  optionTileActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  optionTileText: { fontSize: fontSize.sm, color: p.colors.text, fontWeight: fontWeight.semibold },
+  optionTileTextActive: { color: '#fff' },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  preset: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  presetActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  presetText: { fontSize: fontSize.sm, color: p.colors.text, fontWeight: fontWeight.semibold },
+  presetTextActive: { color: '#fff' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, marginTop: spacing.md, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
+  toggleLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  toggleSubLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
+  switch: { width: 46, height: 26, borderRadius: 13, backgroundColor: p.glass.bgSubtle, padding: 2, justifyContent: 'center', borderWidth: 1, borderColor: p.glass.borderSubtle },
+  switchActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  switchKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+  switchKnobActive: { transform: [{ translateX: 20 }] },
+  sheetFooter: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md, marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
+  resetBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle, justifyContent: 'center' },
+  resetBtnText: { fontSize: fontSize.md, color: p.colors.text, fontWeight: fontWeight.semibold },
+  applyBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  applyBtnText: { fontSize: fontSize.md, color: '#fff', fontWeight: fontWeight.bold },
 });

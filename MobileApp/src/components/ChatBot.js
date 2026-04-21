@@ -16,8 +16,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import GlassPanel from './common/GlassPanel';
 import {
-  colors, spacing, fontSize, borderRadius, fontWeight,
+  spacing, fontSize, borderRadius, fontWeight,
 } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const AI_CHAT_URL = 'https://tveuvogqzovgsdfnexkw.supabase.co/functions/v1/ai-chat';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZXV2b2dxem92Z3NkZm5leGt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MjEzNzksImV4cCI6MjA5MDI5NzM3OX0.cxcLp93P2VGW4Zv_JVNKgNbZA135dEMkRaGaz_FnoZM';
