@@ -1,9 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Store, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Store, Loader2, ExternalLink, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import VerifiedBadge from './VerifiedBadge';
+
+const TypeBadge = ({ type }) => {
+    const isBrand = type === 'brand';
+    return (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase"
+            style={{
+                background: isBrand ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)',
+                color: isBrand ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)',
+            }}>
+            {isBrand ? <Sparkles size={8} /> : <Store size={8} />}
+            {isBrand ? 'Brand' : 'Store'}
+        </span>
+    );
+};
 
 const StoreSearch = () => {
     const [query, setQuery] = useState('');
@@ -57,7 +71,7 @@ const StoreSearch = () => {
             <div className="search-input-wrapper">
                 <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown} onFocus={() => query.trim().length > 0 && setIsOpen(true)}
-                    placeholder="Search for stores..."
+                    placeholder="Search stores & brands..."
                     className="glass-input glass-input-search" />
                 <div className="search-input-icon" style={{ left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }}>
                     {loading ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
@@ -84,9 +98,10 @@ const StoreSearch = () => {
                                                 </div>
                                             )}
                                             <div className="flex-1">
-                                                <div className="font-medium flex items-center gap-1.5">
+                                                <div className="font-medium flex items-center gap-1.5 flex-wrap">
                                                     {store.storeName}
                                                     {store.verification?.isVerified && <VerifiedBadge size="sm" />}
+                                                    <TypeBadge type={store.sellerType} />
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                     <span>/{store.storeSlug}</span><span>•</span>
@@ -98,15 +113,15 @@ const StoreSearch = () => {
                                     ))}
                                 </div>
                                 <div className="border-t border-white/15 p-2">
-                                    <button onClick={() => { navigate('/stores'); setIsOpen(false); setQuery(''); }}
+                                    <button onClick={() => { navigate('/marketplace'); setIsOpen(false); setQuery(''); }}
                                         className="w-full text-center text-sm py-2 rounded-xl hover:bg-white/10 transition-colors font-medium"
-                                        style={{ color: 'hsl(var(--primary))' }}>View all stores →</button>
+                                        style={{ color: 'hsl(var(--primary))' }}>View entire marketplace →</button>
                                 </div>
                             </>
                         ) : (
                             <div className="p-4 text-center">
                                 <Store size={32} className="mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                                <p className="text-sm">No stores found</p>
+                                <p className="text-sm">No stores or brands found</p>
                                 <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Try a different search term</p>
                             </div>
                         )}
