@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle } from 'lucide-react';
+import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -36,7 +36,7 @@ const StoreSettings = () => {
     };
 
     const [storeData, setStoreData] = useState({
-        storeName: '', description: '', logo: '', banner: '', storeSlug: '',
+        storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
         address: { street: '', city: '', state: '', country: '', postalCode: '' },
         socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
         returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
@@ -64,6 +64,7 @@ const StoreSettings = () => {
             setStoreData({
                 storeName: res.data.store.storeName, description: res.data.store.description,
                 logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
+                sellerType: res.data.store.sellerType || 'store',
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
                 returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
