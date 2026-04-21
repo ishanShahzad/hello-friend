@@ -8,6 +8,7 @@ import {
 import { useOutletContext, Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOrderConfirmedByBuyer } from '../../utils/whatsapp';
 
 const SellerHome = () => {
     const { currentUser } = useAuth();
@@ -216,6 +217,11 @@ const SellerHome = () => {
                                                         <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                             {order.shippingInfo?.fullName} · {new Date(order.createdAt).toLocaleDateString()}
                                                         </p>
+                                                        {isOrderConfirmedByBuyer(order) && (
+                                                            <span className="mt-1 text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                                                <CheckCircle className="w-2.5 h-2.5" /> Confirmed via email
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="text-right shrink-0">
                                                         <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
