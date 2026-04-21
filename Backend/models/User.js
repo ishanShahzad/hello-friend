@@ -69,7 +69,10 @@ const userSchema = mongoose.Schema({
         deliveryAlerts: { type: Boolean, default: true },
         storeCreation: { type: Boolean, default: true },
         storeVerification: { type: Boolean, default: true },
-    }
+    },
+
+    // Expo push notification tokens (one user may have multiple devices)
+    expoPushTokens: { type: [String], default: [] },
 })
 
 
