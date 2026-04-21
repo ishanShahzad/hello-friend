@@ -1,6 +1,6 @@
 
 const express = require('express')
-const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } = require('../controllers/userController')
+const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, savePushToken, removePushToken } = require('../controllers/userController')
 const verifyToken = require('../middleware/authMiddleware')
 const router = express.Router()
 
@@ -27,5 +27,9 @@ router.post('/addresses', verifyToken, addAddress)
 router.patch('/addresses/:addressId', verifyToken, updateAddress)
 router.delete('/addresses/:addressId', verifyToken, deleteAddress)
 router.patch('/addresses/:addressId/default', verifyToken, setDefaultAddress)
+
+// Expo push notification token registration
+router.post('/push-token', verifyToken, savePushToken)
+router.delete('/push-token', verifyToken, removePushToken)
 
 module.exports = router
