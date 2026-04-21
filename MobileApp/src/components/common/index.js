@@ -67,3 +67,5 @@ export { default as Skeleton, ProductCardSkeleton, ProductGridSkeleton, CartItem
 export { default as PersonalizedSliders } from './PersonalizedSliders';
 export { default as SearchAutocomplete } from './SearchAutocomplete';
 export { default as PriceRangeFilter } from './PriceRangeFilter';
+export { default as TrustedStoresSection } from './TrustedStoresSection';
+export { default as TrustScoreSheet } from './TrustScoreSheet';
