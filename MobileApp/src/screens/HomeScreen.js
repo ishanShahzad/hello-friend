@@ -288,6 +288,21 @@ export default function HomeScreen({ navigation }) {
         </View>
       </GlassPanel>
 
+      {/* Search Autocomplete Overlay */}
+      <SearchAutocomplete
+        visible={showAutocomplete}
+        query={searchQuery}
+        navigation={navigation}
+        onSelectQuery={(q) => { setSearchQuery(q); setShowAutocomplete(false); setTimeout(() => handleSearch(), 50); }}
+        onSelectProduct={(p) => { setShowAutocomplete(false); navigation.navigate('ProductDetail', { productId: p._id }); }}
+        onClose={() => setShowAutocomplete(false)}
+      />
+
+      {/* Personalized Sliders — Recently Viewed, Picked for You, Price Drops, Trending */}
+      {!hasActiveFilters && !searchQuery && (
+        <PersonalizedSliders navigation={navigation} />
+      )}
+
       {/* Quick Stats Banner */}
       <View style={styles.statsBanner}>
         <View style={styles.statItem}>
@@ -417,6 +432,19 @@ export default function HomeScreen({ navigation }) {
 
           {/* Modal Body */}
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            {/* Price Range Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.filterSectionHeader}>
+                <Ionicons name="cash-outline" size={18} color={colors.success} />
+                <Text style={styles.filterSectionTitle}>PRICE RANGE</Text>
+              </View>
+              <PriceRangeFilter
+                min={priceRange.min}
+                max={priceRange.max}
+                onChange={(range) => setPriceRange(range)}
+              />
+            </View>
+
             {/* Categories Section */}
             <View style={styles.filterSection}>
               <View style={styles.filterSectionHeader}>
