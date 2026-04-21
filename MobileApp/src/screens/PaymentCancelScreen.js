@@ -7,6 +7,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { trackPaymentEvent } from '../utils/breadcrumbs';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
 
 export default function PaymentCancelScreen({ navigation, route }) {
@@ -15,6 +16,7 @@ export default function PaymentCancelScreen({ navigation, route }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    trackPaymentEvent('cancelled', { orderId });
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
