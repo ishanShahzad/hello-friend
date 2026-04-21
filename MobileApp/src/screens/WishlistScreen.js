@@ -16,7 +16,6 @@ import { EmptyWishlist, LoginRequired } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth as useAuthCtx } from '../contexts/AuthContext';
 import { shareWishlistAsLink, shareWishlistAsPdf } from '../utils/shareWishlist';
 
 export default function WishlistScreen({ navigation }) {

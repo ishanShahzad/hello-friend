@@ -267,9 +267,24 @@ export default function HomeScreen({ navigation }) {
               onSubmitEditing={handleSearch}
               returnKeyType="search"
             />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); handleSearch(); }}>
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity onPress={() => { setSearchQuery(''); handleSearch(); }} accessibilityLabel="Clear search">
                 <Ionicons name="close-circle" size={20} color={palette.colors.grayLight} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={async () => {
+                  const { startVoiceSearch } = await import('../utils/voiceSearch');
+                  const transcript = await startVoiceSearch();
+                  if (transcript) {
+                    setSearchQuery(transcript);
+                    setTimeout(() => handleSearch(), 50);
+                  }
+                }}
+                accessibilityLabel="Voice search"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="mic-outline" size={20} color={palette.colors.primary} />
               </TouchableOpacity>
             )}
           </View>
