@@ -132,7 +132,7 @@ function Products() {
       <button
         onClick={() => window.location.reload()}
         className='flex gap-3 px-4 py-2 rounded-xl font-semibold cursor-pointer glow-soft transition-transform active:scale-95 hover:scale-105'
-        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+        style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)', color: 'white' }}>
         Reload <RefreshCw />
       </button>
     </div>

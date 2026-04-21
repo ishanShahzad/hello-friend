@@ -99,8 +99,9 @@ function Navbar() {
                         <Link to="/login" className="hidden sm:block">
                             <button className="px-4 py-2 rounded-xl font-semibold text-sm transition-all glow-soft"
                                 style={{
-                                    background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                    background: 'var(--logo-gradient)',
                                     color: 'hsl(var(--primary-foreground))',
+                                    boxShadow: 'var(--logo-glow)',
                                 }}>
                                 Login / Sign Up
                             </button>
@@ -157,8 +158,9 @@ function Navbar() {
                                         <Link to="/login" onClick={() => setMobileMenuOpen(false)}
                                             className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold"
                                             style={{
-                                                background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                                background: 'var(--logo-gradient)',
                                                 color: 'white',
+                                                boxShadow: 'var(--logo-glow)',
                                             }}>
                                             <LogIn size={18} /> Login / Sign Up
                                         </Link>
