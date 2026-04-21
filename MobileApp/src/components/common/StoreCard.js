@@ -34,7 +34,7 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
 
   if (!store) return null;
 
-  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0 } = store;
+  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0, ratingAverage = 0, ratingCount = 0 } = store;
   const isVerified = verification?.isVerified;
   const handlePress = () => onPress ? onPress(store) : navigation.navigate('Store', { storeSlug: storeSlug || _id });
 

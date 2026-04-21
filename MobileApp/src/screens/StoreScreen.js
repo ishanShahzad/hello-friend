@@ -18,6 +18,7 @@ import { EmptyProducts } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import TrustScoreSheet from '../components/common/TrustScoreSheet';
+import StoreReviews from '../components/common/StoreReviews';
 import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -133,7 +134,10 @@ export default function StoreScreen({ route, navigation }) {
         </GlassPanel>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
+      {/* Reviews thread */}
+      <StoreReviews storeId={store._id} storeOwnerId={store.seller?._id || store.seller} />
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
         <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text }}>Products</Text>
         <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{products.length} items</Text>
       </View>
