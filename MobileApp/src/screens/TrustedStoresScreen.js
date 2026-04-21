@@ -14,9 +14,13 @@ import VerifiedBadge from '../components/VerifiedBadge';
 import Loader from '../components/common/Loader';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function TrustedStoresScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const [trustedStores, setTrustedStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,8 +72,8 @@ export default function TrustedStoresScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.storeFooter}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="people" size={14} color={colors.textSecondary} />
-            <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>{item.trustCount} trusters</Text>
+            <Ionicons name="people" size={14} color={palette.colors.textSecondary} />
+            <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{item.trustCount} trusters</Text>
           </View>
           <TrustButton storeId={item._id} storeName={item.storeName} initialTrustCount={item.trustCount} initialIsTrusted={true} compact onTrustChange={(isTrusted, count) => handleTrustChange(item._id, isTrusted, count)} />
         </View>
@@ -82,9 +86,9 @@ export default function TrustedStoresScreen({ navigation }) {
       {/* Header */}
       <GlassPanel variant="floating" style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
         </TouchableOpacity>
-        <View style={styles.headerIcon}><Ionicons name="heart" size={18} color={colors.heart} /></View>
+        <View style={styles.headerIcon}><Ionicons name="heart" size={18} color={palette.colors.heart} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Trusted Stores</Text>
           <Text style={styles.headerSub}>{trustedStores.length} stores you trust</Text>
@@ -95,7 +99,7 @@ export default function TrustedStoresScreen({ navigation }) {
         data={trustedStores} renderItem={renderStoreCard} keyExtractor={(item) => item._id}
         contentContainerStyle={{ padding: spacing.md, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
         ListEmptyComponent={() => (
           <View style={styles.center}>
             <Ionicons name="heart-outline" size={56} color="rgba(255,255,255,0.3)" />
@@ -111,21 +115,21 @@ export default function TrustedStoresScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  authTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg },
-  authSub: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.xl },
-  loginBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: 14, borderRadius: 16 },
+  authTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, marginTop: spacing.lg },
+  authSub: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.xl },
+  loginBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: 14, borderRadius: 16 },
   header: { flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.12)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  headerSub: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSub: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   storeCard: { padding: spacing.md, marginBottom: spacing.md },
   storeHeader: { flexDirection: 'row', marginBottom: spacing.md },
-  storeLogo: { width: 52, height: 52, borderRadius: 16, marginRight: spacing.md, backgroundColor: glass.bgSubtle },
-  logoPlaceholder: { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  storeName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, flex: 1 },
-  storeDesc: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  storeFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: glass.borderSubtle },
+  storeLogo: { width: 52, height: 52, borderRadius: 16, marginRight: spacing.md, backgroundColor: p.glass.bgSubtle },
+  logoPlaceholder: { backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  storeName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, flex: 1 },
+  storeDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
+  storeFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
 });

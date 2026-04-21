@@ -7,7 +7,8 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { Ionicons } from '@expo/vector-icons';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const sections = [
   { icon: 'server-outline', title: '1. Information We Collect', content: 'We collect information you provide directly: name, email, shipping address, payment details, and phone number. We also collect usage data including browsing patterns, device information, IP addresses, and cookies to improve your experience and platform security.' },
@@ -21,12 +22,15 @@ const sections = [
 ];
 
 export default function PrivacyPolicyScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   return (
     <GlassBackground>
       <SafeAreaView style={styles.container}>
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Privacy Policy</Text>
@@ -45,7 +49,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
             <GlassPanel key={i} variant="card" style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIconWrap}>
-                  <Ionicons name={s.icon} size={18} color={colors.primary} />
+                  <Ionicons name={s.icon} size={18} color={palette.colors.primary} />
                 </View>
                 <Text style={styles.sectionTitle}>{s.title}</Text>
               </View>
@@ -67,22 +71,22 @@ export default function PrivacyPolicyScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, marginLeft: spacing.md },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   introCard: { marginBottom: spacing.md },
-  introText: { fontSize: fontSize.md, color: colors.text, lineHeight: 22 },
+  introText: { fontSize: fontSize.md, color: p.colors.text, lineHeight: 22 },
   sectionCard: { marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   sectionIconWrap: { width: 36, height: 36, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.text, flex: 1 },
-  sectionContent: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20 },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: p.colors.text, flex: 1 },
+  sectionContent: { fontSize: fontSize.sm, color: p.colors.textSecondary, lineHeight: 20 },
   ctaCard: { alignItems: 'center' },
-  ctaText: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.sm, textAlign: 'center' },
-  ctaLink: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.primary },
+  ctaText: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginBottom: spacing.sm, textAlign: 'center' },
+  ctaLink: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.primary },
 });

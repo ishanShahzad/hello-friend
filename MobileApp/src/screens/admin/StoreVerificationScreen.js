@@ -17,9 +17,8 @@ import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const filterStoresBySearch = (stores, searchQuery) => {
   if (!searchQuery?.trim()) return stores;
@@ -32,12 +31,15 @@ export const getVerificationDisplayInfo = (store) => {
   return {
     isVerified,
     statusText: isVerified ? 'Verified' : 'Unverified',
-    statusColor: isVerified ? colors.success : colors.error,
+    statusColor: isVerified ? palette.colors.success : palette.colors.error,
     verificationDate: store?.verification?.verifiedAt ? new Date(store.verification.verifiedAt).toLocaleDateString() : null,
   };
 };
 
 export default function StoreVerificationScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const [stores, setStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function StoreVerificationScreen({ navigation }) {
       <GlassPanel variant="card" style={styles.storeCard}>
         <View style={styles.storeHeader}>
           {item.logo ? <Image source={{ uri: item.logo }} style={styles.storeLogo} contentFit="cover" /> : (
-            <View style={styles.storeLogoPlaceholder}><Ionicons name="storefront" size={24} color={colors.textSecondary} /></View>
+            <View style={styles.storeLogoPlaceholder}><Ionicons name="storefront" size={24} color={palette.colors.textSecondary} /></View>
           )}
           <View style={styles.storeInfo}>
             <View style={styles.storeNameRow}>
@@ -128,7 +130,7 @@ export default function StoreVerificationScreen({ navigation }) {
     <GlassBackground>
       <FlatList data={filteredStores} renderItem={renderStoreCard} keyExtractor={i => i._id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         ListHeaderComponent={
           <View>
             <GlassPanel variant="floating" style={styles.headerPanel}>
@@ -139,9 +141,9 @@ export default function StoreVerificationScreen({ navigation }) {
               </View>
             </GlassPanel>
             <View style={styles.searchContainer}>
-              <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
-              <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={colors.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
-              {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={colors.textSecondary} /></TouchableOpacity>}
+              <Ionicons name="search-outline" size={20} color={palette.colors.textSecondary} />
+              <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={palette.colors.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
+              {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={palette.colors.textSecondary} /></TouchableOpacity>}
             </View>
             <View style={styles.filterTabs}>
               {[{ key: 'all', label: 'All' }, { key: 'verified', label: 'Verified' }, { key: 'unverified', label: 'Unverified' }].map(tab => (
@@ -158,18 +160,18 @@ export default function StoreVerificationScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   list: { paddingHorizontal: spacing.md, paddingBottom: 100, flexGrow: 1 },
   headerPanel: { flexDirection: 'row', alignItems: 'center', margin: spacing.md, padding: spacing.lg },
-  headerIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  headerTitle: { ...typography.h3, color: colors.text },
-  headerSubtitle: { ...typography.bodySmall, color: colors.textSecondary },
+  headerIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
+  headerTitle: { ...typography.h3, color: p.colors.text },
+  headerSubtitle: { ...typography.bodySmall, color: p.colors.textSecondary },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, marginHorizontal: spacing.md, marginBottom: spacing.md, height: 44, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: colors.text },
+  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: p.colors.text },
   filterTabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.md },
   filterTab: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: 'rgba(255,255,255,0.08)' },
-  activeFilterTab: { backgroundColor: colors.primary },
-  filterTabText: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  activeFilterTab: { backgroundColor: p.colors.primary },
+  filterTabText: { ...typography.bodySmall, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
   activeFilterTabText: { color: 'white' },
   storeCard: { padding: spacing.md, marginBottom: spacing.sm },
   storeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
@@ -177,13 +179,13 @@ const styles = StyleSheet.create({
   storeLogoPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
   storeInfo: { flex: 1 },
   storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  storeName: { ...typography.bodySemibold, color: colors.text, flex: 1 },
-  ownerText: { ...typography.bodySmall, color: colors.textSecondary },
+  storeName: { ...typography.bodySemibold, color: p.colors.text, flex: 1 },
+  ownerText: { ...typography.bodySmall, color: p.colors.textSecondary },
   storeFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statusBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full },
   statusText: { ...typography.caption, fontWeight: fontWeight.semibold },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
-  verifyBtn: { backgroundColor: colors.success },
-  unverifyBtn: { backgroundColor: colors.error },
+  verifyBtn: { backgroundColor: p.colors.success },
+  unverifyBtn: { backgroundColor: p.colors.error },
   actionButtonText: { ...typography.bodySmall, color: 'white', fontWeight: fontWeight.semibold },
 });

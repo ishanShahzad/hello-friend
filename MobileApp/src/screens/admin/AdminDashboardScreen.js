@@ -34,12 +34,12 @@ export const calculateAdminStats = (users, stores, products, orders) => {
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'pending': return colors.warning;
-    case 'processing': return colors.info;
-    case 'shipped': return colors.primary;
-    case 'delivered': return colors.success;
-    case 'cancelled': return colors.error;
-    default: return colors.gray;
+    case 'pending': return palette.colors.warning;
+    case 'processing': return palette.colors.info;
+    case 'shipped': return palette.colors.primary;
+    case 'delivered': return palette.colors.success;
+    case 'cancelled': return palette.colors.error;
+    default: return palette.colors.gray;
   }
 };
 
@@ -89,11 +89,13 @@ const QuickTile = ({ icon, color, label, onPress, badge }) => (
   </TouchableOpacity>
 );
 
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, shadows,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography, shadows } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AdminDashboardScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -130,18 +132,18 @@ export default function AdminDashboardScreen({ navigation }) {
   if (isLoading) return <GlassBackground><SafeAreaView style={{flex:1}}><Loader fullScreen message="Loading dashboard..." /></SafeAreaView></GlassBackground>;
 
   const quickActions = [
-    { icon: 'people-outline', color: colors.primary, label: 'Users', onPress: () => navigation.navigate('AdminUserManagement'), badge: stats.totalUsers },
-    { icon: 'shield-checkmark-outline', color: colors.info, label: 'Verifications', onPress: () => navigation.navigate('StoreVerification'), badge: stats.pendingVerifications },
-    { icon: 'business-outline', color: colors.secondary, label: 'All Stores', onPress: () => navigation.navigate('StoreOverview') },
-    { icon: 'bar-chart-outline', color: colors.info, label: 'Analytics', onPress: () => navigation.navigate('AdminAnalytics') },
-    { icon: 'grid-outline', color: colors.warning, label: 'Products', onPress: () => navigation.navigate('AdminProductManagement') },
-    { icon: 'list-outline', color: colors.success, label: 'Orders', onPress: () => navigation.navigate('AdminOrderManagement'), badge: stats.totalOrders },
-    { icon: 'calculator-outline', color: colors.error, label: 'Tax Config', onPress: () => navigation.navigate('AdminTaxConfiguration') },
+    { icon: 'people-outline', color: palette.colors.primary, label: 'Users', onPress: () => navigation.navigate('AdminUserManagement'), badge: stats.totalUsers },
+    { icon: 'shield-checkmark-outline', color: palette.colors.info, label: 'Verifications', onPress: () => navigation.navigate('StoreVerification'), badge: stats.pendingVerifications },
+    { icon: 'business-outline', color: palette.colors.secondary, label: 'All Stores', onPress: () => navigation.navigate('StoreOverview') },
+    { icon: 'bar-chart-outline', color: palette.colors.info, label: 'Analytics', onPress: () => navigation.navigate('AdminAnalytics') },
+    { icon: 'grid-outline', color: palette.colors.warning, label: 'Products', onPress: () => navigation.navigate('AdminProductManagement') },
+    { icon: 'list-outline', color: palette.colors.success, label: 'Orders', onPress: () => navigation.navigate('AdminOrderManagement'), badge: stats.totalOrders },
+    { icon: 'calculator-outline', color: palette.colors.error, label: 'Tax Config', onPress: () => navigation.navigate('AdminTaxConfiguration') },
     { icon: 'globe-outline', color: '#0ea5e9', label: 'Subdomains', onPress: () => navigation.navigate('AdminSubdomainManagement') },
     { icon: 'chatbubbles-outline', color: '#f97316', label: 'Complaints', onPress: () => navigation.navigate('AdminComplaints') },
     { icon: 'card-outline', color: '#10b981', label: 'Subscriptions', onPress: () => navigation.navigate('AdminSubscriptions') },
-    { icon: 'notifications-outline', color: colors.warning, label: 'Notifications', onPress: () => navigation.navigate('AdminNotifications') },
-    { icon: 'options-outline', color: colors.gray, label: 'Settings', onPress: () => navigation.navigate('NotificationSettings') },
+    { icon: 'notifications-outline', color: palette.colors.warning, label: 'Notifications', onPress: () => navigation.navigate('AdminNotifications') },
+    { icon: 'options-outline', color: palette.colors.gray, label: 'Settings', onPress: () => navigation.navigate('NotificationSettings') },
   ];
 
   return (
@@ -150,20 +152,20 @@ export default function AdminDashboardScreen({ navigation }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
       >
         {/* ── Header ── */}
         <GlassPanel variant="strong" style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.headerAvatar}>
-              <Ionicons name="shield-checkmark" size={24} color={colors.white} />
+              <Ionicons name="shield-checkmark" size={24} color={palette.colors.white} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.headerGreeting}>Welcome back</Text>
               <Text style={styles.headerName}>{currentUser?.name?.split(' ')[0] || 'Admin'}</Text>
             </View>
             <View style={styles.headerBadge}>
-              <Ionicons name="sparkles" size={10} color={colors.white} />
+              <Ionicons name="sparkles" size={10} color={palette.colors.white} />
               <Text style={styles.headerBadgeText}>Admin</Text>
             </View>
           </View>
@@ -172,12 +174,12 @@ export default function AdminDashboardScreen({ navigation }) {
         {/* ── Stats Row ── */}
         <View style={styles.statsSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
-            <StatPill icon="people-outline" iconColor={colors.primary} label="Users" value={stats.totalUsers} onPress={() => navigation.navigate('AdminUserManagement')} />
-            <StatPill icon="storefront-outline" iconColor={colors.warning} label="Stores" value={stats.totalStores} onPress={() => navigation.navigate('StoreVerification')} />
-            <StatPill icon="cube-outline" iconColor={colors.secondary} label="Products" value={stats.totalProducts} onPress={() => navigation.navigate('AdminProductManagement')} />
-            <StatPill icon="receipt-outline" iconColor={colors.info} label="Orders" value={stats.totalOrders} onPress={() => navigation.navigate('AdminOrderManagement')} />
-            <StatPill icon="cash-outline" iconColor={colors.success} label="Revenue" value={`$${typeof stats.revenue === 'number' ? stats.revenue.toLocaleString() : stats.revenue}`} />
-            <StatPill icon="hourglass-outline" iconColor={colors.error} label="Pending" value={stats.pendingVerifications} onPress={() => navigation.navigate('StoreVerification')} />
+            <StatPill icon="people-outline" iconColor={palette.colors.primary} label="Users" value={stats.totalUsers} onPress={() => navigation.navigate('AdminUserManagement')} />
+            <StatPill icon="storefront-outline" iconColor={palette.colors.warning} label="Stores" value={stats.totalStores} onPress={() => navigation.navigate('StoreVerification')} />
+            <StatPill icon="cube-outline" iconColor={palette.colors.secondary} label="Products" value={stats.totalProducts} onPress={() => navigation.navigate('AdminProductManagement')} />
+            <StatPill icon="receipt-outline" iconColor={palette.colors.info} label="Orders" value={stats.totalOrders} onPress={() => navigation.navigate('AdminOrderManagement')} />
+            <StatPill icon="cash-outline" iconColor={palette.colors.success} label="Revenue" value={`$${typeof stats.revenue === 'number' ? stats.revenue.toLocaleString() : stats.revenue}`} />
+            <StatPill icon="hourglass-outline" iconColor={palette.colors.error} label="Pending" value={stats.pendingVerifications} onPress={() => navigation.navigate('StoreVerification')} />
           </ScrollView>
         </View>
 
@@ -223,7 +225,7 @@ export default function AdminDashboardScreen({ navigation }) {
             ))
           ) : (
             <View style={styles.emptyActivity}>
-              <Ionicons name="time-outline" size={36} color={colors.grayLight} />
+              <Ionicons name="time-outline" size={36} color={palette.colors.grayLight} />
               <Text style={styles.emptyText}>No recent activity</Text>
             </View>
           )}
@@ -234,8 +236,8 @@ export default function AdminDashboardScreen({ navigation }) {
 
       {/* AI FAB */}
       <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
-        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
-        <Ionicons name="sparkles" size={22} color={colors.white} />
+        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: palette.colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: palette.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
+        <Ionicons name="sparkles" size={22} color={palette.colors.white} />
       </TouchableOpacity>
 
       {/* AI ChatBot */}
@@ -245,7 +247,7 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
 
   /* Header */
@@ -253,17 +255,17 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   headerAvatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center',
   },
   headerInfo: { flex: 1, marginLeft: spacing.md },
-  headerGreeting: { fontSize: fontSize.sm, color: colors.textSecondary },
-  headerName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  headerGreeting: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  headerName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
   headerBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.error, paddingHorizontal: spacing.sm, paddingVertical: 3,
+    backgroundColor: p.colors.error, paddingHorizontal: spacing.sm, paddingVertical: 3,
     borderRadius: borderRadius.full,
   },
-  headerBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.white },
+  headerBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.white },
 
   /* Stats */
   statsSection: { marginTop: spacing.md },
@@ -271,39 +273,39 @@ const styles = StyleSheet.create({
   statPill: { width: 100 },
   statPillInner: { padding: spacing.md, alignItems: 'center' },
   statIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs },
-  statValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 2 },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary },
+  statValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 2 },
+  statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary },
 
   /* Quick Actions */
   sectionContainer: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   quickTile: { width: (SCREEN_WIDTH - spacing.lg * 2 - TILE_GAP * 2) / 3 },
   quickTileInner: { padding: spacing.md, alignItems: 'center', minHeight: 90 },
   quickTileIcon: {
     width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs,
   },
-  quickTileLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.text, textAlign: 'center', marginBottom: 2 },
+  quickTileLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: p.colors.text, textAlign: 'center', marginBottom: 2 },
   tileBadge: {
     position: 'absolute', top: -4, right: -6,
     minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4,
   },
-  tileBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
+  tileBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: p.colors.white },
 
   /* Activity */
   activityPanel: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg },
   activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  viewAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  viewAllText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   activityRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
   activityRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(0,0,0,0.06)' },
   activityDot: { width: 8, height: 8, borderRadius: 4, marginRight: spacing.md },
   activityInfo: { flex: 1 },
-  activityOrderId: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  activityDate: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  activityOrderId: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  activityDate: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
   activityRight: { alignItems: 'flex-end' },
-  activityAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 3 },
+  activityAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 3 },
   statusChip: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.full },
   statusChipText: { fontSize: 9, fontWeight: fontWeight.semibold },
   emptyActivity: { alignItems: 'center', paddingVertical: spacing.xl },
-  emptyText: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm },
+  emptyText: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: spacing.sm },
 });

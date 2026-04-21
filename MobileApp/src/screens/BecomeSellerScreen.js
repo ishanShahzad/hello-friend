@@ -11,9 +11,13 @@ import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function BecomeSellerScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -69,8 +73,8 @@ export default function BecomeSellerScreen({ navigation }) {
         <View style={styles.center}>
           <GlassPanel variant="panel" style={{ alignItems: 'center', padding: spacing.xxl }}>
             <Ionicons name="lock-closed" size={56} color="rgba(255,255,255,0.4)" />
-            <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg }}>Login Required</Text>
-            <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginVertical: spacing.md }}>Please login to become a seller</Text>
+            <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.lg }}>Login Required</Text>
+            <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, textAlign: 'center', marginVertical: spacing.md }}>Please login to become a seller</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Login')}><Text style={styles.primaryBtnText}>Login</Text></TouchableOpacity>
           </GlassPanel>
         </View>
@@ -93,7 +97,7 @@ export default function BecomeSellerScreen({ navigation }) {
           {/* Header with back navigation */}
           <GlassPanel variant="floating" style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>Become a Seller</Text>
@@ -103,10 +107,10 @@ export default function BecomeSellerScreen({ navigation }) {
 
           {/* Hero Header */}
           <GlassPanel variant="strong" style={styles.heroPanel}>
-            <View style={styles.heroIcon}><Ionicons name="storefront" size={40} color={colors.primary} /></View>
+            <View style={styles.heroIcon}><Ionicons name="storefront" size={40} color={palette.colors.primary} /></View>
             <Text style={styles.heroTitle}>Become a Seller — FREE</Text>
             <Text style={styles.heroSub}>Join thousands of successful sellers and start your e-commerce journey today</Text>
-            <View style={styles.freeBadge}><Ionicons name="gift-outline" size={16} color={colors.warning} /><Text style={styles.freeText}>Create your store for FREE — No hidden costs!</Text></View>
+            <View style={styles.freeBadge}><Ionicons name="gift-outline" size={16} color={palette.colors.warning} /><Text style={styles.freeText}>Create your store for FREE — No hidden costs!</Text></View>
           </GlassPanel>
 
           {!showForm ? (
@@ -115,7 +119,7 @@ export default function BecomeSellerScreen({ navigation }) {
               <View style={styles.benefitsGrid}>
                 {benefits.map((b, i) => (
                   <GlassPanel key={i} variant="card" style={styles.benefitCard}>
-                    <View style={styles.benefitIcon}><Ionicons name={b.icon} size={24} color={colors.primary} /></View>
+                    <View style={styles.benefitIcon}><Ionicons name={b.icon} size={24} color={palette.colors.primary} /></View>
                     <Text style={styles.benefitTitle}>{b.title}</Text>
                     <Text style={styles.benefitDesc}>{b.description}</Text>
                   </GlassPanel>
@@ -125,21 +129,21 @@ export default function BecomeSellerScreen({ navigation }) {
               {/* Features */}
               <GlassPanel variant="card" style={styles.featuresCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-                  <Ionicons name="sparkles" size={20} color={colors.warning} />
-                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text }}>What You'll Get</Text>
+                  <Ionicons name="sparkles" size={20} color={palette.colors.warning} />
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text }}>What You'll Get</Text>
                 </View>
                 {features.map((f, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-                    <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                    <Text style={{ fontSize: fontSize.md, color: colors.text }}>{f}</Text>
+                    <Ionicons name="checkmark-circle" size={18} color={palette.colors.success} />
+                    <Text style={{ fontSize: fontSize.md, color: palette.colors.text }}>{f}</Text>
                   </View>
                 ))}
               </GlassPanel>
 
               {/* CTA */}
               <GlassPanel variant="strong" style={styles.ctaPanel}>
-                <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center' }}>Ready to Start Selling?</Text>
-                <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm }}>Click below to provide your details and activate your seller account!</Text>
+                <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text, textAlign: 'center' }}>Ready to Start Selling?</Text>
+                <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, textAlign: 'center', marginTop: spacing.sm }}>Click below to provide your details and activate your seller account!</Text>
                 <TouchableOpacity style={styles.getStartedBtn} onPress={() => setShowForm(true)}>
                   <Ionicons name="storefront" size={22} color="#fff" /><Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff' }}>Get Started</Text>
                 </TouchableOpacity>
@@ -149,8 +153,8 @@ export default function BecomeSellerScreen({ navigation }) {
             <GlassPanel variant="card" style={{ padding: spacing.lg }}>
               {formStep === 1 ? (
                 <>
-                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' }}>Seller Information</Text>
-                  <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 1 of 2 — Contact details</Text>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.primary, textAlign: 'center' }}>Seller Information</Text>
+                  <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 1 of 2 — Contact details</Text>
 
                   {[
                     { key: 'phoneNumber', icon: 'call', label: 'Phone Number *', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
@@ -159,7 +163,7 @@ export default function BecomeSellerScreen({ navigation }) {
                   ].map(({ key, icon, label, placeholder, keyboard }) => (
                     <View key={key} style={styles.inputGroup}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                        <Ionicons name={icon} size={16} color={colors.primary} /><Text style={styles.label}>{label}</Text>
+                        <Ionicons name={icon} size={16} color={palette.colors.primary} /><Text style={styles.label}>{label}</Text>
                       </View>
                       <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={formData[key]} onChangeText={v => handleInputChange(key, v)} keyboardType={keyboard || 'default'} />
                     </View>
@@ -175,7 +179,7 @@ export default function BecomeSellerScreen({ navigation }) {
                   </View>
 
                   <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
-                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setShowForm(false)}><Text style={{ fontWeight: fontWeight.semibold, color: colors.text }}>Back</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setShowForm(false)}><Text style={{ fontWeight: fontWeight.semibold, color: palette.colors.text }}>Back</Text></TouchableOpacity>
                     <TouchableOpacity style={styles.submitFormBtn} onPress={handleStep1Next}>
                       <Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Next: Store Setup</Text>
                       <Ionicons name="arrow-forward" size={16} color="#fff" />
@@ -184,8 +188,8 @@ export default function BecomeSellerScreen({ navigation }) {
                 </>
               ) : (
                 <>
-                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' }}>Store Setup</Text>
-                  <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 2 of 2 — Set up your store (optional)</Text>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.primary, textAlign: 'center' }}>Store Setup</Text>
+                  <Text style={{ fontSize: fontSize.md, color: palette.colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: spacing.xl }}>Step 2 of 2 — Set up your store (optional)</Text>
 
                   {[
                     { key: 'storeName', icon: 'storefront', label: 'Store Name', placeholder: 'My Awesome Store' },
@@ -197,14 +201,14 @@ export default function BecomeSellerScreen({ navigation }) {
                   ].map(({ key, icon, label, placeholder }) => (
                     <View key={key} style={styles.inputGroup}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                        <Ionicons name={icon} size={16} color={colors.primary} /><Text style={styles.label}>{label}</Text>
+                        <Ionicons name={icon} size={16} color={palette.colors.primary} /><Text style={styles.label}>{label}</Text>
                       </View>
                       <TextInput style={styles.glassInput} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" value={storeData[key]} onChangeText={v => setStoreData(prev => ({ ...prev, [key]: v }))} autoCapitalize="none" />
                     </View>
                   ))}
 
                   <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
-                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setFormStep(1)}><Text style={{ fontWeight: fontWeight.semibold, color: colors.text }}>Back</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.backFormBtn} onPress={() => setFormStep(1)}><Text style={{ fontWeight: fontWeight.semibold, color: palette.colors.text }}>Back</Text></TouchableOpacity>
                     <TouchableOpacity style={[styles.submitFormBtn, { flex: 1 }, loading && { opacity: 0.6 }]} onPress={() => handleBecomeSeller(true)} disabled={loading}>
                       {loading ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="play-skip-forward" size={16} color="#fff" /><Text style={{ fontWeight: fontWeight.bold, color: '#fff' }}>Skip</Text></>}
                     </TouchableOpacity>
@@ -222,32 +226,32 @@ export default function BecomeSellerScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  primaryBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 16 },
+  primaryBtn: { backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 16 },
   primaryBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginBottom: spacing.md },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, marginLeft: spacing.md },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   heroPanel: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   heroIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  heroTitle: { fontSize: 24, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center', marginBottom: spacing.sm },
-  heroSub: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md },
+  heroTitle: { fontSize: 24, fontWeight: fontWeight.bold, color: p.colors.text, textAlign: 'center', marginBottom: spacing.sm },
+  heroSub: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', marginBottom: spacing.md },
   freeBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: 'rgba(234,179,8,0.12)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  freeText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.warning },
+  freeText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.warning },
   benefitsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   benefitCard: { flex: 1, minWidth: '30%', alignItems: 'center', padding: spacing.md },
   benefitIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  benefitTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center' },
-  benefitDesc: { fontSize: fontSize.xs, color: colors.textSecondary, textAlign: 'center', marginTop: 2 },
+  benefitTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.text, textAlign: 'center' },
+  benefitDesc: { fontSize: fontSize.xs, color: p.colors.textSecondary, textAlign: 'center', marginTop: 2 },
   featuresCard: { padding: spacing.lg, marginBottom: spacing.md },
   ctaPanel: { alignItems: 'center', padding: spacing.xl },
-  getStartedBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: spacing.xxl, paddingVertical: 16, borderRadius: 20, marginTop: spacing.lg, ...shadows.md },
+  getStartedBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingHorizontal: spacing.xxl, paddingVertical: 16, borderRadius: 20, marginTop: spacing.lg, ...shadows.md },
   inputGroup: { marginBottom: spacing.md },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 4 },
-  glassInput: { backgroundColor: glass.bgSubtle, borderRadius: 14, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: glass.borderSubtle },
-  backFormBtn: { flex: 1, backgroundColor: glass.bg, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  submitFormBtn: { flex: 2, flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: 4 },
+  glassInput: { backgroundColor: p.glass.bgSubtle, borderRadius: 14, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  backFormBtn: { flex: 1, backgroundColor: p.glass.bg, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  submitFormBtn: { flex: 2, flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
 });
