@@ -998,36 +998,14 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                         )}
                     </div>
 
-                    {/* Colors (Optional) */}
+                    {/* Product Options (Size, Color, Material, etc.) */}
                     <div>
-                        <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Colors <span className="text-[10px] normal-case font-normal">(Optional)</span></label>
-                        <div className="flex gap-2">
-                            <input type="text" disabled={uploadingImages} value={newColor}
-                                onChange={(e) => setNewColor(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddColor(); } }}
-                                className={`${inputClass} flex-1`} placeholder="Enter color name (e.g. Red, Blue)" />
-                            <motion.button type="button" disabled={uploadingImages} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                                onClick={handleAddColor}
-                                className="px-4 py-2 rounded-xl text-white font-medium text-sm"
-                                style={{ background: 'linear-gradient(135deg, hsl(260, 60%, 55%), hsl(280, 50%, 55%))' }}>
-                                Add
-                            </motion.button>
-                        </div>
-                        {(product.colors || []).length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {product.colors.map((color, index) => (
-                                    <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
-                                        style={{ background: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }}>
-                                        {color}
-                                        <button type="button" disabled={uploadingImages} onClick={() => handleRemoveColor(color)}
-                                            className="ml-1.5 rounded-full flex-shrink-0" style={{ color: 'hsl(220, 70%, 55%)' }}>
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                         )}
+                        <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Product Options <span className="text-[10px] normal-case font-normal">(Optional — let buyers pick size, color, etc.)</span>
+                        </label>
+                        <OptionGroupsBuilder product={product} setProduct={setProduct} disabled={uploadingImages} />
                     </div>
+
 
                     <div className="glass-inner rounded-xl p-4 space-y-3">
                         <div className="flex items-center gap-3">
