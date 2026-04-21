@@ -1,69 +1,64 @@
 /**
- * RozareLogo — SVG brand mark for mobile app
- * Modern diamond-bloom mark with coral→magenta→purple gradient
+ * RozareLogo — gem-tile R monogram with orbital arc
+ * Modern, distinctive brand mark for the mobile app.
  */
 
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Defs, LinearGradient, Stop, Path, Circle, Text as SvgText } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Stop, Rect, Path, Circle, Text as SvgText } from 'react-native-svg';
 
-export default function RozareLogo({ width = 140, height = 32, showText = true }) {
+export default function RozareLogo({ width = 140, height = 36, showText = true }) {
   const iconSize = height;
-  const viewBoxW = showText ? 240 : 50;
+  const viewBoxW = showText ? 220 : 56;
 
   return (
     <View style={{ width: showText ? width : iconSize, height: iconSize }}>
       <Svg
-        viewBox={`0 0 ${viewBoxW} 50`}
+        viewBox={`0 0 ${viewBoxW} 56`}
         width={showText ? width : iconSize}
         height={iconSize}
       >
         <Defs>
           <LinearGradient id="rzGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0%" stopColor="#FF6B6B" />
-            <Stop offset="50%" stopColor="#E94B7C" />
+            <Stop offset="55%" stopColor="#E94B7C" />
             <Stop offset="100%" stopColor="#7C3AED" />
           </LinearGradient>
-          <LinearGradient id="rzCoral" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#FF8A8A" />
-            <Stop offset="100%" stopColor="#FF6B6B" />
-          </LinearGradient>
-          <LinearGradient id="rzMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#F062A0" />
-            <Stop offset="100%" stopColor="#E94B7C" />
-          </LinearGradient>
-          <LinearGradient id="rzPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#A855F7" />
-            <Stop offset="100%" stopColor="#7C3AED" />
+          <LinearGradient id="rzGradSoft" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor="#FF6B6B" stopOpacity="0.18" />
+            <Stop offset="100%" stopColor="#7C3AED" stopOpacity="0.18" />
           </LinearGradient>
         </Defs>
 
-        {/* Diamond bloom mark, padded by 4 */}
-        <Path d="M25 6 C33 12 34 20 25 26 C16 20 17 12 25 6 Z" fill="url(#rzCoral)" />
-        <Path d="M44 25 C38 33 30 34 24 25 C30 16 38 17 44 25 Z" fill="url(#rzMagenta)" />
-        <Path d="M25 44 C17 38 16 30 25 24 C34 30 33 38 25 44 Z" fill="url(#rzPurple)" />
-        <Path d="M6 25 C12 17 20 16 26 25 C20 34 12 33 6 25 Z" fill="url(#rzMagenta)" opacity="0.85" />
-        <Circle cx="25" cy="25" r="6" fill="white" opacity="0.95" />
-        <SvgText
-          x="25"
-          y="29"
-          fontFamily="System"
-          fontSize="9"
-          fontWeight="900"
-          fill="url(#rzGrad)"
-          textAnchor="middle"
-        >
-          R
-        </SvgText>
+        {/* Mark */}
+        <Rect x="6" y="6" width="44" height="44" rx="12" fill="url(#rzGradSoft)" />
+        <Rect x="8" y="8" width="40" height="40" rx="11" fill="url(#rzGrad)" />
+        <Path
+          d="M44 18 a16 16 0 0 1 -26 22"
+          fill="none"
+          stroke="white"
+          strokeOpacity="0.35"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <Path
+          d="M21 18 h11 a7 7 0 0 1 0 14 h-7 l9 6 M25 18 v20"
+          fill="none"
+          stroke="white"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Circle cx="40" cy="18" r="2" fill="white" />
 
         {showText && (
           <SvgText
-            x="58"
-            y="33"
+            x="62"
+            y="38"
             fontFamily="System"
-            fontSize="26"
+            fontSize="28"
             fontWeight="800"
-            letterSpacing="-0.8"
+            letterSpacing="-1.1"
             fill="url(#rzGrad)"
           >
             Rozare
