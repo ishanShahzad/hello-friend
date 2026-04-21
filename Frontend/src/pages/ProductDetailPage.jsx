@@ -38,7 +38,16 @@ function ProductDetailPage() {
     const commentRef = useRef();
 
     const isInWishlist = product && wishlistItems?.some((item) => item._id === product._id);
-    const isInCart = product && cartItems?.cart?.some((item) => item.product?._id === product._id && item.selectedColor === selectedColor);
+    // Stable key for variant combo (e.g. "Color:Red|Size:L"); used for cart line dedupe
+    const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
+    const myOptKey = optionsKeyOf(selectedOptions);
+    const isInCart = product && cartItems?.cart?.some((item) =>
+        item.product?._id === product._id &&
+        item.selectedColor === selectedColor &&
+        optionsKeyOf(item.selectedOptions) === myOptKey
+    );
+    // Has the buyer picked all required options?
+    const allOptionsSelected = !product.optionGroups?.length || product.optionGroups.every(g => selectedOptions[g.name]);
 
     const displayPrice = product.discountedPrice || product.price;
     const originalPrice = product.price;
@@ -594,8 +603,8 @@ function ProductDetailPage() {
 
                             <motion.div className="flex gap-3 mb-6" variants={fadeIn}>
                                 <motion.button
-                                    disabled={product.stock === 0 || isCartLoading || loadingProductId === id || (product.colors?.length > 0 && !selectedColor)}
-                                    onClick={() => { handleAddToCart(id, selectedColor) }}
+                                    disabled={product.stock === 0 || isCartLoading || loadingProductId === id || (product.colors?.length > 0 && !product.optionGroups?.length && !selectedColor) || !allOptionsSelected}
+                                    onClick={() => { handleAddToCart(id, selectedColor, selectedOptions) }}
                                     whileHover={product.stock > 0 ? { scale: 1.02 } : {}}
                                     whileTap={product.stock > 0 ? { scale: 0.98 } : {}}
                                     className="flex-1 px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm"
