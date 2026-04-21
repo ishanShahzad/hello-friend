@@ -14,6 +14,7 @@ import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { isBiometricEnabled, setBiometricEnabled, isBiometricAvailable, authenticateBiometric } from '../utils/biometricLock';
 
 const APP_VERSION = '1.0.0';
 
@@ -44,6 +45,8 @@ export default function SettingsScreen({ navigation }) {
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [biometricOn, setBiometricOn] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -60,6 +63,21 @@ export default function SettingsScreen({ navigation }) {
       } catch (err) { console.error('Failed to load settings:', err); }
     };
     loadSettings();
+    (async () => {
+      const [avail, on] = await Promise.all([isBiometricAvailable(), isBiometricEnabled()]);
+      setBiometricAvailable(avail);
+      setBiometricOn(on);
+    })();
+  }, []);
+
+  const handleBiometricToggle = useCallback(async (value) => {
+    if (value) {
+      const ok = await authenticateBiometric('Enable biometric lock');
+      if (!ok) return;
+    }
+    await setBiometricEnabled(value);
+    setBiometricOn(value);
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const handleHapticsChange = useCallback((value) => {
@@ -146,6 +164,27 @@ export default function SettingsScreen({ navigation }) {
                 );
               })}
             </View>
+          </GlassPanel>
+
+          <Text style={styles.sectionLabel}>SECURITY</Text>
+          <GlassPanel variant="card" style={styles.settingCard}>
+            <SettingRow
+              icon="finger-print-outline"
+              iconColor={palette.colors.primary}
+              iconBg="rgba(99,102,241,0.15)"
+              title="Biometric App Lock"
+              subtitle={biometricAvailable ? 'Use Face ID / fingerprint to open the app' : 'Not available on this device'}
+              showBorder={false}
+              rightElement={
+                <Switch
+                  value={biometricOn}
+                  onValueChange={handleBiometricToggle}
+                  disabled={!biometricAvailable}
+                  trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }}
+                  thumbColor={biometricOn ? palette.colors.primary : palette.colors.grayLight}
+                />
+              }
+            />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>PREFERENCES</Text>
