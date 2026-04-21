@@ -39,6 +39,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState({});
   const [storeData, setStoreData] = useState(null);
   const flatListRef = useRef(null);
   const bottomBarAnim = useRef(new Animated.Value(0)).current;
@@ -48,8 +49,15 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
+  const myOptKey = optionsKeyOf(selectedOptions);
+  const allOptionsSelected = !product?.optionGroups?.length || product.optionGroups.every(g => selectedOptions[g.name]);
   const isInWishlist = product && wishlistItems?.some((item) => item._id === product._id);
-  const isInCart = product && cartItems?.cart?.some((item) => item.product?._id === product._id && (item.selectedColor || null) === (selectedColor || null));
+  const isInCart = product && cartItems?.cart?.some((item) =>
+    item.product?._id === product._id &&
+    (item.selectedColor || null) === (selectedColor || null) &&
+    optionsKeyOf(item.selectedOptions) === myOptKey
+  );
 
   useEffect(() => {
     fetchProduct();
@@ -83,7 +91,11 @@ export default function ProductDetailScreen({ route, navigation }) {
   const discountPercentage = product?.discountedPrice && product.discountedPrice < product.price ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
 
   const handleWishlistToggle = () => { if (!currentUser) { navigation.navigate('Login'); return; } isInWishlist ? handleDeleteFromWishlist(product._id) : handleAddToWishlist(product._id); };
-  const handleAddToCartClick = () => { if (!currentUser) { navigation.navigate('Login'); return; } handleAddToCart(product._id, selectedColor); };
+  const handleAddToCartClick = () => {
+    if (!currentUser) { navigation.navigate('Login'); return; }
+    if (!allOptionsSelected) { Toast.show({ type: 'error', text1: 'Please select all options' }); return; }
+    handleAddToCart(product._id, selectedColor, selectedOptions);
+  };
 
   const handleSubmitReview = async () => {
     if (!currentUser) { navigation.navigate('Login'); return; }
