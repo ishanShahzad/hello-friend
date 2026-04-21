@@ -13,6 +13,7 @@ import { HAPTICS_KEY, setHapticsEnabled, isHapticsEnabled, impact as hapticImpac
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const APP_VERSION = '1.0.0';
 
@@ -35,6 +36,7 @@ const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_U
 
 export default function SettingsScreen({ navigation }) {
   const { logout } = useAuth();
+  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
