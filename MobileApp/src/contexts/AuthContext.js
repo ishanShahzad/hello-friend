@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import api, { API_BASE_URL } from '../config/api';
+import { trackAuthEvent, trackError, setUserContext } from '../utils/breadcrumbs';
 
 const AuthContext = createContext();
 
@@ -111,6 +112,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (data) => {
+    trackAuthEvent('login_attempt', { email: data?.email });
     try {
       const res = await axios.post(`${API_BASE_URL}/api/auth/login`, data);
 
@@ -119,6 +121,8 @@ export const AuthProvider = ({ children }) => {
 
       setCurrentUser(res.data.user);
       setToken(res.data.token);
+      setUserContext(res.data.user);
+      trackAuthEvent('login_success', { userId: res.data.user?._id });
 
       Toast.show({
         type: 'success',
@@ -129,6 +133,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error(error);
+      trackError('auth', error, { step: 'login' });
       Toast.show({
         type: 'error',
         text1: 'Login Failed',
@@ -182,11 +187,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    trackAuthEvent('logout');
     try {
       await secureDel('jwtToken');
       await secureDel('currentUser');
       setCurrentUser(null);
       setToken(null);
+      setUserContext(null);
 
       Toast.show({
         type: 'info',

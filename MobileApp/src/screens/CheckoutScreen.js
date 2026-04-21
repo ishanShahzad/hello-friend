@@ -18,6 +18,7 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { Loader, InlineLoader } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { trackCheckoutStep, trackPaymentEvent, trackError } from '../utils/breadcrumbs';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
 
 export default function CheckoutScreen({ navigation }) {
@@ -209,14 +210,21 @@ export default function CheckoutScreen({ navigation }) {
   };
 
   const handlePlaceOrder = async () => {
-    if (!validateForm()) return;
+    trackCheckoutStep('place_order_clicked', { paymentMethod, items: cartItems?.cart?.length, total: totalAmount });
+    if (!validateForm()) {
+      trackCheckoutStep('validation_failed');
+      return;
+    }
     setIsProcessing(true);
     try {
       const order = buildOrder();
+      trackCheckoutStep('order_built', { itemCount: order.orderItems.length });
       const res = await api.post('/api/order/place', { order });
+      trackCheckoutStep('order_api_success', { orderId: res.data?.orderId });
       if (paymentMethod === 'card') {
         const { url } = res.data;
         if (!url) throw new Error('No Stripe URL returned');
+        trackPaymentEvent('stripe_redirect', { url: url.substring(0, 60) });
         await WebBrowser.openBrowserAsync(url, { dismissButtonStyle: 'cancel', presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
         // Save shipping info on first order
         if (!savedShippingInfo?.fullName) {
@@ -233,6 +241,7 @@ export default function CheckoutScreen({ navigation }) {
         }
       }
     } catch (error) {
+      trackError('checkout', error, { step: 'place_order', paymentMethod });
       Toast.show({ type: 'error', text1: 'Order Failed', text2: error.response?.data?.msg || 'Failed to place order.' });
     } finally { setIsProcessing(false); }
   };

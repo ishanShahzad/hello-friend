@@ -10,6 +10,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { useReviewPrompt } from '../hooks/useReviewPrompt';
+import { trackPaymentEvent } from '../utils/breadcrumbs';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
 
 export default function PaymentSuccessScreen({ navigation, route }) {
@@ -20,6 +21,7 @@ export default function PaymentSuccessScreen({ navigation, route }) {
   const { trackOrderCompleted } = useReviewPrompt();
 
   useEffect(() => {
+    trackPaymentEvent('success', { orderId });
     api.delete('/api/cart/clear').then(() => fetchCart()).catch(() => {});
     // Increment successful-order counter & request native review after threshold
     trackOrderCompleted();
