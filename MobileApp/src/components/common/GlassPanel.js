@@ -1,68 +1,54 @@
 /**
- * GlassPanel Component — Liquid Glass Design
- * Single-layer translucent card with blur and border effects
- * No nested inner box — styles applied directly to the main container
+ * GlassPanel Component — Liquid Glass Design (theme-aware)
+ * Pulls glass surface colors from the active theme palette so dark mode swaps cleanly.
  */
 
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { borderRadius as br, shadows, spacing } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
-const VARIANTS = {
-  default: {
-    ios: { backgroundColor: 'rgba(255,255,255,0.45)', borderColor: 'rgba(255,255,255,0.5)', blurIntensity: 40 },
-    android: { backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(0,0,0,0.06)' },
-  },
-  card: {
-    ios: { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: 'rgba(255,255,255,0.55)', blurIntensity: 50 },
-    android: { backgroundColor: 'rgba(255,255,255,0.92)', borderColor: 'rgba(0,0,0,0.06)' },
-  },
-  strong: {
-    ios: { backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.65)', blurIntensity: 60 },
-    android: { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: 'rgba(0,0,0,0.05)' },
-  },
-  floating: {
-    ios: { backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(255,255,255,0.6)', blurIntensity: 55 },
-    android: { backgroundColor: 'rgba(255,255,255,0.93)', borderColor: 'rgba(0,0,0,0.06)' },
-  },
-  inner: {
-    ios: { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.4)', blurIntensity: 30 },
-    android: { backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(0,0,0,0.03)' },
-  },
+const buildVariants = (palette) => {
+  const g = palette.glass;
+  return {
+    default: { bg: g.bg, border: g.border, blur: g.blur },
+    card:    { bg: g.bg, border: g.border, blur: g.blur },
+    strong:  { bg: g.bgStrong, border: g.borderStrong, blur: g.blurStrong },
+    floating:{ bg: g.bgStrong, border: g.borderStrong, blur: g.blurStrong },
+    inner:   { bg: g.bgSubtle, border: g.borderSubtle, blur: 30 },
+  };
 };
 
 export default function GlassPanel({ children, style, variant = 'default' }) {
-  const config = VARIANTS[variant] || VARIANTS.default;
+  const { palette, isDark } = useTheme();
+  const VARIANTS = buildVariants(palette);
+  const v = VARIANTS[variant] || VARIANTS.default;
+  const tint = isDark ? 'dark' : 'light';
 
   if (Platform.OS === 'ios') {
-    const v = config.ios;
     return (
       <View
         style={[
           styles.panel,
-          {
-            backgroundColor: v.backgroundColor,
-            borderColor: v.borderColor,
-          },
+          { backgroundColor: v.bg, borderColor: v.border },
           style,
         ]}
       >
-        <BlurView intensity={v.blurIntensity} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={v.blur} tint={tint} style={StyleSheet.absoluteFill} />
         {children}
       </View>
     );
   }
 
-  // Android — higher opacity fallback; keep inner panels flat to avoid double-boxing
-  const v = config.android;
+  // Android — no native blur; rely on opaque glass color
   const isInner = variant === 'inner';
   return (
     <View
       style={[
         styles.panel,
         isInner ? styles.androidInnerPanel : styles.androidPanel,
-        { backgroundColor: v.backgroundColor, borderColor: v.borderColor, borderWidth: isInner ? 0 : 1 },
+        { backgroundColor: v.bg, borderColor: v.border, borderWidth: isInner ? 0 : 1 },
         style,
       ]}
     >
@@ -80,12 +66,10 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   androidPanel: {
-    // Soft shadow for Android — no colored shadow to avoid double-box look
     elevation: 2,
     shadowColor: 'rgba(0, 0, 0, 0.08)',
   },
   androidInnerPanel: {
-    // Inner cards stay flat on Android to prevent parent/child double panel effect
     elevation: 0,
     shadowOpacity: 0,
   },
