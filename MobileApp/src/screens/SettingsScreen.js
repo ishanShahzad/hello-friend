@@ -12,7 +12,7 @@ import api from '../config/api';
 import { HAPTICS_KEY, setHapticsEnabled, isHapticsEnabled, impact as hapticImpact, Haptics } from '../utils/haptics';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
 const APP_VERSION = '1.0.0';
@@ -35,6 +35,9 @@ function SettingRow({ icon, iconColor, iconBg, title, subtitle, onPress, rightEl
 const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_UPDATES: 'settings_email_updates' };
 
 export default function SettingsScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { logout } = useAuth();
   const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -88,13 +91,13 @@ export default function SettingsScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
         <GlassPanel variant="floating" style={styles.heroHeader}>
           <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={styles.heroCenter}>
             <Text style={styles.heroTitle}>Settings</Text>
             <Text style={styles.heroSubtitle}>App preferences & support</Text>
           </View>
-          <View style={styles.heroIconWrap}><Ionicons name="settings-outline" size={22} color={colors.primary} /></View>
+          <View style={styles.heroIconWrap}><Ionicons name="settings-outline" size={22} color={palette.colors.primary} /></View>
         </GlassPanel>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -102,7 +105,7 @@ export default function SettingsScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.settingCard}>
             <View style={styles.appearanceRow}>
               <View style={[styles.settingIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
-                <Ionicons name="contrast-outline" size={20} color={palette.colors.primary} />
+                <Ionicons name="contrast-outline" size={20} color={palette.palette.colors.primary} />
               </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Theme</Text>
@@ -123,18 +126,18 @@ export default function SettingsScreen({ navigation }) {
                     activeOpacity={0.8}
                     style={[
                       styles.segment,
-                      active && { backgroundColor: palette.colors.primary, borderColor: palette.colors.primary },
+                      active && { backgroundColor: palette.palette.colors.primary, borderColor: palette.palette.colors.primary },
                     ]}
                   >
                     <Ionicons
                       name={opt.icon}
                       size={16}
-                      color={active ? palette.colors.textInverse : palette.colors.textSecondary}
+                      color={active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.segmentText,
-                        { color: active ? palette.colors.textInverse : palette.colors.textSecondary },
+                        { color: active ? palette.palette.colors.textInverse : palette.palette.colors.textSecondary },
                       ]}
                     >
                       {opt.label}
@@ -147,34 +150,34 @@ export default function SettingsScreen({ navigation }) {
 
           <Text style={styles.sectionLabel}>PREFERENCES</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="phone-portrait-outline" iconColor="#EC4899" iconBg="rgba(236,72,153,0.15)" title="Haptic Feedback" subtitle="Vibration on taps and gestures" showBorder={false} rightElement={<Switch value={hapticsEnabled} onValueChange={handleHapticsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={hapticsEnabled ? colors.primary : colors.grayLight} />} />
+            <SettingRow icon="phone-portrait-outline" iconColor="#EC4899" iconBg="rgba(236,72,153,0.15)" title="Haptic Feedback" subtitle="Vibration on taps and gestures" showBorder={false} rightElement={<Switch value={hapticsEnabled} onValueChange={handleHapticsChange} trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }} thumbColor={hapticsEnabled ? palette.colors.primary : palette.colors.grayLight} />} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="notifications-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="Push Notifications" subtitle="Order updates and alerts" rightElement={<Switch value={notificationsEnabled} onValueChange={handleNotificationsChange} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={notificationsEnabled ? colors.primary : colors.grayLight} />} />
-            <SettingRow icon="mail-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Email Updates" subtitle="Promotions and newsletters" rightElement={<Switch value={emailUpdates} onValueChange={(v) => { setEmailUpdates(v); AsyncStorage.setItem(SETTINGS_KEYS.EMAIL_UPDATES, String(v)); }} trackColor={{ false: colors.grayLighter, true: colors.primaryLight }} thumbColor={emailUpdates ? colors.primary : colors.grayLight} />} />
+            <SettingRow icon="notifications-outline" iconColor={palette.colors.primary} iconBg="rgba(99,102,241,0.15)" title="Push Notifications" subtitle="Order updates and alerts" rightElement={<Switch value={notificationsEnabled} onValueChange={handleNotificationsChange} trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }} thumbColor={notificationsEnabled ? palette.colors.primary : palette.colors.grayLight} />} />
+            <SettingRow icon="mail-outline" iconColor={palette.colors.info} iconBg="rgba(59,130,246,0.15)" title="Email Updates" subtitle="Promotions and newsletters" rightElement={<Switch value={emailUpdates} onValueChange={(v) => { setEmailUpdates(v); AsyncStorage.setItem(SETTINGS_KEYS.EMAIL_UPDATES, String(v)); }} trackColor={{ false: palette.colors.grayLighter, true: palette.colors.primaryLight }} thumbColor={emailUpdates ? palette.colors.primary : palette.colors.grayLight} />} />
             <SettingRow icon="options-outline" iconColor="#8B5CF6" iconBg="rgba(139,92,246,0.15)" title="Notification Preferences" subtitle="Choose which categories to receive" showBorder={false} onPress={() => navigation.navigate('NotificationPreferences')} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>SUPPORT</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="navigate-outline" iconColor={colors.warning} iconBg="rgba(245,158,11,0.15)" title="Track Order" subtitle="Track your order with email & order ID" onPress={() => navigation.navigate('TrackOrder')} />
-            <SettingRow icon="mail-outline" iconColor={colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="Get in touch with us" onPress={() => navigation.navigate('Contact')} />
-            <SettingRow icon="help-circle-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="FAQ" subtitle="Frequently asked questions" onPress={() => navigation.navigate('FAQ')} />
-            <SettingRow icon="information-circle-outline" iconColor={colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Tortrose" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
-            <SettingRow icon="star-outline" iconColor={colors.warning} iconBg="rgba(245,158,11,0.15)" title="Rate the App" subtitle="Share your experience" onPress={() => Alert.alert('Rate Us ⭐', 'Enjoying Tortrose?', [{ text: 'Maybe Later', style: 'cancel' }, { text: 'Rate Now', onPress: () => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com' : 'https://play.google.com') }])} showBorder={false} />
+            <SettingRow icon="navigate-outline" iconColor={palette.colors.warning} iconBg="rgba(245,158,11,0.15)" title="Track Order" subtitle="Track your order with email & order ID" onPress={() => navigation.navigate('TrackOrder')} />
+            <SettingRow icon="mail-outline" iconColor={palette.colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="Get in touch with us" onPress={() => navigation.navigate('Contact')} />
+            <SettingRow icon="help-circle-outline" iconColor={palette.colors.info} iconBg="rgba(59,130,246,0.15)" title="FAQ" subtitle="Frequently asked questions" onPress={() => navigation.navigate('FAQ')} />
+            <SettingRow icon="information-circle-outline" iconColor={palette.colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Tortrose" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
+            <SettingRow icon="star-outline" iconColor={palette.colors.warning} iconBg="rgba(245,158,11,0.15)" title="Rate the App" subtitle="Share your experience" onPress={() => Alert.alert('Rate Us ⭐', 'Enjoying Tortrose?', [{ text: 'Maybe Later', style: 'cancel' }, { text: 'Rate Now', onPress: () => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com' : 'https://play.google.com') }])} showBorder={false} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>LEGAL</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="shield-outline" iconColor={colors.secondary} iconBg="rgba(139,92,246,0.15)" title="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
-            <SettingRow icon="document-text-outline" iconColor={colors.info} iconBg="rgba(59,130,246,0.15)" title="Terms of Service" onPress={() => navigation.navigate('TermsOfService')} showBorder={false} />
+            <SettingRow icon="shield-outline" iconColor={palette.colors.secondary} iconBg="rgba(139,92,246,0.15)" title="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
+            <SettingRow icon="document-text-outline" iconColor={palette.colors.info} iconBg="rgba(59,130,246,0.15)" title="Terms of Service" onPress={() => navigation.navigate('TermsOfService')} showBorder={false} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>ACCOUNT</Text>
           <GlassPanel variant="card" style={styles.settingCard}>
-            <SettingRow icon="trash-outline" iconColor={colors.error} iconBg="rgba(239,68,68,0.15)" title={isDeletingAccount ? 'Deleting Account…' : 'Delete Account'} subtitle="Permanently remove your account" onPress={isDeletingAccount ? undefined : handleDeleteAccount} showBorder={false} />
+            <SettingRow icon="trash-outline" iconColor={palette.colors.error} iconBg="rgba(239,68,68,0.15)" title={isDeletingAccount ? 'Deleting Account…' : 'Delete Account'} subtitle="Permanently remove your account" onPress={isDeletingAccount ? undefined : handleDeleteAccount} showBorder={false} />
           </GlassPanel>
 
           <View style={styles.footer}>
@@ -187,26 +190,26 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   heroHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm },
   heroBackBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   heroCenter: { flex: 1, marginLeft: spacing.md },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  heroSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  heroSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   heroIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingBottom: spacing.xxl },
-  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textSecondary, letterSpacing: 0.8, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary, letterSpacing: 0.8, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   settingCard: { marginHorizontal: spacing.md, overflow: 'hidden' },
   settingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   settingRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   settingIcon: { width: 40, height: 40, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
   settingText: { flex: 1 },
-  settingTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  settingSubtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  settingTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  settingSubtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
   footer: { alignItems: 'center', paddingVertical: spacing.xxl },
-  footerText: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.xs },
-  footerVersion: { fontSize: fontSize.xs, color: colors.textLight },
+  footerText: { fontSize: fontSize.md, color: p.colors.textSecondary, marginBottom: spacing.xs },
+  footerVersion: { fontSize: fontSize.xs, color: p.colors.textLight },
   appearanceRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   segmented: {
     flexDirection: 'row',

@@ -16,24 +16,25 @@ import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import { EmptyState } from '../../components/common/EmptyState';
-import { colors, spacing, fontSize, fontWeight, borderRadius, glass } from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const STATUS_FILTERS = [
-  { key: 'all', label: 'All', icon: 'apps-outline', color: colors.primary },
-  { key: 'trial', label: 'Trial', icon: 'time-outline', color: colors.warning },
-  { key: 'free_period', label: 'Free', icon: 'gift-outline', color: colors.info },
-  { key: 'active', label: 'Active', icon: 'checkmark-circle-outline', color: colors.success },
-  { key: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline', color: colors.gray },
-  { key: 'blocked', label: 'Blocked', icon: 'ban-outline', color: colors.error },
+  { key: 'all', label: 'All', icon: 'apps-outline', color: palette.colors.primary },
+  { key: 'trial', label: 'Trial', icon: 'time-outline', color: palette.colors.warning },
+  { key: 'free_period', label: 'Free', icon: 'gift-outline', color: palette.colors.info },
+  { key: 'active', label: 'Active', icon: 'checkmark-circle-outline', color: palette.colors.success },
+  { key: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline', color: palette.colors.gray },
+  { key: 'blocked', label: 'Blocked', icon: 'ban-outline', color: palette.colors.error },
 ];
 
 const STATUS_META = {
-  trial:       { color: colors.warning,         label: 'Trial' },
-  free_period: { color: colors.info,            label: 'Free Period' },
-  active:      { color: colors.success,         label: 'Active' },
-  past_due:    { color: colors.error,           label: 'Past Due' },
-  cancelled:   { color: colors.gray,            label: 'Cancelled' },
-  blocked:     { color: colors.error,           label: 'Blocked' },
+  trial:       { color: palette.colors.warning,         label: 'Trial' },
+  free_period: { color: palette.colors.info,            label: 'Free Period' },
+  active:      { color: palette.colors.success,         label: 'Active' },
+  past_due:    { color: palette.colors.error,           label: 'Past Due' },
+  cancelled:   { color: palette.colors.gray,            label: 'Cancelled' },
+  blocked:     { color: palette.colors.error,           label: 'Blocked' },
 };
 
 const formatDate = (date) => {
@@ -43,6 +44,9 @@ const formatDate = (date) => {
 };
 
 export default function AdminSubscriptionsScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
@@ -85,7 +89,7 @@ export default function AdminSubscriptionsScreen({ navigation }) {
         {/* Header */}
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Subscriptions</Text>
@@ -96,7 +100,7 @@ export default function AdminSubscriptionsScreen({ navigation }) {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing.xxxl }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         >
           {/* MRR Hero */}
           {stats && (
@@ -129,17 +133,17 @@ export default function AdminSubscriptionsScreen({ navigation }) {
 
           {/* Search */}
           <View style={styles.searchWrap}>
-            <Ionicons name="search" size={18} color={colors.textSecondary} />
+            <Ionicons name="search" size={18} color={palette.colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search seller, email, or store…"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={palette.colors.textSecondary}
               value={search}
               onChangeText={setSearch}
             />
             {!!search && (
               <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                <Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -171,7 +175,7 @@ export default function AdminSubscriptionsScreen({ navigation }) {
                 message={search || filter !== 'all' ? 'Try a different filter or search term.' : 'No seller subscriptions yet.'}
               />
             ) : filtered.map(sub => {
-              const meta = STATUS_META[sub.status] || { color: colors.gray, label: sub.status };
+              const meta = STATUS_META[sub.status] || { color: palette.colors.gray, label: sub.status };
               return (
                 <GlassPanel key={sub._id} variant="card" style={styles.subCard}>
                   <View style={styles.subHeader}>
@@ -188,10 +192,10 @@ export default function AdminSubscriptionsScreen({ navigation }) {
 
                   {sub.store?.name && (
                     <View style={styles.storeRow}>
-                      <Ionicons name="storefront-outline" size={14} color={colors.primary} />
+                      <Ionicons name="storefront-outline" size={14} color={palette.colors.primary} />
                       <Text style={styles.storeName} numberOfLines={1}>{sub.store.name}</Text>
                       {sub.store.verification?.isVerified && (
-                        <Ionicons name="shield-checkmark" size={14} color={colors.success} />
+                        <Ionicons name="shield-checkmark" size={14} color={palette.colors.success} />
                       )}
                     </View>
                   )}
@@ -220,7 +224,7 @@ export default function AdminSubscriptionsScreen({ navigation }) {
 
                   {sub.status === 'blocked' && sub.blockedReason && (
                     <View style={styles.blockedNote}>
-                      <Ionicons name="alert-circle" size={14} color={colors.error} />
+                      <Ionicons name="alert-circle" size={14} color={palette.colors.error} />
                       <Text style={styles.blockedText} numberOfLines={2}>{sub.blockedReason}</Text>
                     </View>
                   )}
@@ -234,7 +238,7 @@ export default function AdminSubscriptionsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     marginHorizontal: spacing.md, marginTop: spacing.sm,
@@ -245,8 +249,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center', alignItems: 'center',
   },
-  title: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  subtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  title: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  subtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
 
   mrrHero: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.lg,
@@ -254,61 +258,61 @@ const styles = StyleSheet.create({
   },
   mrrIcon: {
     width: 56, height: 56, borderRadius: 16,
-    backgroundColor: colors.primary,
+    backgroundColor: p.colors.primary,
     justifyContent: 'center', alignItems: 'center',
   },
-  mrrLabel: { fontSize: fontSize.xs, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 },
-  mrrValue: { fontSize: 28, fontWeight: fontWeight.extrabold, color: colors.text, marginTop: 2 },
-  mrrHint: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  mrrLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 },
+  mrrValue: { fontSize: 28, fontWeight: fontWeight.extrabold, color: p.colors.text, marginTop: 2 },
+  mrrHint: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
   statPill: {
-    backgroundColor: glass.bg || 'rgba(255,255,255,0.55)',
+    backgroundColor: p.glass.bg || 'rgba(255,255,255,0.55)',
     borderRadius: 16, padding: spacing.md, marginRight: spacing.sm,
     alignItems: 'center', minWidth: 84,
-    borderWidth: 1, borderColor: glass.border || 'rgba(255,255,255,0.5)',
+    borderWidth: 1, borderColor: p.glass.border || 'rgba(255,255,255,0.5)',
   },
   statPillIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-  statPillValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  statPillLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statPillValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  statPillLabel: { fontSize: 10, color: p.colors.textSecondary, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     marginHorizontal: spacing.lg, marginTop: spacing.sm,
     paddingHorizontal: spacing.md, paddingVertical: 10,
-    backgroundColor: glass.bg || 'rgba(255,255,255,0.55)',
-    borderRadius: 14, borderWidth: 1, borderColor: glass.borderSubtle,
+    backgroundColor: p.glass.bg || 'rgba(255,255,255,0.55)',
+    borderRadius: 14, borderWidth: 1, borderColor: p.glass.borderSubtle,
   },
-  searchInput: { flex: 1, fontSize: fontSize.sm, color: colors.text, padding: 0 },
+  searchInput: { flex: 1, fontSize: fontSize.sm, color: p.colors.text, padding: 0 },
 
   chipsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingVertical: spacing.md },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: spacing.md, paddingVertical: 8,
     borderRadius: 999, marginRight: spacing.xs,
-    backgroundColor: glass.bgSubtle, borderWidth: 1, borderColor: glass.borderSubtle,
+    backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle,
   },
-  chipText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.text },
+  chipText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.text },
 
   subCard: { padding: spacing.md, marginBottom: spacing.sm },
   subHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
-  sellerName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  sellerEmail: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  sellerName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.text },
+  sellerEmail: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   statusBadgeText: { fontSize: 10, fontWeight: fontWeight.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   storeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
-  storeName: { flex: 1, fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
+  storeName: { flex: 1, fontSize: fontSize.sm, color: p.colors.text, fontWeight: fontWeight.medium },
 
-  metaGrid: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: glass.borderSubtle },
+  metaGrid: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
   metaItem: { flex: 1 },
-  metaLabel: { fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  metaValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+  metaLabel: { fontSize: 10, color: p.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  metaValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
 
   blockedNote: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginTop: spacing.sm, padding: spacing.sm,
     backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 10,
   },
-  blockedText: { flex: 1, fontSize: fontSize.xs, color: colors.error },
+  blockedText: { flex: 1, fontSize: fontSize.xs, color: p.colors.error },
 });

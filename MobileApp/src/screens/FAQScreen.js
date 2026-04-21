@@ -8,7 +8,8 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Ani
 import { Ionicons } from '@expo/vector-icons';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -81,7 +82,7 @@ function FAQItem({ q, a }) {
     <TouchableOpacity style={styles.faqItem} onPress={toggle} activeOpacity={0.7}>
       <View style={styles.faqHeader}>
         <Text style={styles.faqQuestion}>{q}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={palette.colors.textSecondary} />
       </View>
       {open && <Text style={styles.faqAnswer}>{a}</Text>}
     </TouchableOpacity>
@@ -89,19 +90,22 @@ function FAQItem({ q, a }) {
 }
 
 export default function FAQScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   return (
     <GlassBackground>
       <SafeAreaView style={styles.container}>
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>FAQ</Text>
             <Text style={styles.headerSubtitle}>Help Center</Text>
           </View>
           <View style={styles.headerIcon}>
-            <Ionicons name="help-circle-outline" size={22} color={colors.primary} />
+            <Ionicons name="help-circle-outline" size={22} color={palette.colors.primary} />
           </View>
         </GlassPanel>
 
@@ -113,7 +117,7 @@ export default function FAQScreen({ navigation }) {
               <GlassPanel variant="card" style={styles.categoryCard}>
                 <View style={styles.categoryHeader}>
                   <View style={styles.categoryIconWrap}>
-                    <Ionicons name={cat.icon} size={18} color={colors.primary} />
+                    <Ionicons name={cat.icon} size={18} color={palette.colors.primary} />
                   </View>
                   <Text style={styles.categoryTitle}>{cat.category}</Text>
                 </View>
@@ -127,7 +131,7 @@ export default function FAQScreen({ navigation }) {
           <GlassPanel variant="card" style={styles.ctaCard}>
             <Text style={styles.ctaText}>Still have questions?</Text>
             <TouchableOpacity style={styles.ctaBtn} onPress={() => navigation.navigate('Contact')} activeOpacity={0.7}>
-              <Ionicons name="mail-outline" size={16} color={colors.white} />
+              <Ionicons name="mail-outline" size={16} color={palette.colors.white} />
               <Text style={styles.ctaBtnText}>Contact Support</Text>
             </TouchableOpacity>
           </GlassPanel>
@@ -139,27 +143,27 @@ export default function FAQScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, marginLeft: spacing.md },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   headerIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  heroText: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.lg },
+  heroText: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.lg },
   categoryBlock: { marginBottom: spacing.md },
   categoryCard: { overflow: 'hidden' },
   categoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   categoryIconWrap: { width: 36, height: 36, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  categoryTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.text },
+  categoryTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: p.colors.text },
   faqItem: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.sm },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  faqQuestion: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text, flex: 1, marginRight: spacing.sm },
-  faqAnswer: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
+  faqQuestion: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: p.colors.text, flex: 1, marginRight: spacing.sm },
+  faqAnswer: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
   ctaCard: { alignItems: 'center', marginTop: spacing.md },
-  ctaText: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.md },
-  ctaBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg, gap: spacing.sm },
-  ctaBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.white },
+  ctaText: { fontSize: fontSize.md, color: p.colors.textSecondary, marginBottom: spacing.md },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg, gap: spacing.sm },
+  ctaBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.white },
 });

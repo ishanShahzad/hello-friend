@@ -12,17 +12,19 @@ import api from '../../config/api';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const TAX_TYPES = [
-  { key: 'none', label: 'No Tax', icon: 'close-circle-outline', color: colors.textSecondary, desc: 'No tax charged' },
-  { key: 'percentage', label: 'Percentage (%)', icon: 'trending-up-outline', color: colors.info, desc: 'Percentage of subtotal' },
-  { key: 'fixed', label: 'Fixed Amount', icon: 'cash-outline', color: colors.success, desc: 'Flat amount per order' },
+  { key: 'none', label: 'No Tax', icon: 'close-circle-outline', color: palette.colors.textSecondary, desc: 'No tax charged' },
+  { key: 'percentage', label: 'Percentage (%)', icon: 'trending-up-outline', color: palette.colors.info, desc: 'Percentage of subtotal' },
+  { key: 'fixed', label: 'Fixed Amount', icon: 'cash-outline', color: palette.colors.success, desc: 'Flat amount per order' },
 ];
 
 export default function AdminTaxConfigurationScreen() {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -74,7 +76,7 @@ export default function AdminTaxConfigurationScreen() {
     <GlassBackground>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
           
           <GlassPanel variant="floating" style={styles.hero}>
             <View style={styles.heroIcon}><Ionicons name="calculator" size={32} color="white" /></View>
@@ -83,7 +85,7 @@ export default function AdminTaxConfigurationScreen() {
           </GlassPanel>
 
           <GlassPanel variant="card" style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.info} />
+            <Ionicons name="information-circle-outline" size={18} color={palette.colors.info} />
             <Text style={styles.infoText}>This is a global tax rule applied uniformly to all orders.</Text>
           </GlassPanel>
 
@@ -93,7 +95,7 @@ export default function AdminTaxConfigurationScreen() {
               <TouchableOpacity key={type.key} style={[styles.typeRow, taxType === type.key && styles.typeRowActive, idx < TAX_TYPES.length - 1 && styles.typeRowBorder]}
                 onPress={() => { setTaxType(type.key); setValueError(''); }} activeOpacity={0.7}>
                 <View style={[styles.typeIconWrap, { backgroundColor: taxType === type.key ? type.color + '20' : 'rgba(255,255,255,0.06)' }]}>
-                  <Ionicons name={type.icon} size={22} color={taxType === type.key ? type.color : colors.textSecondary} />
+                  <Ionicons name={type.icon} size={22} color={taxType === type.key ? type.color : palette.colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.typeLabel, taxType === type.key && { color: type.color }]}>{type.label}</Text>
@@ -114,7 +116,7 @@ export default function AdminTaxConfigurationScreen() {
                   <View style={styles.prefixBadge}><Text style={styles.prefixText}>{taxType === 'percentage' ? '%' : '$'}</Text></View>
                   <TextInput style={styles.valueInput} value={taxValue}
                     onChangeText={(t) => { setTaxValue(t.replace(/[^0-9.]/g, '')); setValueError(''); }}
-                    keyboardType="decimal-pad" placeholder={taxType === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'} placeholderTextColor={colors.textSecondary} />
+                    keyboardType="decimal-pad" placeholder={taxType === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'} placeholderTextColor={palette.colors.textSecondary} />
                 </View>
                 {valueError ? <Text style={styles.errorText}>{valueError}</Text> : null}
               </GlassPanel>
@@ -122,7 +124,7 @@ export default function AdminTaxConfigurationScreen() {
           )}
 
           <GlassPanel variant="inner" style={styles.previewCard}>
-            <Ionicons name="eye-outline" size={18} color={colors.primary} />
+            <Ionicons name="eye-outline" size={18} color={palette.colors.primary} />
             <Text style={styles.previewText}>{getPreviewText()}</Text>
           </GlassPanel>
 
@@ -139,32 +141,32 @@ export default function AdminTaxConfigurationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
   hero: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.lg },
-  heroIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs },
-  heroSubtitle: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center' },
-  infoCard: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.md, marginBottom: spacing.lg, gap: spacing.sm, borderLeftWidth: 3, borderLeftColor: colors.info },
-  infoText: { ...typography.bodySmall, color: colors.textSecondary, flex: 1, lineHeight: 20 },
-  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textSecondary, letterSpacing: 0.8, marginBottom: spacing.sm, marginLeft: spacing.xs },
+  heroIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.xs },
+  heroSubtitle: { ...typography.bodySmall, color: p.colors.textSecondary, textAlign: 'center' },
+  infoCard: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.md, marginBottom: spacing.lg, gap: spacing.sm, borderLeftWidth: 3, borderLeftColor: p.colors.info },
+  infoText: { ...typography.bodySmall, color: p.colors.textSecondary, flex: 1, lineHeight: 20 },
+  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: p.colors.textSecondary, letterSpacing: 0.8, marginBottom: spacing.sm, marginLeft: spacing.xs },
   typeCard: { marginBottom: spacing.lg, overflow: 'hidden' },
   typeRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md },
   typeRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
   typeRowActive: { backgroundColor: 'rgba(255,255,255,0.05)' },
   typeIconWrap: { width: 44, height: 44, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  typeLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 2 },
-  typeDesc: { ...typography.bodySmall, color: colors.textSecondary },
+  typeLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: 2 },
+  typeDesc: { ...typography.bodySmall, color: p.colors.textSecondary },
   radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   radioInner: { width: 12, height: 12, borderRadius: 6 },
   valueCard: { marginBottom: spacing.lg, overflow: 'hidden' },
   valueInputRow: { flexDirection: 'row', alignItems: 'center' },
   prefixBadge: { width: 50, height: 56, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.08)' },
-  prefixText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
-  valueInput: { flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: fontSize.xl, fontWeight: fontWeight.semibold, color: colors.text },
-  errorText: { ...typography.bodySmall, color: colors.error, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+  prefixText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.primary },
+  valueInput: { flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: fontSize.xl, fontWeight: fontWeight.semibold, color: p.colors.text },
+  errorText: { ...typography.bodySmall, color: p.colors.error, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   previewCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, marginBottom: spacing.lg },
-  previewText: { ...typography.bodySmall, color: colors.textSecondary, flex: 1, lineHeight: 20 },
-  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
+  previewText: { ...typography.bodySmall, color: p.colors.textSecondary, flex: 1, lineHeight: 20 },
+  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
   saveButtonText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: 'white' },
 });

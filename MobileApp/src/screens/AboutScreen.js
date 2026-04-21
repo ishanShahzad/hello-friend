@@ -8,7 +8,8 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { Ionicons } from '@expo/vector-icons';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const stats = [
   { value: '10K+', label: 'Products Listed' },
@@ -25,19 +26,22 @@ const values = [
 ];
 
 export default function AboutScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   return (
     <GlassBackground>
       <SafeAreaView style={styles.container}>
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>About Us</Text>
             <Text style={styles.headerSubtitle}>Our Story</Text>
           </View>
           <View style={styles.headerIcon}>
-            <Ionicons name="star-outline" size={22} color={colors.primary} />
+            <Ionicons name="star-outline" size={22} color={palette.colors.primary} />
           </View>
         </GlassPanel>
 
@@ -71,7 +75,7 @@ export default function AboutScreen({ navigation }) {
           {values.map((v, i) => (
             <GlassPanel key={i} variant="card" style={styles.valueCard}>
               <View style={styles.valueIconWrap}>
-                <Ionicons name={v.icon} size={20} color={colors.primary} />
+                <Ionicons name={v.icon} size={20} color={palette.colors.primary} />
               </View>
               <View style={styles.valueText}>
                 <Text style={styles.valueTitle}>{v.title}</Text>
@@ -101,36 +105,36 @@ export default function AboutScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, marginLeft: spacing.md },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   headerIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center', marginBottom: spacing.sm },
-  heroDesc: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: spacing.lg, paddingHorizontal: spacing.md },
+  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: p.colors.primary, textAlign: 'center', marginBottom: spacing.sm },
+  heroDesc: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: spacing.lg, paddingHorizontal: spacing.md },
   missionCard: { marginBottom: spacing.lg },
-  missionTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
-  missionText: { fontSize: fontSize.md, color: colors.textSecondary, lineHeight: 22, textAlign: 'center' },
+  missionTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.sm, textAlign: 'center' },
+  missionText: { fontSize: fontSize.md, color: p.colors.textSecondary, lineHeight: 22, textAlign: 'center' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   statCard: { flex: 1, minWidth: '45%', alignItems: 'center', paddingVertical: spacing.lg },
-  statValue: { fontSize: fontSize.xxxl, fontWeight: fontWeight.bold, color: colors.primary },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4 },
-  sectionTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center', marginBottom: spacing.md },
+  statValue: { fontSize: fontSize.xxxl, fontWeight: fontWeight.bold, color: p.colors.primary },
+  statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 4 },
+  sectionTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, textAlign: 'center', marginBottom: spacing.md },
   valueCard: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md },
   valueIconWrap: { width: 40, height: 40, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
   valueText: { flex: 1 },
-  valueTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 4 },
-  valueDesc: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20 },
+  valueTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: 4 },
+  valueDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, lineHeight: 20 },
   ctaCard: { alignItems: 'center', marginTop: spacing.sm },
-  ctaTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm },
-  ctaDesc: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.lg },
+  ctaTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.sm },
+  ctaDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginBottom: spacing.lg },
   ctaButtons: { flexDirection: 'row', gap: spacing.md },
-  ctaPrimary: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg },
-  ctaPrimaryText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.white },
+  ctaPrimary: { backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg },
+  ctaPrimaryText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.white },
   ctaSecondary: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg },
-  ctaSecondaryText: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text },
+  ctaSecondaryText: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: p.colors.text },
 });

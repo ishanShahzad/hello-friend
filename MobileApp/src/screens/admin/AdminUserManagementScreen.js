@@ -13,9 +13,8 @@ import Loader from '../../components/common/Loader';
 import { EmptySearch } from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ROLE_TABS = [
   { id: 'all', label: 'All' }, { id: 'user', label: 'Users' },
@@ -34,10 +33,13 @@ export const filterUsers = (users, role, searchQuery) => {
 };
 
 const getRoleColor = (role) => {
-  switch (role) { case 'admin': return colors.error; case 'seller': return colors.success; default: return colors.info; }
+  switch (role) { case 'admin': return palette.colors.error; case 'seller': return palette.colors.success; default: return palette.colors.info; }
 };
 
 export default function AdminUserManagementScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -84,10 +86,10 @@ export default function AdminUserManagementScreen({ navigation }) {
       </GlassPanel>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} />
-        <TextInput style={styles.searchInput} placeholder="Search by name or email..." placeholderTextColor={colors.textSecondary}
+        <Ionicons name="search" size={20} color={palette.colors.textSecondary} />
+        <TextInput style={styles.searchInput} placeholder="Search by name or email..." placeholderTextColor={palette.colors.textSecondary}
           value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
-        {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={colors.textSecondary} /></TouchableOpacity>}
+        {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={palette.colors.textSecondary} /></TouchableOpacity>}
       </View>
 
       <FlatList horizontal data={ROLE_TABS} keyExtractor={i => i.id} showsHorizontalScrollIndicator={false}
@@ -133,7 +135,7 @@ export default function AdminUserManagementScreen({ navigation }) {
       <FlatList data={filteredUsers} renderItem={renderUser} keyExtractor={i => i._id}
         contentContainerStyle={styles.list} ListHeaderComponent={renderHeader}
         ListEmptyComponent={searchQuery ? <EmptySearch query={searchQuery} onClear={() => setSearchQuery('')} /> : null}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         showsVerticalScrollIndicator={false} />
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
@@ -141,7 +143,7 @@ export default function AdminUserManagementScreen({ navigation }) {
           <GlassPanel variant="strong" style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>User Details</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color={palette.colors.text} /></TouchableOpacity>
             </View>
             {selectedUser && (
               <>
@@ -171,46 +173,46 @@ export default function AdminUserManagementScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   headerContainer: { paddingBottom: spacing.md, marginBottom: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', margin: spacing.lg, marginBottom: spacing.md, padding: spacing.lg },
-  titleIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  title: { ...typography.h3, color: colors.text },
-  subtitle: { ...typography.bodySmall, color: colors.textSecondary },
+  titleIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
+  title: { ...typography.h3, color: p.colors.text },
+  subtitle: { ...typography.bodySmall, color: p.colors.textSecondary },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, marginHorizontal: spacing.lg, marginBottom: spacing.md, height: 44, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: colors.text },
+  searchInput: { flex: 1, marginLeft: spacing.sm, fontSize: fontSize.md, color: p.colors.text },
   tabsContainer: { paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
   tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: 'rgba(255,255,255,0.08)', gap: spacing.xs },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { ...typography.bodySmall, fontWeight: fontWeight.medium, color: colors.textSecondary },
+  tabActive: { backgroundColor: p.colors.primary },
+  tabText: { ...typography.bodySmall, fontWeight: fontWeight.medium, color: p.colors.textSecondary },
   tabTextActive: { color: 'white' },
   tabBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xs },
   tabBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  tabBadgeText: { ...typography.caption, fontWeight: fontWeight.bold, color: colors.textSecondary },
+  tabBadgeText: { ...typography.caption, fontWeight: fontWeight.bold, color: p.colors.textSecondary },
   tabBadgeTextActive: { color: 'white' },
-  resultsText: { ...typography.bodySmall, color: colors.textSecondary, paddingHorizontal: spacing.lg },
-  resultsCount: { fontWeight: fontWeight.bold, color: colors.text },
+  resultsText: { ...typography.bodySmall, color: p.colors.textSecondary, paddingHorizontal: spacing.lg },
+  resultsCount: { fontWeight: fontWeight.bold, color: p.colors.text },
   list: { paddingHorizontal: spacing.md, paddingBottom: 100, flexGrow: 1 },
   userCard: { marginBottom: spacing.sm },
   userCardInner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
   avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
   avatarText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold },
   userInfo: { flex: 1 },
-  userName: { ...typography.bodySemibold, color: colors.text, marginBottom: 2 },
-  userEmail: { ...typography.bodySmall, color: colors.textSecondary },
+  userName: { ...typography.bodySemibold, color: p.colors.text, marginBottom: 2 },
+  userEmail: { ...typography.bodySmall, color: p.colors.textSecondary },
   roleBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full },
   roleText: { ...typography.caption, color: 'white', fontWeight: fontWeight.bold, textTransform: 'capitalize' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  modalTitle: { ...typography.h3, color: colors.text },
+  modalTitle: { ...typography.h3, color: p.colors.text },
   modalUserInfo: { alignItems: 'center', marginBottom: spacing.xl },
   modalAvatar: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
   modalAvatarText: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
-  modalUserName: { ...typography.h3, color: colors.text },
-  modalUserEmail: { ...typography.body, color: colors.textSecondary },
-  modalSectionTitle: { ...typography.h4, color: colors.text, marginBottom: spacing.md },
+  modalUserName: { ...typography.h3, color: p.colors.text },
+  modalUserEmail: { ...typography.body, color: p.colors.textSecondary },
+  modalSectionTitle: { ...typography.h4, color: p.colors.text, marginBottom: spacing.md },
   roleOptions: { gap: spacing.sm, marginBottom: spacing.xl },
   roleOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: borderRadius.xl, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
-  roleOptionText: { ...typography.bodySemibold, color: colors.textSecondary },
+  roleOptionText: { ...typography.bodySemibold, color: p.colors.textSecondary },
 });
