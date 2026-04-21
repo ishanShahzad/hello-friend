@@ -4,7 +4,8 @@ const {
   trustStore, 
   untrustStore, 
   getTrustStatus, 
-  getTrustedStores 
+  getTrustedStores,
+  getTrustMetrics
 } = require('../controllers/trustController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -17,5 +18,8 @@ router.delete('/:storeId/trust', protect, untrustStore);
 
 // Get trust status for a specific store
 router.get('/:storeId/trust-status', protect, getTrustStatus);
+
+// Public — full trust score breakdown
+router.get('/:storeId/trust-metrics', getTrustMetrics);
 
 module.exports = router;
