@@ -566,13 +566,16 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 
-  // Loading state with custom loader
+  // Loading state with skeleton grid
   if (isLoading && products.length === 0) {
     return (
       <GlassBackground>
         <SafeAreaView style={{ flex: 1 }}>
-        <StatusBar barStyle="light-content" />
-        <Loader fullScreen size="medium" />
+          <StatusBar barStyle="light-content" />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {renderHeader()}
+            <ProductGridSkeleton count={6} />
+          </ScrollView>
         </SafeAreaView>
       </GlassBackground>
     );
