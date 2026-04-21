@@ -1,20 +1,19 @@
 /**
- * SmartTagGenerator — React Native
- * AI-powered tag generation and browsing for products
+ * SmartTagGenerator — themed
  */
 
 import React, { useState } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import GlassPanel from './common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius,
-} from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 
 export default function SmartTagGenerator({ productId, currentTags = [], onTagsUpdated, productData }) {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const styles = makeStyles(palette);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState(null);
@@ -55,10 +54,9 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
 
   return (
     <View style={styles.container}>
-      {/* Action Buttons */}
       <View style={styles.btnRow}>
         <TouchableOpacity onPress={generateTags} disabled={isGenerating || !productId} style={[styles.generateBtn, (isGenerating || !productId) && { opacity: 0.5 }]}>
-          {isGenerating ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="sparkles" size={16} color={colors.white} />}
+          {isGenerating ? <ActivityIndicator size="small" color="#ffffff" /> : <Ionicons name="sparkles" size={16} color="#ffffff" />}
           <Text style={styles.generateBtnText}>AI Generate</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={fetchSuggestions} style={styles.browseBtn}>
@@ -67,7 +65,6 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
         </TouchableOpacity>
       </View>
 
-      {/* Current Tags */}
       {currentTags.length > 0 && (
         <View style={styles.tagsWrap}>
           {currentTags.map(tag => (
@@ -81,7 +78,6 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
         </View>
       )}
 
-      {/* Suggestions Panel */}
       {showSuggestions && suggestions && (
         <GlassPanel variant="inner" style={styles.suggestionsPanel}>
           <View style={styles.suggestionsHeader}>
@@ -98,11 +94,7 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
               <Text style={styles.catLabel}>AI Recommended</Text>
               <View style={styles.tagsWrap}>
                 {suggestions.smartSuggestions.map(tag => (
-                  <TouchableOpacity
-                    key={tag}
-                    onPress={() => toggleTag(tag)}
-                    style={[styles.sugTag, (selectedTags.includes(tag) || currentTags.includes(tag)) && styles.sugTagSelected]}
-                  >
+                  <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.sugTag, (selectedTags.includes(tag) || currentTags.includes(tag)) && styles.sugTagSelected]}>
                     {selectedTags.includes(tag) && <Ionicons name="checkmark" size={12} color={colors.secondary} />}
                     <Text style={[styles.sugTagText, selectedTags.includes(tag) && { color: colors.secondary }]}>{tag}</Text>
                   </TouchableOpacity>
@@ -117,12 +109,7 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
                 <Text style={styles.catLabel}>{category}</Text>
                 <View style={styles.tagsWrap}>
                   {tags.map(tag => (
-                    <TouchableOpacity
-                      key={tag}
-                      onPress={() => !currentTags.includes(tag) && toggleTag(tag)}
-                      disabled={currentTags.includes(tag)}
-                      style={[styles.sugTag, currentTags.includes(tag) && { backgroundColor: `${colors.success}15` }, selectedTags.includes(tag) && styles.sugTagSelected]}
-                    >
+                    <TouchableOpacity key={tag} onPress={() => !currentTags.includes(tag) && toggleTag(tag)} disabled={currentTags.includes(tag)} style={[styles.sugTag, currentTags.includes(tag) && { backgroundColor: colors.successSubtle }, selectedTags.includes(tag) && styles.sugTagSelected]}>
                       {currentTags.includes(tag) && <Ionicons name="checkmark" size={10} color={colors.success} />}
                       <Text style={[styles.sugTagText, currentTags.includes(tag) && { color: colors.success }]}>{tag}</Text>
                     </TouchableOpacity>
@@ -143,24 +130,24 @@ export default function SmartTagGenerator({ productId, currentTags = [], onTagsU
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (palette) => { const colors = palette.colors; const glass = palette.glass; return StyleSheet.create({
   container: { gap: spacing.md },
   btnRow: { flexDirection: 'row', gap: spacing.sm },
   generateBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: colors.secondary },
-  generateBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.white },
-  browseBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: `${colors.gray}10` },
+  generateBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#ffffff' },
+  browseBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: glass.bgSubtle },
   browseBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  tagPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${colors.primary}10`, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full },
+  tagPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primarySubtle, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full },
   tagText: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.primary },
   suggestionsPanel: { padding: spacing.md },
   suggestionsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   suggestionsTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
   catSection: { marginBottom: spacing.md },
   catLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textSecondary, textTransform: 'capitalize', marginBottom: spacing.xs },
-  sugTag: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, backgroundColor: `${colors.gray}08`, flexDirection: 'row', alignItems: 'center', gap: 3 },
-  sugTagSelected: { borderWidth: 1, borderColor: colors.secondary, backgroundColor: `${colors.secondary}10` },
+  sugTag: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, backgroundColor: glass.bgSubtle, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  sugTagSelected: { borderWidth: 1, borderColor: colors.secondary, backgroundColor: colors.secondarySubtle },
   sugTagText: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.text },
   applyBtn: { backgroundColor: colors.success, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, alignItems: 'center', marginTop: spacing.sm },
-  applyBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.white },
-});
+  applyBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#ffffff' },
+}); };

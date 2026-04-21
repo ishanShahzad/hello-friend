@@ -1,5 +1,5 @@
 /**
- * TrustButton — Liquid Glass Design
+ * TrustButton — Liquid Glass Design (themed)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -8,9 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import { colors, spacing, fontSize, borderRadius, fontWeight, glass, shadows } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
 
 const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrusted = false, compact = false, iconOnly = false, onTrustChange }) => {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const styles = makeStyles(palette);
   const [isTrusted, setIsTrusted] = useState(initialIsTrusted);
   const [trustCount, setTrustCount] = useState(initialTrustCount);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,19 +88,23 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
   );
 };
 
-const styles = StyleSheet.create({
-  iconBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: glass.borderSubtle },
-  iconBtnTrusted: { backgroundColor: colors.success, borderColor: colors.success },
-  compactBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 4 },
-  fullBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: 14, gap: spacing.sm, flex: 1 },
-  trustedBtn: { backgroundColor: colors.success },
-  untrustedBtn: { backgroundColor: glass.bg, borderWidth: 1, borderColor: glass.border },
-  compactText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
-  fullText: { fontSize: fontSize.md, fontWeight: fontWeight.medium },
-  fullContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  countWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  countNumber: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  countLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
-});
+const makeStyles = (palette) => {
+  const colors = palette.colors;
+  const glass = palette.glass;
+  return StyleSheet.create({
+    iconBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: glass.borderSubtle },
+    iconBtnTrusted: { backgroundColor: colors.success, borderColor: colors.success },
+    compactBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 4 },
+    fullBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: 14, gap: spacing.sm, flex: 1 },
+    trustedBtn: { backgroundColor: colors.success },
+    untrustedBtn: { backgroundColor: glass.bg, borderWidth: 1, borderColor: glass.border },
+    compactText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
+    fullText: { fontSize: fontSize.md, fontWeight: fontWeight.medium },
+    fullContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    countWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    countNumber: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+    countLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
+  });
+};
 
 export default TrustButton;

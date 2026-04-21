@@ -1,11 +1,11 @@
 /**
- * Orbiting Dots Loader — matches web Loader design
- * Glass backdrop with 4 orbiting gradient dots and a center pulse
+ * Orbiting Dots Loader — themed
  */
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { colors, spacing } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
+import { spacing } from '../../styles/theme';
 
 const SIZES = {
   small: { container: 36, orb: 7, gap: 8 },
@@ -21,6 +21,9 @@ const ORB_COLORS = [
 ];
 
 const Loader = ({ size = 'medium', text = '', style, fullScreen = false }) => {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const glass = palette.glass;
   const s = SIZES[size] || SIZES.medium;
 
   const rotations = useRef(ORB_COLORS.map(() => new Animated.Value(0))).current;
@@ -30,34 +33,28 @@ const Loader = ({ size = 'medium', text = '', style, fullScreen = false }) => {
 
   useEffect(() => {
     const orbitAnims = rotations.map((val, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 150),
-          Animated.timing(val, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true }),
-        ])
-      )
+      Animated.loop(Animated.sequence([
+        Animated.delay(i * 150),
+        Animated.timing(val, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true }),
+      ]))
     );
     const scaleAnims = scales.map((val, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 300),
-          Animated.timing(val, { toValue: 1.3, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(val, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      )
+      Animated.loop(Animated.sequence([
+        Animated.delay(i * 300),
+        Animated.timing(val, { toValue: 1.3, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(val, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]))
     );
-    const centerAnim = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(centerScale, { toValue: 1.2, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(centerOpacity, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(centerScale, { toValue: 0.8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(centerOpacity, { toValue: 0.5, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ]),
-      ])
-    );
+    const centerAnim = Animated.loop(Animated.sequence([
+      Animated.parallel([
+        Animated.timing(centerScale, { toValue: 1.2, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(centerOpacity, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(centerScale, { toValue: 0.8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(centerOpacity, { toValue: 0.5, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    ]));
     [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.start());
     return () => [...orbitAnims, ...scaleAnims, centerAnim].forEach(a => a.stop());
   }, []);
@@ -65,7 +62,7 @@ const Loader = ({ size = 'medium', text = '', style, fullScreen = false }) => {
   const loaderContent = (
     <View style={[styles.wrapper, style]}>
       <View style={[styles.container, { width: s.container, height: s.container }]}>
-        <View style={[styles.backdrop, { width: s.container, height: s.container, borderRadius: s.container / 2 }]} />
+        <View style={[styles.backdrop, { width: s.container, height: s.container, borderRadius: s.container / 2, backgroundColor: glass.bgSubtle, borderColor: glass.borderSubtle }]} />
         {ORB_COLORS.map((colorPair, i) => {
           const rotate = rotations[i].interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
           return (
@@ -74,111 +71,54 @@ const Loader = ({ size = 'medium', text = '', style, fullScreen = false }) => {
             </Animated.View>
           );
         })}
-        <Animated.View style={[styles.center, { width: 8, height: 8, borderRadius: 4, opacity: centerOpacity, transform: [{ scale: centerScale }] }]} />
+        <Animated.View style={[styles.center, { width: 8, height: 8, borderRadius: 4, opacity: centerOpacity, transform: [{ scale: centerScale }], backgroundColor: colors.text }]} />
       </View>
-      {text ? <Text style={styles.text}>{text}</Text> : null}
+      {text ? <Text style={[styles.text, { color: colors.textSecondary }]}>{text}</Text> : null}
     </View>
   );
 
-  if (fullScreen) {
-    return <View style={styles.fullScreen}>{loaderContent}</View>;
-  }
-
+  if (fullScreen) return <View style={styles.fullScreen}>{loaderContent}</View>;
   return loaderContent;
 };
 
-// Simple inline loader for buttons
-export const InlineLoader = ({ size = 20, color = colors.white }) => {
+export const InlineLoader = ({ size = 20, color }) => {
+  const { palette } = useTheme();
+  const c = color || '#ffffff';
   const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(spin, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: true })
-    ).start();
+    Animated.loop(Animated.timing(spin, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: true })).start();
   }, []);
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   return (
-    <Animated.View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: color, borderTopColor: 'transparent', transform: [{ rotate }] }} />
+    <Animated.View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: c, borderTopColor: 'transparent', transform: [{ rotate }] }} />
   );
 };
 
-// Loading overlay for screens
 export const LoadingOverlay = ({ visible, message }) => {
+  const { palette } = useTheme();
   if (!visible) return null;
   return (
-    <View style={styles.overlayContainer}>
-      <View style={styles.overlayContent}>
+    <View style={[styles.overlayContainer, { backgroundColor: palette.colors.overlay }]}>
+      <View style={[styles.overlayContent, { backgroundColor: palette.colors.surface }]}>
         <Loader size="medium" />
-        {message && <Text style={styles.overlayText}>{message}</Text>}
+        {message && <Text style={[styles.overlayText, { color: palette.colors.text }]}>{message}</Text>}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  fullScreen: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backdrop: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  orbitWrap: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orb: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  center: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-  text: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  overlayContent: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: spacing.xxl,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  overlayText: {
-    marginTop: spacing.lg,
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  fullScreen: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  wrapper: { alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  container: { alignItems: 'center', justifyContent: 'center' },
+  backdrop: { position: 'absolute', borderWidth: 1 },
+  orbitWrap: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  orb: { shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 6, elevation: 4 },
+  center: { position: 'absolute', opacity: 0.8 },
+  text: { fontSize: 13, fontWeight: '500' },
+  overlayContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  overlayContent: { borderRadius: 16, padding: spacing.xxl, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  overlayText: { marginTop: spacing.lg, fontSize: 14, fontWeight: '500' },
 });
 
 export default Loader;
