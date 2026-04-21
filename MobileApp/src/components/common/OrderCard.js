@@ -82,19 +82,26 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, on
           {onWhatsApp && (() => {
             const confirmedByEmail = order?.confirmation?.confirmedAt && order?.confirmation?.confirmedVia === 'email';
             return (
-              <TouchableOpacity
-                onPress={(e) => { e.stopPropagation && e.stopPropagation(); if (!confirmedByEmail) onWhatsApp(order); }}
-                activeOpacity={confirmedByEmail ? 1 : 0.7}
-                disabled={!!confirmedByEmail}
-                style={[styles.waButton, confirmedByEmail && { backgroundColor: 'rgba(34,197,94,0.18)' }]}
-                accessibilityLabel={confirmedByEmail ? 'Confirmed via email' : 'Verify on WhatsApp'}
-              >
-                <Ionicons
-                  name={confirmedByEmail ? 'checkmark-circle' : 'logo-whatsapp'}
-                  size={18}
-                  color={confirmedByEmail ? '#22C55E' : '#25D366'}
-                />
-              </TouchableOpacity>
+              <View style={{ alignItems: 'flex-end' }}>
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation && e.stopPropagation(); if (!confirmedByEmail) onWhatsApp(order); }}
+                  activeOpacity={confirmedByEmail ? 1 : 0.7}
+                  disabled={!!confirmedByEmail}
+                  style={[styles.waButton, confirmedByEmail && { backgroundColor: 'rgba(34,197,94,0.18)' }]}
+                  accessibilityLabel={confirmedByEmail ? 'Confirmed via email' : 'Verify on WhatsApp'}
+                >
+                  <Ionicons
+                    name={confirmedByEmail ? 'checkmark-circle' : 'logo-whatsapp'}
+                    size={18}
+                    color={confirmedByEmail ? '#22C55E' : '#25D366'}
+                  />
+                </TouchableOpacity>
+                {confirmedByEmail && (
+                  <Text style={{ fontSize: 9, color: '#22C55E', marginTop: 2, fontWeight: '600' }}>
+                    Confirmed via email
+                  </Text>
+                )}
+              </View>
             );
           })()}
           <Ionicons name="chevron-forward" size={20} color={c.textLight} />
