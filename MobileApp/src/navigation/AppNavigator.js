@@ -171,6 +171,7 @@ export const getTabIconName = (routeName, focused) => {
   const iconMap = {
     Home: { active: 'home', inactive: 'home-outline' },
     Stores: { active: 'storefront', inactive: 'storefront-outline' },
+    Marketplace: { active: 'storefront', inactive: 'storefront-outline' },
     Cart: { active: 'cart', inactive: 'cart-outline' },
     Wishlist: { active: 'heart', inactive: 'heart-outline' },
     Notifications: { active: 'notifications', inactive: 'notifications-outline' },
@@ -287,9 +288,9 @@ function MainTabs() {
         options={{ tabBarLabel: 'Home' }}
       />
       <Tab.Screen 
-        name="Stores" 
+        name="Marketplace" 
         component={StoresListingScreen}
-        options={{ tabBarLabel: 'Stores' }}
+        options={{ tabBarLabel: 'Marketplace' }}
       />
       <Tab.Screen 
         name="Cart" 

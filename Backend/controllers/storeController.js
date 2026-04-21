@@ -113,7 +113,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -164,6 +164,7 @@ exports.createStore = async (req, res) => {
             seller: sellerId,
             storeName: storeName.trim(),
             storeSlug: finalSlug,
+            sellerType: sellerType === 'brand' ? 'brand' : 'store',
             description: description || '',
             logo: logo || '',
             banner: banner || '',
@@ -269,7 +270,7 @@ exports.getMyStore = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -332,6 +333,9 @@ exports.updateStore = async (req, res) => {
         if (description !== undefined) store.description = description;
         if (logo !== undefined) store.logo = logo;
         if (banner !== undefined) store.banner = banner;
+        if (sellerType !== undefined && (sellerType === 'store' || sellerType === 'brand')) {
+            store.sellerType = sellerType;
+        }
         if (socialLinks !== undefined) {
             console.log('Updating socialLinks:', socialLinks);
             store.socialLinks = {
@@ -446,7 +450,7 @@ exports.getStoreSuggestions = async (req, res) => {
             storeName: { $regex: q, $options: 'i' },
             isActive: true
         })
-        .select('storeName storeSlug logo trustCount verification')
+        .select('storeName storeSlug logo trustCount verification sellerType')
         .limit(5);
 
         res.status(200).json({
@@ -568,10 +572,10 @@ exports.getStoreProducts = async (req, res) => {
     }
 };
 
-// Get all stores (paginated)
+// Get all stores (paginated) — supports ?type=store|brand|all
 exports.getAllStores = async (req, res) => {
     try {
-        const { page = 1, limit = 12, sort = 'newest' } = req.query;
+        const { page = 1, limit = 12, sort = 'newest', type } = req.query;
 
         let sortOption = {};
         switch (sort) {
@@ -588,16 +592,19 @@ exports.getAllStores = async (req, res) => {
                 sortOption = { createdAt: -1 };
         }
 
+        const filter = { isActive: true };
+        if (type === 'store' || type === 'brand') filter.sellerType = type;
+
         const skip = (page - 1) * limit;
 
-        const stores = await Store.find({ isActive: true })
+        const stores = await Store.find(filter)
             .populate('seller', 'username email')
             .select('+verification')
             .sort(sortOption)
             .limit(parseInt(limit))
             .skip(skip);
 
-        const total = await Store.countDocuments({ isActive: true });
+        const total = await Store.countDocuments(filter);
 
         // Get product count for each store
         const Product = require('../models/Product');

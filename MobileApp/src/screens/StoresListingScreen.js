@@ -49,6 +49,7 @@ export default function StoresListingScreen({ navigation }) {
   const [showFilters, setShowFilters] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [minTrust, setMinTrust] = useState(0);
+  const [typeFilter, setTypeFilter] = useState('all'); // all | brand | store
 
   useEffect(() => { fetchStores(); }, [sortBy]);
 
@@ -59,7 +60,17 @@ export default function StoresListingScreen({ navigation }) {
   };
 
   const onRefresh = useCallback(() => { setRefreshing(true); fetchStores(); }, [sortBy]);
-  const filteredStores = useMemo(() => filterStores(stores, { query: searchQuery, verifiedOnly, minTrust }), [stores, searchQuery, verifiedOnly, minTrust]);
+  const filteredStores = useMemo(() => {
+    const base = filterStores(stores, { query: searchQuery, verifiedOnly, minTrust });
+    if (typeFilter === 'all') return base;
+    return base.filter(s => (s.sellerType || 'store') === typeFilter);
+  }, [stores, searchQuery, verifiedOnly, minTrust, typeFilter]);
+
+  const counts = useMemo(() => ({
+    all: stores.length,
+    brand: stores.filter(s => s.sellerType === 'brand').length,
+    store: stores.filter(s => (s.sellerType || 'store') === 'store').length,
+  }), [stores]);
 
   const activeFilterCount = (verifiedOnly ? 1 : 0) + (minTrust > 0 ? 1 : 0) + (sortBy !== 'newest' ? 1 : 0);
 
@@ -90,9 +101,9 @@ export default function StoresListingScreen({ navigation }) {
             <View>
               <GlassPanel variant="floating" style={styles.heroHeader}>
                 <View style={styles.heroTitleRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.heroTitle}>Discover Stores</Text>
-                    <Text style={styles.heroSubtitle}>Explore amazing sellers & products</Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.heroTitle}>Marketplace</Text>
+                    <Text style={styles.heroSubtitle}>Discover stores & brands worldwide</Text>
                   </View>
                   {currentUser && (
                     <TouchableOpacity style={styles.trustedButton} onPress={() => navigation.navigate('TrustedStores')} activeOpacity={0.8} accessibilityLabel="View trusted stores">
@@ -101,10 +112,29 @@ export default function StoresListingScreen({ navigation }) {
                     </TouchableOpacity>
                   )}
                 </View>
+                {/* Type tabs */}
+                <View style={styles.typeTabsRow}>
+                  {[
+                    { k: 'all', label: 'All', icon: 'grid-outline' },
+                    { k: 'brand', label: 'Brands', icon: 'sparkles-outline' },
+                    { k: 'store', label: 'Stores', icon: 'storefront-outline' },
+                  ].map(t => {
+                    const active = typeFilter === t.k;
+                    return (
+                      <TouchableOpacity key={t.k} style={[styles.typeTab, active && styles.typeTabActive]} onPress={() => setTypeFilter(t.k)} activeOpacity={0.85}>
+                        <Ionicons name={t.icon} size={13} color={active ? '#fff' : palette.colors.primary} />
+                        <Text style={[styles.typeTabText, active && styles.typeTabTextActive]}>{t.label}</Text>
+                        <View style={[styles.typeTabCount, active && styles.typeTabCountActive]}>
+                          <Text style={[styles.typeTabCountText, active && { color: '#fff' }]}>{counts[t.k]}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
                 <View style={styles.searchRow}>
                   <View style={styles.searchBox}>
                     <Ionicons name="search" size={18} color={palette.colors.textSecondary} />
-                    <TextInput style={styles.searchInput} placeholder="Search stores..." placeholderTextColor={palette.colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
+                    <TextInput style={styles.searchInput} placeholder="Search stores & brands..." placeholderTextColor={palette.colors.textLight} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" />
                     {searchQuery.length > 0 && (
                       <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                         <Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} />
@@ -162,7 +192,7 @@ export default function StoresListingScreen({ navigation }) {
           }
           renderItem={({ item, index }) => (
             <View style={styles.cardWrapper}>
-              <StoreCard store={{ _id: item._id, storeName: item.storeName, storeSlug: item.storeSlug, description: item.storeDescription || item.description, logo: item.storeLogo || item.logo, banner: item.storeBanner || item.banner, trustCount: item.trustCount || 0, verification: { isVerified: item.isVerified }, productCount: item.productCount || 0, views: item.views || 0 }} index={index} showTrustButton={!!currentUser} showDescription={true} showStats={true} />
+              <StoreCard store={{ _id: item._id, storeName: item.storeName, storeSlug: item.storeSlug, sellerType: item.sellerType || 'store', description: item.storeDescription || item.description, logo: item.storeLogo || item.logo, banner: item.storeBanner || item.banner, trustCount: item.trustCount || 0, verification: { isVerified: item.isVerified || item.verification?.isVerified }, productCount: item.productCount || 0, views: item.views || 0 }} index={index} showTrustButton={!!currentUser} showDescription={true} showStats={true} />
             </View>
           )}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
@@ -269,6 +299,14 @@ const buildStyles = (p) => StyleSheet.create({
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   cardWrapper: { flex: 1, marginBottom: spacing.sm },
+  typeTabsRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm },
+  typeTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: borderRadius.lg, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  typeTabActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  typeTabText: { fontSize: fontSize.xs, color: p.colors.text, fontWeight: fontWeight.semibold },
+  typeTabTextActive: { color: '#fff' },
+  typeTabCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: p.colors.primarySubtle },
+  typeTabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  typeTabCountText: { fontSize: 10, fontWeight: fontWeight.bold, color: p.colors.primary },
 
   // Filter sheet
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },

@@ -34,8 +34,9 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
 
   if (!store) return null;
 
-  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0, ratingAverage = 0, ratingCount = 0 } = store;
+  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0, ratingAverage = 0, ratingCount = 0, sellerType } = store;
   const isVerified = verification?.isVerified;
+  const isBrand = sellerType === 'brand';
   const handlePress = () => onPress ? onPress(store) : navigation.navigate('Store', { storeSlug: storeSlug || _id });
 
   return (
@@ -45,6 +46,10 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
           {banner && !bannerError ? <Image source={{ uri: banner }} style={styles.banner} contentFit="cover" cachePolicy="memory-disk" transition={200} onError={() => setBannerError(true)} /> :
             <View style={[styles.banner, { backgroundColor: c.primary }]} />}
           <View style={styles.bannerOverlay} />
+          <View style={[styles.typePill, { backgroundColor: isBrand ? 'rgba(168,85,247,0.92)' : 'rgba(59,130,246,0.92)' }]}>
+            <Ionicons name={isBrand ? 'sparkles' : 'storefront'} size={9} color="#fff" />
+            <Text style={styles.typePillText}>{isBrand ? 'BRAND' : 'STORE'}</Text>
+          </View>
         </View>
         <View style={[styles.content, compact && { padding: spacing.sm }]}>
           <View style={[styles.logoContainer, compact && { marginTop: -28 }]}>
@@ -117,8 +122,10 @@ const styles = StyleSheet.create({
   animatedContainer: { flex: 1 },
   container: { backgroundColor: glass.bg, borderRadius: 20, borderWidth: 1, borderColor: glass.border, overflow: 'hidden' },
   containerCompact: { width: 160, marginRight: spacing.md },
-  bannerContainer: { height: 60, overflow: 'hidden' },
+  bannerContainer: { height: 60, overflow: 'hidden', position: 'relative' },
   banner: { width: '100%', height: '100%' },
+  typePill: { position: 'absolute', top: 6, right: 6, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8 },
+  typePillText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
   content: { padding: spacing.md, paddingTop: spacing.xs },
   logoContainer: { marginTop: -30, marginBottom: spacing.xs },

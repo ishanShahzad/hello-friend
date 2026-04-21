@@ -274,6 +274,16 @@ const StorePage = () => {
                                     </motion.h1>
                                     {store?.verification?.isVerified && <VerifiedBadge size="lg" />}
                                     {store && (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide"
+                                            style={{
+                                                background: (store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)',
+                                                border: `1px solid ${(store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.35)' : 'hsla(220, 70%, 55%, 0.35)'}`,
+                                                color: (store.sellerType === 'brand') ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)',
+                                            }}>
+                                            {(store.sellerType === 'brand') ? 'Brand' : 'Store'}
+                                        </span>
+                                    )}
+                                    {store && (
                                         <TrustButton
                                             storeId={store._id}
                                             storeName={store.storeName}

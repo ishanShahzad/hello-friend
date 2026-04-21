@@ -18,6 +18,12 @@ const storeSchema = new mongoose.Schema({
     required: true,
     lowercase: true
   },
+  sellerType: {
+    type: String,
+    enum: ['store', 'brand'],
+    default: 'store',
+    index: true
+  },
   description: {
     type: String,
     maxlength: [500, 'Description cannot exceed 500 characters'],

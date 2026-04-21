@@ -11,7 +11,7 @@ const SellerSignUp = () => {
   const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: OTP
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [sellerForm, setSellerForm] = useState({ phoneNumber: '', businessName: '', address: '', city: '', country: '' });
-  const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
+  const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', sellerType: 'store', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -87,6 +87,7 @@ const SellerSignUp = () => {
         email: form.email, otp, ...sellerForm,
         storeName: storeForm.storeName?.trim() || '',
         storeDescription: storeForm.storeDescription?.trim() || '',
+        sellerType: storeForm.sellerType || 'store',
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
       });
       localStorage.setItem("jwtToken", res.data.token);
@@ -230,8 +231,37 @@ const SellerSignUp = () => {
             <div>
               <div className="space-y-4">
                 <div>
-                  <label className="flex text-sm font-medium mb-1 items-center gap-2"><Store size={14} style={{ color: 'hsl(var(--primary))' }} /> Store Name <span className="text-xs font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>(recommended)</span></label>
-                  <input type="text" name="storeName" value={storeForm.storeName} onChange={handleStoreChange} className="glass-input" placeholder="My Awesome Store" disabled={loading} maxLength={50} />
+                  <label className="block text-sm font-medium mb-2">Are you registering a Store or a Brand?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'store', label: 'Store', desc: 'Independent shop / reseller', Icon: Store },
+                      { value: 'brand', label: 'Brand', desc: 'Own products / label', Icon: Sparkles },
+                    ].map(opt => {
+                      const active = storeForm.sellerType === opt.value;
+                      const Icon = opt.Icon;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setStoreForm(prev => ({ ...prev, sellerType: opt.value }))}
+                          className="p-3 rounded-xl text-left transition-all border"
+                          style={{
+                            background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(260, 60%, 60%, 0.15))' : 'hsla(0,0%,100%,0.04)',
+                            borderColor: active ? 'hsl(220, 70%, 55%)' : 'hsla(0,0%,100%,0.12)',
+                          }}
+                        >
+                          <div className="flex items-center gap-2 font-bold text-sm" style={{ color: active ? 'hsl(220, 70%, 55%)' : 'hsl(var(--foreground))' }}>
+                            <Icon size={14} /> {opt.label}
+                          </div>
+                          <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{opt.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="flex text-sm font-medium mb-1 items-center gap-2"><Store size={14} style={{ color: 'hsl(var(--primary))' }} /> {storeForm.sellerType === 'brand' ? 'Brand' : 'Store'} Name <span className="text-xs font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>(recommended)</span></label>
+                  <input type="text" name="storeName" value={storeForm.storeName} onChange={handleStoreChange} className="glass-input" placeholder={storeForm.sellerType === 'brand' ? 'My Awesome Brand' : 'My Awesome Store'} disabled={loading} maxLength={50} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Store Description <span className="text-xs font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>(optional)</span></label>
