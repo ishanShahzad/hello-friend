@@ -27,6 +27,6 @@
   </g>
 
   <!-- Wordmark -->
-  <text x="62" y="36" font-family="system-ui, -apple-system, 'Segoe UI', Inter, sans-serif"
-        font-size="28" font-weight="800" letter-spacing="-1.1" fill="url(#rzGrad)">Rozare</text>
+  <text x="62" y="37" font-family="Orbitron, 'Montserrat', system-ui, sans-serif"
+        font-size="26" font-weight="700" letter-spacing="1.2" fill="url(#rzGrad)">Rozare</text>
 </svg>
