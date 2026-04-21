@@ -174,11 +174,33 @@ const OrderManagement = () => {
                                                     })()}
                                                 </td>
                                                 <td className="px-5 py-4">
-                                                    <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
-                                                        <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
-                                                            View <ArrowRight size={12} />
-                                                        </motion.span>
-                                                    </Link>
+                                                    <div className="flex items-center gap-3 justify-end">
+                                                        {(() => {
+                                                            const hasPhone = hasWhatsAppPhone(order);
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!hasPhone}
+                                                                    title={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full transition-all"
+                                                                    style={{
+                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
+                                                                        cursor: hasPhone ? 'pointer' : 'not-allowed',
+                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                    }}
+                                                                >
+                                                                    <MessageCircle size={14} />
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                        <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
+                                                            <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
+                                                                View <ArrowRight size={12} />
+                                                            </motion.span>
+                                                        </Link>
+                                                    </div>
                                                 </td>
                                             </motion.tr>
                                         );
