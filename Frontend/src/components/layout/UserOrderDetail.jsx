@@ -89,6 +89,22 @@ const OrderDetail = () => {
                         </span>
                     </div>
                 </div>
+
+                {/* Buyer-side email confirmation status */}
+                {order?.confirmation?.confirmedAt && (
+                    <div className="mt-4 p-3 rounded-xl flex items-start gap-3"
+                        style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                        <CheckCircle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'hsl(150, 60%, 40%)' }} />
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold" style={{ color: 'hsl(150, 60%, 35%)' }}>
+                                You confirmed this order via {order.confirmation.confirmedVia || 'email'}
+                            </p>
+                            <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Confirmed on {new Date(order.confirmation.confirmedAt).toLocaleString()} — the seller has been notified and will process your order shortly.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
