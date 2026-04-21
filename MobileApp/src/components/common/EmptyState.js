@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import GlassPanel from './GlassPanel';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ACCENT_GRADIENTS = {
   primary: ['rgba(99,102,241,0.35)', 'rgba(139,92,246,0.18)', 'rgba(236,72,153,0.05)'],
@@ -41,19 +42,19 @@ const Illustration = ({ icon, iconSize, iconColor, accent }) => {
   );
 };
 
-const accentForIcon = (iconColor) => {
-  if (iconColor === colors.error) return 'error';
-  if (iconColor === colors.warning) return 'warning';
-  if (iconColor === colors.success) return 'success';
-  if (iconColor === colors.heart) return 'heart';
-  if (iconColor === colors.info) return 'info';
+const accentForIcon = (iconColor, c) => {
+  if (iconColor === c.error) return 'error';
+  if (iconColor === c.warning) return 'warning';
+  if (iconColor === c.success) return 'success';
+  if (iconColor === c.heart) return 'heart';
+  if (iconColor === c.info) return 'info';
   return 'primary';
 };
 
 const EmptyState = ({
   icon = 'cube-outline',
   iconSize = 56,
-  iconColor = colors.primary,
+  iconColor,
   accent,
   title,
   subtitle,
@@ -64,23 +65,26 @@ const EmptyState = ({
   style,
   compact = false,
 }) => {
-  const accentKey = accent || accentForIcon(iconColor);
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const resolvedIconColor = iconColor || c.primary;
+  const accentKey = accent || accentForIcon(resolvedIconColor, c);
   return (
     <View style={[styles.container, compact && styles.containerCompact, style]}>
       <GlassPanel variant="card" style={styles.glassWrap}>
-        <Illustration icon={icon} iconSize={compact ? 40 : iconSize} iconColor={iconColor} accent={accentKey} />
-        {title && <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>}
-        {subtitle && <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text>}
+        <Illustration icon={icon} iconSize={compact ? 40 : iconSize} iconColor={resolvedIconColor} accent={accentKey} />
+        {title && <Text style={[styles.title, { color: c.text }, compact && styles.titleCompact]}>{title}</Text>}
+        {subtitle && <Text style={[styles.subtitle, { color: c.textSecondary }, compact && styles.subtitleCompact]}>{subtitle}</Text>}
         {(actionLabel || secondaryActionLabel) && (
           <View style={styles.actionsContainer}>
             {actionLabel && onAction && (
-              <TouchableOpacity style={styles.actionButton} onPress={onAction} activeOpacity={0.85} accessibilityLabel={actionLabel}>
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: c.primary, shadowColor: c.primary }]} onPress={onAction} activeOpacity={0.85} accessibilityLabel={actionLabel}>
                 <Text style={styles.actionButtonText}>{actionLabel}</Text>
               </TouchableOpacity>
             )}
             {secondaryActionLabel && onSecondaryAction && (
               <TouchableOpacity style={styles.secondaryButton} onPress={onSecondaryAction} activeOpacity={0.85} accessibilityLabel={secondaryActionLabel}>
-                <Text style={styles.secondaryButtonText}>{secondaryActionLabel}</Text>
+                <Text style={[styles.secondaryButtonText, { color: c.primary }]}>{secondaryActionLabel}</Text>
               </TouchableOpacity>
             )}
           </View>

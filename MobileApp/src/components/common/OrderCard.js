@@ -10,8 +10,12 @@ import GlassPanel from './GlassPanel';
 import {
   colors, spacing, fontSize, fontWeight, borderRadius, statusColors, typography,
 } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, style }) => {
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const g = palette.glass;
   if (!order) return null;
   const { _id, orderItems = [], orderSummary = {}, status = 'pending', createdAt, user, shippingInfo } = order;
 
@@ -32,8 +36,8 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, st
       <GlassPanel variant="card" style={styles.container}>
         <View style={styles.header}>
           <View style={styles.orderInfo}>
-            <Text style={styles.orderId}>{formatOrderId(_id)}</Text>
-            <Text style={styles.date}>{formatDate(createdAt)}</Text>
+            <Text style={[styles.orderId, { color: c.text }]}>{formatOrderId(_id)}</Text>
+            <Text style={[styles.date, { color: c.textSecondary }]}>{formatDate(createdAt)}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.statusText, { color: statusStyle.text }]}>
@@ -43,9 +47,9 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, st
         </View>
 
         {showCustomer && customerName && (
-          <View style={styles.customerRow}>
-            <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.customerName} numberOfLines={1}>{customerName}</Text>
+          <View style={[styles.customerRow, { borderBottomColor: g.borderSubtle }]}>
+            <Ionicons name="person-outline" size={14} color={c.textSecondary} />
+            <Text style={[styles.customerName, { color: c.textSecondary }]} numberOfLines={1}>{customerName}</Text>
           </View>
         )}
 
@@ -54,28 +58,28 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, st
             {orderItems.slice(0, 3).map((item, index) => (
               <View key={index} style={styles.itemPreviewImage}>
                 {item.product?.image ? (
-                  <Image source={{ uri: item.product.image }} style={styles.itemImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+                  <Image source={{ uri: item.product.image }} style={[styles.itemImage, { borderColor: g.borderSubtle }]} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                 ) : (
-                  <View style={styles.itemImagePlaceholder}>
-                    <Ionicons name="cube-outline" size={16} color={colors.grayLight} />
+                  <View style={[styles.itemImagePlaceholder, { backgroundColor: g.bgSubtle, borderColor: g.borderSubtle }]}>
+                    <Ionicons name="cube-outline" size={16} color={c.textLight} />
                   </View>
                 )}
               </View>
             ))}
             {orderItems.length > 3 && (
-              <View style={styles.moreItems}>
-                <Text style={styles.moreItemsText}>+{orderItems.length - 3}</Text>
+              <View style={[styles.moreItems, { backgroundColor: g.bgSubtle, borderColor: g.borderSubtle }]}>
+                <Text style={[styles.moreItemsText, { color: c.textSecondary }]}>+{orderItems.length - 3}</Text>
               </View>
             )}
           </View>
         )}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: g.borderSubtle }]}>
           <View style={styles.summaryRow}>
-            <Text style={styles.itemCount}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
-            <Text style={styles.totalAmount}>{formatPrice(orderSummary.totalAmount)}</Text>
+            <Text style={[styles.itemCount, { color: c.textSecondary }]}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
+            <Text style={[styles.totalAmount, { color: c.primary }]}>{formatPrice(orderSummary.totalAmount)}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+          <Ionicons name="chevron-forward" size={20} color={c.textLight} />
         </View>
       </GlassPanel>
     </TouchableOpacity>

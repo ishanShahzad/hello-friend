@@ -22,6 +22,7 @@ import {
   borderRadius,
   shadows,
 } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -242,6 +243,11 @@ function MainTabs() {
   const { cartItems, unreadNotifCount } = useGlobal();
   const cartCount = calculateCartItemCount(cartItems);
   const insets = useSafeAreaInsets();
+  const { palette, isDark } = useTheme();
+  const themedTabBar = {
+    backgroundColor: isDark ? 'rgba(20,26,46,0.92)' : 'rgba(255,255,255,0.82)',
+    borderTopColor: palette.glass.borderSubtle,
+  };
 
   return (
     <Tab.Navigator
@@ -260,10 +266,11 @@ function MainTabs() {
             </View>
           );
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.grayLight,
+        tabBarActiveTintColor: palette.colors.primary,
+        tabBarInactiveTintColor: palette.colors.textLight,
         tabBarStyle: [
           styles.tabBar,
+          themedTabBar,
           {
             paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? spacing.xl : spacing.sm),
             height: (Platform.OS === 'ios' ? 85 : 65) + Math.max(insets.bottom - (Platform.OS === 'ios' ? spacing.xl : spacing.sm), 0),

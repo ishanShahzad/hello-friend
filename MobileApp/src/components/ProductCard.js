@@ -13,6 +13,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - spacing.lg * 2 - spacing.sm) / 2;
@@ -34,6 +35,9 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
   const { currentUser } = useAuth();
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
   const { formatPrice } = useCurrency();
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const g = palette.glass;
 
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -83,7 +87,7 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
 
   return (
     <Animated.View style={[styles.animatedContainer, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
-      <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9} disabled={isOutOfStock}>
+      <TouchableOpacity style={[styles.container, { backgroundColor: g.bg, borderColor: g.border }]} onPress={onPress} activeOpacity={0.9} disabled={isOutOfStock}>
         {/* Badges */}
         <View style={styles.badgesContainer}>
           {isFeatured && <View style={styles.featuredBadge}><Ionicons name="flash" size={10} color="#fff" /><Text style={styles.badgeText}>Featured</Text></View>}
@@ -101,7 +105,7 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
               accessibilityLabel={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
               accessibilityRole="button"
             >
-              <Ionicons name={isInWishlist ? 'heart' : 'heart-outline'} size={16} color={isInWishlist ? colors.heart : colors.text} />
+              <Ionicons name={isInWishlist ? 'heart' : 'heart-outline'} size={16} color={isInWishlist ? c.heart : c.text} />
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -116,12 +120,12 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
 
         {/* Details */}
         <View style={styles.detailsContainer}>
-          <Text style={styles.category} numberOfLines={1}>{category}</Text>
-          <Text style={styles.name} numberOfLines={2}>{name}</Text>
-          <View style={styles.ratingContainer}><View style={{ flexDirection: 'row', marginRight: 4 }}>{renderStars()}</View><Text style={styles.ratingText}>({rating?.toFixed(1) || '0.0'})</Text></View>
+          <Text style={[styles.category, { color: c.textSecondary }]} numberOfLines={1}>{category}</Text>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>{name}</Text>
+          <View style={styles.ratingContainer}><View style={{ flexDirection: 'row', marginRight: 4 }}>{renderStars()}</View><Text style={[styles.ratingText, { color: c.textSecondary }]}>({rating?.toFixed(1) || '0.0'})</Text></View>
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>{formatPrice(displayPrice)}</Text>
-            {originalDisplayPrice && <Text style={styles.originalPrice}>{formatPrice(originalDisplayPrice)}</Text>}
+            <Text style={[styles.price, { color: c.text }]}>{formatPrice(displayPrice)}</Text>
+            {originalDisplayPrice && <Text style={[styles.originalPrice, { color: c.textSecondary }]}>{formatPrice(originalDisplayPrice)}</Text>}
           </View>
           <TouchableOpacity style={[styles.addToCartButton, isOutOfStock && styles.addToCartDisabled, isInCart && styles.inCartButton]} onPress={handleAddToCartClick} disabled={isOutOfStock || isLoading} activeOpacity={0.8}>
             {isLoading ? <ActivityIndicator size="small" color={isInCart ? colors.success : '#fff'} /> :
