@@ -45,13 +45,18 @@ export const CartProvider = ({ children }) => {
     } catch {} finally { setQtyUpdateId(null); }
   };
 
-  const handleAddToCart = async (id, selectedColor = null, productHint = null) => {
+  const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
+
+  const handleAddToCart = async (id, selectedColor = null, selectedOptions = null, productHint = null) => {
     if (!currentUser) {
       Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add items to cart' });
       return;
     }
+    const myKey = optionsKeyOf(selectedOptions);
     const isInCart = cartItems?.cart?.some(
-      (item) => item?.product?._id === id && (item.selectedColor || null) === (selectedColor || null)
+      (item) => item?.product?._id === id &&
+                (item.selectedColor || null) === (selectedColor || null) &&
+                optionsKeyOf(item.selectedOptions) === myKey
     ) || false;
     if (isInCart) { await handleRemoveCartItem(id); return; }
 
@@ -61,7 +66,7 @@ export const CartProvider = ({ children }) => {
     const previousCart = cartItems;
     if (productHint) {
       const tempLine = {
-        _id: `__optim_${id}_${Date.now()}`, qty: 1, selectedColor: selectedColor || null,
+        _id: `__optim_${id}_${Date.now()}`, qty: 1, selectedColor: selectedColor || null, selectedOptions: selectedOptions || undefined,
         product: { ...productHint, _id: id }, __optimistic: true,
       };
       setCartItems({
@@ -73,7 +78,7 @@ export const CartProvider = ({ children }) => {
     hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const res = await api.post(`/api/cart/add/${id}`, { selectedColor });
+      const res = await api.post(`/api/cart/add/${id}`, { selectedColor, selectedOptions: selectedOptions || undefined });
       Toast.show({ type: 'success', text1: 'Added', text2: res.data.msg });
       setCartItems({ cart: res.data.cart, totalCartPrice: res.data.totalCartPrice });
     } catch (error) {

@@ -39,6 +39,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState({});
   const [storeData, setStoreData] = useState(null);
   const flatListRef = useRef(null);
   const bottomBarAnim = useRef(new Animated.Value(0)).current;
@@ -48,8 +49,15 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
+  const myOptKey = optionsKeyOf(selectedOptions);
+  const allOptionsSelected = !product?.optionGroups?.length || product.optionGroups.every(g => selectedOptions[g.name]);
   const isInWishlist = product && wishlistItems?.some((item) => item._id === product._id);
-  const isInCart = product && cartItems?.cart?.some((item) => item.product?._id === product._id && (item.selectedColor || null) === (selectedColor || null));
+  const isInCart = product && cartItems?.cart?.some((item) =>
+    item.product?._id === product._id &&
+    (item.selectedColor || null) === (selectedColor || null) &&
+    optionsKeyOf(item.selectedOptions) === myOptKey
+  );
 
   useEffect(() => {
     fetchProduct();
@@ -83,7 +91,11 @@ export default function ProductDetailScreen({ route, navigation }) {
   const discountPercentage = product?.discountedPrice && product.discountedPrice < product.price ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
 
   const handleWishlistToggle = () => { if (!currentUser) { navigation.navigate('Login'); return; } isInWishlist ? handleDeleteFromWishlist(product._id) : handleAddToWishlist(product._id); };
-  const handleAddToCartClick = () => { if (!currentUser) { navigation.navigate('Login'); return; } handleAddToCart(product._id, selectedColor); };
+  const handleAddToCartClick = () => {
+    if (!currentUser) { navigation.navigate('Login'); return; }
+    if (!allOptionsSelected) { Toast.show({ type: 'error', text1: 'Please select all options' }); return; }
+    handleAddToCart(product._id, selectedColor, selectedOptions);
+  };
 
   const handleSubmitReview = async () => {
     if (!currentUser) { navigation.navigate('Login'); return; }
@@ -173,8 +185,27 @@ export default function ProductDetailScreen({ route, navigation }) {
 
             <Text style={styles.description}>{product.description}</Text>
 
-            {/* Color Variants */}
-            {product.colors?.length > 0 && (
+            {/* Dynamic Product Options (Size, Color, Material...) */}
+            {product.optionGroups?.length > 0 ? (
+              <View style={{ marginTop: spacing.md }}>
+                {product.optionGroups.map((group) => (
+                  <View key={group.name} style={styles.colorSection}>
+                    <Text style={styles.colorLabel}>{group.name}: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedOptions[group.name] || `Select ${group.name.toLowerCase()}`}</Text></Text>
+                    <View style={styles.colorRow}>
+                      {group.values.map((val) => {
+                        const active = selectedOptions[group.name] === val;
+                        return (
+                          <TouchableOpacity key={val} onPress={() => setSelectedOptions(prev => ({ ...prev, [group.name]: active ? undefined : val }))}
+                            style={[styles.colorChip, active && styles.colorChipActive]}>
+                            <Text style={[styles.colorChipText, active && styles.colorChipTextActive]}>{val}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : product.colors?.length > 0 && (
               <View style={styles.colorSection}>
                 <Text style={styles.colorLabel}>Color: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedColor || 'Select a color'}</Text></Text>
                 <View style={styles.colorRow}>

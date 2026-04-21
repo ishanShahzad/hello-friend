@@ -3,29 +3,42 @@ const users = require('../models/User')
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 
+// Stable string key for an option set, used to dedupe cart lines per variant combo
+const optionsKey = (opts) => {
+    if (!opts) return '';
+    const obj = opts instanceof Map ? Object.fromEntries(opts) : opts;
+    return Object.keys(obj).sort().map(k => `${k}:${obj[k]}`).join('|');
+};
+
 exports.addToCart = async (req, res) => {
     const { id: userId } = req.user
     const { id } = req.params
-    const { selectedColor } = req.body || {}
+    const { selectedColor, selectedOptions } = req.body || {}
+    const incomingKey = optionsKey(selectedOptions);
 
     try {
         const existingCart = await Cart.findOne({ user: userId })
 
         if (existingCart) {
-            const item = existingCart.cartItems.find(item => item.product.equals(id) && item.selectedColor === (selectedColor || null))
+            const item = existingCart.cartItems.find(item =>
+                item.product.equals(id) &&
+                item.selectedColor === (selectedColor || null) &&
+                optionsKey(item.selectedOptions) === incomingKey
+            )
 
             if (item) {
                 await existingCart.populate('cartItems.product')
-                return res.status(200).json({ 
-                    msg: "Item already in cart", 
-                    cart: existingCart.cartItems, 
-                    totalCartPrice: existingCart.totalCartPrice 
+                return res.status(200).json({
+                    msg: "Item already in cart",
+                    cart: existingCart.cartItems,
+                    totalCartPrice: existingCart.totalCartPrice
                 })
             }
 
             existingCart.cartItems.push({
                 product: id,
-                selectedColor: selectedColor || null
+                selectedColor: selectedColor || null,
+                selectedOptions: selectedOptions || undefined,
             })
             await existingCart.populate('cartItems.product')
             await existingCart.save()
@@ -38,7 +51,8 @@ exports.addToCart = async (req, res) => {
             cartItems: [
                 {
                     product: id,
-                    selectedColor: selectedColor || null
+                    selectedColor: selectedColor || null,
+                    selectedOptions: selectedOptions || undefined,
                 }
             ]
         })

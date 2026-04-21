@@ -120,15 +120,20 @@ export const GlobalProvider = ({ children }) => {
     // ===================================
     const [loadingProductId, setLoadingProductId] = useState(null)
     
-    const handleAddToCart = async (id, selectedColor = null) => {
+    const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
+
+    const handleAddToCart = async (id, selectedColor = null, selectedOptions = null) => {
         try {
             setIsCartLoading(true)
             setLoadingProductId(id)
-            
-            const isInCart = cartItems?.cart?.some(item => 
-                item?.product?._id === id && item?.selectedColor === selectedColor
+            const myKey = optionsKeyOf(selectedOptions);
+
+            const isInCart = cartItems?.cart?.some(item =>
+                item?.product?._id === id &&
+                item?.selectedColor === selectedColor &&
+                optionsKeyOf(item?.selectedOptions) === myKey
             ) || false;
-            
+
             if (isInCart) {
                 await handleRemoveCartItem(id, selectedColor);
                 setIsCartLoading(false);
@@ -141,7 +146,7 @@ export const GlobalProvider = ({ children }) => {
                     const pRes = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}`);
                     const pData = pRes.data.product || pRes.data;
                     const gc = getGuestCart();
-                    gc.push({ product: pData, qty: 1, selectedColor, _id: `guest_${Date.now()}` });
+                    gc.push({ product: pData, qty: 1, selectedColor, selectedOptions: selectedOptions || undefined, _id: `guest_${Date.now()}` });
                     saveGuestCart(gc);
                     setCartItems({ cart: gc, totalCartPrice: calcGuestTotal(gc) });
                     toast.success('Added to cart');
@@ -152,13 +157,9 @@ export const GlobalProvider = ({ children }) => {
             }
 
             const token = localStorage.getItem('jwtToken')
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${id}`, 
-                { selectedColor },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${id}`,
+                { selectedColor, selectedOptions: selectedOptions || undefined },
+                { headers: { Authorization: `Bearer ${token}` } })
             console.log(res.data.msg);
             toast.success(res.data.msg)
             

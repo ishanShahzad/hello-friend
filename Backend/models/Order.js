@@ -15,6 +15,7 @@ const orderSchema = mongoose.Schema(
                 price: { type: Number, required: true },
                 quantity: { type: Number, required: true },
                 selectedColor: { type: String, default: null },
+                selectedOptions: { type: Map, of: String, default: undefined },
             }
         ],
 
