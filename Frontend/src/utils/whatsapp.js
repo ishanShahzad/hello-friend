@@ -5,7 +5,7 @@
 
 const DEFAULT_COUNTRY_CODE = '92'; // Pakistan default, matches shippingInfo.country fallback
 
-export const sanitizePhone = (rawPhone, country) => {
+export const sanitizePhone = (rawPhone) => {
   if (!rawPhone) return '';
   let digits = String(rawPhone).replace(/\D/g, '');
   if (!digits) return '';
@@ -64,10 +64,7 @@ export const buildVerifyMessage = (order, formatPrice) => {
 };
 
 export const openWhatsAppVerify = (order, formatPrice) => {
-  const phone = sanitizePhone(
-    order?.shippingInfo?.phone,
-    order?.shippingInfo?.country
-  );
+  const phone = sanitizePhone(order?.shippingInfo?.phone);
   if (!phone) return false;
   const text = encodeURIComponent(buildVerifyMessage(order, formatPrice));
   const url = `https://wa.me/${phone}?text=${text}`;
@@ -76,4 +73,4 @@ export const openWhatsAppVerify = (order, formatPrice) => {
 };
 
 export const hasWhatsAppPhone = (order) =>
-  Boolean(sanitizePhone(order?.shippingInfo?.phone, order?.shippingInfo?.country));
+  Boolean(sanitizePhone(order?.shippingInfo?.phone));
