@@ -54,14 +54,14 @@ const ROLE_CHIPS = {
 
 const ROLE_GREETINGS = {
   user: (name, greeting) => name
-    ? `${greeting}, ${name}! 👋 I'm your personal shopping stylist at Tortrose. I can help you find the perfect outfit, give color coordination advice, track orders, or just chat about fashion. What's on your mind?`
-    : `${greeting}! 👋 I'm your personal shopping stylist at Tortrose. Whether you need outfit advice, product recommendations, or help with orders — I'm here for you. What can I help with?`,
+    ? `${greeting}, ${name}! 👋 I'm your personal shopping stylist at Rozare. I can help you find the perfect outfit, give color coordination advice, track orders, or just chat about fashion. What's on your mind?`
+    : `${greeting}! 👋 I'm your personal shopping stylist at Rozare. Whether you need outfit advice, product recommendations, or help with orders — I'm here for you. What can I help with?`,
   seller: (name, greeting) => `${greeting}, ${name || 'Seller'}! 🚀 I'm your business assistant. I can manage your products, analyze store performance, handle orders, and suggest growth strategies. What would you like to do?`,
   admin: (name, greeting) => `${greeting}, ${name || 'Admin'}! 🛡️ I'm your platform command center. I can manage users, review analytics, handle complaints, approve verifications, and perform any platform operation. What do you need?`,
 };
 
 const ROLE_TITLES = {
-  user: { title: 'Tortrose AI Stylist', subtitle: 'Personal Shopping Assistant' },
+  user: { title: 'Rozare AI Stylist', subtitle: 'Personal Shopping Assistant' },
   seller: { title: 'Business Assistant', subtitle: 'Store Management & Growth' },
   admin: { title: 'Platform Commander', subtitle: 'Full Admin Control' },
 };
@@ -248,7 +248,7 @@ const ChatBot = ({ embedded = false, dashboardRole = null }) => {
   const [messages, setMessages] = useState(() => {
     if (embedded) return [];
     try {
-      const saved = localStorage.getItem('tortrose_chat_history');
+      const saved = localStorage.getItem('rozare_chat_history');
       if (saved) return JSON.parse(saved);
     } catch {}
     return [];
@@ -308,7 +308,7 @@ const ChatBot = ({ embedded = false, dashboardRole = null }) => {
     if (messages.length > 0 && !embedded) {
       try {
         const toSave = messages.filter(m => !m._streaming).map(({ _streaming, toolResults, ...rest }) => ({ role: rest.role, content: rest.content }));
-        localStorage.setItem('tortrose_chat_history', JSON.stringify(toSave));
+        localStorage.setItem('rozare_chat_history', JSON.stringify(toSave));
         if (currentUser) {
           clearTimeout(saveTimerRef.current);
           saveTimerRef.current = setTimeout(() => {
@@ -334,7 +334,7 @@ const ChatBot = ({ embedded = false, dashboardRole = null }) => {
         }).then(res => {
           if (res.data?.messages?.length > 0) {
             setMessages(res.data.messages);
-            localStorage.setItem('tortrose_chat_history', JSON.stringify(res.data.messages));
+            localStorage.setItem('rozare_chat_history', JSON.stringify(res.data.messages));
           }
         }).catch(() => {});
       }
@@ -939,7 +939,7 @@ const ChatBot = ({ embedded = false, dashboardRole = null }) => {
               {ttsEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
             </button>
             <button onClick={() => {
-              setMessages([]); localStorage.removeItem('tortrose_chat_history');
+              setMessages([]); localStorage.removeItem('rozare_chat_history');
               const jwtToken = localStorage.getItem('jwtToken');
               if (jwtToken) axios.delete(`${import.meta.env.VITE_API_URL}api/chatbot/history`, { headers: { Authorization: `Bearer ${jwtToken}` } }).catch(() => {});
             }} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }} title="Clear chat">

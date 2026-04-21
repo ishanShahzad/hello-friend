@@ -138,7 +138,7 @@ const errorStyles = StyleSheet.create({
 
 // ─── Deep Linking ────────────────────────────────────────────────────────────
 const linking = {
-  prefixes: ['tortrose://', 'https://tortrose.com', 'http://tortrose.com'],
+  prefixes: ['rozare://', 'https://rozare.com', 'http://rozare.com'],
   config: {
     screens: {
       MainTabs: {
@@ -174,7 +174,7 @@ function BiometricGate({ children }) {
   const [locked, setLocked] = useState(null); // null = checking, true = locked, false = open
 
   const tryUnlock = React.useCallback(async () => {
-    const ok = await authenticateBiometric('Unlock Tortrose');
+    const ok = await authenticateBiometric('Unlock Rozare');
     if (ok) setLocked(false);
   }, []);
 
@@ -194,7 +194,7 @@ function BiometricGate({ children }) {
     return (
       <View style={biometricStyles.container}>
         <Ionicons name="lock-closed" size={56} color="#6366f1" />
-        <Text style={biometricStyles.title}>Tortrose is locked</Text>
+        <Text style={biometricStyles.title}>Rozare is locked</Text>
         <Text style={biometricStyles.subtitle}>Authenticate to continue</Text>
         <TouchableOpacity style={biometricStyles.btn} onPress={tryUnlock} activeOpacity={0.85}>
           <Ionicons name="finger-print" size={20} color="#fff" />

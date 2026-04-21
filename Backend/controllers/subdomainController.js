@@ -131,7 +131,7 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
             msg: 'Subdomain analytics fetched',
             subdomain: {
                 slug: store.storeSlug,
-                url: `${store.storeSlug}.tortrose.com`,
+                url: `${store.storeSlug}.rozare.com`,
                 isActive: store.verification?.isVerified || false,
                 verificationStatus: store.verification?.status || 'none',
                 createdAt: store.createdAt,
@@ -213,7 +213,7 @@ exports.getAllSubdomains = async (req, res) => {
                 isActive: store.isActive,
                 verification: store.verification,
                 createdAt: store.createdAt,
-                subdomainUrl: `${store.storeSlug}.tortrose.com`,
+                subdomainUrl: `${store.storeSlug}.rozare.com`,
                 isSubdomainActive: store.verification?.isVerified || false,
                 productCount: products.length,
                 totalOrders: orders.length,

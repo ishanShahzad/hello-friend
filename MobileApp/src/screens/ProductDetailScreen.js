@@ -58,7 +58,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   }, [productId]);
 
   const handleShare = async () => {
-    try { await Share.share({ message: `Check out ${product.name} on Tortrose! ${formatPrice(displayPrice)}`, title: product.name }); } catch {}
+    try { await Share.share({ message: `Check out ${product.name} on Rozare! ${formatPrice(displayPrice)}`, title: product.name }); } catch {}
   };
 
   const fetchProduct = async () => {

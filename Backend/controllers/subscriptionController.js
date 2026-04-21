@@ -31,10 +31,10 @@ const subscriptionEmailTemplate = (title, bodyHtml) => `
       <div class="header">${title}</div>
       <div class="content">
         ${bodyHtml}
-        <p>Best regards,<br/>The Tortrose Team</p>
+        <p>Best regards,<br/>The Rozare Team</p>
       </div>
     </div>
-    <div class="footer">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</div>
+    <div class="footer">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</div>
   </div>
 </body>
 </html>
@@ -88,7 +88,7 @@ exports.getSubscriptionStatus = async (req, res) => {
             subscription: {
                 status: sub.status,
                 plan: sub.plan,
-                planName: sub.planName || 'Tortrose Starter',
+                planName: sub.planName || 'Rozare Starter',
                 trialStartDate: sub.trialStartDate,
                 trialEndDate: sub.trialEndDate,
                 trialDaysRemaining: sub.trialDaysRemaining,
@@ -177,7 +177,7 @@ exports.createCheckout = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Tortrose Starter',
+                        name: 'Rozare Starter',
                         description: 'Seller subscription - First 30 days free, then $5/month. Cancel anytime.',
                     },
                     unit_amount: 500, // $5.00
@@ -221,7 +221,7 @@ exports.handleWebhook = async (event) => {
 
                 sub.status = 'free_period';
                 sub.plan = 'starter';
-                sub.planName = 'Tortrose Starter';
+                sub.planName = 'Rozare Starter';
                 sub.subscribedAt = now;
                 sub.freePeriodEndDate = freePeriodEnd;
                 sub.stripeSubscriptionId = session.subscription;
@@ -242,11 +242,11 @@ exports.handleWebhook = async (event) => {
                 const user = await User.findById(sellerId);
                 if (user?.email) {
                     const html = subscriptionEmailTemplate(
-                        '🎉 Tortrose Starter Activated!',
+                        '🎉 Rozare Starter Activated!',
                         `<p>Hello ${user.username || 'Seller'},</p>
-                        <p>Your <strong>Tortrose Starter</strong> plan is now active!</p>
+                        <p>Your <strong>Rozare Starter</strong> plan is now active!</p>
                         <div class="highlight">
-                            <strong>Plan:</strong> Tortrose Starter ($5/month)<br/>
+                            <strong>Plan:</strong> Rozare Starter ($5/month)<br/>
                             <strong>Free Period:</strong> 30 days (until ${freePeriodEnd.toLocaleDateString()})<br/>
                             <strong>AI Messages:</strong> 100/day (upgraded from 25)<br/>
                             <strong>Bonus Features:</strong> Active for 6 months (until ${bonusExpiry.toLocaleDateString()})
@@ -254,7 +254,7 @@ exports.handleWebhook = async (event) => {
                         <p>Your store has been reactivated and is now visible to customers.</p>
                         <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard" class="button">Go to Dashboard</a></p>`
                     );
-                    await sendEmail({ to: user.email, subject: 'Tortrose Starter Activated! 🎉', html });
+                    await sendEmail({ to: user.email, subject: 'Rozare Starter Activated! 🎉', html });
                 }
                 break;
             }
@@ -292,7 +292,7 @@ exports.handleWebhook = async (event) => {
                     const html = subscriptionEmailTemplate(
                         '⚠️ Payment Failed',
                         `<p>Hello ${user.username || 'Seller'},</p>
-                        <p>We were unable to process your payment for the Tortrose Seller Plan.</p>
+                        <p>We were unable to process your payment for the Rozare Seller Plan.</p>
                         <div class="highlight danger">
                             <strong>Action Required:</strong> Please update your payment method to avoid store suspension.
                         </div>

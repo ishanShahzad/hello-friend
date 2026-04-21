@@ -167,12 +167,12 @@ function ProductDetailPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
                     title={`${product.name}${product.brand ? ` by ${product.brand}` : ''} — Buy Online`}
-                    description={product.description?.slice(0, 155) || `Buy ${product.name} online on Tortrose marketplace. ${product.category ? `Category: ${product.category}.` : ''} ${product.brand ? `Brand: ${product.brand}.` : ''} Best price, fast shipping, secure checkout, worldwide delivery. Shop with confidence from verified sellers.`}
+                    description={product.description?.slice(0, 155) || `Buy ${product.name} online on Rozare marketplace. ${product.category ? `Category: ${product.category}.` : ''} ${product.brand ? `Brand: ${product.brand}.` : ''} Best price, fast shipping, secure checkout, worldwide delivery. Shop with confidence from verified sellers.`}
                     canonical={`/single-product/${id}`}
                     ogType="product"
                     ogImage={product.image}
-                    ogImageAlt={`${product.name} — Buy on Tortrose`}
-                    keywords={`${product.name}, buy ${product.name}, ${product.name} online, ${product.name} price, ${product.brand || ''}, ${product.category || ''}, buy ${product.category || 'products'} online, shop ${product.category || 'products'}, tortrose ${product.category || 'products'}, best ${product.category || 'products'}, cheap ${product.category || 'products'}, ${product.category || 'products'} deals`}
+                    ogImageAlt={`${product.name} — Buy on Rozare`}
+                    keywords={`${product.name}, buy ${product.name}, ${product.name} online, ${product.name} price, ${product.brand || ''}, ${product.category || ''}, buy ${product.category || 'products'} online, shop ${product.category || 'products'}, rozare ${product.category || 'products'}, best ${product.category || 'products'}, cheap ${product.category || 'products'}, ${product.category || 'products'} deals`}
                     jsonLd={[
                         {
                             '@context': 'https://schema.org',
@@ -186,8 +186,8 @@ function ProductDetailPage() {
                                 price: product.discountedPrice || product.price,
                                 priceCurrency: 'USD',
                                 availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                                url: `https://tortrose.com/single-product/${id}`,
-                                seller: { '@type': 'Organization', name: 'Tortrose' },
+                                url: `https://rozare.com/single-product/${id}`,
+                                seller: { '@type': 'Organization', name: 'Rozare' },
                             },
                             ...(product.rating && {
                                 aggregateRating: {
@@ -203,9 +203,9 @@ function ProductDetailPage() {
                             '@context': 'https://schema.org',
                             '@type': 'BreadcrumbList',
                             itemListElement: [
-                                { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://tortrose.com/' },
-                                { '@type': 'ListItem', position: 2, name: product.category || 'Products', item: 'https://tortrose.com/' },
-                                { '@type': 'ListItem', position: 3, name: product.name, item: `https://tortrose.com/single-product/${id}` },
+                                { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://rozare.com/' },
+                                { '@type': 'ListItem', position: 2, name: product.category || 'Products', item: 'https://rozare.com/' },
+                                { '@type': 'ListItem', position: 3, name: product.name, item: `https://rozare.com/single-product/${id}` },
                             ],
                         },
                     ]}

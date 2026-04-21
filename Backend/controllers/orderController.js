@@ -238,10 +238,10 @@ exports.placeOrder = async (req, res) => {
         // Support mobile deep-link redirects when platform === 'mobile'
         const isMobile = order.platform === 'mobile';
         const successUrl = isMobile
-            ? `tortrose://payment-success?session_id={CHECKOUT_SESSION_ID}&orderId=${newOrder.orderId}`
+            ? `rozare://payment-success?session_id={CHECKOUT_SESSION_ID}&orderId=${newOrder.orderId}`
             : `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = isMobile
-            ? `tortrose://payment-cancel?orderId=${newOrder.orderId}`
+            ? `rozare://payment-cancel?orderId=${newOrder.orderId}`
             : `${process.env.FRONTEND_URL}/checkout`;
 
         const session = await stripe.checkout.sessions.create({
@@ -712,7 +712,7 @@ exports.getInvoice = async (req, res) => {
 <div class="card">
   <div class="head">
     <div>
-      <h1>Tortrose</h1>
+      <h1>Rozare</h1>
       <div class="muted">Verified marketplace for trusted sellers</div>
     </div>
     <div style="text-align:right;">
@@ -744,7 +744,7 @@ exports.getInvoice = async (req, res) => {
     ${summary.couponDiscount ? `<div class="row" style="color:#10b981;"><span>Coupon discount</span><span>-${fmt(summary.couponDiscount)}</span></div>` : ''}
     <div class="row grand"><span>Total</span><span>${fmt(summary.totalAmount)}</span></div>
   </div>
-  <div class="footer">Thank you for shopping on Tortrose.<br/>Questions? Contact support — we're here to help.</div>
+  <div class="footer">Thank you for shopping on Rozare.<br/>Questions? Contact support — we're here to help.</div>
 </div></body></html>`;
 
         res.status(200).json({ msg: 'Invoice generated', html, orderId: order.orderId });

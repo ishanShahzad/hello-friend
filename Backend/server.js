@@ -92,11 +92,11 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
         <p style="text-align:center;">
           <a href="${process.env.FRONTEND_URL}/user-dashboard/order/detail/${order._id}" class="button">View Your Order</a>
         </p>
-        <p>Thank you for shopping with <strong>Tortrose</strong>.</p>
-        <p>Stay safe,<br/>The Tortrose Team</p>
+        <p>Thank you for shopping with <strong>Rozare</strong>.</p>
+        <p>Stay safe,<br/>The Rozare Team</p>
       </div>
     </div>
-    <div class="footer">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</div>
+    <div class="footer">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</div>
   </div>
 </body>
 </html>`;
@@ -131,8 +131,8 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://www.tortrose.com',
-  'https://tortrose.com',
+  'https://www.rozare.com',
+  'https://rozare.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -286,7 +286,7 @@ app.get('/health', (req, res) => {
 // ── Root ──
 app.get('/', (req, res) => {
   res.status(200).json({
-    message: 'Tortrose API is running',
+    message: 'Rozare API is running',
     version: '1.0.0',
     endpoints: { health: '/health', products: '/api/products', auth: '/api/auth' }
   });

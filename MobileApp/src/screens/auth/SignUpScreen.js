@@ -85,7 +85,7 @@ export default function SignUpScreen({ navigation }) {
             </TouchableOpacity>
             <View style={styles.logoRow}>
               <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={palette.colors.white} /></View>
-              <Text style={styles.logoText}>Tortrose</Text>
+              <Text style={styles.logoText}>Rozare</Text>
             </View>
             <View style={{ width: 40 }} />
           </View>
@@ -93,7 +93,7 @@ export default function SignUpScreen({ navigation }) {
           {/* Hero */}
           <View style={styles.heroSection}>
             <Text style={styles.heroTitle}>Create Account ✨</Text>
-            <Text style={styles.heroSubtitle}>Join thousands of shoppers on Tortrose</Text>
+            <Text style={styles.heroSubtitle}>Join thousands of shoppers on Rozare</Text>
           </View>
 
           {/* Form Card */}

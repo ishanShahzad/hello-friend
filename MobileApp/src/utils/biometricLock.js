@@ -23,7 +23,7 @@ export const setBiometricEnabled = async (enabled) => {
   try { await AsyncStorage.setItem(KEY, enabled ? '1' : '0'); } catch {}
 };
 
-export const authenticateBiometric = async (reason = 'Unlock Tortrose') => {
+export const authenticateBiometric = async (reason = 'Unlock Rozare') => {
   try {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,

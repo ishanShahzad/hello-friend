@@ -71,19 +71,19 @@ export default function BecomeSeller() {
     <div className="min-h-screen py-12 px-4">
       <SEOHead
         title="Become a Seller — Start Selling Online for Free"
-        description="Join Tortrose as a seller and start your e-commerce business for free. Create your online store, list unlimited products, manage orders, track sales analytics, and reach millions of customers worldwide. No hidden costs, no monthly fees — just sell and grow."
+        description="Join Rozare as a seller and start your e-commerce business for free. Create your online store, list unlimited products, manage orders, track sales analytics, and reach millions of customers worldwide. No hidden costs, no monthly fees — just sell and grow."
         canonical="/become-seller"
-        keywords="become a seller, sell online free, start selling online, open online store, create store free, tortrose seller, sell products online, e-commerce seller, online business, start online business, vendor registration, seller signup, free seller account, sell from home, side hustle, make money online, dropshipping, sell handmade products, sell crafts online, sell electronics online, sell fashion online, online shop owner"
+        keywords="become a seller, sell online free, start selling online, open online store, create store free, rozare seller, sell products online, e-commerce seller, online business, start online business, vendor registration, seller signup, free seller account, sell from home, side hustle, make money online, dropshipping, sell handmade products, sell crafts online, sell electronics online, sell fashion online, online shop owner"
         jsonLd={{
             '@context': 'https://schema.org',
             '@type': 'WebPage',
-            name: 'Become a Seller on Tortrose',
-            description: 'Start selling online for free on Tortrose marketplace. Create your store and reach customers worldwide.',
-            url: 'https://tortrose.com/become-seller',
+            name: 'Become a Seller on Rozare',
+            description: 'Start selling online for free on Rozare marketplace. Create your store and reach customers worldwide.',
+            url: 'https://rozare.com/become-seller',
             potentialAction: {
                 '@type': 'RegisterAction',
                 name: 'Register as Seller',
-                target: 'https://tortrose.com/become-seller',
+                target: 'https://rozare.com/become-seller',
             },
         }}
       />

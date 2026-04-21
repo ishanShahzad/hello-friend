@@ -5,12 +5,12 @@
 1. ✅ CORS configuration now properly allows credentials and specific origins
 2. ✅ Vercel.json configured with proper CORS headers for all API routes
 3. ✅ Explicit OPTIONS handler added for preflight requests
-4. ✅ Backend allows www.tortrose.com, tortrose.com, and localhost origins
+4. ✅ Backend allows www.rozare.com, rozare.com, and localhost origins
 
 ## Files Changed
 
 ### Backend/server.js
-- Updated CORS to allow specific origins including www.tortrose.com
+- Updated CORS to allow specific origins including www.rozare.com
 - Enabled credentials support (required for authenticated requests)
 - Added explicit OPTIONS handler for preflight requests
 - Added proper CORS headers configuration
@@ -38,14 +38,14 @@ The changes will automatically deploy to Vercel.
 Go to your Vercel dashboard (https://vercel.com) and update these environment variables for your backend project:
 
 **Required Environment Variables:**
-- `FRONTEND_URL` = `https://www.tortrose.com`
+- `FRONTEND_URL` = `https://www.rozare.com`
 - `GOOGLE_CALLBACK_URL` = `https://genzwinners-backend.vercel.app/api/auth/google/callback`
 - `NODE_ENV` = `production`
 
 **Or use Vercel CLI:**
 ```bash
 vercel env add FRONTEND_URL production
-# Enter: https://www.tortrose.com
+# Enter: https://www.rozare.com
 
 vercel env add GOOGLE_CALLBACK_URL production
 # Enter: https://genzwinners-backend.vercel.app/api/auth/google/callback
@@ -82,7 +82,7 @@ npm run build
 
 After deployment:
 
-1. Visit https://www.tortrose.com
+1. Visit https://www.rozare.com
 2. Open Developer Console (F12) → Network tab
 3. Verify:
    - No CORS errors in console
@@ -94,7 +94,7 @@ After deployment:
 
 ### CORS Configuration
 The backend now:
-- Accepts requests from www.tortrose.com and tortrose.com
+- Accepts requests from www.rozare.com and rozare.com
 - Allows credentials (cookies, auth tokens)
 - Handles preflight OPTIONS requests
 - Returns proper CORS headers for all responses

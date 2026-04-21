@@ -1,7 +1,7 @@
 # Subdomain Setup Guide for Store Owners
 
 ## Overview
-Store owners can now have their own subdomain: `storename.tortrose.com`
+Store owners can now have their own subdomain: `storename.rozare.com`
 
 ## Setup Steps
 
@@ -17,7 +17,7 @@ Store owners can now have their own subdomain: `storename.tortrose.com`
 ### 2. Vercel Domain Configuration
 1. Go to your Vercel project → Settings → Domains
 2. Click "Add Domain"
-3. Enter: `*.tortrose.com`
+3. Enter: `*.rozare.com`
 4. Follow Vercel's verification steps
 5. Wait for DNS propagation (can take up to 48 hours, usually 10-30 minutes)
 
@@ -34,9 +34,9 @@ Store owners can now have their own subdomain: `storename.tortrose.com`
 - Fetches store data from subdomain API endpoints
 
 **Example:**
-- Store with slug `"awesome-shop"` → accessible at `awesome-shop.tortrose.com`
-- Main site remains at `tortrose.com`
-- Path-based URLs still work: `tortrose.com/store/awesome-shop`
+- Store with slug `"awesome-shop"` → accessible at `awesome-shop.rozare.com`
+- Main site remains at `rozare.com`
+- Path-based URLs still work: `rozare.com/store/awesome-shop`
 
 ### 4. Testing Locally
 
@@ -74,7 +74,7 @@ These subdomains are reserved and won't route to stores:
 ## Troubleshooting
 
 **Subdomain not working?**
-1. Check DNS propagation: `nslookup storename.tortrose.com`
+1. Check DNS propagation: `nslookup storename.rozare.com`
 2. Verify wildcard domain is added in Vercel
 3. Check store slug matches subdomain exactly
 4. Clear browser cache and try incognito mode

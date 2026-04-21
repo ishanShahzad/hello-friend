@@ -53,7 +53,7 @@ export default function ForgotPasswordScreen({ navigation }) {
             </TouchableOpacity>
             <View style={styles.logoRow}>
               <View style={styles.logoIcon}><Ionicons name="storefront" size={18} color={palette.colors.primary} /></View>
-              <Text style={styles.logoText}>Tortrose</Text>
+              <Text style={styles.logoText}>Rozare</Text>
             </View>
             <View style={{ width: 36 }} />
           </GlassPanel>

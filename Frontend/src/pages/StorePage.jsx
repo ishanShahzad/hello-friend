@@ -109,7 +109,7 @@ const StorePage = () => {
     const handleShare = () => {
         const url = window.location.href;
         if (navigator.share) {
-            navigator.share({ title: store?.storeName, text: `Check out ${store?.storeName} on Tortrose`, url });
+            navigator.share({ title: store?.storeName, text: `Check out ${store?.storeName} on Rozare`, url });
         } else {
             navigator.clipboard.writeText(url);
             toast.success('Store link copied to clipboard!');
@@ -164,18 +164,18 @@ const StorePage = () => {
                 <SEOHead
                     title={`${store?.storeName || 'Store'} — Shop Products Online`}
                     description={store?.description
-                        ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Tortrose marketplace. Verified seller, secure checkout, worldwide shipping.`
-                        : `Shop unique products from ${store?.storeName} on Tortrose. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
+                        ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Rozare marketplace. Verified seller, secure checkout, worldwide shipping.`
+                        : `Shop unique products from ${store?.storeName} on Rozare. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
                     canonical={`/store/${slug}`}
                     ogImage={store?.logo || undefined}
-                    ogImageAlt={`${store?.storeName} — Shop on Tortrose Marketplace`}
-                    keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, tortrose store, verified seller, trusted store, online shop, independent seller`}
+                    ogImageAlt={`${store?.storeName} — Shop on Rozare Marketplace`}
+                    keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, rozare store, verified seller, trusted store, online shop, independent seller`}
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'Store',
                         name: store?.storeName,
                         description: store?.description,
-                        url: `https://tortrose.com/store/${slug}`,
+                        url: `https://rozare.com/store/${slug}`,
                         logo: store?.logo,
                         image: store?.banner || store?.logo,
                         ...(store?.address?.city && {

@@ -191,7 +191,7 @@ exports.chat = async (req, res) => {
         // Intent: Complaint / Report
         if (lowerMsg.includes('complaint') || lowerMsg.includes('report') || lowerMsg.includes('issue') || lowerMsg.includes('problem') || lowerMsg.includes('refund')) {
             return res.json({
-                reply: 'I\'m sorry to hear you\'re having an issue. You can submit a complaint using the form below, and our team will look into it right away. You can also reach us at support@tortrose.com or visit our Contact page.',
+                reply: 'I\'m sorry to hear you\'re having an issue. You can submit a complaint using the form below, and our team will look into it right away. You can also reach us at support@rozare.com or visit our Contact page.',
                 action: { type: 'show_complaint_form' },
                 intent: 'complaint',
                 contactUrl: '/contact'

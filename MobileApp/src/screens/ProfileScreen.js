@@ -94,7 +94,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.guestAvatarCircle}>
               <Ionicons name="person-outline" size={48} color={palette.colors.primary} />
             </View>
-            <Text style={styles.guestTitle}>Welcome to Tortrose</Text>
+            <Text style={styles.guestTitle}>Welcome to Rozare</Text>
             <Text style={styles.guestSubtitle}>Sign in to access your account</Text>
             <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')} activeOpacity={0.85}>
               <Text style={styles.loginButtonText}>Login / Sign Up</Text>
@@ -118,7 +118,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
             ))}
           </GlassPanel>
-          <Text style={styles.appVersion}>Tortrose v{APP_VERSION}</Text>
+          <Text style={styles.appVersion}>Rozare v{APP_VERSION}</Text>
         </View>
       </GlassBackground>
     );
@@ -244,7 +244,7 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </GlassPanel>
 
-        <Text style={styles.appVersion}>Tortrose v{APP_VERSION}</Text>
+        <Text style={styles.appVersion}>Rozare v{APP_VERSION}</Text>
         <View style={{ height: 80 }} />
       </ScrollView>
     </GlassBackground>

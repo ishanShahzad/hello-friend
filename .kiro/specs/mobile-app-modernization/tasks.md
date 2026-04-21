@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation plan covers the comprehensive modernization of the Tortrose MobileApp. The implementation follows React Native/Expo patterns and transforms the existing app into a professional, modern e-commerce platform matching the web Frontend quality.
+This implementation plan covers the comprehensive modernization of the Rozare MobileApp. The implementation follows React Native/Expo patterns and transforms the existing app into a professional, modern e-commerce platform matching the web Frontend quality.
 
 ## Tasks
 

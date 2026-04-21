@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design document outlines the comprehensive modernization of the Tortrose MobileApp to achieve a professional, modern e-commerce experience matching the web Frontend. The implementation transforms the existing basic mobile app into a polished platform with complete role-based dashboards, modern UI/UX patterns, smooth animations, and comprehensive user flows for all user states.
+This design document outlines the comprehensive modernization of the Rozare MobileApp to achieve a professional, modern e-commerce experience matching the web Frontend. The implementation transforms the existing basic mobile app into a polished platform with complete role-based dashboards, modern UI/UX patterns, smooth animations, and comprehensive user flows for all user states.
 
 The modernization includes:
 1. Modern theme system with consistent design tokens

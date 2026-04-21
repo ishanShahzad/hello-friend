@@ -7,7 +7,7 @@
 │                    What's Happening Now                          │
 └─────────────────────────────────────────────────────────────────┘
 
-Frontend (www.tortrose.com)
+Frontend (www.rozare.com)
     │
     │ 1. Request: GET /api/products
     ▼
@@ -34,7 +34,7 @@ Browser
 │                    What Should Happen                            │
 └─────────────────────────────────────────────────────────────────┘
 
-Frontend (www.tortrose.com)
+Frontend (www.rozare.com)
     │
     │ 1. Request: GET /api/products
     ▼
@@ -62,14 +62,14 @@ Browser
 ### What You See:
 ```
 Access to XMLHttpRequest at 'https://genzwinners-backend.vercel.app/api/products/get-products'
-from origin 'https://www.tortrose.com' has been blocked by CORS policy:
+from origin 'https://www.rozare.com' has been blocked by CORS policy:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
 ### What It Means:
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Browser: "Hey, www.tortrose.com wants to access              │
+│ Browser: "Hey, www.rozare.com wants to access              │
 │          genzwinners-backend.vercel.app"                     │
 │                                                              │
 │ Backend: *crashes with 500 error*                           │
@@ -122,7 +122,7 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 "headers": [{
   "source": "/(.*)",  // ✅ ALL routes
   "headers": [
-    { "key": "Access-Control-Allow-Origin", "value": "https://www.tortrose.com" }  // ✅ Specific origin
+    { "key": "Access-Control-Allow-Origin", "value": "https://www.rozare.com" }  // ✅ Specific origin
   ]
 }]
 ```
@@ -194,7 +194,7 @@ Redeploy
 │                                                             │
 │ Prevents: www.evil.com from accessing your-api.com         │
 │                                                             │
-│ Allows:   www.tortrose.com to access your backend          │
+│ Allows:   www.rozare.com to access your backend          │
 │           (if backend sends proper headers)                 │
 │                                                             │
 │ Headers:  Access-Control-Allow-Origin                       │
@@ -209,7 +209,7 @@ Redeploy
 ```
 Browser: "Can I make a GET request to /api/products?"
          ↓ (sends OPTIONS request)
-Backend: "Yes, www.tortrose.com is allowed"
+Backend: "Yes, www.rozare.com is allowed"
          ↓ (sends CORS headers)
 Browser: "Great! Now sending the actual GET request"
          ↓ (sends GET request)
@@ -321,7 +321,7 @@ Error Response (500):
 ## 🔐 Security Note
 
 The CORS configuration now:
-- ✅ Allows specific origin (www.tortrose.com)
+- ✅ Allows specific origin (www.rozare.com)
 - ✅ Allows credentials (cookies, auth tokens)
 - ✅ Specifies allowed methods
 - ✅ Specifies allowed headers

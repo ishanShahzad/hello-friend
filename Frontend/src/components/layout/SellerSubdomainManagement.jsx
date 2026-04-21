@@ -197,7 +197,7 @@ const SellerSubdomainManagement = () => {
                             <input type="text" value={newSlug} onChange={(e) => { setNewSlug(sanitize(e.target.value)); setSlugAvailable(null); setSlugMessage(''); }}
                                 className="flex-1 px-3 py-3 bg-transparent text-sm outline-none font-mono" style={{ color: 'hsl(var(--foreground))' }}
                                 placeholder="your-store" maxLength={50} />
-                            <span className="px-3 py-3 text-sm font-medium select-none" style={{ color: 'hsl(var(--muted-foreground))' }}>.tortrose.com</span>
+                            <span className="px-3 py-3 text-sm font-medium select-none" style={{ color: 'hsl(var(--muted-foreground))' }}>.rozare.com</span>
                             <span className="px-3">
                                 {slugChecking ? <Loader2 size={16} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
                                     : slugAvailable === true ? <CheckCircle size={16} style={{ color: 'hsl(150, 60%, 45%)' }} />
@@ -276,7 +276,7 @@ const SellerSubdomainManagement = () => {
                 </h3>
                 <div className="space-y-3">
                     {[
-                        { q: 'What is a subdomain?', a: 'A custom URL like yourstore.tortrose.com that customers can use to access your store directly.' },
+                        { q: 'What is a subdomain?', a: 'A custom URL like yourstore.rozare.com that customers can use to access your store directly.' },
                         { q: 'When does it become active?', a: 'Your subdomain becomes active once your store is verified. Apply for verification in Store Settings.' },
                         { q: 'Can I change it later?', a: 'Yes! You can change your subdomain at any time. The old URL will stop working immediately.' },
                         { q: 'Is my subdomain reserved?', a: isActive ? 'Yes, your subdomain is reserved and active.' : 'Not until you are verified. Others could claim your preferred subdomain before you.' },

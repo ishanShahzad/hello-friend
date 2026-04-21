@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       Toast.show({
         type: 'success',
         text1: 'Account Created!',
-        text2: res.data.msg || 'Welcome to Tortrose!'
+        text2: res.data.msg || 'Welcome to Rozare!'
       });
       return { success: true };
     } catch (error) {
@@ -146,7 +146,7 @@ export const AuthProvider = ({ children }) => {
   // Google Sign-In via backend OAuth (opens in-app browser, intercepts deep link)
   const googleSignIn = async () => {
     try {
-      const redirectUrl = 'tortrose://auth/google/success';
+      const redirectUrl = 'rozare://auth/google/success';
       const authUrl = `${API_BASE_URL}/api/auth/google/mobile`;
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);

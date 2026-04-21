@@ -48,7 +48,7 @@ export default function StoreScreen({ route, navigation }) {
 
   const handleShare = useCallback(async () => {
     if (!store) return;
-    try { await Share.share({ message: `Check out ${store.name} on Tortrose!`, title: store.name }); } catch {}
+    try { await Share.share({ message: `Check out ${store.name} on Rozare!`, title: store.name }); } catch {}
   }, [store]);
 
   const handleContact = useCallback(() => { if (store?.email) Linking.openURL(`mailto:${store.email}`); }, [store]);

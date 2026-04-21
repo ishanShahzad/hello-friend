@@ -22,9 +22,9 @@ export default function TrackOrderPage() {
     <>
       <SEOHead
         title="Track Your Order — Real-Time Order Tracking"
-        description="Track your Tortrose order in real-time. Enter your email and order ID to see live shipping status, delivery updates, and estimated arrival time. Fast, easy, and transparent order tracking."
+        description="Track your Rozare order in real-time. Enter your email and order ID to see live shipping status, delivery updates, and estimated arrival time. Fast, easy, and transparent order tracking."
         canonical="/track-order"
-        keywords="track order, order tracking, tortrose order tracking, track my order, order status, shipping status, delivery tracking, where is my order, order updates, track package, tortrose tracking, real-time tracking"
+        keywords="track order, order tracking, rozare order tracking, track my order, order status, shipping status, delivery tracking, where is my order, order updates, track package, rozare tracking, real-time tracking"
       />
       <TrackOrderContent />
     </>

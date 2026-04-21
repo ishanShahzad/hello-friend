@@ -83,7 +83,7 @@ const GlassSignUpPage = () => {
       <div className="w-full max-w-md glass-panel-strong overflow-hidden relative z-10">
         <div className="p-8">
           <div className="text-center mb-8">
-            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-12 mx-auto mb-4" />
+            <img src="/rozare-logo.svg" alt="Rozare" className="h-12 mx-auto mb-4" />
             <div className="tag-pill mx-auto w-fit mb-4"><Sparkles size={12} /> {step === 1 ? 'Create Account' : 'Verify Email'}</div>
             <h2 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'hsl(var(--foreground))' }}>
               {step === 1 ? 'Sign Up' : 'Enter OTP'}
@@ -200,7 +200,7 @@ const GlassSignUpPage = () => {
                 <button onClick={() => navigate("/login")} className="font-medium underline" style={{ color: 'hsl(var(--primary))' }}>Log in</button>
               </div>
               <div className="mt-3 text-center text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Want to sell on Tortrose?{' '}
+                Want to sell on Rozare?{' '}
                 <button onClick={() => navigate("/seller-signup")} className="font-medium underline" style={{ color: 'hsl(var(--primary))' }}>Sign up as Seller</button>
               </div>
             </>

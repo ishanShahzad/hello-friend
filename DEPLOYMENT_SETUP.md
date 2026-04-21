@@ -1,7 +1,7 @@
 # Deployment Setup Guide
 
 ## Issue Identified
-Your frontend on `www.tortrose.com` is trying to reach `genzwinners-backend.vercel.app` which is either:
+Your frontend on `www.rozare.com` is trying to reach `genzwinners-backend.vercel.app` which is either:
 - An old/incorrect backend URL
 - Not configured with proper CORS
 - Returning 500 errors
@@ -40,7 +40,7 @@ After setting the environment variable:
 ### 4. Test the Deployment
 
 After redeployment:
-1. Visit `www.tortrose.com`
+1. Visit `www.rozare.com`
 2. Open browser DevTools → Network tab
 3. Verify API calls are going to the correct backend URL
 4. Check that CORS errors are resolved

@@ -33,7 +33,7 @@ const sections = [
   {
     icon: <Shield size={20} />,
     title: '6. Your Rights',
-    content: `Depending on your jurisdiction, you may have rights to: access your personal data; correct inaccurate data; request deletion of your data; object to processing; data portability; and withdraw consent. To exercise these rights, contact us at privacy@tortrose.com.`
+    content: `Depending on your jurisdiction, you may have rights to: access your personal data; correct inaccurate data; request deletion of your data; object to processing; data portability; and withdraw consent. To exercise these rights, contact us at privacy@rozare.com.`
   },
   {
     icon: <Trash2 size={20} />,
@@ -54,9 +54,9 @@ function PrivacyPolicy() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="Privacy Policy — Data Protection & Security"
-        description="Learn how Tortrose collects, uses, and protects your personal data. We use bank-level SSL encryption, never sell your data, and give you full control over your privacy. Read our comprehensive privacy policy for online shopping safety."
+        description="Learn how Rozare collects, uses, and protects your personal data. We use bank-level SSL encryption, never sell your data, and give you full control over your privacy. Read our comprehensive privacy policy for online shopping safety."
         canonical="/privacy"
-        keywords="tortrose privacy policy, tortrose data protection, tortrose security, tortrose cookies, online shopping privacy, marketplace privacy, e-commerce privacy, data security, personal data, GDPR, user data protection, secure shopping"
+        keywords="rozare privacy policy, rozare data protection, rozare security, rozare cookies, online shopping privacy, marketplace privacy, e-commerce privacy, data security, personal data, GDPR, user data protection, secure shopping"
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -78,7 +78,7 @@ function PrivacyPolicy() {
 
         <div className="glass-panel p-6 sm:p-8 mb-8">
           <p style={{ color: 'hsl(var(--foreground))' }} className="leading-relaxed">
-            At Tortrose, your privacy is important to us. This policy explains what information we collect, 
+            At Rozare, your privacy is important to us. This policy explains what information we collect, 
             how we use it, and what choices you have. We are committed to protecting your personal data and 
             being transparent about our practices.
           </p>
@@ -110,7 +110,7 @@ function PrivacyPolicy() {
 
         <div className="glass-panel p-6 mt-8 text-center">
           <p style={{ color: 'hsl(var(--muted-foreground))' }} className="text-sm">
-            For privacy inquiries, email <span className="font-medium" style={{ color: 'hsl(var(--primary))' }}>privacy@tortrose.com</span>. 
+            For privacy inquiries, email <span className="font-medium" style={{ color: 'hsl(var(--primary))' }}>privacy@rozare.com</span>. 
             Also see our <Link to="/terms" className="font-medium" style={{ color: 'hsl(var(--primary))' }}>Terms of Service</Link>.
           </p>
         </div>

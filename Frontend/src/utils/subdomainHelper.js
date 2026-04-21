@@ -15,7 +15,7 @@ export const getSubdomain = () => {
         return null;
     }
     
-    // If more than 2 parts (e.g., storename.tortrose.com)
+    // If more than 2 parts (e.g., storename.rozare.com)
     if (parts.length > 2) {
         const subdomain = parts[0];
         
@@ -43,7 +43,7 @@ export const getMainDomain = () => {
     
     const parts = host.split('.');
     
-    // Return last two parts (e.g., tortrose.com)
+    // Return last two parts (e.g., rozare.com)
     if (parts.length >= 2) {
         return parts.slice(-2).join('.');
     }

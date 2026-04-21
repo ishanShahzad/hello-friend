@@ -74,16 +74,16 @@ const StoresListing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
                     title="Browse All Stores — Discover Trusted Sellers"
-                    description="Discover thousands of verified independent sellers and their unique product stores on Tortrose marketplace. Browse electronics shops, fashion boutiques, home decor stores, beauty brands & more. Find trusted stores with community ratings, verified badges, and secure shopping worldwide."
+                    description="Discover thousands of verified independent sellers and their unique product stores on Rozare marketplace. Browse electronics shops, fashion boutiques, home decor stores, beauty brands & more. Find trusted stores with community ratings, verified badges, and secure shopping worldwide."
                     canonical="/stores"
-                    keywords="online stores, browse stores, seller stores, verified sellers, trusted stores, independent shops, online boutiques, fashion stores, electronics shops, home stores, beauty stores, tortrose stores, shop by store, seller marketplace, vendor stores, best online sellers, top rated stores, popular stores"
+                    keywords="online stores, browse stores, seller stores, verified sellers, trusted stores, independent shops, online boutiques, fashion stores, electronics shops, home stores, beauty stores, rozare stores, shop by store, seller marketplace, vendor stores, best online sellers, top rated stores, popular stores"
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'CollectionPage',
-                        name: 'All Stores — Tortrose Marketplace',
-                        description: 'Browse all verified independent seller stores on Tortrose marketplace',
-                        url: 'https://tortrose.com/stores',
-                        isPartOf: { '@type': 'WebSite', name: 'Tortrose', url: 'https://tortrose.com' },
+                        name: 'All Stores — Rozare Marketplace',
+                        description: 'Browse all verified independent seller stores on Rozare marketplace',
+                        url: 'https://rozare.com/stores',
+                        isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
                     }}
                 />
                 {/* Breadcrumb */}
