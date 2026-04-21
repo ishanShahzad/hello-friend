@@ -16,6 +16,7 @@
     "antd": "^5.29.3",
     "axios": "^1.13.6",
     "expo-haptics": "^55.0.14",
+    "expo-local-authentication": "^55.0.13",
     "expo-print": "^55.0.13",
     "expo-sharing": "^55.0.18",
     "expo-store-review": "^55.0.13",
