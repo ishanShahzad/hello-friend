@@ -116,7 +116,7 @@ export default function HomeScreen({ navigation }) {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [selectedCategories, selectedBrands, searchQuery]);
+  }, [selectedCategories, selectedBrands, searchQuery, priceRange.min, priceRange.max]);
 
   const fetchFilters = async () => {
     try {
@@ -156,8 +156,12 @@ export default function HomeScreen({ navigation }) {
     setIsLoading(true);
     setPage(1);
     setHasMore(true);
+    setShowAutocomplete(false);
+    if (searchQuery && searchQuery.trim().length >= 2) {
+      addSearchHistory(searchQuery.trim());
+    }
     fetchProducts(1, false);
-  }, [fetchProducts]);
+  }, [fetchProducts, searchQuery]);
 
   const toggleCategory = (category) => {
     setSelectedCategories(prev =>
@@ -175,6 +179,7 @@ export default function HomeScreen({ navigation }) {
     setSelectedCategories([]);
     setSelectedBrands([]);
     setSearchQuery('');
+    setPriceRange({ min: 0, max: null });
   };
 
   const applyFilters = () => {
@@ -185,7 +190,7 @@ export default function HomeScreen({ navigation }) {
     fetchProducts(1, false);
   };
 
-  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0;
+  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || priceRange.min > 0 || (priceRange.max && priceRange.max > 0);
 
   // Memoized render item to prevent unnecessary re-renders
   const renderItem = useCallback(({ item, index }) => (
