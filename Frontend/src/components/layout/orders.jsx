@@ -236,9 +236,30 @@ const OrderManagement = () => {
                                                             {order.isPaid ? 'Paid' : 'Unpaid'}
                                                         </span>
                                                     </div>
-                                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                                        {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        {(() => {
+                                                            const hasPhone = hasWhatsAppPhone(order);
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!hasPhone}
+                                                                    aria-label={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
+                                                                    style={{
+                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
+                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                    }}
+                                                                >
+                                                                    <MessageCircle size={12} />
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                        <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </Link>
