@@ -160,6 +160,18 @@ exports.getSellerNotifications = async (req, res) => {
             if (order.isPaid && order.orderStatus === 'confirmed') {
                 notifications.push({ id: `paid-${order._id}`, type: 'success', category: 'payment', title: `Payment received for ${order.orderId}`, description: `$${order.orderSummary?.totalAmount?.toFixed(2)}`, time: order.paidAt || order.createdAt, read: false, orderId: order._id });
             }
+            if (order.confirmation?.confirmedAt && order.confirmation?.confirmedVia === 'email') {
+                notifications.push({
+                    id: `confirmed-${order._id}`,
+                    type: 'success',
+                    category: 'order',
+                    title: `Buyer confirmed order ${order.orderId} via email`,
+                    description: `${order.shippingInfo?.fullName} verified the order — ready to process`,
+                    time: order.confirmation.confirmedAt,
+                    read: false,
+                    orderId: order._id,
+                });
+            }
         });
 
         notifications.sort((a, b) => new Date(b.time) - new Date(a.time));

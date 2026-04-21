@@ -200,6 +200,11 @@ const OrderManagement = () => {
                                                                 </button>
                                                             );
                                                         })()}
+                                                        {isOrderConfirmedByBuyer(order) && (
+                                                            <span className="text-[10px] font-medium hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(16, 185, 129, 0.10)', color: 'hsl(150, 60%, 40%)' }}>
+                                                                <CheckCircle size={10} /> Confirmed via email
+                                                            </span>
+                                                        )}
                                                         <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
                                                             <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
                                                                 View <ArrowRight size={12} />
