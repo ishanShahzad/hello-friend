@@ -1,6 +1,6 @@
 
 const express = require('express')
-const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo } = require('../controllers/userController')
+const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } = require('../controllers/userController')
 const verifyToken = require('../middleware/authMiddleware')
 const router = express.Router()
 
@@ -17,8 +17,15 @@ router.delete('/delete-account', verifyToken, deleteOwnAccount)
 // Become a seller
 router.post('/become-seller', verifyToken, becomeSeller)
 
-// Shipping info
+// Shipping info (single default for back-compat)
 router.get('/shipping-info', verifyToken, getShippingInfo)
 router.patch('/shipping-info', verifyToken, updateShippingInfo)
+
+// Saved Addresses (address book) — multi-address CRUD
+router.get('/addresses', verifyToken, getAddresses)
+router.post('/addresses', verifyToken, addAddress)
+router.patch('/addresses/:addressId', verifyToken, updateAddress)
+router.delete('/addresses/:addressId', verifyToken, deleteAddress)
+router.patch('/addresses/:addressId/default', verifyToken, setDefaultAddress)
 
 module.exports = router

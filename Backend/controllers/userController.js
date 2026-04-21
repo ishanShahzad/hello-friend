@@ -281,3 +281,129 @@ exports.updateShippingInfo = async (req, res) => {
         res.status(500).json({ msg: 'Server error while saving shipping info' })
     }
 }
+
+// ============================================================================
+// Saved Addresses (address book) — multi-address CRUD
+// ============================================================================
+
+const sanitizeAddress = (a = {}) => ({
+    label: (a.label || 'Home').toString().trim().slice(0, 30),
+    fullName: (a.fullName || '').toString().trim(),
+    email: (a.email || '').toString().trim(),
+    phone: (a.phone || '').toString().trim(),
+    address: (a.address || '').toString().trim(),
+    city: (a.city || '').toString().trim(),
+    state: (a.state || '').toString().trim(),
+    postalCode: (a.postalCode || '').toString().trim(),
+    country: (a.country || 'Pakistan').toString().trim(),
+    isDefault: !!a.isDefault,
+});
+
+const validateAddress = (a) => {
+    if (!a.fullName || a.fullName.length < 2) return 'Full name is required';
+    if (!a.address || a.address.length < 4) return 'Street address is required';
+    if (!a.city) return 'City is required';
+    return null;
+};
+
+exports.getAddresses = async (req, res) => {
+    const { id: _id } = req.user;
+    try {
+        const user = await User.findById(_id).select('savedAddresses');
+        res.status(200).json({ msg: 'Addresses fetched', addresses: user?.savedAddresses || [] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server error while fetching addresses' });
+    }
+};
+
+exports.addAddress = async (req, res) => {
+    const { id: _id } = req.user;
+    try {
+        const sanitized = sanitizeAddress(req.body || {});
+        const err = validateAddress(sanitized);
+        if (err) return res.status(400).json({ msg: err });
+
+        const user = await User.findById(_id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        // First address is automatically default
+        if (!user.savedAddresses || user.savedAddresses.length === 0) sanitized.isDefault = true;
+        // If new one is default, unset others
+        if (sanitized.isDefault) {
+            user.savedAddresses.forEach((a) => { a.isDefault = false; });
+        }
+        user.savedAddresses.push(sanitized);
+        await user.save();
+        res.status(201).json({ msg: 'Address added', addresses: user.savedAddresses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server error while adding address' });
+    }
+};
+
+exports.updateAddress = async (req, res) => {
+    const { id: _id } = req.user;
+    const { addressId } = req.params;
+    try {
+        const sanitized = sanitizeAddress(req.body || {});
+        const err = validateAddress(sanitized);
+        if (err) return res.status(400).json({ msg: err });
+
+        const user = await User.findById(_id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        const target = user.savedAddresses.id(addressId);
+        if (!target) return res.status(404).json({ msg: 'Address not found' });
+
+        if (sanitized.isDefault) {
+            user.savedAddresses.forEach((a) => { a.isDefault = false; });
+        }
+        Object.assign(target, sanitized);
+        await user.save();
+        res.status(200).json({ msg: 'Address updated', addresses: user.savedAddresses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server error while updating address' });
+    }
+};
+
+exports.deleteAddress = async (req, res) => {
+    const { id: _id } = req.user;
+    const { addressId } = req.params;
+    try {
+        const user = await User.findById(_id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        const target = user.savedAddresses.id(addressId);
+        if (!target) return res.status(404).json({ msg: 'Address not found' });
+        const wasDefault = target.isDefault;
+        target.deleteOne();
+        // Promote first remaining as default if needed
+        if (wasDefault && user.savedAddresses.length > 0) {
+            user.savedAddresses[0].isDefault = true;
+        }
+        await user.save();
+        res.status(200).json({ msg: 'Address deleted', addresses: user.savedAddresses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server error while deleting address' });
+    }
+};
+
+exports.setDefaultAddress = async (req, res) => {
+    const { id: _id } = req.user;
+    const { addressId } = req.params;
+    try {
+        const user = await User.findById(_id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        const target = user.savedAddresses.id(addressId);
+        if (!target) return res.status(404).json({ msg: 'Address not found' });
+        user.savedAddresses.forEach((a) => { a.isDefault = false; });
+        target.isDefault = true;
+        await user.save();
+        res.status(200).json({ msg: 'Default address updated', addresses: user.savedAddresses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Server error while setting default address' });
+    }
+};

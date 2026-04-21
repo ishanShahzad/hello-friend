@@ -31,7 +31,7 @@ const userSchema = mongoose.Schema({
     // Currency preference
     currency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD' },
 
-    // Saved shipping/address info for auto-fill
+    // Saved shipping/address info for auto-fill (legacy default address)
     savedShippingInfo: {
         fullName: { type: String, default: '' },
         email: { type: String, default: '' },
@@ -42,6 +42,23 @@ const userSchema = mongoose.Schema({
         postalCode: { type: String, default: '' },
         country: { type: String, default: 'Pakistan' },
     },
+
+    // Multiple saved shipping addresses (address book)
+    savedAddresses: [
+        {
+            label: { type: String, default: 'Home' }, // Home, Work, etc.
+            fullName: { type: String, required: true },
+            email: { type: String, default: '' },
+            phone: { type: String, default: '' },
+            address: { type: String, required: true },
+            city: { type: String, required: true },
+            state: { type: String, default: '' },
+            postalCode: { type: String, default: '' },
+            country: { type: String, default: 'Pakistan' },
+            isDefault: { type: Boolean, default: false },
+            createdAt: { type: Date, default: Date.now },
+        }
+    ],
 
     // Notification preferences
     notificationPrefs: {
