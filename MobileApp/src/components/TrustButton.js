@@ -8,9 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import { colors, spacing, fontSize, borderRadius, fontWeight, glass, shadows } from '../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, shadows } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrusted = false, compact = false, iconOnly = false, onTrustChange }) => {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const glass = palette.glass;
+  const styles = makeStyles(palette);
   const [isTrusted, setIsTrusted] = useState(initialIsTrusted);
   const [trustCount, setTrustCount] = useState(initialTrustCount);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,6 +102,6 @@ const styles = StyleSheet.create({
   countWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   countNumber: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
   countLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
-});
+}); };
 
 export default TrustButton;

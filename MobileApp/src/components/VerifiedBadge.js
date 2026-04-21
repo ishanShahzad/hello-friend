@@ -1,19 +1,20 @@
 /**
- * VerifiedBadge — Liquid Glass Design
+ * VerifiedBadge — Liquid Glass Design (themed)
  */
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const VerifiedBadge = ({ size = 'md', style }) => {
+  const { palette } = useTheme();
   const sizes = { xs: 14, sm: 16, md: 20, lg: 24 };
   const iconSize = sizes[size] || sizes.md;
 
   return (
     <View style={[styles.container, style]}>
-      <Ionicons name="checkmark-circle" size={iconSize} color={colors.primary} />
+      <Ionicons name="checkmark-circle" size={iconSize} color={palette.colors.verified || palette.colors.primary} />
     </View>
   );
 };

@@ -12,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, shadows } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,6 +83,9 @@ export async function markOnboardingComplete() {
 }
 
 export default function OnboardingWalkthrough({ onComplete }) {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const styles = makeStyles(palette);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -111,7 +115,9 @@ export default function OnboardingWalkthrough({ onComplete }) {
     }
   }).current;
 
-  const renderSlide = ({ item, index }) => (
+  const renderSlide = ({ item, index }) => {
+    const dotColor = colors.primary;
+    return (
     <View style={[styles.slide, { width }]}>
       <LinearGradient colors={item.bgGradient} style={styles.slideGradient}>
         {/* Icon */}
@@ -134,7 +140,8 @@ export default function OnboardingWalkthrough({ onComplete }) {
         </View>
       </LinearGradient>
     </View>
-  );
+    );
+  };
 
   const isLast = currentIndex === slides.length - 1;
 
@@ -190,7 +197,7 @@ export default function OnboardingWalkthrough({ onComplete }) {
 
         {/* Next / Get Started button */}
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-          <LinearGradient colors={colors.gradientPrimary} style={styles.nextBtnGradient}>
+          <LinearGradient colors={palette.gradients.primary} style={styles.nextBtnGradient}>
             <Text style={styles.nextBtnText}>{isLast ? 'Get Started' : 'Next'}</Text>
             <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={20} color="#fff" />
           </LinearGradient>
@@ -200,10 +207,10 @@ export default function OnboardingWalkthrough({ onComplete }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (palette) => { const colors = palette.colors; return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   skipBtn: {
     position: 'absolute',
@@ -303,4 +310,4 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
-});
+}); };

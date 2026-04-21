@@ -1,54 +1,42 @@
 /**
- * SearchAutocomplete — recent searches + live product suggestions overlay.
+ * SearchAutocomplete — themed recent searches + live product suggestions overlay.
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../config/api';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getSearchHistory, removeSearchHistoryItem, clearSearchHistory } from '../../utils/searchHistory';
-import { colors, spacing, fontSize, fontWeight, borderRadius, glass } from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
 
 export default function SearchAutocomplete({ visible, query, onSelectQuery, onSelectProduct, onClose, navigation }) {
+  const { palette } = useTheme();
+  const colors = palette.colors;
+  const styles = makeStyles(palette);
   const [history, setHistory] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
 
-  useEffect(() => {
-    if (visible) getSearchHistory().then(setHistory);
-  }, [visible]);
+  useEffect(() => { if (visible) getSearchHistory().then(setHistory); }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
-    if (!query || query.trim().length < 2) {
-      setSuggestions([]);
-      return;
-    }
+    if (!query || query.trim().length < 2) { setSuggestions([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
         const res = await api.get(`/api/products/get-products?search=${encodeURIComponent(query.trim())}&limit=6`);
         setSuggestions(res.data?.products || []);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setLoading(false);
-      }
+      } catch { setSuggestions([]); } finally { setLoading(false); }
     }, 280);
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query, visible]);
 
-  const handleRemove = useCallback(async (q) => {
-    const next = await removeSearchHistoryItem(q);
-    setHistory(next || []);
-  }, []);
-
-  const handleClearAll = useCallback(async () => {
-    await clearSearchHistory();
-    setHistory([]);
-  }, []);
+  const handleRemove = useCallback(async (q) => { const next = await removeSearchHistoryItem(q); setHistory(next || []); }, []);
+  const handleClearAll = useCallback(async () => { await clearSearchHistory(); setHistory([]); }, []);
 
   if (!visible) return null;
 
@@ -86,16 +74,9 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
               <Text style={styles.sectionTitle}>SUGGESTIONS</Text>
               {loading && <ActivityIndicator size="small" color={colors.primary} />}
             </View>
-            {suggestions.length === 0 && !loading && (
-              <Text style={styles.emptyText}>No matches found</Text>
-            )}
+            {suggestions.length === 0 && !loading && <Text style={styles.emptyText}>No matches found</Text>}
             {suggestions.map((p) => (
-              <TouchableOpacity
-                key={p._id}
-                style={styles.suggestionRow}
-                onPress={() => onSelectProduct(p)}
-                accessibilityLabel={`View ${p.name}`}
-              >
+              <TouchableOpacity key={p._id} style={styles.suggestionRow} onPress={() => onSelectProduct(p)} accessibilityLabel={`View ${p.name}`}>
                 <Image source={{ uri: p.images?.[0]?.url || p.image }} style={styles.suggestionImg} contentFit="cover" cachePolicy="memory-disk" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.suggestionName} numberOfLines={1}>{p.name}</Text>
@@ -118,22 +99,8 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: glass.border || 'rgba(255,255,255,0.5)',
-    maxHeight: 380,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-    overflow: 'hidden',
-  },
+const makeStyles = (palette) => { const colors = palette.colors; const glass = palette.glass; return StyleSheet.create({
+  container: { backgroundColor: glass.bgStrong, marginHorizontal: spacing.md, marginTop: spacing.xs, borderRadius: borderRadius.xl, borderWidth: 1, borderColor: glass.border, maxHeight: 380, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 6, overflow: 'hidden' },
   section: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
   sectionTitle: { fontSize: 11, fontWeight: fontWeight.bold, color: colors.textSecondary, letterSpacing: 0.7 },
@@ -142,10 +109,10 @@ const styles = StyleSheet.create({
   historyMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
   historyText: { fontSize: fontSize.md, color: colors.text },
   suggestionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
-  suggestionImg: { width: 44, height: 44, borderRadius: borderRadius.md, backgroundColor: 'rgba(0,0,0,0.05)' },
+  suggestionImg: { width: 44, height: 44, borderRadius: borderRadius.md, backgroundColor: glass.bgSubtle },
   suggestionName: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
   suggestionMeta: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
   emptyText: { fontSize: fontSize.sm, color: colors.textSecondary, paddingVertical: spacing.md, textAlign: 'center' },
   emptyHint: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
   emptyHintText: { fontSize: fontSize.sm, color: colors.textSecondary },
-});
+}); };
