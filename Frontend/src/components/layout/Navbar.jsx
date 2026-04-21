@@ -158,8 +158,9 @@ function Navbar() {
                                         <Link to="/login" onClick={() => setMobileMenuOpen(false)}
                                             className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold"
                                             style={{
-                                                background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                                background: 'var(--logo-gradient)',
                                                 color: 'white',
+                                                boxShadow: 'var(--logo-glow)',
                                             }}>
                                             <LogIn size={18} /> Login / Sign Up
                                         </Link>
