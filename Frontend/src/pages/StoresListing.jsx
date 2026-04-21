@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Search, Home, ChevronRight, Sparkles, Heart, ChevronDown, Check } from 'lucide-react';
+import { Store, Search, Home, ChevronRight, Sparkles, Heart, ChevronDown, Check, ShoppingBag, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import StoreCard from '../components/common/StoreCard';
@@ -13,6 +13,7 @@ const StoresListing = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('newest');
+    const [typeFilter, setTypeFilter] = useState('all'); // all | brand | store
     const [sortOpen, setSortOpen] = useState(false);
     const sortRef = useRef(null);
 
@@ -60,9 +61,17 @@ const StoresListing = () => {
         }
     };
 
-    const filteredStores = stores.filter(store =>
-        store.storeName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredStores = stores.filter(store => {
+        const matchesQuery = store.storeName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = typeFilter === 'all' || (store.sellerType || 'store') === typeFilter;
+        return matchesQuery && matchesType;
+    });
+
+    const tabs = [
+        { key: 'all', label: 'All', icon: Layers },
+        { key: 'brand', label: 'Brands', icon: Sparkles },
+        { key: 'store', label: 'Stores', icon: Store },
+    ];
 
     return (
         <motion.div
@@ -73,16 +82,16 @@ const StoresListing = () => {
         >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
-                    title="Browse All Stores — Discover Trusted Sellers"
-                    description="Discover thousands of verified independent sellers and their unique product stores on Rozare marketplace. Browse electronics shops, fashion boutiques, home decor stores, beauty brands & more. Find trusted stores with community ratings, verified badges, and secure shopping worldwide."
-                    canonical="/stores"
-                    keywords="online stores, browse stores, seller stores, verified sellers, trusted stores, independent shops, online boutiques, fashion stores, electronics shops, home stores, beauty stores, rozare stores, shop by store, seller marketplace, vendor stores, best online sellers, top rated stores, popular stores"
+                    title="Marketplace — Discover Trusted Stores & Brands"
+                    description="Discover thousands of verified stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques and more — all in one place."
+                    canonical="/marketplace"
+                    keywords="marketplace, online stores, brands, verified sellers, trusted brands, independent shops, fashion brands, electronics stores, rozare marketplace"
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'CollectionPage',
-                        name: 'All Stores — Rozare Marketplace',
-                        description: 'Browse all verified independent seller stores on Rozare marketplace',
-                        url: 'https://rozare.com/stores',
+                        name: 'Marketplace — Rozare',
+                        description: 'Browse all verified stores and brands on Rozare Marketplace',
+                        url: 'https://rozare.com/marketplace',
                         isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
                     }}
                 />
@@ -99,7 +108,7 @@ const StoresListing = () => {
                         <span>Home</span>
                     </Link>
                     <ChevronRight size={14} className="mx-1.5 opacity-50" />
-                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>All Stores</span>
+                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Marketplace</span>
                 </motion.div>
 
                 {/* Hero Header — Glass Panel */}
@@ -118,26 +127,58 @@ const StoresListing = () => {
                     <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="glass-inner p-3 rounded-2xl">
-                                <Store size={28} style={{ color: 'hsl(var(--primary))' }} />
+                                <ShoppingBag size={28} style={{ color: 'hsl(var(--primary))' }} />
                             </div>
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight"
                                     style={{ color: 'hsl(var(--foreground))' }}>
-                                    Discover Stores
+                                    Marketplace
                                 </h1>
                                 <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Explore amazing sellers and their unique products
+                                    Discover stores and brands from sellers worldwide
                                 </p>
                             </div>
                         </div>
-                        <Link to="/stores/trusted">
+                        <Link to="/marketplace/trusted">
                             <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
                                 className="glass-button flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm">
                                 <Heart size={16} style={{ color: 'hsl(0, 72%, 55%)' }} />
-                                <span>My Trusted Stores</span>
+                                <span>My Trusted</span>
                             </motion.button>
                         </Link>
                     </div>
+                </motion.div>
+
+                {/* Type Tabs */}
+                <motion.div
+                    className="glass-panel p-2 mb-4 inline-flex gap-1"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.15 }}
+                >
+                    {tabs.map(tab => {
+                        const Icon = tab.icon;
+                        const active = typeFilter === tab.key;
+                        const count = tab.key === 'all' ? stores.length : stores.filter(s => (s.sellerType || 'store') === tab.key).length;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => setTypeFilter(tab.key)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                                style={{
+                                    background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' : 'transparent',
+                                    color: active ? 'white' : 'hsl(var(--foreground))',
+                                }}
+                            >
+                                <Icon size={15} />
+                                <span>{tab.label}</span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                    style={{ background: active ? 'rgba(255,255,255,0.25)' : 'hsla(220,70%,55%,0.12)', color: active ? 'white' : 'hsl(220,70%,55%)' }}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </motion.div>
 
                 {/* Search and Sort Card */}
@@ -156,7 +197,7 @@ const StoresListing = () => {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search for stores..."
+                                placeholder="Search stores or brands..."
                                 className="glass-input glass-input-search"
                             />
                         </div>
