@@ -10,11 +10,13 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useGlobal } from '../contexts/GlobalContext';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows, glass, typography, statusColors } from '../styles/theme';
 import Loader from '../components/common/Loader';
 import { ErrorState } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { generateAndShareInvoice } from '../utils/invoiceUtils';
 
 const statusConfig = {
   pending: { color: statusColors.pending.solid, bgColor: statusColors.pending.bg, icon: 'time-outline', label: 'Pending', description: 'Your order is being reviewed' },
@@ -40,11 +42,14 @@ const getEstimatedDelivery = (order) => {
 export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const { formatPrice } = useCurrency();
+  const { fetchCart } = useGlobal();
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState(null);
+  const [reordering, setReordering] = useState(false);
+  const [sharingInvoice, setSharingInvoice] = useState(false);
 
   const fetchOrderDetail = useCallback(async () => {
     try { setError(null); const res = await api.get(`/api/order/detail/${orderId}`); setOrder(res.data.order); }
@@ -65,6 +70,35 @@ export default function OrderDetailScreen({ route, navigation }) {
       }},
     ]);
   }, [orderId, fetchOrderDetail]);
+
+  const handleReorder = useCallback(async () => {
+    try {
+      setReordering(true);
+      const res = await api.post(`/api/order/reorder/${orderId}`);
+      const added = res.data?.addedCount || 0;
+      const skipped = res.data?.skippedItems?.length || 0;
+      await fetchCart();
+      Alert.alert(
+        'Re-ordered',
+        `${added} item${added !== 1 ? 's' : ''} added to cart${skipped ? `\n${skipped} item${skipped !== 1 ? 's' : ''} unavailable` : ''}.`,
+        [
+          { text: 'View Cart', onPress: () => navigation.navigate('MainTabs', { screen: 'Cart' }) },
+          { text: 'OK' },
+        ]
+      );
+    } catch (err) {
+      Alert.alert('Re-order Failed', err.response?.data?.message || 'Unable to re-order.');
+    } finally { setReordering(false); }
+  }, [orderId, fetchCart, navigation]);
+
+  const handleShareInvoice = useCallback(async () => {
+    try {
+      setSharingInvoice(true);
+      await generateAndShareInvoice(order);
+    } catch (err) {
+      Alert.alert('Share Failed', err.message || 'Unable to generate invoice.');
+    } finally { setSharingInvoice(false); }
+  }, [order]);
 
   const formatDate = (dateString, includeTime = true) => {
     if (!dateString) return 'N/A';
