@@ -93,6 +93,7 @@ exports.placeOrder = async (req, res) => {
                 price: item.price,
                 quantity: item.quantity,
                 selectedColor: item.selectedColor || null,
+                selectedOptions: item.selectedOptions || undefined,
             })),
 
             shippingInfo: {
