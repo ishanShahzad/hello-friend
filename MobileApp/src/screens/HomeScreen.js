@@ -85,6 +85,8 @@ export default function HomeScreen({ navigation }) {
       if (searchQuery) {
         params.append('search', searchQuery);
       }
+      if (priceRange.min > 0) params.append('minPrice', priceRange.min);
+      if (priceRange.max && priceRange.max > 0) params.append('maxPrice', priceRange.max);
       params.append('page', pageNum);
       params.append('limit', LIMIT);
 
