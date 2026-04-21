@@ -201,7 +201,7 @@ const OrderManagement = () => {
                                                             );
                                                         })()}
                                                         {isOrderConfirmedByBuyer(order) && (
-                                                            <span className="text-[10px] font-medium hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(16, 185, 129, 0.10)', color: 'hsl(150, 60%, 40%)' }}>
+                                                            <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                                                                 <CheckCircle size={10} /> Confirmed via email
                                                             </span>
                                                         )}
@@ -238,6 +238,13 @@ const OrderManagement = () => {
                                                         {(order.orderStatus || 'unknown').charAt(0).toUpperCase() + (order.orderStatus || 'unknown').slice(1)}
                                                     </span>
                                                 </div>
+                                                {isOrderConfirmedByBuyer(order) && (
+                                                    <div className="mb-2">
+                                                        <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                                            <CheckCircle size={10} /> Confirmed via email
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(order.createdAt).toLocaleDateString()}</span>
