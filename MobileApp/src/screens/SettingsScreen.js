@@ -36,11 +36,10 @@ function SettingRow({ icon, iconColor, iconBg, title, subtitle, onPress, rightEl
 const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_UPDATES: 'settings_email_updates' };
 
 export default function SettingsScreen({ navigation }) {
-  const { palette } = useTheme();
+  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const styles = buildStyles(palette);
 
   const { logout } = useAuth();
-  const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [hapticsEnabled, setHapticsEnabledState] = useState(isHapticsEnabled());
