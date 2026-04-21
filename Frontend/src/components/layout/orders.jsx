@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight } from 'lucide-react';
+import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle } from 'lucide-react';
+import { openWhatsAppVerify, hasWhatsAppPhone } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
@@ -173,11 +174,33 @@ const OrderManagement = () => {
                                                     })()}
                                                 </td>
                                                 <td className="px-5 py-4">
-                                                    <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
-                                                        <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
-                                                            View <ArrowRight size={12} />
-                                                        </motion.span>
-                                                    </Link>
+                                                    <div className="flex items-center gap-3 justify-end">
+                                                        {(() => {
+                                                            const hasPhone = hasWhatsAppPhone(order);
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!hasPhone}
+                                                                    title={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full transition-all"
+                                                                    style={{
+                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
+                                                                        cursor: hasPhone ? 'pointer' : 'not-allowed',
+                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                    }}
+                                                                >
+                                                                    <MessageCircle size={14} />
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                        <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
+                                                            <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
+                                                                View <ArrowRight size={12} />
+                                                            </motion.span>
+                                                        </Link>
+                                                    </div>
                                                 </td>
                                             </motion.tr>
                                         );
@@ -213,9 +236,30 @@ const OrderManagement = () => {
                                                             {order.isPaid ? 'Paid' : 'Unpaid'}
                                                         </span>
                                                     </div>
-                                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                                        {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        {(() => {
+                                                            const hasPhone = hasWhatsAppPhone(order);
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (hasPhone) openWhatsAppVerify(order, formatPrice); }}
+                                                                    disabled={!hasPhone}
+                                                                    aria-label={hasPhone ? 'Verify on WhatsApp' : 'No phone number on file'}
+                                                                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
+                                                                    style={{
+                                                                        background: hasPhone ? 'rgba(37, 211, 102, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                                        color: hasPhone ? 'hsl(142, 70%, 45%)' : 'hsl(var(--muted-foreground))',
+                                                                        opacity: hasPhone ? 1 : 0.5,
+                                                                    }}
+                                                                >
+                                                                    <MessageCircle size={12} />
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                        <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </Link>

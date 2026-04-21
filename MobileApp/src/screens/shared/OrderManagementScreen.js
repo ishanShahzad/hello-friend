@@ -15,6 +15,7 @@ import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { openWhatsAppVerify } from '../../utils/whatsapp';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' },
@@ -88,7 +89,7 @@ export default function OrderManagementScreen({ navigation, route }) {
 
   return (
     <GlassBackground>
-      <FlatList data={filteredOrders} renderItem={({ item }) => <OrderCard order={item} onPress={() => handleOrderPress(item)} showCustomer />}
+      <FlatList data={filteredOrders} renderItem={({ item }) => <OrderCard order={item} onPress={() => handleOrderPress(item)} onWhatsApp={openWhatsAppVerify} showCustomer />}
         keyExtractor={i => i._id} contentContainerStyle={styles.list}
         ListHeaderComponent={renderHeader} ListEmptyComponent={<EmptyOrders onBrowse={null} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
