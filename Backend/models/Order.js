@@ -101,7 +101,15 @@ const orderSchema = mongoose.Schema(
             type: Date
         },
 
-        instructions: { type: String }
+        instructions: { type: String },
+
+        confirmation: {
+            token: { type: String, default: null, index: true },
+            tokenExpiresAt: { type: Date, default: null },
+            confirmedAt: { type: Date, default: null },
+            confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', null], default: null },
+            declinedAt: { type: Date, default: null },
+        }
     },
     { timestamps: true }
 );

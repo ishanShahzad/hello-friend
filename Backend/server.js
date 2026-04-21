@@ -239,6 +239,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/password', authLimiter, resetPasswordRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/order', orderRoutes);
+app.use('/api/order-confirm', require('./routes/orderConfirmationRoutes'));
 app.use('/api/user', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/session', sessionRoutes);
