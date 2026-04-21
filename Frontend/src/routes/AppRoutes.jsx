@@ -40,6 +40,7 @@ import SellerSubscription from '../components/layout/SellerSubscription'
 import CouponManagement from '../components/layout/CouponManagement'
 import StorePage from '../pages/StorePage'
 import StoresListing from '../pages/StoresListing'
+import { Navigate } from 'react-router-dom'
 import TrustedStoresPage from '../pages/TrustedStoresPage'
 import StoreVerifications from '../pages/admin/StoreVerifications'
 import BecomeSeller from '../pages/BecomeSeller'
@@ -65,12 +66,15 @@ function AppRoutes() {
                     <Route path={'/forgot-password'} element={<ForgotPassword />} />
                     <Route path={'/reset-password/:token'} element={<ResetPassword />} />
                     <Route path='/store/:slug' element={<StorePage />} />
-                    <Route path='/stores' element={<StoresListing />} />
-                    <Route path='/stores/trusted' element={
+                    <Route path='/marketplace' element={<StoresListing />} />
+                    <Route path='/marketplace/trusted' element={
                         <ProtectedRoute>
                             <TrustedStoresPage />
                         </ProtectedRoute>
                     } />
+                    {/* Legacy redirects */}
+                    <Route path='/stores' element={<Navigate to='/marketplace' replace />} />
+                    <Route path='/stores/trusted' element={<Navigate to='/marketplace/trusted' replace />} />
                     
                     <Route path='/become-seller' element={
                         <ProtectedRoute>
