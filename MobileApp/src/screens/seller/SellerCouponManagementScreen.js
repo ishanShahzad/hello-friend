@@ -15,6 +15,7 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import Loader from '../../components/common/Loader';
+import CouponBarChart, { MetricRow } from '../../components/common/CouponBarChart';
 import { spacing, fontSize, fontWeight, borderRadius, shadows } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -185,31 +186,116 @@ export default function SellerCouponManagementScreen({ navigation }) {
           }
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}>
-          {analyticsData ? (
+        <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
+        >
+          {analyticsData?.summary || analyticsData?.analytics ? (
             <>
+              {/* Summary Stats */}
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
                 {[
-                  { label: 'Total Coupons', value: analyticsData.totalCoupons || coupons.length, icon: 'pricetag', color: palette.colors.primary },
-                  { label: 'Total Uses', value: analyticsData.totalUses || 0, icon: 'people', color: palette.colors.info },
-                  { label: 'Revenue Impact', value: formatPrice(analyticsData.totalDiscount || 0), icon: 'trending-up', color: palette.colors.success },
+                  { label: 'Total Coupons', value: analyticsData.summary?.totalCoupons ?? coupons.length, icon: 'pricetag', color: palette.colors.primary },
+                  { label: 'Total Uses', value: analyticsData.summary?.totalUses ?? 0, icon: 'people', color: palette.colors.info },
+                  { label: 'Discount Given', value: formatPrice(analyticsData.summary?.totalDiscountGiven ?? 0), icon: 'trending-down', color: palette.colors.warning },
                 ].map((stat, i) => (
                   <GlassPanel key={i} variant="card" style={{ flex: 1, alignItems: 'center', padding: spacing.md }}>
                     <Ionicons name={stat.icon} size={22} color={stat.color} />
-                    <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.xs }}>{stat.value}</Text>
+                    <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.xs }} numberOfLines={1}>{stat.value}</Text>
                     <Text style={{ fontSize: 10, color: palette.colors.textSecondary, textAlign: 'center' }}>{stat.label}</Text>
                   </GlassPanel>
                 ))}
               </View>
-              {analyticsData.topCoupons?.map((c, i) => (
-                <GlassPanel key={i} variant="card" style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm }}>
-                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.primary, width: 30 }}>#{i + 1}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.text }}>{c.code}</Text>
-                    <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>{c.usedCount} uses · {formatPrice(c.totalDiscount || 0)} discount</Text>
-                  </View>
+
+              {/* Revenue impact banner */}
+              <GlassPanel variant="card" style={{ padding: spacing.md, marginBottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16,185,129,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="cash" size={22} color={palette.colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>Revenue from coupons</Text>
+                  <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text }}>
+                    {formatPrice(analyticsData.summary?.totalRevenueFromCoupons ?? 0)}
+                  </Text>
+                  {analyticsData.summary?.topCouponCode && (
+                    <Text style={{ fontSize: 11, color: palette.colors.textSecondary, marginTop: 2 }}>
+                      Top performer · <Text style={{ color: palette.colors.primary, fontWeight: fontWeight.bold }}>{analyticsData.summary.topCouponCode}</Text>
+                    </Text>
+                  )}
+                </View>
+              </GlassPanel>
+
+              {/* Per-coupon analytics cards */}
+              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.text, marginBottom: spacing.sm, marginTop: spacing.sm }}>
+                Per-Coupon Performance
+              </Text>
+              {(analyticsData.analytics || []).length === 0 ? (
+                <GlassPanel variant="card" style={{ alignItems: 'center', padding: spacing.xl }}>
+                  <Ionicons name="bar-chart-outline" size={40} color={palette.colors.textSecondary} />
+                  <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.sm }}>No usage yet</Text>
+                  <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                    Stats will appear once buyers start applying your coupons.
+                  </Text>
                 </GlassPanel>
-              ))}
+              ) : (
+                (analyticsData.analytics || []).map((c) => {
+                  const isExpired = c.expiryDate && new Date(c.expiryDate) < new Date();
+                  const conversion = c.maxUses ? Math.round((c.usedCount / c.maxUses) * 100) : null;
+                  // Simple bar chart: distribution across uses, orders, unique users, avg order
+                  const chartData = [c.usedCount || 0, c.ordersGenerated || 0, c.uniqueUsers || 0, Math.round(c.avgOrderValue || 0), Math.round(c.totalDiscount || 0), Math.round(c.totalRevenue || 0)];
+                  const chartLabels = ['Uses', 'Ord', 'Usr', 'Avg', 'Disc', 'Rev'];
+                  return (
+                    <GlassPanel key={c._id} variant="card" style={{ padding: spacing.md, marginBottom: spacing.md }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(99,102,241,0.15)' }}>
+                            <Text style={{ color: palette.colors.primary, fontWeight: fontWeight.bold, letterSpacing: 1 }}>{c.code}</Text>
+                          </View>
+                          <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold, fontSize: fontSize.sm }}>
+                            {c.discountType === 'percentage' ? `${c.discountValue}%` : formatPrice(c.discountValue)} off
+                          </Text>
+                        </View>
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: c.isActive && !isExpired ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}>
+                          <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: c.isActive && !isExpired ? palette.colors.success : palette.colors.error }}>
+                            {isExpired ? 'EXPIRED' : c.isActive ? 'ACTIVE' : 'PAUSED'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <MetricRow palette={palette} items={[
+                        { label: 'Uses', value: `${c.usedCount}${c.maxUses ? `/${c.maxUses}` : ''}` },
+                        { label: 'Orders', value: c.ordersGenerated || 0 },
+                        { label: 'Buyers', value: c.uniqueUsers || 0 },
+                        { label: 'Conv.', value: conversion !== null ? `${conversion}%` : '—' },
+                      ]} />
+
+                      <View style={{ height: 1, backgroundColor: palette.glass.borderSubtle, marginVertical: spacing.sm }} />
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                        <View>
+                          <Text style={{ fontSize: 10, color: palette.colors.textSecondary }}>Revenue impact</Text>
+                          <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.success }}>{formatPrice(c.totalRevenue || 0)}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 10, color: palette.colors.textSecondary }}>Discount given</Text>
+                          <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.warning }}>-{formatPrice(c.totalDiscount || 0)}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 10, color: palette.colors.textSecondary }}>Avg order</Text>
+                          <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.text }}>{formatPrice(c.avgOrderValue || 0)}</Text>
+                        </View>
+                      </View>
+
+                      <CouponBarChart
+                        data={chartData}
+                        labels={chartLabels}
+                        height={90}
+                        color={palette.colors.primary}
+                        textColor={palette.colors.textSecondary}
+                      />
+                    </GlassPanel>
+                  );
+                })
+              )}
             </>
           ) : (
             <GlassPanel variant="card" style={{ alignItems: 'center', padding: spacing.xxl }}>
