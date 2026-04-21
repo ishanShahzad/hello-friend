@@ -245,6 +245,36 @@ export default function OrderDetailScreen({ route, navigation }) {
           </View>
         </GlassPanel>
 
+        {/* Action Buttons: Re-order + Share Invoice */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+          <TouchableOpacity
+            style={[styles.actionPrimary, reordering && { opacity: 0.6 }]}
+            onPress={handleReorder}
+            disabled={reordering}
+            activeOpacity={0.85}
+          >
+            {reordering ? <Loader size="small" color="#fff" /> : (
+              <>
+                <Ionicons name="repeat" size={18} color="#fff" />
+                <Text style={styles.actionPrimaryText}>Re-order</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionSecondary, sharingInvoice && { opacity: 0.6 }]}
+            onPress={handleShareInvoice}
+            disabled={sharingInvoice}
+            activeOpacity={0.85}
+          >
+            {sharingInvoice ? <Loader size="small" color={colors.primary} /> : (
+              <>
+                <Ionicons name="share-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionSecondaryText}>Invoice</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Cancel */}
         {isCancellable && (
           <TouchableOpacity style={[styles.cancelBtn, cancelling && { opacity: 0.6 }]} onPress={handleCancelOrder} disabled={cancelling}>
@@ -300,4 +330,8 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary },
   cancelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.error, gap: spacing.sm, marginTop: spacing.sm },
   cancelText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.error },
+  actionPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16 },
+  actionPrimaryText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' },
+  actionSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: 'rgba(99,102,241,0.08)', paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: colors.primary },
+  actionSecondaryText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.primary },
 });
