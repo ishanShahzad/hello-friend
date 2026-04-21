@@ -4,6 +4,7 @@
 
 jest.mock('expo-print', () => ({
   printToFileAsync: jest.fn(async () => ({ uri: 'file:///tmp/invoice.pdf' })),
+  printAsync: jest.fn(async () => true),
 }));
 jest.mock('expo-sharing', () => ({
   isAvailableAsync: jest.fn(async () => true),
@@ -11,34 +12,56 @@ jest.mock('expo-sharing', () => ({
 }));
 jest.mock('../../src/config/api', () => ({
   __esModule: true,
-  default: { get: jest.fn(async () => ({ data: { html: '<html><body>Invoice</body></html>' } })) },
+  default: {
+    get: jest.fn(async () => ({
+      data: { html: '<html><body>Invoice</body></html>', orderId: 'INV-123' },
+    })),
+  },
 }));
 
 const Print = require('expo-print');
 const Sharing = require('expo-sharing');
 const api = require('../../src/config/api').default;
-const { generateAndShareInvoice } = require('../../src/utils/invoiceUtils');
+const { shareInvoice, printInvoice } = require('../../src/utils/invoiceUtils');
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('generateAndShareInvoice', () => {
-  test('fetches HTML, prints to PDF, and shares', async () => {
-    await generateAndShareInvoice('order_abc');
+describe('shareInvoice', () => {
+  test('fetches HTML, prints to PDF, and opens share sheet', async () => {
+    const result = await shareInvoice('order_abc');
     expect(api.get).toHaveBeenCalledWith(expect.stringContaining('order_abc'));
-    expect(Print.printToFileAsync).toHaveBeenCalled();
-    expect(Sharing.shareAsync).toHaveBeenCalledWith('file:///tmp/invoice.pdf', expect.any(Object));
+    expect(Print.printToFileAsync).toHaveBeenCalledWith(expect.objectContaining({
+      html: expect.stringContaining('Invoice'),
+    }));
+    expect(Sharing.shareAsync).toHaveBeenCalledWith(
+      'file:///tmp/invoice.pdf',
+      expect.objectContaining({ mimeType: 'application/pdf' })
+    );
+    expect(result).toEqual({ uri: 'file:///tmp/invoice.pdf', shared: true });
   });
 
-  test('returns false when sharing is unavailable', async () => {
+  test('returns shared:false when sharing is unavailable', async () => {
     Sharing.isAvailableAsync.mockResolvedValueOnce(false);
-    const result = await generateAndShareInvoice('order_abc');
-    expect(result).toBe(false);
+    const result = await shareInvoice('order_abc');
+    expect(result.shared).toBe(false);
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 
-  test('returns false on API failure and does not crash', async () => {
-    api.get.mockRejectedValueOnce(new Error('server down'));
-    const result = await generateAndShareInvoice('order_abc');
-    expect(result).toBe(false);
+  test('throws on missing orderId', async () => {
+    await expect(shareInvoice(undefined)).rejects.toThrow(/orderId/);
+  });
+
+  test('throws when backend returns no HTML', async () => {
+    api.get.mockResolvedValueOnce({ data: {} });
+    await expect(shareInvoice('order_abc')).rejects.toThrow(/invoice HTML/);
+  });
+});
+
+describe('printInvoice', () => {
+  test('fetches HTML and calls system print dialog', async () => {
+    await printInvoice('order_abc');
+    expect(Print.printAsync).toHaveBeenCalledWith(expect.objectContaining({
+      html: expect.any(String),
+    }));
   });
 });

@@ -156,7 +156,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
 
   const persistReadIds = useCallback(() => {
     AsyncStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds.current])).catch(() => {});
-    onCountChange && onCountChange();
+    onCountChange?.();
   }, [onCountChange]);
 
   const markRead = useCallback((ids) => {
@@ -180,7 +180,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
     setNotifications([]);
     readIds.current.clear();
     await AsyncStorage.multiRemove([NOTIF_STORE_KEY, NOTIF_READ_KEY]).catch(() => {});
-    onCountChange && onCountChange();
+    onCountChange?.();
   }, [onCountChange]);
 
   const dismiss = useCallback(async (notifId) => {
@@ -196,7 +196,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
       }
       await AsyncStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds.current]));
     } catch {}
-    onCountChange && onCountChange();
+    onCountChange?.();
   }, [onCountChange]);
 
   const dismissGroup = useCallback(async (ids) => {
@@ -212,7 +212,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
       }
       await AsyncStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds.current]));
     } catch {}
-    onCountChange && onCountChange();
+    onCountChange?.();
   }, [onCountChange]);
 
   const refresh = useCallback(() => {
