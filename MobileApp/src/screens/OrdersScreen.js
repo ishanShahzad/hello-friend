@@ -8,13 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useAuth } from '../contexts/AuthContext';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import Loader from '../components/common/Loader';
 import { CartItemSkeleton } from '../components/common/Skeleton';
 import { EmptyOrders, LoginRequired, ErrorState } from '../components/common/EmptyState';
 import OrderCard from '../components/common/OrderCard';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const sortOrdersByDate = (orders) => {
   if (!Array.isArray(orders)) return [];
@@ -22,6 +23,9 @@ export const sortOrdersByDate = (orders) => {
 };
 
 export default function OrdersScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { formatPrice } = useCurrency();
   const { currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -46,7 +50,7 @@ export default function OrdersScreen({ navigation }) {
   const heroHeader = (
     <GlassPanel variant="floating" style={styles.heroHeader}>
       <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-        <Ionicons name="arrow-back" size={22} color={colors.text} />
+        <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
       </TouchableOpacity>
       <Text style={styles.heroTitle}>My Orders</Text>
       {orders.length > 0 && (
@@ -84,7 +88,7 @@ export default function OrdersScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={heroHeader}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
           ListFooterComponent={<View style={styles.listFooter} />}
         />
       </SafeAreaView>
@@ -92,14 +96,14 @@ export default function OrdersScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   heroHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm, gap: spacing.md },
   heroBackBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  heroTitle: { flex: 1, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  heroTitle: { flex: 1, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroBadge: { backgroundColor: 'rgba(99,102,241,0.15)', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  heroBadgeText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  heroBadgeText: { color: p.colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   listContent: { padding: spacing.sm, flexGrow: 1 },
   firstCard: { marginTop: 0 },
   listFooter: { height: spacing.xxl },

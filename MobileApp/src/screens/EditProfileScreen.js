@@ -12,9 +12,13 @@ import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function EditProfileScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [name, setName] = useState(currentUser?.name || currentUser?.username || '');
   const [avatarUri, setAvatarUri] = useState(currentUser?.avatar || null);
@@ -59,7 +63,7 @@ export default function EditProfileScreen({ navigation }) {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <GlassPanel variant="floating" style={styles.heroHeader}>
             <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.heroCenter}>
               <Text style={styles.heroTitle}>Edit Profile</Text>
@@ -74,7 +78,7 @@ export default function EditProfileScreen({ navigation }) {
                   <View style={styles.avatarCircle}><Text style={styles.avatarText}>{(name || 'U').charAt(0).toUpperCase()}</Text></View>
                 )}
                 <View style={styles.cameraOverlay}>
-                  {isUploadingAvatar ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="camera" size={16} color={colors.white} />}
+                  {isUploadingAvatar ? <ActivityIndicator size="small" color={palette.colors.white} /> : <Ionicons name="camera" size={16} color={palette.colors.white} />}
                 </View>
               </TouchableOpacity>
               <Text style={styles.avatarHint}>Tap photo to change</Text>
@@ -82,20 +86,20 @@ export default function EditProfileScreen({ navigation }) {
 
             <GlassPanel variant="panel" style={styles.formCard}>
               <Text style={styles.fieldLabel}>Display Name</Text>
-              <TextInput style={[styles.input, errors.name && styles.inputError]} value={name} onChangeText={(t) => { setName(t); setErrors({}); }} placeholder="Enter your name" placeholderTextColor={colors.textLight} autoCapitalize="words" maxLength={50} />
+              <TextInput style={[styles.input, errors.name && styles.inputError]} value={name} onChangeText={(t) => { setName(t); setErrors({}); }} placeholder="Enter your name" placeholderTextColor={palette.colors.textLight} autoCapitalize="words" maxLength={50} />
               {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
               <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Email Address</Text>
               <View style={styles.readOnlyField}>
-                <Ionicons name="mail-outline" size={18} color={colors.textLight} />
+                <Ionicons name="mail-outline" size={18} color={palette.colors.textLight} />
                 <Text style={styles.readOnlyText}>{currentUser?.email || '—'}</Text>
-                <Ionicons name="lock-closed-outline" size={12} color={colors.textLight} />
+                <Ionicons name="lock-closed-outline" size={12} color={palette.colors.textLight} />
               </View>
               <Text style={styles.readOnlyHint}>Email cannot be changed here.</Text>
             </GlassPanel>
 
             <TouchableOpacity style={[styles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSave} disabled={isSaving} activeOpacity={0.85}>
-              {isSaving ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
+              {isSaving ? <ActivityIndicator color={palette.colors.white} size="small" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -104,29 +108,29 @@ export default function EditProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   heroHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm },
   heroBackBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   heroCenter: { flex: 1, marginLeft: spacing.md },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  heroSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
+  heroSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
   avatarSection: { alignItems: 'center', marginBottom: spacing.xl },
   avatarWrapper: { position: 'relative', width: 90, height: 90, marginBottom: spacing.sm },
   avatarImage: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)' },
-  avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)' },
-  avatarText: { fontSize: 36, fontWeight: fontWeight.bold, color: colors.white },
-  cameraOverlay: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  avatarHint: { fontSize: fontSize.sm, color: colors.textSecondary },
+  avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)' },
+  avatarText: { fontSize: 36, fontWeight: fontWeight.bold, color: p.colors.white },
+  cameraOverlay: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: p.colors.primaryDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  avatarHint: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   formCard: { padding: spacing.lg, marginBottom: spacing.lg },
-  fieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textSecondary, marginBottom: spacing.xs },
-  input: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text, backgroundColor: 'rgba(255,255,255,0.08)' },
-  inputError: { borderColor: colors.error },
-  errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 4 },
+  fieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.textSecondary, marginBottom: spacing.xs },
+  input: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: fontSize.md, color: p.colors.text, backgroundColor: 'rgba(255,255,255,0.08)' },
+  inputError: { borderColor: p.colors.error },
+  errorText: { fontSize: fontSize.xs, color: p.colors.error, marginTop: 4 },
   readOnlyField: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  readOnlyText: { flex: 1, fontSize: fontSize.md, color: colors.textSecondary },
-  readOnlyHint: { fontSize: fontSize.xs, color: colors.textLight, marginTop: 6, fontStyle: 'italic' },
-  saveButton: { backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md + 2, alignItems: 'center' },
-  saveButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.white },
+  readOnlyText: { flex: 1, fontSize: fontSize.md, color: p.colors.textSecondary },
+  readOnlyHint: { fontSize: fontSize.xs, color: p.colors.textLight, marginTop: 6, fontStyle: 'italic' },
+  saveButton: { backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md + 2, alignItems: 'center' },
+  saveButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.white },
 });

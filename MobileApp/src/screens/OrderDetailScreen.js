@@ -11,16 +11,17 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useGlobal } from '../contexts/GlobalContext';
-import { colors, spacing, fontSize, fontWeight, borderRadius, shadows, glass, typography, statusColors } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, shadows, typography, statusColors } from '../styles/theme';
 import Loader from '../components/common/Loader';
 import { ErrorState } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { generateAndShareInvoice } from '../utils/invoiceUtils';
+import { useTheme } from '../contexts/ThemeContext';
 
 const statusConfig = {
   pending: { color: statusColors.pending.solid, bgColor: statusColors.pending.bg, icon: 'time-outline', label: 'Pending', description: 'Your order is being reviewed' },
-  confirmed: { color: statusColors.confirmed?.solid || colors.info, bgColor: statusColors.confirmed?.bg || colors.infoLight, icon: 'checkmark-circle-outline', label: 'Confirmed', description: 'Your order has been confirmed' },
+  confirmed: { color: statusColors.confirmed?.solid || palette.colors.info, bgColor: statusColors.confirmed?.bg || palette.colors.infoLight, icon: 'checkmark-circle-outline', label: 'Confirmed', description: 'Your order has been confirmed' },
   processing: { color: statusColors.processing.solid, bgColor: statusColors.processing.bg, icon: 'hourglass-outline', label: 'Processing', description: 'Your order is being prepared' },
   shipped: { color: statusColors.shipped.solid, bgColor: statusColors.shipped.bg, icon: 'airplane-outline', label: 'Shipped', description: 'Your order is on the way' },
   delivered: { color: statusColors.delivered.solid, bgColor: statusColors.delivered.bg, icon: 'checkmark-done-outline', label: 'Delivered', description: 'Your order has been delivered' },
@@ -40,6 +41,9 @@ const getEstimatedDelivery = (order) => {
 };
 
 export default function OrderDetailScreen({ route, navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { orderId } = route.params;
   const { formatPrice } = useCurrency();
   const { fetchCart } = useGlobal();
@@ -129,12 +133,12 @@ export default function OrderDetailScreen({ route, navigation }) {
       {/* Custom Header */}
       <GlassPanel variant="floating" style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.md, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.md }}>
         <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' }} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text }}>Order Details</Text>
+        <Text style={{ flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text }}>Order Details</Text>
       </GlassPanel>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}>
         
         {/* Status Header */}
         <GlassPanel variant="strong" style={styles.statusSection}>
@@ -164,7 +168,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                     {index < statusTimeline.length - 1 && <View style={[styles.line, isCompleted && styles.lineDone]} />}
                   </View>
                   <View style={styles.timelineContent}>
-                    <Text style={[styles.timelineLabel, isCompleted && { color: colors.text }, isCurrent && { color: colors.primary, fontWeight: fontWeight.semibold }]}>{tc.label}</Text>
+                    <Text style={[styles.timelineLabel, isCompleted && { color: palette.colors.text }, isCurrent && { color: palette.colors.primary, fontWeight: fontWeight.semibold }]}>{tc.label}</Text>
                     {isCurrent && <Text style={styles.timelineDesc}>{tc.description}</Text>}
                   </View>
                 </View>
@@ -176,10 +180,10 @@ export default function OrderDetailScreen({ route, navigation }) {
         {/* Estimated Delivery */}
         {estimatedDelivery && status !== 'delivered' && status !== 'cancelled' && (
           <GlassPanel variant="inner" style={styles.deliveryBanner}>
-            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+            <Ionicons name="calendar-outline" size={18} color={palette.colors.primary} />
             <View style={{ marginLeft: spacing.md }}>
-              <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>Estimated Delivery</Text>
-              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text }}>{formatDate(estimatedDelivery, false)}</Text>
+              <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>Estimated Delivery</Text>
+              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: palette.colors.text }}>{formatDate(estimatedDelivery, false)}</Text>
             </View>
           </GlassPanel>
         )}
@@ -194,8 +198,8 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
                 {item.selectedColor && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons name="color-palette-outline" size={12} color={colors.primary} />
-                    <Text style={{ fontSize: 11, color: colors.primary, fontWeight: fontWeight.medium }}>{item.selectedColor}</Text>
+                    <Ionicons name="color-palette-outline" size={12} color={palette.colors.primary} />
+                    <Text style={{ fontSize: 11, color: palette.colors.primary, fontWeight: fontWeight.medium }}>{item.selectedColor}</Text>
                   </View>
                 )}
                 <Text style={styles.itemQty}>Qty: {item.quantity || item.qty}</Text>
@@ -210,7 +214,7 @@ export default function OrderDetailScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Shipping Address</Text>
           <View style={styles.innerCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-              <Ionicons name="location" size={18} color={colors.primary} />
+              <Ionicons name="location" size={18} color={palette.colors.primary} />
               <Text style={{ ...typography.bodySemibold, marginLeft: spacing.sm }}>{order.shippingInfo?.fullName}</Text>
             </View>
             <Text style={styles.addressText}>{order.shippingInfo?.address}</Text>
@@ -224,11 +228,11 @@ export default function OrderDetailScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Payment</Text>
           <View style={[styles.innerCard, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name={order.paymentMethod === 'cash_on_delivery' ? 'cash-outline' : 'card-outline'} size={22} color={colors.primary} />
+              <Ionicons name={order.paymentMethod === 'cash_on_delivery' ? 'cash-outline' : 'card-outline'} size={22} color={palette.colors.primary} />
               <Text style={{ ...typography.bodySemibold, marginLeft: spacing.sm }}>{order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Card Payment'}</Text>
             </View>
-            <View style={[styles.paymentBadge, { backgroundColor: order.paymentStatus === 'paid' ? colors.successLight : colors.warningLight }]}>
-              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: order.paymentStatus === 'paid' ? colors.success : colors.warning }}>{order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</Text>
+            <View style={[styles.paymentBadge, { backgroundColor: order.paymentStatus === 'paid' ? palette.colors.successLight : palette.colors.warningLight }]}>
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: order.paymentStatus === 'paid' ? palette.colors.success : palette.colors.warning }}>{order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</Text>
             </View>
           </View>
         </GlassPanel>
@@ -266,9 +270,9 @@ export default function OrderDetailScreen({ route, navigation }) {
             disabled={sharingInvoice}
             activeOpacity={0.85}
           >
-            {sharingInvoice ? <Loader size="small" color={colors.primary} /> : (
+            {sharingInvoice ? <Loader size="small" color={palette.colors.primary} /> : (
               <>
-                <Ionicons name="share-outline" size={18} color={colors.primary} />
+                <Ionicons name="share-outline" size={18} color={palette.colors.primary} />
                 <Text style={styles.actionSecondaryText}>Invoice</Text>
               </>
             )}
@@ -278,9 +282,9 @@ export default function OrderDetailScreen({ route, navigation }) {
         {/* Cancel */}
         {isCancellable && (
           <TouchableOpacity style={[styles.cancelBtn, cancelling && { opacity: 0.6 }]} onPress={handleCancelOrder} disabled={cancelling}>
-            {cancelling ? <Loader size="small" color={colors.error} /> : (
+            {cancelling ? <Loader size="small" color={palette.colors.error} /> : (
               <>
-                <Ionicons name="close-circle-outline" size={20} color={colors.error} />
+                <Ionicons name="close-circle-outline" size={20} color={palette.colors.error} />
                 <Text style={styles.cancelText}>Cancel Order</Text>
               </>
             )}
@@ -292,46 +296,46 @@ export default function OrderDetailScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   statusSection: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   statusIconWrap: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
   statusLabel: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, marginBottom: 4 },
-  statusDesc: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.md },
-  orderId: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  orderDate: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  statusDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginBottom: spacing.md },
+  orderId: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  orderDate: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   section: { marginBottom: spacing.md, padding: spacing.lg },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.md },
   timelineItem: { flexDirection: 'row', minHeight: 48 },
   timelineLeft: { alignItems: 'center', width: 24, marginRight: spacing.md },
-  dot: { width: 24, height: 24, borderRadius: 12, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: glass.border },
-  dotDone: { backgroundColor: colors.success, borderColor: colors.success },
-  dotCurrent: { backgroundColor: colors.primary, borderColor: colors.primary },
-  line: { width: 2, flex: 1, backgroundColor: glass.border, marginVertical: 4 },
-  lineDone: { backgroundColor: colors.success },
+  dot: { width: 24, height: 24, borderRadius: 12, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: p.glass.border },
+  dotDone: { backgroundColor: p.colors.success, borderColor: p.colors.success },
+  dotCurrent: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  line: { width: 2, flex: 1, backgroundColor: p.glass.border, marginVertical: 4 },
+  lineDone: { backgroundColor: p.colors.success },
   timelineContent: { flex: 1, paddingBottom: spacing.md },
-  timelineLabel: { fontSize: fontSize.md, color: colors.textSecondary },
-  timelineDesc: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  timelineLabel: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  timelineDesc: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   deliveryBanner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.md },
-  orderItem: { flexDirection: 'row', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: glass.borderSubtle },
-  itemImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: glass.bgSubtle },
+  orderItem: { flexDirection: 'row', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: p.glass.borderSubtle },
+  itemImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: p.glass.bgSubtle },
   itemInfo: { flex: 1, marginLeft: spacing.md, justifyContent: 'center' },
-  itemName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: 4 },
-  itemQty: { fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: 4 },
-  itemPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
-  innerCard: { backgroundColor: glass.bgSubtle, borderRadius: 14, padding: spacing.md, borderWidth: 1, borderColor: glass.borderSubtle },
-  addressText: { fontSize: fontSize.sm, color: colors.textSecondary, marginLeft: spacing.xl + spacing.sm, lineHeight: 20 },
+  itemName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: 4 },
+  itemQty: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginBottom: 4 },
+  itemPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.primary },
+  innerCard: { backgroundColor: p.glass.bgSubtle, borderRadius: 14, padding: spacing.md, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  addressText: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginLeft: spacing.xl + spacing.sm, lineHeight: 20 },
   paymentBadge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  summaryLabel: { fontSize: fontSize.md, color: colors.textSecondary },
-  summaryValue: { fontSize: fontSize.md, color: colors.text },
-  divider: { height: 1, backgroundColor: glass.borderSubtle, marginVertical: spacing.md },
-  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary },
-  cancelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.error, gap: spacing.sm, marginTop: spacing.sm },
-  cancelText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.error },
-  actionPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16 },
+  summaryLabel: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  summaryValue: { fontSize: fontSize.md, color: p.colors.text },
+  divider: { height: 1, backgroundColor: p.glass.borderSubtle, marginVertical: spacing.md },
+  totalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.primary },
+  cancelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: p.colors.error, gap: spacing.sm, marginTop: spacing.sm },
+  cancelText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.error },
+  actionPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, paddingVertical: 14, borderRadius: 16 },
   actionPrimaryText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' },
-  actionSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: 'rgba(99,102,241,0.08)', paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: colors.primary },
-  actionSecondaryText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.primary },
+  actionSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: 'rgba(99,102,241,0.08)', paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: p.colors.primary },
+  actionSecondaryText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.primary },
 });

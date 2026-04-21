@@ -16,9 +16,8 @@ import { useAuth } from '../contexts/AuthContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import Loader from '../components/common/Loader';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography,
-} from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const PREFS_LOCAL_KEY = 'notification_preferences';
 
@@ -44,6 +43,9 @@ const defaultPrefs = {
 };
 
 export default function NotificationPreferencesScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const isSeller = currentUser?.role === 'seller' || currentUser?.role === 'admin';
   const [prefs, setPrefs] = useState(defaultPrefs);
@@ -120,7 +122,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
       title: 'Order Updates',
       desc: 'Stay informed about your orders',
       icon: 'receipt-outline',
-      color: colors.primary,
+      color: palette.colors.primary,
       items: [
         { key: 'orderPlaced', label: 'Order confirmed', desc: 'When your order is placed', icon: 'checkmark-circle-outline' },
         { key: 'orderShipped', label: 'Shipping updates', desc: 'When your order ships', icon: 'airplane-outline' },
@@ -132,7 +134,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
       title: 'Promotions & Deals',
       desc: 'Never miss a great deal',
       icon: 'pricetag-outline',
-      color: colors.warning,
+      color: palette.colors.warning,
       items: [
         { key: 'priceDrops', label: 'Price drops', desc: 'Wishlist items on sale', icon: 'trending-down-outline' },
         { key: 'backInStock', label: 'Back in stock', desc: 'Items you wanted available again', icon: 'refresh-outline' },
@@ -156,7 +158,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
       title: 'System',
       desc: 'Account & security notifications',
       icon: 'settings-outline',
-      color: colors.info,
+      color: palette.colors.info,
       items: [
         { key: 'accountUpdates', label: 'Account updates', desc: 'Profile & account changes', icon: 'person-outline' },
         { key: 'securityAlerts', label: 'Security alerts', desc: 'Login & security events', icon: 'lock-closed-outline' },
@@ -172,7 +174,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
         {/* Header */}
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Notification Preferences</Text>
@@ -208,7 +210,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
                 {section.items.map(item => (
                   <View key={item.key} style={styles.toggleRow}>
                     <View style={[styles.toggleIcon, { backgroundColor: prefs[item.key] ? section.color + '18' : 'rgba(255,255,255,0.06)' }]}>
-                      <Ionicons name={item.icon} size={16} color={prefs[item.key] ? section.color : colors.textSecondary} />
+                      <Ionicons name={item.icon} size={16} color={prefs[item.key] ? section.color : palette.colors.textSecondary} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.toggleLabel}>{item.label}</Text>
@@ -229,7 +231,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
           {/* Actions */}
           <View style={styles.actionsRow}>
             <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-              <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
+              <Ionicons name="refresh-outline" size={16} color={palette.colors.textSecondary} />
               <Text style={styles.resetBtnText}>Reset defaults</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -260,27 +262,27 @@ export default function NotificationPreferencesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   safeArea: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, marginHorizontal: spacing.md, marginTop: spacing.sm, gap: spacing.md },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  headerSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  headerSubtitle: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   scroll: { paddingTop: spacing.md },
   section: { marginHorizontal: spacing.md, marginBottom: spacing.md, overflow: 'hidden' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', gap: spacing.md },
   sectionIconWrap: { width: 36, height: 36, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  sectionDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  sectionDesc: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
   toggleAllBtn: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   toggleAllText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   toggleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
   toggleIcon: { width: 36, height: 36, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  toggleLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  toggleDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  toggleLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
+  toggleDesc: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.md },
   resetBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
-  resetBtnText: { fontSize: fontSize.sm, color: colors.textSecondary },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: colors.primary },
+  resetBtnText: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: p.colors.primary },
   saveBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: 'white' },
 });
