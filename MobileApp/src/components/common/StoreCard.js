@@ -34,7 +34,7 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
 
   if (!store) return null;
 
-  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0 } = store;
+  const { _id, storeName, storeSlug, description, logo, banner, trustCount = 0, verification, productCount = 0, views = 0, ratingAverage = 0, ratingCount = 0 } = store;
   const isVerified = verification?.isVerified;
   const handlePress = () => onPress ? onPress(store) : navigation.navigate('Store', { storeSlug: storeSlug || _id });
 
@@ -58,7 +58,17 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
             </View>
             {showTrustButton && !compact && <View style={{ flexShrink: 0 }}><TrustButton storeId={_id} storeName={storeName} initialTrustCount={trustCount} compact /></View>}
           </View>
-          <View style={styles.trustRow}><Ionicons name="heart" size={11} color={c.heart} /><Text style={[styles.trustText, { color: c.textSecondary }]}>{trustCount} trusters</Text></View>
+          <View style={styles.trustRow}>
+            <Ionicons name="heart" size={11} color={c.heart} />
+            <Text style={[styles.trustText, { color: c.textSecondary }]}>{trustCount} trusters</Text>
+            {ratingCount > 0 && (
+              <>
+                <Text style={[styles.trustText, { color: c.textSecondary, marginHorizontal: 4 }]}>·</Text>
+                <Ionicons name="star" size={11} color="#fbbf24" />
+                <Text style={[styles.trustText, { color: c.textSecondary }]}>{Number(ratingAverage).toFixed(1)} ({ratingCount})</Text>
+              </>
+            )}
+          </View>
           {showDescription && description && !compact && <Text style={[styles.description, { color: c.textSecondary }]} numberOfLines={2}>{description}</Text>}
           {showStats && (
             <View style={[styles.statsRow, { borderTopColor: g.borderSubtle }, compact && { paddingTop: spacing.sm, gap: spacing.md }]}>

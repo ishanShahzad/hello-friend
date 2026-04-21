@@ -228,6 +228,7 @@ const smartTagRoutes = require('./routes/smartTagRoutes');
 const aiActionRoutes = require('./routes/aiActionRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const couponRoutes = require('./routes/couponRoutes');
+const storeReviewRoutes = require('./routes/storeReviewRoutes');
 const Cart = require('./models/Cart');
 const { sendEmail } = require('./controllers/mailController');
 const User = require('./models/User');
@@ -253,6 +254,7 @@ app.use('/api/smart-tags', smartTagRoutes);
 app.use('/api/ai-actions', aiActionRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/store-reviews', storeReviewRoutes);
 
 // ── Trial expiration (runs on persistent Heroku dyno) ──
 const { processTrialExpirations } = require('./controllers/subscriptionController');
