@@ -266,6 +266,8 @@ export default function HomeScreen({ navigation }) {
               placeholderTextColor={colors.grayLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setShowAutocomplete(true)}
+              onBlur={() => setTimeout(() => setShowAutocomplete(false), 180)}
               onSubmitEditing={handleSearch}
               returnKeyType="search"
             />
