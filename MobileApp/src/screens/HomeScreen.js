@@ -64,6 +64,8 @@ export default function HomeScreen({ navigation }) {
   const [brands, setBrands] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: null });
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
   // Animation for header — use ref to avoid re-creating on every render
   const scrollY = useRef(new Animated.Value(0)).current;
