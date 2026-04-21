@@ -61,3 +61,9 @@ export {
 // Glass design system
 export { default as GlassBackground } from './GlassBackground';
 export { default as GlassPanel } from './GlassPanel';
+
+// Skeletons & discovery
+export { default as Skeleton, ProductCardSkeleton, ProductGridSkeleton, CartItemSkeleton, SliderSkeleton } from './Skeleton';
+export { default as PersonalizedSliders } from './PersonalizedSliders';
+export { default as SearchAutocomplete } from './SearchAutocomplete';
+export { default as PriceRangeFilter } from './PriceRangeFilter';
