@@ -407,3 +407,42 @@ exports.setDefaultAddress = async (req, res) => {
         res.status(500).json({ msg: 'Server error while setting default address' });
     }
 };
+
+// Register / save an Expo push token for the authenticated user
+exports.savePushToken = async (req, res) => {
+    const { id: userId } = req.user;
+    const { pushToken } = req.body;
+    if (!pushToken || typeof pushToken !== 'string') {
+        return res.status(400).json({ msg: 'pushToken is required' });
+    }
+    if (!pushToken.startsWith('ExponentPushToken[') && !pushToken.startsWith('ExpoPushToken[')) {
+        return res.status(400).json({ msg: 'Invalid Expo push token format' });
+    }
+    try {
+        await User.updateOne(
+            { _id: userId },
+            { $addToSet: { expoPushTokens: pushToken } }
+        );
+        res.status(200).json({ msg: 'Push token saved' });
+    } catch (error) {
+        console.error('savePushToken error:', error.message);
+        res.status(500).json({ msg: 'Server error saving push token' });
+    }
+};
+
+// Remove a push token (e.g. on logout)
+exports.removePushToken = async (req, res) => {
+    const { id: userId } = req.user;
+    const { pushToken } = req.body;
+    if (!pushToken) return res.status(400).json({ msg: 'pushToken is required' });
+    try {
+        await User.updateOne(
+            { _id: userId },
+            { $pull: { expoPushTokens: pushToken } }
+        );
+        res.status(200).json({ msg: 'Push token removed' });
+    } catch (error) {
+        console.error('removePushToken error:', error.message);
+        res.status(500).json({ msg: 'Server error removing push token' });
+    }
+};

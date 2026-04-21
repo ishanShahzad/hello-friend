@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../utils/emailTemplates');
+const { sendPushToUser } = require('../utils/expoPush');
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
@@ -75,17 +76,31 @@ exports.confirmOrder = async (req, res) => {
         order.orderStatus = 'confirmed';
         await order.save();
 
-        // Notify sellers of the products in this order via email
+        // Notify sellers of the products in this order via email + mobile push
         try {
             const productIds = order.orderItems.map(i => i.productId);
             const products = await Product.find({ _id: { $in: productIds } });
             const sellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+            const buyerName = order.shippingInfo?.fullName || 'A buyer';
             for (const sellerId of sellerIds) {
                 const seller = await User.findById(sellerId);
                 if (seller?.email) {
                     const data = sellerOrderConfirmedByBuyerEmail(order, seller.username);
-                    await sendEmail({ to: seller.email, ...data });
+                    sendEmail({ to: seller.email, ...data }).catch(e =>
+                        console.error('seller confirm email failed:', e.message)
+                    );
                 }
+                // Mobile push to seller
+                sendPushToUser(sellerId, {
+                    title: 'Buyer confirmed an order',
+                    body: `${buyerName} confirmed order ${order.orderId} via email — ready to process.`,
+                    channelId: 'seller',
+                    data: {
+                        type: 'order_confirmed_by_buyer',
+                        orderId: order.orderId,
+                        orderObjectId: order._id?.toString(),
+                    },
+                }).catch(e => console.error('seller push failed:', e.message));
             }
         } catch (notifyErr) {
             console.error('Failed to notify seller of buyer confirmation:', notifyErr.message);
