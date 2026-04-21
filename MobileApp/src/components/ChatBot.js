@@ -338,11 +338,11 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
       <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Ionicons name="sparkles" size={12} color={colors.white} />
+            <Ionicons name="sparkles" size={12} color="#fff" />
           </View>
         )}
         <View style={[styles.msgBubble, isUser ? styles.userBubble : styles.botBubble]}>
-          <Text style={[styles.msgText, isUser && { color: colors.white }]}>{item.content}</Text>
+          <Text style={[styles.msgText, isUser && { color: '#fff' }]}>{item.content}</Text>
           {/* Tool results */}
           {item.toolResults?.map((tr, i) => (
             <View key={i}>
@@ -356,46 +356,46 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
                         <Text style={styles.productName} numberOfLines={1}>{p.name}</Text>
                         <Text style={styles.productPrice}>${(p.discountedPrice || p.price || 0).toFixed(2)}</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={14} color={colors.grayLight} />
+                      <Ionicons name="chevron-forward" size={14} color={c.textLight} />
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
               {tr.name === 'navigate' && tr.result.navigated && (
                 <View style={styles.actionResult}>
-                  <Ionicons name="arrow-forward-circle" size={14} color={colors.primary} />
+                  <Ionicons name="arrow-forward-circle" size={14} color={c.primary} />
                   <Text style={styles.actionResultText}>Navigated to {tr.result.label}</Text>
                 </View>
               )}
               {tr.name === 'show_style_advice' && tr.result.styleAdvice && (
                 <View style={styles.styleCard}>
                   <View style={styles.styleCardHeader}>
-                    <Ionicons name="color-palette" size={14} color="#8b5cf6" />
+                    <Ionicons name="color-palette" size={14} color={c.secondary} />
                     <Text style={styles.styleCardTitle}>Style Advice — {tr.result.styleAdvice.occasion}</Text>
                   </View>
                   <Text style={styles.styleCardText}>{tr.result.styleAdvice.advice}</Text>
                   {tr.result.styleAdvice.colorPalette?.length > 0 && (
                     <View style={styles.colorRow}>
-                      {tr.result.styleAdvice.colorPalette.map((c, ci) => (
+                      {tr.result.styleAdvice.colorPalette.map((cl, ci) => (
                         <View key={ci} style={styles.colorSwatch}>
-                          <View style={[styles.colorDot, { backgroundColor: c.color }]} />
-                          <Text style={styles.colorName}>{c.name}</Text>
+                          <View style={[styles.colorDot, { backgroundColor: cl.color }]} />
+                          <Text style={styles.colorName}>{cl.name}</Text>
                         </View>
                       ))}
                     </View>
                   )}
                   {tr.result.styleAdvice.tips?.map((tip, ti) => (
                     <View key={ti} style={styles.tipRow}>
-                      <Ionicons name="sparkles" size={10} color="#8b5cf6" />
+                      <Ionicons name="sparkles" size={10} color={c.secondary} />
                       <Text style={styles.tipText}>{tip}</Text>
                     </View>
                   ))}
                 </View>
               )}
               {!['search_products', 'navigate', 'show_style_advice', 'suggest_outfit', 'get_my_orders', 'get_order_detail', 'get_my_complaints'].includes(tr.name) && tr.result?.msg && (
-                <View style={[styles.actionResult, { backgroundColor: `${colors.success}10`, borderColor: `${colors.success}25` }]}>
-                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                  <Text style={[styles.actionResultText, { color: colors.success }]}>{tr.result.msg}</Text>
+                <View style={[styles.actionResult, { backgroundColor: c.successSubtle, borderColor: c.successLighter }]}>
+                  <Ionicons name="checkmark-circle" size={14} color={c.success} />
+                  <Text style={[styles.actionResultText, { color: c.success }]}>{tr.result.msg}</Text>
                 </View>
               )}
             </View>
@@ -403,7 +403,7 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
         </View>
         {isUser && (
           <View style={styles.userAvatar}>
-            <Ionicons name="person" size={12} color={colors.grayLight} />
+            <Ionicons name="person" size={12} color={c.textSecondary} />
           </View>
         )}
       </View>
