@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" width="220" height="56">
   <defs>
     <linearGradient id="rzGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#14B8A6"/>
-      <stop offset="50%" stop-color="#0EA5E9"/>
-      <stop offset="100%" stop-color="#6366F1"/>
+      <stop offset="0%" stop-color="#1E40AF"/>
+      <stop offset="50%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
     <linearGradient id="rzGradSoft" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#14B8A6" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#6366F1" stop-opacity="0.18"/>
+      <stop offset="0%" stop-color="#1E40AF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.18"/>
     </linearGradient>
   </defs>
 
