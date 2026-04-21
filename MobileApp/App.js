@@ -9,6 +9,7 @@ import * as Sentry from '@sentry/react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { GlobalProvider } from './src/contexts/GlobalContext';
 import { CurrencyProvider } from './src/contexts/CurrencyContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingWalkthrough, { shouldShowOnboarding } from './src/components/OnboardingWalkthrough';
 
@@ -181,7 +182,9 @@ function App() {
   if (showOnboarding) {
     return (
       <SafeAreaProvider>
-        <OnboardingWalkthrough onComplete={() => setShowOnboarding(false)} />
+        <ThemeProvider>
+          <OnboardingWalkthrough onComplete={() => setShowOnboarding(false)} />
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -189,18 +192,20 @@ function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <AuthProvider>
-          <GlobalProvider>
-            <CurrencyProvider>
-              <NavigationContainer linking={linking}>
-                <NotificationInitializer />
-                <AppNavigator />
-              </NavigationContainer>
-              <Toast />
-              <OfflineBanner />
-            </CurrencyProvider>
-          </GlobalProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <GlobalProvider>
+              <CurrencyProvider>
+                <NavigationContainer linking={linking}>
+                  <NotificationInitializer />
+                  <AppNavigator />
+                </NavigationContainer>
+                <Toast />
+                <OfflineBanner />
+              </CurrencyProvider>
+            </GlobalProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
