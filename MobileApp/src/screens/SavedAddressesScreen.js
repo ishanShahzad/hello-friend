@@ -13,7 +13,8 @@ import api from '../config/api';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { EmptyState } from '../components/common';
-import { colors, spacing, fontSize, fontWeight, borderRadius, glass } from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const EMPTY_FORM = {
   label: 'Home', fullName: '', email: '', phone: '',
@@ -24,6 +25,9 @@ const EMPTY_FORM = {
 const LABEL_PRESETS = ['Home', 'Work', 'Other'];
 
 export default function SavedAddressesScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,7 +121,7 @@ export default function SavedAddressesScreen({ navigation }) {
         {/* Header */}
         <GlassPanel variant="floating" style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: spacing.md }}>
             <Text style={styles.title}>Saved Addresses</Text>
@@ -129,12 +133,12 @@ export default function SavedAddressesScreen({ navigation }) {
         </GlassPanel>
 
         {loading ? (
-          <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
+          <View style={styles.center}><ActivityIndicator color={palette.colors.primary} /></View>
         ) : (
           <ScrollView
             contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl }}
             showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchAddresses(); }} colors={[colors.primary]} tintColor={colors.primary} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchAddresses(); }} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
           >
             {addresses.length === 0 ? (
               <EmptyState
@@ -150,12 +154,12 @@ export default function SavedAddressesScreen({ navigation }) {
                 <GlassPanel key={a._id} variant="card" style={styles.card}>
                   <View style={styles.cardHead}>
                     <View style={styles.labelChip}>
-                      <Ionicons name={labelIcon(a.label)} size={14} color={colors.primary} />
+                      <Ionicons name={labelIcon(a.label)} size={14} color={palette.colors.primary} />
                       <Text style={styles.labelChipText}>{a.label}</Text>
                     </View>
                     {a.isDefault ? (
                       <View style={styles.defaultBadge}>
-                        <Ionicons name="checkmark" size={12} color={colors.success} />
+                        <Ionicons name="checkmark" size={12} color={palette.colors.success} />
                         <Text style={styles.defaultText}>Default</Text>
                       </View>
                     ) : (
@@ -170,18 +174,18 @@ export default function SavedAddressesScreen({ navigation }) {
                   <Text style={styles.line}>{a.country}</Text>
                   {(a.phone || a.email) && (
                     <View style={styles.contactRow}>
-                      {a.phone ? <View style={styles.contactItem}><Ionicons name="call-outline" size={12} color={colors.textSecondary} /><Text style={styles.contactText}>{a.phone}</Text></View> : null}
-                      {a.email ? <View style={styles.contactItem}><Ionicons name="mail-outline" size={12} color={colors.textSecondary} /><Text style={styles.contactText} numberOfLines={1}>{a.email}</Text></View> : null}
+                      {a.phone ? <View style={styles.contactItem}><Ionicons name="call-outline" size={12} color={palette.colors.textSecondary} /><Text style={styles.contactText}>{a.phone}</Text></View> : null}
+                      {a.email ? <View style={styles.contactItem}><Ionicons name="mail-outline" size={12} color={palette.colors.textSecondary} /><Text style={styles.contactText} numberOfLines={1}>{a.email}</Text></View> : null}
                     </View>
                   )}
                   <View style={styles.actions}>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit(a)} activeOpacity={0.7}>
-                      <Ionicons name="pencil-outline" size={16} color={colors.primary} />
+                      <Ionicons name="pencil-outline" size={16} color={palette.colors.primary} />
                       <Text style={styles.actionText}>Edit</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.error + '50' }]} onPress={() => handleDelete(a)} activeOpacity={0.7}>
-                      <Ionicons name="trash-outline" size={16} color={colors.error} />
-                      <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
+                    <TouchableOpacity style={[styles.actionBtn, { borderColor: palette.colors.error + '50' }]} onPress={() => handleDelete(a)} activeOpacity={0.7}>
+                      <Ionicons name="trash-outline" size={16} color={palette.colors.error} />
+                      <Text style={[styles.actionText, { color: palette.colors.error }]}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 </GlassPanel>
@@ -199,7 +203,7 @@ export default function SavedAddressesScreen({ navigation }) {
               <View style={styles.modalHead}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit Address' : 'New Address'}</Text>
                 <TouchableOpacity onPress={() => setShowForm(false)} style={styles.modalClose}>
-                  <Ionicons name="close" size={20} color={colors.text} />
+                  <Ionicons name="close" size={20} color={palette.colors.text} />
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ maxHeight: 460 }}>
@@ -266,10 +270,10 @@ function FormField({ label, error, icon, multiline, ...rest }) {
     <View style={{ marginBottom: spacing.md }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={[styles.inputWrap, error && styles.inputWrapError, multiline && { minHeight: 64, alignItems: 'flex-start' }]}>
-        {icon ? <Ionicons name={icon} size={16} color={colors.textSecondary} style={{ marginRight: 6, marginTop: multiline ? 4 : 0 }} /> : null}
+        {icon ? <Ionicons name={icon} size={16} color={palette.colors.textSecondary} style={{ marginRight: 6, marginTop: multiline ? 4 : 0 }} /> : null}
         <TextInput
           style={[styles.input, multiline && { minHeight: 60, textAlignVertical: 'top' }]}
-          placeholderTextColor={colors.textLight}
+          placeholderTextColor={palette.colors.textLight}
           multiline={multiline}
           {...rest}
         />
@@ -279,49 +283,49 @@ function FormField({ label, error, icon, multiline, ...rest }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginHorizontal: spacing.md, marginTop: spacing.sm },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  subtitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  subtitle: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 2 },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: { padding: spacing.lg, marginBottom: spacing.md },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   labelChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(99,102,241,0.12)' },
-  labelChipText: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold },
+  labelChipText: { fontSize: fontSize.xs, color: p.colors.primary, fontWeight: fontWeight.semibold },
   defaultBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: 'rgba(34,197,94,0.12)' },
-  defaultText: { fontSize: 11, color: colors.success, fontWeight: fontWeight.semibold },
+  defaultText: { fontSize: 11, color: p.colors.success, fontWeight: fontWeight.semibold },
   setDefaultBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  setDefaultText: { fontSize: 11, color: colors.primary, fontWeight: fontWeight.medium },
-  fullName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 },
-  line: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 19 },
-  contactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: glass.borderSubtle },
+  setDefaultText: { fontSize: 11, color: p.colors.primary, fontWeight: fontWeight.medium },
+  fullName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 4 },
+  line: { fontSize: fontSize.sm, color: p.colors.textSecondary, lineHeight: 19 },
+  contactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle },
   contactItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  contactText: { fontSize: 11, color: colors.textSecondary },
+  contactText: { fontSize: 11, color: p.colors.textSecondary },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: spacing.sm, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)', borderRadius: 12 },
-  actionText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  actionText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   modalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modal: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)', marginBottom: spacing.md },
   modalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  fieldLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, borderRadius: 12, borderWidth: 1, borderColor: glass.borderSubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
-  inputWrapError: { borderColor: colors.error },
-  input: { flex: 1, fontSize: fontSize.md, color: colors.text, paddingVertical: 0 },
-  errorText: { fontSize: 11, color: colors.error, marginTop: 4 },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  fieldLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, borderRadius: 12, borderWidth: 1, borderColor: p.glass.borderSubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
+  inputWrapError: { borderColor: p.colors.error },
+  input: { flex: 1, fontSize: fontSize.md, color: p.colors.text, paddingVertical: 0 },
+  errorText: { fontSize: 11, color: p.colors.error, marginTop: 4 },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  chip: { paddingHorizontal: spacing.lg, paddingVertical: 8, borderRadius: 999, backgroundColor: glass.bgSubtle, borderWidth: 1, borderColor: glass.borderSubtle },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  chip: { paddingHorizontal: spacing.lg, paddingVertical: 8, borderRadius: 999, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  chipActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  chipText: { fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
   chipTextActive: { color: '#fff', fontWeight: fontWeight.semibold },
   defaultToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, marginBottom: spacing.sm },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: glass.border, justifyContent: 'center', alignItems: 'center' },
-  checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  defaultToggleText: { fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
-  saveBtn: { backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: spacing.md },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: p.glass.border, justifyContent: 'center', alignItems: 'center' },
+  checkboxOn: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  defaultToggleText: { fontSize: fontSize.sm, color: p.colors.text, fontWeight: fontWeight.medium },
+  saveBtn: { backgroundColor: p.colors.primary, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: spacing.md },
   saveBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
 });

@@ -12,9 +12,13 @@ import Toast from 'react-native-toast-message';
 import api from '../config/api';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function ChangePasswordScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -52,7 +56,7 @@ export default function ChangePasswordScreen({ navigation }) {
     <View style={styles.fieldGroup}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.inputWrap, errors[fieldKey] && styles.inputWrapError]}>
-        <Ionicons name="lock-closed-outline" size={18} color={errors[fieldKey] ? colors.error : 'rgba(255,255,255,0.4)'} style={{ marginRight: spacing.sm }} />
+        <Ionicons name="lock-closed-outline" size={18} color={errors[fieldKey] ? palette.colors.error : 'rgba(255,255,255,0.4)'} style={{ marginRight: spacing.sm }} />
         <TextInput style={styles.input} value={value} onChangeText={(t) => { setter(t); setErrors(prev => ({ ...prev, [fieldKey]: null })); }}
           placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.3)" secureTextEntry={!show} autoCapitalize="none" />
         <TouchableOpacity onPress={() => setShow(!show)} style={{ padding: spacing.sm }}>
@@ -70,7 +74,7 @@ export default function ChangePasswordScreen({ navigation }) {
           {/* Header */}
           <GlassPanel variant="floating" style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
+              <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Change Password</Text>
             <View style={{ width: 36 }} />
@@ -79,7 +83,7 @@ export default function ChangePasswordScreen({ navigation }) {
           {/* Hero */}
           <GlassPanel variant="strong" style={styles.hero}>
             <View style={styles.heroIcon}>
-              <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+              <Ionicons name="shield-checkmark" size={32} color={palette.colors.primary} />
             </View>
             <Text style={styles.heroTitle}>Security Update</Text>
             <Text style={styles.heroSub}>Keep your account secure with a strong password</Text>
@@ -94,7 +98,7 @@ export default function ChangePasswordScreen({ navigation }) {
 
           {/* Tip */}
           <GlassPanel variant="inner" style={styles.tipCard}>
-            <Ionicons name="bulb-outline" size={16} color={colors.warning} />
+            <Ionicons name="bulb-outline" size={16} color={palette.colors.warning} />
             <Text style={styles.tipText}>Use a mix of letters, numbers, and symbols for a stronger password.</Text>
           </GlassPanel>
 
@@ -110,23 +114,23 @@ export default function ChangePasswordScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginBottom: spacing.md },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
   hero: { alignItems: 'center', padding: spacing.xl, marginBottom: spacing.md },
   heroIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: 4 },
-  heroSub: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: 4 },
+  heroSub: { fontSize: fontSize.sm, color: p.colors.textSecondary, textAlign: 'center' },
   card: { padding: spacing.lg, marginBottom: spacing.md },
   fieldGroup: { marginBottom: spacing.lg },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: glass.borderSubtle, paddingHorizontal: spacing.md },
-  inputWrapError: { borderColor: colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
-  input: { flex: 1, paddingVertical: 13, fontSize: fontSize.md, color: colors.text },
-  errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 4, marginLeft: 4 },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: p.glass.borderSubtle, paddingHorizontal: spacing.md },
+  inputWrapError: { borderColor: p.colors.error, backgroundColor: 'rgba(239,68,68,0.08)' },
+  input: { flex: 1, paddingVertical: 13, fontSize: fontSize.md, color: p.colors.text },
+  errorText: { fontSize: fontSize.xs, color: p.colors.error, marginTop: 4, marginLeft: 4 },
   tipCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, marginBottom: spacing.lg },
-  tipText: { fontSize: fontSize.sm, color: colors.textSecondary, flex: 1, lineHeight: 20 },
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 16, ...shadows.md },
+  tipText: { fontSize: fontSize.sm, color: p.colors.textSecondary, flex: 1, lineHeight: 20 },
+  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: 16, paddingVertical: 16, ...shadows.md },
   submitText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff' },
 });

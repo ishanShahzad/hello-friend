@@ -14,11 +14,13 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import Loader from '../components/common/Loader';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography, glass,
-} from '../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function UserDashboardScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
@@ -57,16 +59,16 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   const menuItems = [
-    { label: 'My Orders', desc: `${orders.length} orders`, icon: 'receipt-outline', screen: 'Orders', color: colors.primary },
+    { label: 'My Orders', desc: `${orders.length} orders`, icon: 'receipt-outline', screen: 'Orders', color: palette.colors.primary },
     { label: 'Edit Profile', desc: 'Update your info', icon: 'person-outline', screen: 'EditProfile', color: '#8b5cf6' },
-    { label: 'Wishlist', desc: 'Saved items', icon: 'heart-outline', screen: 'MainTabs', params: { screen: 'Wishlist' }, color: colors.error },
-    { label: 'Settings', desc: 'Preferences', icon: 'settings-outline', screen: 'Settings', color: colors.textSecondary },
+    { label: 'Wishlist', desc: 'Saved items', icon: 'heart-outline', screen: 'MainTabs', params: { screen: 'Wishlist' }, color: palette.colors.error },
+    { label: 'Settings', desc: 'Preferences', icon: 'settings-outline', screen: 'Settings', color: palette.colors.textSecondary },
   ];
 
   return (
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
         
         <GlassPanel variant="strong" style={styles.welcomeCard}>
           <View style={styles.avatarContainer}>
@@ -81,22 +83,22 @@ export default function UserDashboardScreen({ navigation }) {
         {/* Quick Stats */}
         <View style={styles.statsRow}>
           <GlassPanel variant="card" style={styles.miniStat}>
-            <Text style={[styles.miniStatValue, { color: colors.primary }]}>{orders.length}</Text>
+            <Text style={[styles.miniStatValue, { color: palette.colors.primary }]}>{orders.length}</Text>
             <Text style={styles.miniStatLabel}>Total Orders</Text>
           </GlassPanel>
           <GlassPanel variant="card" style={styles.miniStat}>
-            <Text style={[styles.miniStatValue, { color: colors.warning }]}>{pendingOrders}</Text>
+            <Text style={[styles.miniStatValue, { color: palette.colors.warning }]}>{pendingOrders}</Text>
             <Text style={styles.miniStatLabel}>Pending</Text>
           </GlassPanel>
           <GlassPanel variant="card" style={styles.miniStat}>
-            <Text style={[styles.miniStatValue, { color: colors.success }]}>{deliveredOrders}</Text>
+            <Text style={[styles.miniStatValue, { color: palette.colors.success }]}>{deliveredOrders}</Text>
             <Text style={styles.miniStatLabel}>Delivered</Text>
           </GlassPanel>
         </View>
         <View style={[styles.statsRow, { marginTop: spacing.md }]}>
           <GlassPanel variant="card" style={[styles.miniStat, { flex: 1 }]}>  
-            <Ionicons name="card-outline" size={18} color={colors.info} style={{ marginBottom: 4 }} />
-            <Text style={[styles.miniStatValue, { color: colors.info, fontSize: fontSize.lg }]}>{formatPrice(totalSpent)}</Text>
+            <Ionicons name="card-outline" size={18} color={palette.colors.info} style={{ marginBottom: 4 }} />
+            <Text style={[styles.miniStatValue, { color: palette.colors.info, fontSize: fontSize.lg }]}>{formatPrice(totalSpent)}</Text>
             <Text style={styles.miniStatLabel}>Total Spent</Text>
           </GlassPanel>
         </View>
@@ -114,7 +116,7 @@ export default function UserDashboardScreen({ navigation }) {
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <Text style={styles.menuDesc}>{item.desc}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={16} color={palette.colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </GlassPanel>
@@ -130,7 +132,7 @@ export default function UserDashboardScreen({ navigation }) {
             </View>
             {[...orders].reverse().slice(0, 3).map((order, i) => {
               const status = order.orderStatus || order.status || 'pending';
-              const statusColor = status === 'delivered' ? colors.success : status === 'pending' ? colors.warning : colors.info;
+              const statusColor = status === 'delivered' ? palette.colors.success : status === 'pending' ? palette.colors.warning : palette.colors.info;
               return (
                 <TouchableOpacity key={order._id || i} style={styles.orderRow}
                   onPress={() => navigation.navigate('OrderDetail', { orderId: order._id })}>
@@ -153,29 +155,29 @@ export default function UserDashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   welcomeCard: { margin: spacing.lg, padding: spacing.xl, alignItems: 'center' },
   avatarContainer: { marginBottom: spacing.md },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: 'white' },
-  welcomeTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  welcomeSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  welcomeTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
+  welcomeSubtitle: { ...typography.bodySmall, color: p.colors.textSecondary, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg },
   miniStat: { flex: 1, alignItems: 'center', padding: spacing.md },
   miniStatValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, letterSpacing: -0.5 },
-  miniStatLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  miniStatLabel: { ...typography.caption, color: p.colors.textSecondary, marginTop: 2 },
   menuSection: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg },
-  sectionTitle: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.md },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  viewAllText: { ...typography.caption, color: colors.primary, fontWeight: fontWeight.semibold },
+  viewAllText: { ...typography.caption, color: p.colors.primary, fontWeight: fontWeight.semibold },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
   menuIcon: { width: 36, height: 36, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  menuLabel: { ...typography.bodySemibold, color: colors.text, fontSize: fontSize.sm },
-  menuDesc: { ...typography.caption, color: colors.textSecondary },
+  menuLabel: { ...typography.bodySemibold, color: p.colors.text, fontSize: fontSize.sm },
+  menuDesc: { ...typography.caption, color: p.colors.textSecondary },
   orderRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  orderId: { ...typography.bodySemibold, color: colors.text, fontSize: fontSize.sm },
-  orderDate: { ...typography.caption, color: colors.textSecondary },
+  orderId: { ...typography.bodySemibold, color: p.colors.text, fontSize: fontSize.sm },
+  orderDate: { ...typography.caption, color: p.colors.textSecondary },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.full },
   statusText: { fontSize: 10, fontWeight: fontWeight.semibold, textTransform: 'capitalize' },
 });

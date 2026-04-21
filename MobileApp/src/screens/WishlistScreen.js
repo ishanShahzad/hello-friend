@@ -9,14 +9,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
 import Loader, { InlineLoader } from '../components/common/Loader';
 import { CartItemSkeleton } from '../components/common/Skeleton';
 import { EmptyWishlist, LoginRequired } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function WishlistScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const { wishlistItems, fetchWishlist, handleDeleteFromWishlist, handleAddToCart, cartItems, isCartLoading, loadingProductId } = useGlobal();
   const { formatPrice } = useCurrency();
@@ -68,7 +72,7 @@ export default function WishlistScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.actionsContainer}>
           <TouchableOpacity style={styles.removeButton} onPress={async () => { setRemovingId(item._id); try { await handleDeleteFromWishlist(item._id); } finally { setRemovingId(null); } }} disabled={isRemoving}>
-            {isRemoving ? <InlineLoader size={22} color={colors.heart} /> : <Ionicons name="heart" size={22} color={colors.heart} />}
+            {isRemoving ? <InlineLoader size={22} color={palette.colors.heart} /> : <Ionicons name="heart" size={22} color={palette.colors.heart} />}
             <Text style={styles.removeButtonText}>Remove</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -76,7 +80,7 @@ export default function WishlistScreen({ navigation }) {
             onPress={() => handleAddToCart(item._id)}
             disabled={isOutOfStock || isAddingToCart}
           >
-            {isAddingToCart ? <InlineLoader size={16} color={colors.white} /> : isOutOfStock ? <Text style={styles.disabledButtonText}>Out of Stock</Text> : isInCart ? <><Ionicons name="checkmark-circle" size={16} color={colors.success} /><Text style={styles.inCartButtonText}>In Cart</Text></> : <><Ionicons name="cart-outline" size={16} color={colors.white} /><Text style={styles.addToCartButtonText}>Add to Cart</Text></>}
+            {isAddingToCart ? <InlineLoader size={16} color={palette.colors.white} /> : isOutOfStock ? <Text style={styles.disabledButtonText}>Out of Stock</Text> : isInCart ? <><Ionicons name="checkmark-circle" size={16} color={palette.colors.success} /><Text style={styles.inCartButtonText}>In Cart</Text></> : <><Ionicons name="cart-outline" size={16} color={palette.colors.white} /><Text style={styles.addToCartButtonText}>Add to Cart</Text></>}
           </TouchableOpacity>
         </View>
       </GlassPanel>
@@ -93,7 +97,7 @@ export default function WishlistScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={heroHeader}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadWishlist(); }} colors={[colors.primary]} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadWishlist(); }} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
           ListFooterComponent={<View style={{ height: spacing.xxl }} />}
         />
       </SafeAreaView>
@@ -101,30 +105,30 @@ export default function WishlistScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   heroHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, marginHorizontal: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm },
-  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroBadge: { backgroundColor: 'rgba(99,102,241,0.15)', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  heroBadgeText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  heroBadgeText: { color: p.colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   listContent: { padding: spacing.md },
   wishlistItem: { marginBottom: spacing.md, overflow: 'hidden' },
   itemContent: { flexDirection: 'row', padding: spacing.md },
   itemImage: { width: 100, height: 100, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.1)' },
   itemDetails: { flex: 1, marginLeft: spacing.md },
-  itemCategory: { fontSize: fontSize.xs, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
-  itemName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm },
+  itemCategory: { fontSize: fontSize.xs, color: p.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
+  itemName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  itemPrice: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
-  originalPrice: { fontSize: fontSize.sm, color: colors.textSecondary, textDecorationLine: 'line-through' },
+  itemPrice: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.primary },
+  originalPrice: { fontSize: fontSize.sm, color: p.colors.textSecondary, textDecorationLine: 'line-through' },
   actionsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
   removeButton: { flexDirection: 'row', alignItems: 'center', padding: spacing.sm, gap: spacing.xs },
-  removeButtonText: { fontSize: fontSize.sm, color: colors.heart, fontWeight: fontWeight.medium },
-  addToCartButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: borderRadius.lg, gap: spacing.xs, minWidth: 120, justifyContent: 'center' },
+  removeButtonText: { fontSize: fontSize.sm, color: p.colors.heart, fontWeight: fontWeight.medium },
+  addToCartButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: borderRadius.lg, gap: spacing.xs, minWidth: 120, justifyContent: 'center' },
   inCartButton: { backgroundColor: 'rgba(16,185,129,0.15)' },
   disabledButton: { backgroundColor: 'rgba(255,255,255,0.08)' },
-  addToCartButtonText: { color: colors.white, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  inCartButtonText: { color: colors.success, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  disabledButtonText: { color: colors.textSecondary, fontWeight: fontWeight.medium, fontSize: fontSize.sm },
+  addToCartButtonText: { color: p.colors.white, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  inCartButtonText: { color: p.colors.success, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  disabledButtonText: { color: p.colors.textSecondary, fontWeight: fontWeight.medium, fontSize: fontSize.sm },
 });
