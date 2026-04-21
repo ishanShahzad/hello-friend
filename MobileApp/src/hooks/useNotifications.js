@@ -65,7 +65,20 @@ export default function useNotifications() {
         break;
 
       case NotificationTypes.NEW_ORDER_RECEIVED:
-        navigation.navigate('SellerOrderManagement');
+        if (data.orderObjectId) {
+          navigation.navigate('OrderDetailManagement', { orderId: data.orderObjectId, isAdmin: false });
+        } else {
+          navigation.navigate('SellerOrderManagement');
+        }
+        break;
+
+      case NotificationTypes.ORDER_CONFIRMED_BY_BUYER:
+        // Deep-link seller/admin straight to the order detail management screen
+        if (data.orderObjectId) {
+          navigation.navigate('OrderDetailManagement', { orderId: data.orderObjectId, isAdmin: false });
+        } else {
+          navigation.navigate('SellerOrderManagement');
+        }
         break;
 
       case NotificationTypes.LOW_STOCK:

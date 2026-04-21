@@ -151,6 +151,21 @@ export default function OrderDetailScreen({ route, navigation }) {
           <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
         </GlassPanel>
 
+        {/* Buyer-side email confirmation status */}
+        {order.confirmation?.confirmedAt && (
+          <GlassPanel variant="inner" style={[styles.deliveryBanner, { borderColor: 'rgba(16,185,129,0.35)', backgroundColor: 'rgba(16,185,129,0.08)' }]}>
+            <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+            <View style={{ marginLeft: spacing.md, flex: 1 }}>
+              <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#059669' }}>
+                You confirmed via {order.confirmation.confirmedVia || 'email'}
+              </Text>
+              <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary, marginTop: 2 }}>
+                {formatDate(order.confirmation.confirmedAt)} — seller has been notified.
+              </Text>
+            </View>
+          </GlassPanel>
+        )}
+
         {/* Timeline */}
         {status !== 'cancelled' && (
           <GlassPanel variant="card" style={styles.section}>
