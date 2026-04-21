@@ -10,9 +10,13 @@ import { useNavigation } from '@react-navigation/native';
 import VerifiedBadge from '../VerifiedBadge';
 import TrustButton from '../TrustButton';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows, glass, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDescription = true, showStats = true, compact = false, style }) => {
   const navigation = useNavigation();
+  const { palette } = useTheme();
+  const c = palette.colors;
+  const g = palette.glass;
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -36,30 +40,30 @@ const StoreCard = ({ store, index = 0, onPress, showTrustButton = true, showDesc
 
   return (
     <Animated.View style={[styles.animatedContainer, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }, style]}>
-      <TouchableOpacity style={[styles.container, compact && styles.containerCompact]} onPress={handlePress} activeOpacity={0.9}>
+      <TouchableOpacity style={[styles.container, { backgroundColor: g.bg, borderColor: g.border }, compact && styles.containerCompact]} onPress={handlePress} activeOpacity={0.9}>
         <View style={[styles.bannerContainer, compact && { height: 55 }]}>
           {banner && !bannerError ? <Image source={{ uri: banner }} style={styles.banner} contentFit="cover" cachePolicy="memory-disk" transition={200} onError={() => setBannerError(true)} /> :
-            <View style={[styles.banner, { backgroundColor: colors.primary }]} />}
+            <View style={[styles.banner, { backgroundColor: c.primary }]} />}
           <View style={styles.bannerOverlay} />
         </View>
         <View style={[styles.content, compact && { padding: spacing.sm }]}>
           <View style={[styles.logoContainer, compact && { marginTop: -28 }]}>
-            {logo && !logoError ? <Image source={{ uri: logo }} style={[styles.logo, compact && styles.logoCompact]} contentFit="cover" cachePolicy="memory-disk" transition={150} onError={() => setLogoError(true)} /> :
-              <View style={[styles.logoPlaceholder, compact && styles.logoCompact]}><Ionicons name="storefront" size={compact ? 18 : 24} color="#fff" /></View>}
+            {logo && !logoError ? <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: g.bgSubtle }, compact && styles.logoCompact]} contentFit="cover" cachePolicy="memory-disk" transition={150} onError={() => setLogoError(true)} /> :
+              <View style={[styles.logoPlaceholder, { backgroundColor: c.primary }, compact && styles.logoCompact]}><Ionicons name="storefront" size={compact ? 18 : 24} color="#fff" /></View>}
           </View>
           <View style={styles.headerRow}>
             <View style={styles.nameContainer}>
-              <Text style={[styles.storeName, compact && { fontSize: fontSize.sm }]} numberOfLines={1}>{storeName}</Text>
+              <Text style={[styles.storeName, { color: c.text }, compact && { fontSize: fontSize.sm }]} numberOfLines={1}>{storeName}</Text>
               {isVerified && <VerifiedBadge size={compact ? 'xs' : 'sm'} style={{ marginLeft: 4 }} />}
             </View>
             {showTrustButton && !compact && <View style={{ flexShrink: 0 }}><TrustButton storeId={_id} storeName={storeName} initialTrustCount={trustCount} compact /></View>}
           </View>
-          <View style={styles.trustRow}><Ionicons name="heart" size={11} color={colors.heart} /><Text style={styles.trustText}>{trustCount} trusters</Text></View>
-          {showDescription && description && !compact && <Text style={styles.description} numberOfLines={2}>{description}</Text>}
+          <View style={styles.trustRow}><Ionicons name="heart" size={11} color={c.heart} /><Text style={[styles.trustText, { color: c.textSecondary }]}>{trustCount} trusters</Text></View>
+          {showDescription && description && !compact && <Text style={[styles.description, { color: c.textSecondary }]} numberOfLines={2}>{description}</Text>}
           {showStats && (
-            <View style={[styles.statsRow, compact && { paddingTop: spacing.sm, gap: spacing.md }]}>
-              <View style={styles.stat}><Ionicons name="cube-outline" size={13} color={colors.info} /><Text style={styles.statText}>{productCount} {compact ? '' : 'items'}</Text></View>
-              {!compact && <View style={styles.stat}><Ionicons name="eye-outline" size={13} color={colors.secondary} /><Text style={styles.statText}>{views} views</Text></View>}
+            <View style={[styles.statsRow, { borderTopColor: g.borderSubtle }, compact && { paddingTop: spacing.sm, gap: spacing.md }]}>
+              <View style={styles.stat}><Ionicons name="cube-outline" size={13} color={c.info} /><Text style={[styles.statText, { color: c.textSecondary }]}>{productCount} {compact ? '' : 'items'}</Text></View>
+              {!compact && <View style={styles.stat}><Ionicons name="eye-outline" size={13} color={c.secondary} /><Text style={[styles.statText, { color: c.textSecondary }]}>{views} views</Text></View>}
             </View>
           )}
         </View>
