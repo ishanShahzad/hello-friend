@@ -49,6 +49,7 @@ import AdminUserManagementScreen from '../screens/admin/AdminUserManagementScree
 import AdminTaxConfigurationScreen from '../screens/admin/AdminTaxConfigurationScreen';
 import AdminSubdomainManagementScreen from '../screens/admin/AdminSubdomainManagementScreen';
 import AdminComplaintsScreen from '../screens/admin/AdminComplaintsScreen';
+import AdminSubscriptionsScreen from '../screens/admin/AdminSubscriptionsScreen';
 
 // Seller Screens
 import SellerDashboardScreen from '../screens/seller/SellerDashboardScreen';
@@ -139,6 +140,7 @@ const GuardedAdminNotifications = createRoleGuard(AdminNotificationsScreen, ['ad
 const GuardedAdminAnalytics = createRoleGuard(AdminAnalyticsScreen, ['admin']);
 const GuardedAdminSubdomainManagement = createRoleGuard(AdminSubdomainManagementScreen, ['admin']);
 const GuardedAdminComplaints = createRoleGuard(AdminComplaintsScreen, ['admin']);
+const GuardedAdminSubscriptions = createRoleGuard(AdminSubscriptionsScreen, ['admin']);
 
 // Guarded seller screens (seller or admin)
 const GuardedSellerDashboard = createRoleGuard(SellerDashboardScreen, ['seller', 'admin']);
@@ -414,6 +416,7 @@ export default function AppNavigator() {
       <Stack.Screen name="AdminAnalytics" component={GuardedAdminAnalytics} options={{ headerShown: false }} />
       <Stack.Screen name="AdminSubdomainManagement" component={GuardedAdminSubdomainManagement} options={{ headerShown: false }} />
       <Stack.Screen name="AdminComplaints" component={GuardedAdminComplaints} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminSubscriptions" component={GuardedAdminSubscriptions} options={{ headerShown: false }} />
 
       {/* Seller Dashboard (role-guarded: seller or admin) */}
       <Stack.Screen name="SellerDashboard" component={GuardedSellerDashboard} options={{ headerShown: false }} />
