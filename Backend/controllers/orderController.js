@@ -610,3 +610,147 @@ exports.cancelOrder = async (req, res) => {
     }
 }
 
+// =============================================================================
+// Re-order — clone past order's items into the user's cart
+// =============================================================================
+exports.reorder = async (req, res) => {
+    const { id: orderId } = req.params;
+    const { id: userId } = req.user;
+    try {
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ msg: 'Order not found' });
+        if (order.user && order.user.toString() !== userId.toString()) {
+            return res.status(403).json({ msg: 'Not your order' });
+        }
+
+        let cart = await Cart.findOne({ user: userId });
+        if (!cart) cart = new Cart({ user: userId, cartItems: [] });
+
+        let added = 0;
+        let unavailable = 0;
+        for (const item of order.orderItems) {
+            const product = await Product.findById(item.productId);
+            if (!product || product.stock <= 0) { unavailable++; continue; }
+            const qty = Math.min(item.quantity || 1, product.stock);
+            const existing = cart.cartItems.find(
+                (p) => p.product?.toString() === item.productId.toString() &&
+                       (p.selectedColor || null) === (item.selectedColor || null)
+            );
+            if (existing) {
+                existing.qty = Math.min((existing.qty || 1) + qty, product.stock);
+            } else {
+                cart.cartItems.push({ product: item.productId, qty, selectedColor: item.selectedColor || null });
+            }
+            added++;
+        }
+        await cart.save();
+
+        res.status(200).json({
+            msg: `Re-order complete. ${added} items added to cart.${unavailable > 0 ? ` ${unavailable} unavailable.` : ''}`,
+            added,
+            unavailable,
+        });
+    } catch (error) {
+        console.error('Reorder error:', error);
+        res.status(500).json({ msg: 'Server error while re-ordering' });
+    }
+};
+
+// =============================================================================
+// Invoice — generate styled HTML invoice (rendered to PDF on client)
+// =============================================================================
+exports.getInvoice = async (req, res) => {
+    const { id } = req.params;
+    const { role, id: userId } = req.user;
+    try {
+        const order = await Order.findById(id);
+        if (!order) return res.status(404).json({ msg: 'Order not found' });
+
+        if (role !== 'admin') {
+            const ownsOrder = order.user && order.user.toString() === userId.toString();
+            if (!ownsOrder) {
+                if (role === 'seller') {
+                    const sellerProducts = await Product.find({ seller: userId }).select('_id');
+                    const ids = sellerProducts.map((p) => p._id.toString());
+                    const hasItem = order.orderItems.some((it) => ids.includes(it.productId.toString()));
+                    if (!hasItem) return res.status(403).json({ msg: 'Forbidden' });
+                } else {
+                    return res.status(403).json({ msg: 'Forbidden' });
+                }
+            }
+        }
+
+        const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
+        const rows = order.orderItems.map((it) => `
+            <tr>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${it.name}${it.selectedColor ? ` <span style="color:#6366f1;font-size:11px;">(${it.selectedColor})</span>` : ''}</td>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;">${it.quantity}</td>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmt(it.price)}</td>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmt(it.price * it.quantity)}</td>
+            </tr>`).join('');
+
+        const summary = order.orderSummary || {};
+        const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Invoice ${order.orderId}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;color:#1f2937;background:#f9fafb;padding:24px;margin:0;}
+  .card{background:#fff;max-width:760px;margin:0 auto;border-radius:18px;padding:36px;box-shadow:0 6px 24px rgba(0,0,0,0.08);}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #6366f1;padding-bottom:18px;}
+  h1{margin:0;font-size:26px;color:#6366f1;letter-spacing:-0.5px;}
+  .muted{color:#6b7280;font-size:12px;}
+  .grid{display:flex;gap:32px;margin:18px 0;}
+  .grid > div{flex:1;}
+  .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+  table{width:100%;border-collapse:collapse;margin-top:14px;}
+  th{background:#eef2ff;color:#4338ca;padding:10px;text-align:left;font-size:12px;font-weight:600;}
+  th:nth-child(2){text-align:center;} th:nth-child(3),th:nth-child(4){text-align:right;}
+  .totals{margin-top:18px;margin-left:auto;width:46%;}
+  .totals .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;}
+  .totals .grand{border-top:2px solid #1f2937;margin-top:8px;padding-top:10px;font-weight:700;font-size:18px;color:#6366f1;}
+  .footer{margin-top:30px;padding-top:18px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:11px;}
+  .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:#ecfdf5;color:#059669;}
+</style></head><body>
+<div class="card">
+  <div class="head">
+    <div>
+      <h1>Tortrose</h1>
+      <div class="muted">Verified marketplace for trusted sellers</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:13px;font-weight:600;">Invoice #${order.orderId}</div>
+      <div class="muted">${new Date(order.createdAt).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</div>
+      <div style="margin-top:6px;"><span class="badge">${(order.orderStatus || 'pending').toUpperCase()}</span></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div>
+      <div class="label">Billed To</div>
+      <div style="font-weight:600;">${order.shippingInfo.fullName}</div>
+      <div class="muted">${order.shippingInfo.address}<br/>${order.shippingInfo.city}, ${order.shippingInfo.state || ''} ${order.shippingInfo.postalCode || ''}<br/>${order.shippingInfo.country}<br/>${order.shippingInfo.email}</div>
+    </div>
+    <div>
+      <div class="label">Payment</div>
+      <div style="font-weight:600;">${order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Card Payment'}</div>
+      <div class="muted">Status: ${order.isPaid ? 'Paid' : 'Unpaid'}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="totals">
+    <div class="row"><span>Subtotal</span><span>${fmt(summary.subtotal)}</span></div>
+    <div class="row"><span>Shipping</span><span>${fmt(summary.shippingCost)}</span></div>
+    <div class="row"><span>Tax</span><span>${fmt(summary.tax)}</span></div>
+    ${summary.couponDiscount ? `<div class="row" style="color:#10b981;"><span>Coupon discount</span><span>-${fmt(summary.couponDiscount)}</span></div>` : ''}
+    <div class="row grand"><span>Total</span><span>${fmt(summary.totalAmount)}</span></div>
+  </div>
+  <div class="footer">Thank you for shopping on Tortrose.<br/>Questions? Contact support — we're here to help.</div>
+</div></body></html>`;
+
+        res.status(200).json({ msg: 'Invoice generated', html, orderId: order.orderId });
+    } catch (error) {
+        console.error('Invoice error:', error);
+        res.status(500).json({ msg: 'Server error while generating invoice' });
+    }
+};
+

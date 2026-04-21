@@ -173,9 +173,68 @@ const getTrustedStores = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Trust metrics breakdown for a store
+// @route   GET /api/stores/:storeId/trust-metrics
+// @access  Public
+const getTrustMetrics = asyncHandler(async (req, res) => {
+  const { storeId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(storeId)) {
+    res.status(400);
+    throw new Error('Invalid store ID');
+  }
+
+  const store = await Store.findById(storeId);
+  if (!store) {
+    res.status(404);
+    throw new Error('Store not found');
+  }
+
+  const Product = require('../models/Product');
+  const productCount = await Product.countDocuments({ seller: store.seller });
+
+  const ageDays = store.createdAt
+    ? Math.max(1, Math.floor((Date.now() - new Date(store.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const verifiedScore = store.verification?.isVerified ? 30 : 0;
+  const trustersScore = Math.min(25, Math.floor((store.trustCount || 0) / 2));
+  const ageScore = Math.min(20, Math.floor(ageDays / 15));
+  const catalogScore = Math.min(15, Math.floor(productCount / 2));
+  const policyScore = (store.returnPolicy?.returnsEnabled ? 5 : 0) + (store.returnPolicy?.warrantyEnabled ? 5 : 0);
+  const totalScore = Math.min(100, verifiedScore + trustersScore + ageScore + catalogScore + policyScore);
+
+  const ratingLabel =
+    totalScore >= 80 ? 'Excellent' :
+    totalScore >= 60 ? 'Strong' :
+    totalScore >= 40 ? 'Building' :
+    'New';
+
+  res.status(200).json({
+    success: true,
+    data: {
+      score: totalScore,
+      label: ratingLabel,
+      ageDays,
+      productCount,
+      trustCount: store.trustCount || 0,
+      isVerified: !!store.verification?.isVerified,
+      verifiedSince: store.verification?.reviewedAt || null,
+      breakdown: [
+        { key: 'verified', label: 'Verified Store', score: verifiedScore, max: 30, description: store.verification?.isVerified ? 'Identity confirmed by Tortrose' : 'Not yet verified' },
+        { key: 'trusters', label: 'Community Trust', score: trustersScore, max: 25, description: `${store.trustCount || 0} shoppers trust this store` },
+        { key: 'age', label: 'Store Tenure', score: ageScore, max: 20, description: `${ageDays} day${ageDays === 1 ? '' : 's'} on the platform` },
+        { key: 'catalog', label: 'Product Catalog', score: catalogScore, max: 15, description: `${productCount} active product${productCount === 1 ? '' : 's'}` },
+        { key: 'policy', label: 'Buyer Protection', score: policyScore, max: 10, description: `${store.returnPolicy?.returnsEnabled ? 'Returns' : 'No returns'} • ${store.returnPolicy?.warrantyEnabled ? 'Warranty' : 'No warranty'}` },
+      ],
+    },
+  });
+});
+
 module.exports = {
   trustStore,
   untrustStore,
   getTrustStatus,
-  getTrustedStores
+  getTrustedStores,
+  getTrustMetrics
 };
