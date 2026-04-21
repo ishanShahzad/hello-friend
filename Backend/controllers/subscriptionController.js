@@ -399,3 +399,35 @@ exports.processTrialExpirations = async () => {
         console.error('Process trial expirations error:', error);
     }
 };
+
+
+// Admin: Get all seller subscriptions
+exports.getAllSubscriptionsForAdmin = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ msg: 'Access denied. Admin only.' });
+        }
+
+        const subscriptions = await SellerSubscription.find()
+            .populate('seller', 'username email')
+            .sort({ createdAt: -1 });
+
+        const subscriptionsWithStores = await Promise.all(
+            subscriptions.map(async (sub) => {
+                const store = await Store.findOne({ seller: sub.seller._id }).select('storeName storeSlug');
+                return {
+                    ...sub.toObject(),
+                    store: store ? { name: store.storeName, slug: store.storeSlug } : null
+                };
+            })
+        );
+
+        res.status(200).json({
+            msg: 'All subscriptions fetched successfully',
+            subscriptions: subscriptionsWithStores
+        });
+    } catch (error) {
+        console.error('Get all subscriptions error:', error);
+        res.status(500).json({ msg: 'Failed to fetch subscriptions' });
+    }
+};
