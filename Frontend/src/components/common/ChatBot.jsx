@@ -1068,7 +1068,7 @@ const ChatBot = ({ embedded = false, dashboardRole = null }) => {
     <>
       <motion.button onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl"
-        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', boxShadow: '0 8px 32px hsl(220, 70%, 55%, 0.4)' }}
+        style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)' }}
         whileHover={{ scale: 1.1, rotate: isOpen ? 0 : 5 }} whileTap={{ scale: 0.95 }}>
         <AnimatePresence mode="wait">
           {isOpen ? (
