@@ -111,6 +111,7 @@ export const NotificationTypes = {
 
   // Seller alerts
   NEW_ORDER_RECEIVED: 'new_order_received',
+  ORDER_CONFIRMED_BY_BUYER: 'order_confirmed_by_buyer',
   LOW_STOCK: 'low_stock',
   NEW_REVIEW: 'new_review',
   STORE_VERIFIED: 'store_verified',
