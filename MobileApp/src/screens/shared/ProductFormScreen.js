@@ -43,8 +43,9 @@ export default function ProductFormScreen({ navigation, route }) {
   });
   const [images, setImages] = useState(product?.images || []);
   const [tags, setTags] = useState(product?.tags || []);
-  const [productColors, setProductColors] = useState(product?.colors || []);
-  const [newColor, setNewColor] = useState('');
+  const [optionGroups, setOptionGroups] = useState(product?.optionGroups || []);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [valueDrafts, setValueDrafts] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
@@ -68,7 +69,7 @@ export default function ProductFormScreen({ navigation, route }) {
     if (!validation.isValid) { setErrors(validation.errors); setTouched({ name: true, price: true, stock: true }); return; }
     setLoading(true);
     try {
-      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, colors: productColors };
+      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0) };
       if (isEditMode) { await api.put(`/api/products/edit/${product._id}`, { product: productData }); Alert.alert('Success', 'Product updated', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
       else { await api.post('/api/products/add', { product: productData }); Alert.alert('Success', 'Product created', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
     } catch (e) { Alert.alert('Error', e.response?.data?.message || e.response?.data?.msg || 'Failed to save'); }
@@ -138,32 +139,74 @@ export default function ProductFormScreen({ navigation, route }) {
             </View>
           </GlassPanel>
 
-          {/* Color Variants */}
+          {/* Product Options (Size, Color, Material, etc.) */}
           <GlassPanel variant="card" style={styles.section}>
-            <Text style={styles.sectionTitle}>Color Variants (Optional)</Text>
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
-              <View style={[styles.inputContainer, { flex: 1 }]}>
-                <TextInput style={styles.input} value={newColor} onChangeText={setNewColor}
-                  placeholder="e.g., Red" placeholderTextColor={palette.colors.textSecondary} />
+            <Text style={styles.sectionTitle}>Product Options (Optional)</Text>
+            <Text style={{ ...typography.caption, color: palette.colors.textSecondary, marginBottom: spacing.md }}>
+              Let buyers pick size, color, material, etc.
+            </Text>
+
+            {optionGroups.map((g, idx) => (
+              <View key={idx} style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.md, gap: spacing.sm }}>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <View style={[styles.inputContainer, { flex: 1 }]}>
+                    <TextInput style={styles.input} value={g.name}
+                      onChangeText={(v) => setOptionGroups(prev => prev.map((x, i) => i === idx ? { ...x, name: v } : x))}
+                      placeholder="Option name (e.g. Size)" placeholderTextColor={palette.colors.textSecondary} />
+                  </View>
+                  <TouchableOpacity style={{ backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, justifyContent: 'center' }}
+                    onPress={() => setOptionGroups(prev => prev.filter((_, i) => i !== idx))}>
+                    <Ionicons name="trash-outline" size={18} color={palette.colors.error} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <View style={[styles.inputContainer, { flex: 1 }]}>
+                    <TextInput style={styles.input} value={valueDrafts[idx] || ''}
+                      onChangeText={(v) => setValueDrafts(p => ({ ...p, [idx]: v }))}
+                      placeholder="Add a value (e.g. S, M, L)" placeholderTextColor={palette.colors.textSecondary} />
+                  </View>
+                  <TouchableOpacity style={{ backgroundColor: palette.colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
+                    onPress={() => {
+                      const v = (valueDrafts[idx] || '').trim();
+                      if (!v) return;
+                      setOptionGroups(prev => prev.map((x, i) => i === idx ? { ...x, values: x.values.includes(v) ? x.values : [...x.values, v] } : x));
+                      setValueDrafts(p => ({ ...p, [idx]: '' }));
+                    }}>
+                    <Ionicons name="add" size={18} color="white" />
+                  </TouchableOpacity>
+                </View>
+                {g.values.length > 0 && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {g.values.map((v, vi) => (
+                      <View key={vi} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, gap: 4 }}>
+                        <Text style={{ fontSize: fontSize.sm, color: palette.colors.primary, fontWeight: fontWeight.medium }}>{v}</Text>
+                        <TouchableOpacity onPress={() => setOptionGroups(prev => prev.map((x, i) => i === idx ? { ...x, values: x.values.filter(y => y !== v) } : x))}>
+                          <Ionicons name="close-circle" size={14} color={palette.colors.error} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-              <TouchableOpacity style={{ backgroundColor: palette.colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
-                onPress={() => { if (newColor.trim() && !productColors.includes(newColor.trim())) { setProductColors(prev => [...prev, newColor.trim()]); setNewColor(''); } }}>
-                <Ionicons name="add" size={20} color="white" />
+            ))}
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <View style={[styles.inputContainer, { flex: 1 }]}>
+                <TextInput style={styles.input} value={newGroupName} onChangeText={setNewGroupName}
+                  placeholder="New option (Size, Color, Material...)" placeholderTextColor={palette.colors.textSecondary} />
+              </View>
+              <TouchableOpacity style={{ backgroundColor: palette.colors.success || palette.colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
+                onPress={() => {
+                  const n = newGroupName.trim();
+                  if (!n || optionGroups.some(g => g.name.toLowerCase() === n.toLowerCase())) return;
+                  setOptionGroups(prev => [...prev, { name: n, values: [] }]);
+                  setNewGroupName('');
+                }}>
+                <Ionicons name="add" size={18} color="white" />
               </TouchableOpacity>
             </View>
-            {productColors.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {productColors.map((c, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 }}>
-                    <Text style={{ fontSize: fontSize.sm, color: palette.colors.primary, fontWeight: fontWeight.medium }}>{c}</Text>
-                    <TouchableOpacity onPress={() => setProductColors(prev => prev.filter((_, idx) => idx !== i))}>
-                      <Ionicons name="close-circle" size={16} color={palette.colors.error} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
           </GlassPanel>
+
 
           {/* Smart Tags */}
           <GlassPanel variant="card" style={styles.section}>
