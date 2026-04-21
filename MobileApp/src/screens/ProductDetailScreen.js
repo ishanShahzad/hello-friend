@@ -178,7 +178,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <View style={styles.colorSection}>
                 <Text style={styles.colorLabel}>Color: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedColor || 'Select a color'}</Text></Text>
                 <View style={styles.colorRow}>
-                  {product.palette.colors.map((color, i) => (
+                  {product.colors.map((color, i) => (
                     <TouchableOpacity key={i} onPress={() => setSelectedColor(color)}
                       style={[styles.colorChip, selectedColor === color && styles.colorChipActive]}>
                       <Text style={[styles.colorChipText, selectedColor === color && styles.colorChipTextActive]}>{color}</Text>
