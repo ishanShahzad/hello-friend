@@ -33,7 +33,7 @@ export default function SellerSignUpScreen({ navigation }) {
 
   const [accountForm, setAccountForm] = useState({ username: '', email: '', password: '' });
   const [businessForm, setBusinessForm] = useState({ phoneNumber: '', businessName: '', address: '', city: '', country: '' });
-  const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
+  const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', sellerType: 'store', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
   const [otp, setOtp] = useState('');
 
   const handleAccountNext = () => {
@@ -77,6 +77,7 @@ export default function SellerSignUpScreen({ navigation }) {
         email: accountForm.email, otp, ...businessForm,
         storeName: storeForm.storeName?.trim() || '',
         storeDescription: storeForm.storeDescription?.trim() || '',
+        sellerType: storeForm.sellerType || 'store',
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
       });
       await SecureStore.setItemAsync('jwtToken', res.data.token);
@@ -199,6 +200,37 @@ export default function SellerSignUpScreen({ navigation }) {
               <Text style={styles.formSubtitle}>Set up your store (you can complete this later)</Text>
               {renderInput(storeForm.storeName, v => setStoreForm(p => ({ ...p, storeName: v })), 'My Awesome Store', { label: 'Store Name', icon: 'storefront-outline' })}
               {renderInput(storeForm.storeDescription, v => setStoreForm(p => ({ ...p, storeDescription: v })), 'What do you sell?', { label: 'Store Description', icon: 'document-text-outline', multiline: true })}
+
+              <Text style={[styles.label, { marginTop: spacing.md, marginBottom: spacing.sm }]}>Listing Type</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+                {['store', 'brand'].map(t => {
+                  const active = storeForm.sellerType === t;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setStoreForm(p => ({ ...p, sellerType: t }))}
+                      activeOpacity={0.8}
+                      style={{
+                        flex: 1,
+                        paddingVertical: spacing.md,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        gap: 6,
+                        backgroundColor: active ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.06)',
+                        borderWidth: 1,
+                        borderColor: active ? palette.colors.primary : palette.glass.borderSubtle,
+                      }}
+                    >
+                      <Ionicons name={t === 'brand' ? 'pricetag-outline' : 'storefront-outline'} size={16} color={active ? palette.colors.primary : palette.colors.textSecondary} />
+                      <Text style={{ color: active ? palette.colors.primary : palette.colors.textSecondary, fontWeight: '600' }}>
+                        {t === 'brand' ? 'Brand' : 'Store'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
               
               <Text style={[styles.label, { marginTop: spacing.md, marginBottom: spacing.sm }]}>Social Links (Optional)</Text>
               {renderInput(storeForm.website, v => setStoreForm(p => ({ ...p, website: v })), 'https://yourwebsite.com', { label: 'Website', icon: 'globe-outline', autoCapitalize: 'none' })}
