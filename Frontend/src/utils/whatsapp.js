@@ -74,3 +74,7 @@ export const openWhatsAppVerify = (order, formatPrice) => {
 
 export const hasWhatsAppPhone = (order) =>
   Boolean(sanitizePhone(order?.shippingInfo?.phone));
+
+// True if buyer already self-confirmed via email (manual verify no longer needed)
+export const isOrderConfirmedByBuyer = (order) =>
+  Boolean(order?.confirmation?.confirmedAt && order?.confirmation?.confirmedVia === 'email');

@@ -50,6 +50,7 @@ import ContactPage from '../pages/ContactPage'
 import FAQPage from '../pages/FAQPage'
 import TrackOrderPage from '../pages/TrackOrderPage'
 import SellerSignUp from '../components/auth/SellerSignUp'
+import OrderConfirmationPage from '../pages/OrderConfirmationPage'
 
 function AppRoutes() {
     const navigate = useNavigate()
@@ -97,6 +98,7 @@ function AppRoutes() {
                 <Route path='/signup' element={<SignUp />} />
                 <Route path='/seller-signup' element={<SellerSignUp />} />
                 <Route path='/auth/google/success' element={<GoogleAuthSuccess />} />
+                <Route path='/orders/confirm/:token' element={<OrderConfirmationPage />} />
 
                 <Route path={'/success'} element={<Success />} />
 

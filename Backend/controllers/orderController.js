@@ -7,7 +7,8 @@ const TaxConfig = require('../models/TaxConfig');
 const { calculateTax } = require('./taxController');
 const { recordCouponUsage } = require('./couponController');
 const { sendEmail } = require('./mailController');
-const { orderConfirmationEmail, orderStatusUpdateEmail, newOrderSellerEmail } = require('../utils/emailTemplates');
+const { orderConfirmationEmail, orderStatusUpdateEmail, newOrderSellerEmail, buyerOrderConfirmationRequestEmail } = require('../utils/emailTemplates');
+const { generateConfirmationToken } = require('./orderConfirmationController');
 const User = require('../models/User');
 
 
@@ -137,12 +138,25 @@ exports.placeOrder = async (req, res) => {
         
         if (order.instructions && order.instructions !== '') newOrder.instructions = order.instructions
 
+        // For COD: attach 48h confirmation token so buyer can confirm via email
+        const isCOD = newOrder.paymentMethod === 'cash_on_delivery';
+        if (isCOD) {
+            const { token, tokenExpiresAt } = generateConfirmationToken();
+            newOrder.confirmation = { token, tokenExpiresAt, confirmedAt: null, confirmedVia: null, declinedAt: null };
+        }
+
         await newOrder.save();
 
         // Send order confirmation email to buyer
         try {
-            const emailData = orderConfirmationEmail(newOrder);
-            await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+            if (isCOD) {
+                const confirmUrl = `${process.env.FRONTEND_URL || 'https://rozare.com'}/orders/confirm/${newOrder.confirmation.token}`;
+                const emailData = buyerOrderConfirmationRequestEmail(newOrder, confirmUrl);
+                await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+            } else {
+                const emailData = orderConfirmationEmail(newOrder);
+                await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+            }
         } catch (emailErr) {
             console.error('Failed to send order confirmation email:', emailErr.message);
         }
