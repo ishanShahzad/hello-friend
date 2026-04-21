@@ -17,6 +17,7 @@ import Loader from '../components/common/Loader';
 import { EmptyProducts } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import TrustScoreSheet from '../components/common/TrustScoreSheet';
 import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
 
 export default function StoreScreen({ route, navigation }) {
@@ -28,6 +29,7 @@ export default function StoreScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [trustSheetVisible, setTrustSheetVisible] = useState(false);
 
   const fetchStore = useCallback(async () => {
     if (!slug) { setIsLoading(false); return; }
@@ -92,10 +94,11 @@ export default function StoreScreen({ route, navigation }) {
             <Text style={styles.storeName} numberOfLines={2}>{store.name}</Text>
             {isVerified && <VerifiedBadge size="md" style={{ marginLeft: 6 }} />}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+          <TouchableOpacity onPress={() => setTrustSheetVisible(true)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(99,102,241,0.08)' }}>
             <Ionicons name="heart" size={14} color={colors.heart} />
             <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginLeft: 4 }}>{store.trustCount || 0} trusters</Text>
-          </View>
+            <Ionicons name="information-circle-outline" size={14} color={colors.primary} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
           {store.description && <Text style={styles.storeDescription} numberOfLines={3}>{store.description}</Text>}
 
           <View style={styles.statsRow}>
@@ -143,6 +146,7 @@ export default function StoreScreen({ route, navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false} initialNumToRender={8} maxToRenderPerBatch={8} windowSize={5} removeClippedSubviews
       />
+      <TrustScoreSheet visible={trustSheetVisible} onClose={() => setTrustSheetVisible(false)} storeId={store?._id} storeName={store?.name} />
     </GlassBackground>
   );
 }

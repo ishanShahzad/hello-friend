@@ -24,6 +24,7 @@ const APP_VERSION = '1.0.0';
 export const getMenuItemsForRole = (role) => {
   const baseItems = [
     { id: 'orders', title: 'My Orders', icon: 'receipt-outline', screen: 'Orders', color: colors.primary },
+    { id: 'addresses', title: 'Saved Addresses', icon: 'location-outline', screen: 'SavedAddresses', color: colors.info },
     { id: 'notifications', title: 'Notifications', icon: 'notifications-outline', screen: 'Notifications', color: colors.secondary },
     { id: 'trusted', title: 'Trusted Stores', icon: 'shield-checkmark-outline', screen: 'TrustedStores', color: colors.info },
     { id: 'change-password', title: 'Change Password', icon: 'lock-closed-outline', screen: 'ChangePassword', color: colors.warning },

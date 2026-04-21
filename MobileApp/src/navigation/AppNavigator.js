@@ -92,6 +92,7 @@ import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TrackOrderScreen from '../screens/TrackOrderScreen';
 import NotificationPreferencesScreen from '../screens/NotificationPreferencesScreen';
+import SavedAddressesScreen from '../screens/SavedAddressesScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -455,6 +456,7 @@ export default function AppNavigator() {
       <Stack.Screen name="SellerSignUp" component={SellerSignUpScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} options={{ headerShown: false }} />
 
       {/* Informational Screens */}
       <Stack.Screen name="FAQ" component={FAQScreen} options={{ headerShown: false }} />

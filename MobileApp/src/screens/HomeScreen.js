@@ -26,7 +26,7 @@ import ChatBot from '../components/ChatBot';
 import api from '../config/api';
 import ProductCard from '../components/ProductCard';
 import CurrencySelector from '../components/CurrencySelector';
-import { Loader, EmptySearch, ProductGridSkeleton, PersonalizedSliders, SearchAutocomplete, PriceRangeFilter } from '../components/common';
+import { Loader, EmptySearch, ProductGridSkeleton, PersonalizedSliders, SearchAutocomplete, PriceRangeFilter, TrustedStoresSection } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { addSearchHistory } from '../utils/searchHistory';
@@ -359,6 +359,12 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
         </View>
       )}
+
+      {/* Trusted Stores Slider */}
+      <TrustedStoresSection navigation={navigation} />
+
+      {/* Personalized Sliders */}
+      <PersonalizedSliders navigation={navigation} />
 
       {/* Browse Stores Banner */}
       <TouchableOpacity style={styles.storesBanner} onPress={() => navigation.navigate('Stores')} activeOpacity={0.9}>
