@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { Loader, InlineLoader, EmptyCart, LoginRequired } from '../components/common';
+import { Loader, InlineLoader, EmptyCart, LoginRequired, CartItemSkeleton } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { colors, spacing, fontSize, borderRadius, fontWeight, glass } from '../styles/theme';
@@ -131,7 +131,12 @@ export default function CartScreen({ navigation }) {
     <GlassBackground>
       <SafeAreaView style={styles.container}>
         {isCartLoading && cartItems.cart.length === 0 ? (
-          <><View>{heroHeader}</View><Loader fullScreen size="medium" /></>
+          <>
+            <View>{heroHeader}</View>
+            <View style={{ paddingTop: spacing.sm }}>
+              {[0,1,2,3].map((i) => <CartItemSkeleton key={i} />)}
+            </View>
+          </>
         ) : (
           <FlatList
             data={cartItems.cart}

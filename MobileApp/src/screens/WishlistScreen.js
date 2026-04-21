@@ -11,6 +11,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { colors, spacing, fontSize, borderRadius, fontWeight } from '../styles/theme';
 import Loader, { InlineLoader } from '../components/common/Loader';
+import { CartItemSkeleton } from '../components/common/Skeleton';
 import { EmptyWishlist, LoginRequired } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
@@ -41,7 +42,7 @@ export default function WishlistScreen({ navigation }) {
   );
 
   if (!currentUser) return <GlassBackground><SafeAreaView style={styles.container}>{heroHeader}<LoginRequired onLogin={() => navigation.navigate('Login')} onBrowse={() => navigation.navigate('MainTabs', { screen: 'Home' })} /></SafeAreaView></GlassBackground>;
-  if (isLoading) return <GlassBackground><SafeAreaView style={styles.container}>{heroHeader}<View style={styles.loadingContainer}><Loader size="large" /></View></SafeAreaView></GlassBackground>;
+  if (isLoading) return <GlassBackground><SafeAreaView style={styles.container}>{heroHeader}<View style={{ paddingTop: spacing.sm }}>{[0,1,2,3].map((i) => <CartItemSkeleton key={i} />)}</View></SafeAreaView></GlassBackground>;
   if (!wishlistItems || wishlistItems.length === 0) return <GlassBackground><SafeAreaView style={styles.container}>{heroHeader}<EmptyWishlist onBrowse={() => navigation.navigate('MainTabs', { screen: 'Home' })} /></SafeAreaView></GlassBackground>;
 
   const renderWishlistItem = ({ item }) => {
