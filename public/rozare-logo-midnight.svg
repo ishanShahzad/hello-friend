@@ -1,0 +1,24 @@
+<!-- Version 4: MIDNIGHT - Deep sophisticated navy to violet -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" width="220" height="56">
+  <defs>
+    <linearGradient id="rzGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E40AF"/>
+      <stop offset="50%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="rzGradSoft4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E40AF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.18"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4,4)">
+    <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#rzGradSoft4)"/>
+    <rect x="4" y="4" width="40" height="40" rx="11" fill="url(#rzGrad4)"/>
+    <path d="M40 14 a16 16 0 0 1 -26 22" fill="none" stroke="white" stroke-opacity="0.35" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M17 14 h11 a7 7 0 0 1 0 14 h-7 l9 6 M21 28 v6 M21 14 v20"
+          fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="36" cy="14" r="2" fill="white"/>
+  </g>
+  <text x="62" y="36" font-family="system-ui, -apple-system, 'Segoe UI', Inter, sans-serif"
+        font-size="28" font-weight="800" letter-spacing="-1.1" fill="url(#rzGrad4)">Rozare</text>
+</svg>
