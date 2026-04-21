@@ -10,7 +10,8 @@ import api from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const CATEGORIES = [
   { key: 'all', label: 'All', icon: 'apps-outline' },
@@ -21,12 +22,12 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_STYLES = {
-  orders: { icon: 'receipt-outline', color: colors.primary, bg: 'rgba(99,102,241,0.15)' },
-  stock: { icon: 'cube-outline', color: colors.warning, bg: 'rgba(245,158,11,0.15)' },
+  orders: { icon: 'receipt-outline', color: palette.colors.primary, bg: 'rgba(99,102,241,0.15)' },
+  stock: { icon: 'cube-outline', color: palette.colors.warning, bg: 'rgba(245,158,11,0.15)' },
   reviews: { icon: 'star-outline', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-  store: { icon: 'storefront-outline', color: colors.success, bg: 'rgba(16,185,129,0.15)' },
+  store: { icon: 'storefront-outline', color: palette.colors.success, bg: 'rgba(16,185,129,0.15)' },
   delivery: { icon: 'bicycle-outline', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)' },
-  system: { icon: 'information-circle-outline', color: colors.info, bg: 'rgba(59,130,246,0.15)' },
+  system: { icon: 'information-circle-outline', color: palette.colors.info, bg: 'rgba(59,130,246,0.15)' },
 };
 
 function formatTime(dateStr) {
@@ -42,6 +43,9 @@ function formatTime(dateStr) {
 }
 
 export default function SellerNotificationsScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser, token } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,11 +100,11 @@ export default function SellerNotificationsScreen({ navigation }) {
         onPress={() => setActiveCategory(item.key)}
         style={[styles.categoryChip, isActive && styles.categoryChipActive]}
       >
-        <Ionicons name={item.icon} size={14} color={isActive ? '#fff' : colors.grayLight} />
+        <Ionicons name={item.icon} size={14} color={isActive ? '#fff' : palette.colors.grayLight} />
         <Text style={[styles.categoryLabel, isActive && styles.categoryLabelActive]}>{item.label}</Text>
         {count > 0 && (
           <View style={[styles.categoryCount, isActive && styles.categoryCountActive]}>
-            <Text style={[styles.categoryCountText, isActive && { color: colors.primary }]}>{count}</Text>
+            <Text style={[styles.categoryCountText, isActive && { color: palette.colors.primary }]}>{count}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -140,7 +144,7 @@ export default function SellerNotificationsScreen({ navigation }) {
       <SafeAreaView style={styles.safeArea}>
         <GlassPanel style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={colors.dark} />
+            <Ionicons name="arrow-back" size={22} color={palette.colors.dark} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Notifications</Text>
@@ -152,7 +156,7 @@ export default function SellerNotificationsScreen({ navigation }) {
           </View>
           {unreadCount > 0 && (
             <TouchableOpacity onPress={markAllRead} style={styles.markAllBtn}>
-              <Ionicons name="checkmark-done" size={20} color={colors.primary} />
+              <Ionicons name="checkmark-done" size={20} color={palette.colors.primary} />
             </TouchableOpacity>
           )}
         </GlassPanel>
@@ -171,10 +175,10 @@ export default function SellerNotificationsScreen({ navigation }) {
           renderItem={renderNotification}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="notifications-off-outline" size={48} color={colors.grayLight} />
+              <Ionicons name="notifications-off-outline" size={48} color={palette.colors.grayLight} />
               <Text style={styles.emptyText}>No notifications</Text>
             </View>
           }
@@ -184,7 +188,7 @@ export default function SellerNotificationsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F0F4FF' },
   safeArea: { flex: 1 },
   header: {
@@ -193,8 +197,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: spacing.sm },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.dark },
-  headerBadge: { marginLeft: spacing.sm, backgroundColor: colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.dark },
+  headerBadge: { marginLeft: spacing.sm, backgroundColor: p.colors.error, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   headerBadgeText: { color: '#fff', fontSize: 11, fontWeight: fontWeight.bold },
   markAllBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center' },
 
@@ -203,24 +207,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', gap: 6,
   },
-  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryLabel: { fontSize: fontSize.sm, color: colors.grayLight, fontWeight: fontWeight.medium },
+  categoryChipActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  categoryLabel: { fontSize: fontSize.sm, color: p.colors.grayLight, fontWeight: fontWeight.medium },
   categoryLabelActive: { color: '#fff' },
   categoryCount: { backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: 10, minWidth: 20, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   categoryCountActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  categoryCountText: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.grayLight },
+  categoryCountText: { fontSize: 10, fontWeight: fontWeight.bold, color: p.colors.grayLight },
 
   list: { paddingHorizontal: spacing.md, paddingBottom: 100, gap: spacing.sm },
   notifCard: { flexDirection: 'row', padding: spacing.md, borderRadius: borderRadius.lg, gap: spacing.sm },
-  notifUnread: { borderLeftWidth: 3, borderLeftColor: colors.primary },
+  notifUnread: { borderLeftWidth: 3, borderLeftColor: p.colors.primary },
   notifIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   notifContent: { flex: 1 },
   notifHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notifTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.dark, flex: 1 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginLeft: spacing.sm },
-  notifBody: { fontSize: fontSize.sm, color: colors.grayLight, marginTop: 2, lineHeight: 18 },
-  notifTime: { fontSize: fontSize.xs, color: colors.grayLight, marginTop: 4, opacity: 0.7 },
+  notifTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.dark, flex: 1 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: p.colors.primary, marginLeft: spacing.sm },
+  notifBody: { fontSize: fontSize.sm, color: p.colors.grayLight, marginTop: 2, lineHeight: 18 },
+  notifTime: { fontSize: fontSize.xs, color: p.colors.grayLight, marginTop: 4, opacity: 0.7 },
 
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: spacing.md },
-  emptyText: { fontSize: fontSize.md, color: colors.grayLight },
+  emptyText: { fontSize: fontSize.md, color: p.colors.grayLight },
 });

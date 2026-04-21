@@ -13,9 +13,8 @@ import Loader from '../../components/common/Loader';
 import { EmptyOrders } from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' },
@@ -29,6 +28,9 @@ export const filterOrdersByStatus = (orders, status) => {
 };
 
 export default function OrderManagementScreen({ navigation, route }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { isAdmin } = route.params || {};
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,28 +91,28 @@ export default function OrderManagementScreen({ navigation, route }) {
       <FlatList data={filteredOrders} renderItem={({ item }) => <OrderCard order={item} onPress={() => handleOrderPress(item)} showCustomer />}
         keyExtractor={i => i._id} contentContainerStyle={styles.list}
         ListHeaderComponent={renderHeader} ListEmptyComponent={<EmptyOrders onBrowse={null} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
         showsVerticalScrollIndicator={false} />
     </GlassBackground>
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   headerContainer: { paddingBottom: spacing.md, marginBottom: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', margin: spacing.lg, marginBottom: spacing.md, padding: spacing.lg },
-  titleIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
-  title: { ...typography.h3, color: colors.text },
-  subtitle: { ...typography.bodySmall, color: colors.textSecondary },
+  titleIcon: { width: 44, height: 44, borderRadius: borderRadius.lg, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
+  title: { ...typography.h3, color: p.colors.text },
+  subtitle: { ...typography.bodySmall, color: p.colors.textSecondary },
   tabsContainer: { paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
   tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: 'rgba(255,255,255,0.08)', gap: spacing.xs },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { ...typography.bodySmall, fontWeight: fontWeight.medium, color: colors.textSecondary },
+  tabActive: { backgroundColor: p.colors.primary },
+  tabText: { ...typography.bodySmall, fontWeight: fontWeight.medium, color: p.colors.textSecondary },
   tabTextActive: { color: 'white' },
   tabBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xs },
   tabBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  tabBadgeText: { ...typography.caption, fontWeight: fontWeight.bold, color: colors.textSecondary },
+  tabBadgeText: { ...typography.caption, fontWeight: fontWeight.bold, color: p.colors.textSecondary },
   tabBadgeTextActive: { color: 'white' },
-  resultsText: { ...typography.bodySmall, color: colors.textSecondary, paddingHorizontal: spacing.lg },
-  resultsCount: { fontWeight: fontWeight.bold, color: colors.text },
+  resultsText: { ...typography.bodySmall, color: p.colors.textSecondary, paddingHorizontal: spacing.lg },
+  resultsCount: { fontWeight: fontWeight.bold, color: p.colors.text },
   list: { paddingHorizontal: spacing.md, paddingBottom: 100, flexGrow: 1 },
 });

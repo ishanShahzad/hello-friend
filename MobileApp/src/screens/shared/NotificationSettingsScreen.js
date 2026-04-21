@@ -13,9 +13,8 @@ import api from '../../config/api';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, fontWeight, borderRadius, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, fontWeight, borderRadius, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const defaultPrefs = {
   stockAlerts: true, lowStockAlerts: true, orderAlerts: true,
@@ -23,6 +22,9 @@ const defaultPrefs = {
 };
 
 export default function NotificationSettingsScreen({ route }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const isAdmin = route.params?.isAdmin ?? false;
   const [prefs, setPrefs] = useState(defaultPrefs);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function NotificationSettingsScreen({ route }) {
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.headerRow}>
-          <View style={styles.tagPill}><Ionicons name="settings-outline" size={12} color={colors.primary} /><Text style={styles.tagText}>Settings</Text></View>
+          <View style={styles.tagPill}><Ionicons name="settings-outline" size={12} color={palette.colors.primary} /><Text style={styles.tagText}>Settings</Text></View>
           <Text style={styles.headerTitle}>Notification Settings</Text>
           <Text style={styles.headerSubtitle}>Choose which notifications to receive</Text>
         </View>
@@ -86,14 +88,14 @@ export default function NotificationSettingsScreen({ route }) {
             {section.items.map(item => (
               <View key={item.key} style={styles.toggleRow}>
                 <View style={[styles.toggleIcon, { backgroundColor: prefs[item.key] ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.06)' }]}>
-                  <Ionicons name={item.icon} size={16} color={prefs[item.key] ? colors.primary : colors.textSecondary} />
+                  <Ionicons name={item.icon} size={16} color={prefs[item.key] ? palette.colors.primary : palette.colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.toggleLabel}>{item.label}</Text>
                   <Text style={styles.toggleDesc}>{item.desc}</Text>
                 </View>
                 <Switch value={prefs[item.key]} onValueChange={() => handleToggle(item.key)}
-                  trackColor={{ false: 'rgba(255,255,255,0.1)', true: colors.primary }}
+                  trackColor={{ false: 'rgba(255,255,255,0.1)', true: palette.colors.primary }}
                   thumbColor="white" />
               </View>
             ))}
@@ -119,24 +121,24 @@ export default function NotificationSettingsScreen({ route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   headerRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, marginBottom: spacing.lg },
   tagPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(99,102,241,0.12)', alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, marginBottom: spacing.sm },
-  tagText: { ...typography.caption, color: colors.primary, fontWeight: fontWeight.semibold },
-  headerTitle: { fontSize: fontSize.xxl + 4, fontWeight: fontWeight.bold, color: colors.text, letterSpacing: -0.5 },
-  headerSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  tagText: { ...typography.caption, color: p.colors.primary, fontWeight: fontWeight.semibold },
+  headerTitle: { fontSize: fontSize.xxl + 4, fontWeight: fontWeight.bold, color: p.colors.text, letterSpacing: -0.5 },
+  headerSubtitle: { ...typography.bodySmall, color: p.colors.textSecondary, marginTop: 2 },
   section: { marginHorizontal: spacing.lg, marginBottom: spacing.md, overflow: 'hidden' },
   sectionHeader: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
-  sectionTitle: { ...typography.bodySemibold, color: colors.text },
-  sectionDesc: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  sectionTitle: { ...typography.bodySemibold, color: p.colors.text },
+  sectionDesc: { ...typography.caption, color: p.colors.textSecondary, marginTop: 2 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
   toggleIcon: { width: 36, height: 36, borderRadius: borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  toggleLabel: { ...typography.bodySemibold, color: colors.text, fontSize: fontSize.sm },
-  toggleDesc: { ...typography.caption, color: colors.textSecondary },
+  toggleLabel: { ...typography.bodySemibold, color: p.colors.text, fontSize: fontSize.sm },
+  toggleDesc: { ...typography.caption, color: p.colors.textSecondary },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.md },
   resetBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
-  resetBtnText: { ...typography.bodySmall, color: colors.textSecondary },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: colors.primary },
+  resetBtnText: { ...typography.bodySmall, color: p.colors.textSecondary },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, backgroundColor: p.colors.primary },
   saveBtnText: { ...typography.bodySemibold, color: 'white' },
 });

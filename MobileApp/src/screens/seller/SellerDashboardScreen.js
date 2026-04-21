@@ -16,9 +16,8 @@ import { EmptyOrders } from '../../components/common/EmptyState';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import ChatBot from '../../components/ChatBot';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TILE_GAP = spacing.sm;
@@ -79,6 +78,9 @@ const QuickTile = ({ icon, color, label, onPress, badge }) => (
 );
 
 export default function SellerDashboardScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,12 +121,12 @@ export default function SellerDashboardScreen({ navigation }) {
   const isBlocked = subscription?.status === 'blocked';
 
   const quickActions = [
-    { icon: 'cube-outline', color: colors.secondary, label: 'Products', onPress: () => navigation.navigate('SellerProductManagement'), badge: stats.totalProducts },
-    { icon: 'receipt-outline', color: colors.info, label: 'Orders', onPress: () => navigation.navigate('SellerOrderManagement'), badge: stats.pendingOrders },
-    { icon: 'storefront-outline', color: colors.primary, label: 'Store', onPress: () => navigation.navigate('SellerStoreSettings') },
-    { icon: 'car-outline', color: colors.warning, label: 'Shipping', onPress: () => navigation.navigate('SellerShippingConfiguration') },
+    { icon: 'cube-outline', color: palette.colors.secondary, label: 'Products', onPress: () => navigation.navigate('SellerProductManagement'), badge: stats.totalProducts },
+    { icon: 'receipt-outline', color: palette.colors.info, label: 'Orders', onPress: () => navigation.navigate('SellerOrderManagement'), badge: stats.pendingOrders },
+    { icon: 'storefront-outline', color: palette.colors.primary, label: 'Store', onPress: () => navigation.navigate('SellerStoreSettings') },
+    { icon: 'car-outline', color: palette.colors.warning, label: 'Shipping', onPress: () => navigation.navigate('SellerShippingConfiguration') },
     { icon: 'pricetag-outline', color: '#f97316', label: 'Coupons', onPress: () => navigation.navigate('SellerCouponManagement') },
-    { icon: 'bar-chart-outline', color: colors.success, label: 'Analytics', onPress: () => navigation.navigate('SellerAnalytics') },
+    { icon: 'bar-chart-outline', color: palette.colors.success, label: 'Analytics', onPress: () => navigation.navigate('SellerAnalytics') },
     { icon: 'globe-outline', color: '#0ea5e9', label: 'Subdomain', onPress: () => navigation.navigate('SellerSubdomainManagement') },
     { icon: 'diamond-outline', color: '#8b5cf6', label: 'Plan', onPress: () => navigation.navigate('SellerSubscription') },
   ];
@@ -135,26 +137,26 @@ export default function SellerDashboardScreen({ navigation }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}
       >
         {/* Subscription Warnings */}
         {isBlocked && (
           <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
-            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: `${colors.error}25` }}>
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${palette.colors.error}10`, borderWidth: 1, borderColor: `${palette.colors.error}25` }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Ionicons name="lock-closed" size={16} color={colors.error} />
-              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.error, flex: 1 }}>Store Blocked — Subscribe to reactivate</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.error} />
+              <Ionicons name="lock-closed" size={16} color={palette.colors.error} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: palette.colors.error, flex: 1 }}>Store Blocked — Subscribe to reactivate</Text>
+              <Ionicons name="chevron-forward" size={14} color={palette.colors.error} />
             </View>
           </TouchableOpacity>
         )}
         {isTrialExpiring && !isBlocked && (
           <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} activeOpacity={0.8}
-            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}25` }}>
+            style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: `${palette.colors.warning}10`, borderWidth: 1, borderColor: `${palette.colors.warning}25` }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Ionicons name="alert-circle" size={16} color={colors.warning} />
-              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.warning, flex: 1 }}>Trial expiring in {subscription?.trialDaysRemaining} days — Subscribe now</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.warning} />
+              <Ionicons name="alert-circle" size={16} color={palette.colors.warning} />
+              <Text style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: palette.colors.warning, flex: 1 }}>Trial expiring in {subscription?.trialDaysRemaining} days — Subscribe now</Text>
+              <Ionicons name="chevron-forward" size={14} color={palette.colors.warning} />
             </View>
           </TouchableOpacity>
         )}
@@ -163,7 +165,7 @@ export default function SellerDashboardScreen({ navigation }) {
         <GlassPanel variant="strong" style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.headerAvatar}>
-              <Ionicons name="storefront" size={22} color={colors.white} />
+              <Ionicons name="storefront" size={22} color={palette.colors.white} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.headerGreeting}>Welcome back</Text>
@@ -176,13 +178,13 @@ export default function SellerDashboardScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.viewStoreBtnText}>View Store</Text>
-                <Ionicons name="open-outline" size={14} color={colors.primary} />
+                <Ionicons name="open-outline" size={14} color={palette.colors.primary} />
               </TouchableOpacity>
             )}
           </View>
           {store?.name && (
             <View style={styles.storeNameRow}>
-              <Ionicons name="business-outline" size={14} color={colors.textSecondary} />
+              <Ionicons name="business-outline" size={14} color={palette.colors.textSecondary} />
               <Text style={styles.storeName}>{store.name}</Text>
             </View>
           )}
@@ -190,10 +192,10 @@ export default function SellerDashboardScreen({ navigation }) {
 
         {/* ── Stats Grid ── */}
         <View style={styles.statsGrid}>
-          <MiniStat icon="cube-outline" iconColor={colors.secondary} label="Products" value={stats.totalProducts} onPress={() => navigation.navigate('SellerProductManagement')} />
-          <MiniStat icon="receipt-outline" iconColor={colors.info} label="Orders" value={stats.totalOrders} onPress={() => navigation.navigate('SellerOrderManagement')} />
-          <MiniStat icon="cash-outline" iconColor={colors.success} label="Revenue" value={`$${stats.revenue.toLocaleString()}`} />
-          <MiniStat icon="time-outline" iconColor={colors.warning} label="Pending" value={stats.pendingOrders} onPress={() => navigation.navigate('SellerOrderManagement')} />
+          <MiniStat icon="cube-outline" iconColor={palette.colors.secondary} label="Products" value={stats.totalProducts} onPress={() => navigation.navigate('SellerProductManagement')} />
+          <MiniStat icon="receipt-outline" iconColor={palette.colors.info} label="Orders" value={stats.totalOrders} onPress={() => navigation.navigate('SellerOrderManagement')} />
+          <MiniStat icon="cash-outline" iconColor={palette.colors.success} label="Revenue" value={`$${stats.revenue.toLocaleString()}`} />
+          <MiniStat icon="time-outline" iconColor={palette.colors.warning} label="Pending" value={stats.pendingOrders} onPress={() => navigation.navigate('SellerOrderManagement')} />
         </View>
 
         {/* ── Quick Actions ── */}
@@ -234,8 +236,8 @@ export default function SellerDashboardScreen({ navigation }) {
 
       {/* AI FAB */}
       <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
-        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
-        <Ionicons name="sparkles" size={22} color={colors.white} />
+        style={{ position: 'absolute', bottom: 24, right: 20, width: 52, height: 52, borderRadius: 16, backgroundColor: palette.colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: palette.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }}>
+        <Ionicons name="sparkles" size={22} color={palette.colors.white} />
       </TouchableOpacity>
 
       {/* AI ChatBot */}
@@ -245,7 +247,7 @@ export default function SellerDashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
 
   /* Header */
@@ -253,19 +255,19 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   headerAvatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center',
   },
   headerInfo: { flex: 1, marginLeft: spacing.md },
-  headerGreeting: { fontSize: fontSize.sm, color: colors.textSecondary },
-  headerName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  headerGreeting: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  headerName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
   viewStoreBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: `${colors.primary}12`, paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    backgroundColor: `${p.colors.primary}12`, paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
   },
-  viewStoreBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
+  viewStoreBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.primary },
   storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },
-  storeName: { fontSize: fontSize.sm, color: colors.textSecondary },
+  storeName: { fontSize: fontSize.sm, color: p.colors.textSecondary },
 
   /* Stats */
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.md },
@@ -273,28 +275,28 @@ const styles = StyleSheet.create({
   miniStatInner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
   miniStatIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm },
   miniStatContent: { flex: 1 },
-  miniStatValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  miniStatLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+  miniStatValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  miniStatLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary, marginTop: 1 },
 
   /* Quick Actions */
   sectionContainer: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   quickTile: { width: (SCREEN_WIDTH - spacing.lg * 2 - TILE_GAP * 2) / 3 },
   quickTileInner: { padding: spacing.md, alignItems: 'center', minHeight: 90 },
   quickTileIcon: {
     width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xs,
   },
-  quickTileLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.text, textAlign: 'center', marginBottom: 2 },
+  quickTileLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: p.colors.text, textAlign: 'center', marginBottom: 2 },
   tileBadge: {
     position: 'absolute', top: -4, right: -6,
     minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4,
   },
-  tileBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
+  tileBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: p.colors.white },
 
   /* Orders */
   ordersPanel: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg },
   ordersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  viewAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  viewAllText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   ordersContainer: { gap: spacing.sm },
 });

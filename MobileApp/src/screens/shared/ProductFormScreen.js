@@ -15,9 +15,8 @@ import SmartTagGenerator from '../../components/SmartTagGenerator';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const getFormMode = (product) => product && product._id ? 'edit' : 'create';
 
@@ -31,6 +30,9 @@ export const validateProductForm = (data) => {
 };
 
 export default function ProductFormScreen({ navigation, route }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { product, isAdmin } = route.params || {};
   const isEditMode = getFormMode(product) === 'edit';
 
@@ -78,12 +80,12 @@ export default function ProductFormScreen({ navigation, route }) {
     const hasError = touched[field] && errors[field];
     return (
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label} {required && <Text style={{ color: colors.error }}>*</Text>}</Text>
+        <Text style={styles.label}>{label} {required && <Text style={{ color: palette.colors.error }}>*</Text>}</Text>
         <View style={[styles.inputContainer, multiline && { alignItems: 'flex-start' }, hasError && styles.inputError]}>
           {prefix && <Text style={styles.inputPrefix}>{prefix}</Text>}
           <TextInput style={[styles.input, multiline && styles.textArea, prefix && { paddingLeft: spacing.xs }]}
             value={formData[field]} onChangeText={(v) => updateField(field, v)} onBlur={() => setTouched(p => ({ ...p, [field]: true }))}
-            placeholder={placeholder} placeholderTextColor={colors.textSecondary} keyboardType={keyboardType}
+            placeholder={placeholder} placeholderTextColor={palette.colors.textSecondary} keyboardType={keyboardType}
             multiline={multiline} numberOfLines={multiline ? 4 : 1} textAlignVertical={multiline ? 'top' : 'center'} />
         </View>
         {hasError && <Text style={styles.errorText}>{errors[field]}</Text>}
@@ -96,7 +98,7 @@ export default function ProductFormScreen({ navigation, route }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           <GlassPanel variant="floating" style={styles.header}>
-            <View style={styles.headerIcon}><Ionicons name={isEditMode ? 'create-outline' : 'add-circle-outline'} size={28} color={colors.primary} /></View>
+            <View style={styles.headerIcon}><Ionicons name={isEditMode ? 'create-outline' : 'add-circle-outline'} size={28} color={palette.colors.primary} /></View>
             <Text style={styles.headerTitle}>{isEditMode ? 'Edit Product' : 'Add New Product'}</Text>
             <Text style={styles.headerSubtitle}>{isEditMode ? 'Update your product details' : 'Fill in the details'}</Text>
           </GlassPanel>
@@ -114,7 +116,7 @@ export default function ProductFormScreen({ navigation, route }) {
               ))}
               {images.length < 5 && (
                 <TouchableOpacity style={styles.addImageButton} onPress={pickImage} activeOpacity={0.7}>
-                  <Ionicons name="camera-outline" size={28} color={colors.primary} />
+                  <Ionicons name="camera-outline" size={28} color={palette.colors.primary} />
                   <Text style={styles.addImageText}>Add Photo</Text>
                 </TouchableOpacity>
               )}
@@ -142,9 +144,9 @@ export default function ProductFormScreen({ navigation, route }) {
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
               <View style={[styles.inputContainer, { flex: 1 }]}>
                 <TextInput style={styles.input} value={newColor} onChangeText={setNewColor}
-                  placeholder="e.g., Red" placeholderTextColor={colors.textSecondary} />
+                  placeholder="e.g., Red" placeholderTextColor={palette.colors.textSecondary} />
               </View>
-              <TouchableOpacity style={{ backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
+              <TouchableOpacity style={{ backgroundColor: palette.colors.primary, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, justifyContent: 'center' }}
                 onPress={() => { if (newColor.trim() && !productColors.includes(newColor.trim())) { setProductColors(prev => [...prev, newColor.trim()]); setNewColor(''); } }}>
                 <Ionicons name="add" size={20} color="white" />
               </TouchableOpacity>
@@ -153,9 +155,9 @@ export default function ProductFormScreen({ navigation, route }) {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {productColors.map((c, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 }}>
-                    <Text style={{ fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.medium }}>{c}</Text>
+                    <Text style={{ fontSize: fontSize.sm, color: palette.colors.primary, fontWeight: fontWeight.medium }}>{c}</Text>
                     <TouchableOpacity onPress={() => setProductColors(prev => prev.filter((_, idx) => idx !== i))}>
-                      <Ionicons name="close-circle" size={16} color={colors.error} />
+                      <Ionicons name="close-circle" size={16} color={palette.colors.error} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -189,30 +191,30 @@ export default function ProductFormScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   header: { alignItems: 'center', margin: spacing.lg, padding: spacing.xl },
   headerIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  headerTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.xs },
-  headerSubtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  headerTitle: { ...typography.h2, color: p.colors.text, marginBottom: spacing.xs },
+  headerSubtitle: { ...typography.body, color: p.colors.textSecondary, textAlign: 'center' },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.lg },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { ...typography.h4, color: p.colors.text, marginBottom: spacing.md },
   imagesContainer: { gap: spacing.md },
   imageWrapper: { position: 'relative' },
   imagePreview: { width: 100, height: 100, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.06)' },
-  removeImageButton: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center' },
-  addImageButton: { width: 100, height: 100, borderRadius: borderRadius.lg, borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.08)' },
-  addImageText: { ...typography.caption, color: colors.primary, marginTop: spacing.xs },
+  removeImageButton: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: p.colors.error, justifyContent: 'center', alignItems: 'center' },
+  addImageButton: { width: 100, height: 100, borderRadius: borderRadius.lg, borderWidth: 2, borderColor: p.colors.primary, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.08)' },
+  addImageText: { ...typography.caption, color: p.colors.primary, marginTop: spacing.xs },
   inputGroup: { marginBottom: spacing.lg },
-  label: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.sm },
+  label: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.sm },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  inputError: { borderColor: colors.error },
-  inputPrefix: { ...typography.body, color: colors.textSecondary, paddingLeft: spacing.md },
-  input: { flex: 1, padding: spacing.md, fontSize: fontSize.md, color: colors.text },
+  inputError: { borderColor: p.colors.error },
+  inputPrefix: { ...typography.body, color: p.colors.textSecondary, paddingLeft: spacing.md },
+  input: { flex: 1, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text },
   textArea: { height: 100, textAlignVertical: 'top' },
-  errorText: { ...typography.caption, color: colors.error, marginTop: spacing.xs },
+  errorText: { ...typography.caption, color: p.colors.error, marginTop: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },
   submitContainer: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
-  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
+  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
   submitButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'white' },
 });

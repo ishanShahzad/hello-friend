@@ -15,11 +15,13 @@ import Loader from '../../components/common/Loader';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function SellerStoreSettingsScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,10 +113,10 @@ export default function SellerStoreSettingsScreen({ navigation }) {
   return (
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
         
         <GlassPanel variant="floating" style={styles.header}>
-          <View style={styles.headerIcon}><Ionicons name="settings-outline" size={28} color={colors.primary} /></View>
+          <View style={styles.headerIcon}><Ionicons name="settings-outline" size={28} color={palette.colors.primary} /></View>
           <Text style={styles.headerTitle}>Store Settings</Text>
           <Text style={styles.headerSubtitle}>Manage your store information</Text>
         </GlassPanel>
@@ -123,10 +125,10 @@ export default function SellerStoreSettingsScreen({ navigation }) {
         <GlassPanel variant="card" style={styles.section}>
           <Text style={styles.sectionTitle}>Store Verification</Text>
           <View style={[styles.verificationCard, {
-            borderLeftColor: verificationStatus === 'verified' ? colors.success : verificationStatus === 'pending' ? colors.warning : colors.textSecondary,
+            borderLeftColor: verificationStatus === 'verified' ? palette.colors.success : verificationStatus === 'pending' ? palette.colors.warning : palette.colors.textSecondary,
           }]}>
             <Ionicons name={verificationStatus === 'verified' ? 'shield-checkmark' : verificationStatus === 'pending' ? 'time-outline' : 'shield-outline'} size={32}
-              color={verificationStatus === 'verified' ? colors.success : verificationStatus === 'pending' ? colors.warning : colors.textSecondary} />
+              color={verificationStatus === 'verified' ? palette.colors.success : verificationStatus === 'pending' ? palette.colors.warning : palette.colors.textSecondary} />
             <View style={{ flex: 1, marginLeft: spacing.md }}>
               <Text style={styles.verificationTitle}>
                 {verificationStatus === 'verified' ? 'Verified Store' : verificationStatus === 'pending' ? 'Pending Review' : 'Not Verified'}
@@ -154,7 +156,7 @@ export default function SellerStoreSettingsScreen({ navigation }) {
               <Image source={{ uri: banner }} style={styles.bannerImage} contentFit="cover" />
             ) : (
               <View style={styles.bannerPlaceholder}>
-                <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
+                <Ionicons name="image-outline" size={32} color={palette.colors.textSecondary} />
                 <Text style={styles.pickerText}>Tap to add banner</Text>
               </View>
             )}
@@ -164,7 +166,7 @@ export default function SellerStoreSettingsScreen({ navigation }) {
             {logo ? (
               <Image source={{ uri: logo }} style={styles.logoImage} contentFit="cover" />
             ) : (
-              <View style={styles.logoPlaceholder}><Ionicons name="storefront-outline" size={32} color={colors.textSecondary} /></View>
+              <View style={styles.logoPlaceholder}><Ionicons name="storefront-outline" size={32} color={palette.colors.textSecondary} /></View>
             )}
           </TouchableOpacity>
         </GlassPanel>
@@ -172,14 +174,14 @@ export default function SellerStoreSettingsScreen({ navigation }) {
         {/* Store Details */}
         <GlassPanel variant="card" style={styles.section}>
           <Text style={styles.sectionTitle}>Store Details</Text>
-          <Text style={styles.label}>Store Name <Text style={{ color: colors.error }}>*</Text></Text>
+          <Text style={styles.label}>Store Name <Text style={{ color: palette.colors.error }}>*</Text></Text>
           <TextInput style={[styles.input, errors.storeName && styles.inputError]} value={formData.storeName}
-            onChangeText={(v) => updateField('storeName', v)} placeholder="Enter store name" placeholderTextColor={colors.textSecondary} />
+            onChangeText={(v) => updateField('storeName', v)} placeholder="Enter store name" placeholderTextColor={palette.colors.textSecondary} />
           {errors.storeName && <Text style={styles.errorText}>{errors.storeName}</Text>}
           
           <Text style={[styles.label, { marginTop: spacing.lg }]}>Description</Text>
           <TextInput style={[styles.input, styles.textArea]} value={formData.description}
-            onChangeText={(v) => updateField('description', v)} placeholder="Describe your store..." placeholderTextColor={colors.textSecondary}
+            onChangeText={(v) => updateField('description', v)} placeholder="Describe your store..." placeholderTextColor={palette.colors.textSecondary}
             multiline numberOfLines={4} textAlignVertical="top" />
         </GlassPanel>
 
@@ -200,18 +202,18 @@ export default function SellerStoreSettingsScreen({ navigation }) {
           <GlassPanel variant="strong" style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Apply for Verification</Text>
-              <TouchableOpacity onPress={() => setShowVerificationModal(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowVerificationModal(false)}><Ionicons name="close" size={24} color={palette.colors.text} /></TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={styles.label}>Contact Email <Text style={{ color: colors.error }}>*</Text></Text>
+              <Text style={styles.label}>Contact Email <Text style={{ color: palette.colors.error }}>*</Text></Text>
               <TextInput style={styles.input} value={verificationForm.contactEmail}
-                onChangeText={(v) => setVerificationForm(p => ({ ...p, contactEmail: v }))} placeholder="your@email.com" placeholderTextColor={colors.textSecondary} keyboardType="email-address" autoCapitalize="none" />
-              <Text style={[styles.label, { marginTop: spacing.md }]}>Contact Phone <Text style={{ color: colors.error }}>*</Text></Text>
+                onChangeText={(v) => setVerificationForm(p => ({ ...p, contactEmail: v }))} placeholder="your@email.com" placeholderTextColor={palette.colors.textSecondary} keyboardType="email-address" autoCapitalize="none" />
+              <Text style={[styles.label, { marginTop: spacing.md }]}>Contact Phone <Text style={{ color: palette.colors.error }}>*</Text></Text>
               <TextInput style={styles.input} value={verificationForm.contactPhone}
-                onChangeText={(v) => setVerificationForm(p => ({ ...p, contactPhone: v }))} placeholder="+1 234 567 8900" placeholderTextColor={colors.textSecondary} keyboardType="phone-pad" />
-              <Text style={[styles.label, { marginTop: spacing.md }]}>Message <Text style={{ color: colors.error }}>*</Text></Text>
+                onChangeText={(v) => setVerificationForm(p => ({ ...p, contactPhone: v }))} placeholder="+1 234 567 8900" placeholderTextColor={palette.colors.textSecondary} keyboardType="phone-pad" />
+              <Text style={[styles.label, { marginTop: spacing.md }]}>Message <Text style={{ color: palette.colors.error }}>*</Text></Text>
               <TextInput style={[styles.input, styles.textArea]} value={verificationForm.applicationMessage}
-                onChangeText={(v) => setVerificationForm(p => ({ ...p, applicationMessage: v }))} placeholder="Why should your store be verified?" placeholderTextColor={colors.textSecondary} multiline numberOfLines={5} textAlignVertical="top" />
+                onChangeText={(v) => setVerificationForm(p => ({ ...p, applicationMessage: v }))} placeholder="Why should your store be verified?" placeholderTextColor={palette.colors.textSecondary} multiline numberOfLines={5} textAlignVertical="top" />
               <TouchableOpacity style={[styles.submitButton, submittingVerification && { opacity: 0.6 }, { marginTop: spacing.lg }]} onPress={submitVerificationApplication} disabled={submittingVerification} activeOpacity={0.8}>
                 {submittingVerification ? <ActivityIndicator color="white" /> : (
                   <><Ionicons name="shield-checkmark-outline" size={20} color="white" /><Text style={styles.submitButtonText}>Submit Application</Text></>
@@ -225,36 +227,36 @@ export default function SellerStoreSettingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   header: { alignItems: 'center', margin: spacing.lg, padding: spacing.xl },
   headerIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  headerTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.xs },
-  headerSubtitle: { ...typography.body, color: colors.textSecondary },
+  headerTitle: { ...typography.h2, color: p.colors.text, marginBottom: spacing.xs },
+  headerSubtitle: { ...typography.body, color: p.colors.textSecondary },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.lg },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { ...typography.h4, color: p.colors.text, marginBottom: spacing.md },
   verificationCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)', borderLeftWidth: 3 },
-  verificationTitle: { ...typography.bodySemibold, color: colors.text },
-  verificationText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  applyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md, marginTop: spacing.md },
+  verificationTitle: { ...typography.bodySemibold, color: p.colors.text },
+  verificationText: { ...typography.bodySmall, color: p.colors.textSecondary, marginTop: 2 },
+  applyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.md, marginTop: spacing.md },
   applyBtnText: { ...typography.bodySemibold, color: 'white' },
-  label: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.sm },
-  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  inputError: { borderColor: colors.error },
+  label: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.sm },
+  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: borderRadius.lg, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  inputError: { borderColor: p.colors.error },
   textArea: { minHeight: 100 },
-  errorText: { ...typography.caption, color: colors.error, marginTop: spacing.xs },
+  errorText: { ...typography.caption, color: p.colors.error, marginTop: spacing.xs },
   bannerPicker: { borderRadius: borderRadius.xl, overflow: 'hidden', marginBottom: spacing.lg },
   bannerImage: { width: '100%', height: 160, borderRadius: borderRadius.xl },
   bannerPlaceholder: { width: '100%', height: 160, borderRadius: borderRadius.xl, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderStyle: 'dashed' },
-  pickerText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.sm },
+  pickerText: { ...typography.bodySmall, color: p.colors.textSecondary, marginTop: spacing.sm },
   logoPicker: { alignSelf: 'flex-start' },
   logoImage: { width: 80, height: 80, borderRadius: 40 },
   logoPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderStyle: 'dashed' },
   submitContainer: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
-  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
+  submitButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: borderRadius.xl, paddingVertical: spacing.lg },
   submitButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'white' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: { maxHeight: '85%', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  modalTitle: { ...typography.h3, color: colors.text },
+  modalTitle: { ...typography.h3, color: p.colors.text },
 });

@@ -12,21 +12,23 @@ import api from '../../config/api';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import {
-  colors, spacing, fontSize, borderRadius, fontWeight, typography, glass,
-} from '../../styles/theme';
+import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const STATUS_CONFIG = {
-  pending: { color: colors.warning, icon: 'time-outline', label: 'Pending' },
-  processing: { color: colors.info, icon: 'sync-outline', label: 'Processing' },
-  shipped: { color: colors.primary, icon: 'airplane-outline', label: 'Shipped' },
-  delivered: { color: colors.success, icon: 'checkmark-circle-outline', label: 'Delivered' },
-  cancelled: { color: colors.error, icon: 'close-circle-outline', label: 'Cancelled' },
+  pending: { color: palette.colors.warning, icon: 'time-outline', label: 'Pending' },
+  processing: { color: palette.colors.info, icon: 'sync-outline', label: 'Processing' },
+  shipped: { color: palette.colors.primary, icon: 'airplane-outline', label: 'Shipped' },
+  delivered: { color: palette.colors.success, icon: 'checkmark-circle-outline', label: 'Delivered' },
+  cancelled: { color: palette.colors.error, icon: 'close-circle-outline', label: 'Cancelled' },
 };
 
 const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 export default function OrderDetailManagementScreen({ route, navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { orderId, isAdmin } = route.params;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
   if (!order) return (
     <GlassBackground>
       <View style={styles.errorContainer}>
-        <Ionicons name="receipt-outline" size={64} color={colors.textSecondary} />
+        <Ionicons name="receipt-outline" size={64} color={palette.colors.textSecondary} />
         <Text style={styles.errorTitle}>Order not found</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Go Back</Text>
@@ -78,7 +80,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
   return (
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
         
         <GlassPanel variant="floating" style={styles.header}>
           <View>
@@ -121,7 +123,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
               { icon: 'location-outline', text: `${order.shippingAddress?.address || ''}, ${order.shippingAddress?.city || ''}` },
             ].map((info, i) => (
               <View key={i} style={styles.infoRow}>
-                <Ionicons name={info.icon} size={18} color={colors.primary} />
+                <Ionicons name={info.icon} size={18} color={palette.colors.primary} />
                 <Text style={styles.infoText}>{info.text}</Text>
               </View>
             ))}
@@ -137,7 +139,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
                 <Image source={{ uri: item.product.images[0] }} style={styles.itemImage} contentFit="cover" />
               ) : (
                 <View style={[styles.itemImage, { justifyContent: 'center', alignItems: 'center' }]}>
-                  <Ionicons name="cube-outline" size={24} color={colors.textSecondary} />
+                  <Ionicons name="cube-outline" size={24} color={palette.colors.textSecondary} />
                 </View>
               )}
               <View style={{ flex: 1, marginLeft: spacing.md }}>
@@ -169,7 +171,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
                 return (
                   <TouchableOpacity key={status} style={[styles.statusOption, isSelected && { borderColor: config.color, backgroundColor: config.color + '15' }]}
                     onPress={() => updateStatus(status)} disabled={updating || isCurrent} activeOpacity={0.7}>
-                    <Ionicons name={config.icon} size={20} color={isSelected ? config.color : colors.textSecondary} />
+                    <Ionicons name={config.icon} size={20} color={isSelected ? config.color : palette.colors.textSecondary} />
                     <Text style={[styles.statusOptionText, isSelected && { color: config.color }]}>{config.label}</Text>
                     {isCurrent && <View style={[styles.currentBadge, { backgroundColor: config.color }]}><Text style={styles.currentBadgeText}>Current</Text></View>}
                   </TouchableOpacity>
@@ -185,43 +187,43 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxl },
-  errorTitle: { ...typography.h3, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.xl },
-  backButton: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg },
+  errorTitle: { ...typography.h3, color: p.colors.text, marginTop: spacing.lg, marginBottom: spacing.xl },
+  backButton: { backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg },
   backButtonText: { ...typography.bodySemibold, color: 'white' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', margin: spacing.lg, padding: spacing.lg },
-  orderIdLabel: { ...typography.body, color: colors.textSecondary },
-  orderId: { ...typography.h3, color: colors.text },
+  orderIdLabel: { ...typography.body, color: p.colors.textSecondary },
+  orderId: { ...typography.h3, color: p.colors.text },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, gap: spacing.xs },
   statusText: { ...typography.bodySemibold, color: 'white', fontSize: fontSize.sm },
   section: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.lg },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { ...typography.h4, color: p.colors.text, marginBottom: spacing.md },
   timelineItem: { flexDirection: 'row', minHeight: 50 },
   timelineLeft: { alignItems: 'center', width: 30 },
   timelineDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   timelineDotCurrent: { borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)' },
   timelineLine: { width: 2, flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: spacing.xs },
-  timelineLabel: { ...typography.body, color: colors.textSecondary, paddingLeft: spacing.md, paddingBottom: spacing.md },
-  timelineLabelCurrent: { ...typography.bodySemibold, color: colors.text },
+  timelineLabel: { ...typography.body, color: p.colors.textSecondary, paddingLeft: spacing.md, paddingBottom: spacing.md },
+  timelineLabelCurrent: { ...typography.bodySemibold, color: p.colors.text },
   infoCard: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: borderRadius.lg, padding: spacing.md, gap: spacing.md },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  infoText: { ...typography.body, color: colors.text, flex: 1 },
+  infoText: { ...typography.body, color: p.colors.text, flex: 1 },
   itemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.sm },
   itemImage: { width: 60, height: 60, borderRadius: borderRadius.md, backgroundColor: 'rgba(255,255,255,0.04)' },
-  itemName: { ...typography.bodySemibold, color: colors.text, marginBottom: spacing.xs },
-  itemQty: { ...typography.bodySmall, color: colors.textSecondary },
-  itemTotal: { ...typography.bodySemibold, color: colors.primary },
+  itemName: { ...typography.bodySemibold, color: p.colors.text, marginBottom: spacing.xs },
+  itemQty: { ...typography.bodySmall, color: p.colors.textSecondary },
+  itemTotal: { ...typography.bodySemibold, color: p.colors.primary },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm },
-  summaryLabel: { ...typography.body, color: colors.textSecondary },
-  summaryValue: { ...typography.body, color: colors.text },
+  summaryLabel: { ...typography.body, color: p.colors.textSecondary },
+  summaryValue: { ...typography.body, color: p.colors.text },
   summaryTotal: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', marginTop: spacing.sm, paddingTop: spacing.md },
-  totalLabel: { ...typography.bodySemibold, color: colors.text },
-  totalValue: { ...typography.h3, color: colors.primary },
+  totalLabel: { ...typography.bodySemibold, color: p.colors.text },
+  totalValue: { ...typography.h3, color: p.colors.primary },
   statusOptions: { gap: spacing.sm },
   statusOption: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.xl, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)' },
-  statusOptionText: { ...typography.bodySemibold, color: colors.textSecondary, flex: 1 },
+  statusOptionText: { ...typography.bodySemibold, color: p.colors.textSecondary, flex: 1 },
   currentBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.md },
   currentBadgeText: { ...typography.caption, color: 'white', fontWeight: fontWeight.bold },
 });
