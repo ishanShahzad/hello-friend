@@ -11,9 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function LoginScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { login, googleSignIn } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -51,10 +55,10 @@ export default function LoginScreen({ navigation }) {
           {/* Header */}
           <View style={styles.topHeader}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color={palette.colors.text} />
             </TouchableOpacity>
             <View style={styles.logoRow}>
-              <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={colors.white} /></View>
+              <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={palette.colors.white} /></View>
               <Text style={styles.logoText}>Tortrose</Text>
             </View>
             <View style={{ width: 40 }} />
@@ -72,9 +76,9 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email Address</Text>
               <View style={[styles.inputContainer, emailFocused && styles.inputFocused, errors.email && styles.inputError]}>
-                <Ionicons name="mail-outline" size={20} color={emailFocused ? colors.primary : colors.grayLight} style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={emailFocused ? palette.colors.primary : palette.colors.grayLight} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input} placeholder="john@example.com" placeholderTextColor={colors.grayLight}
+                  style={styles.input} placeholder="john@example.com" placeholderTextColor={palette.colors.grayLight}
                   value={email} onChangeText={(t) => { setEmail(t); setErrors(e => ({...e, email: null})); }}
                   keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
                   onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
@@ -87,15 +91,15 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
               <View style={[styles.inputContainer, passwordFocused && styles.inputFocused, errors.password && styles.inputError]}>
-                <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? colors.primary : colors.grayLight} style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? palette.colors.primary : palette.colors.grayLight} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input} placeholder="Enter your password" placeholderTextColor={colors.grayLight}
+                  style={styles.input} placeholder="Enter your password" placeholderTextColor={palette.colors.grayLight}
                   value={password} onChangeText={(t) => { setPassword(t); setErrors(e => ({...e, password: null})); }}
                   secureTextEntry={!showPassword}
                   onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.grayLight} />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={palette.colors.grayLight} />
                 </TouchableOpacity>
               </View>
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
@@ -106,8 +110,8 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} onPress={handleLogin} disabled={isLoading} activeOpacity={0.85}>
-              {isLoading ? <ActivityIndicator color={colors.white} size="small" /> : (
-                <><Text style={styles.loginButtonText}>Sign In</Text><Ionicons name="arrow-forward" size={20} color={colors.white} /></>
+              {isLoading ? <ActivityIndicator color={palette.colors.white} size="small" /> : (
+                <><Text style={styles.loginButtonText}>Sign In</Text><Ionicons name="arrow-forward" size={20} color={palette.colors.white} /></>
               )}
             </TouchableOpacity>
 
@@ -134,42 +138,42 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingBottom: spacing.xxxl },
   topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.xxxl, paddingBottom: spacing.sm },
   backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroSection: { paddingHorizontal: spacing.xl, paddingVertical: spacing.xxl, paddingBottom: spacing.xl },
-  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.sm },
-  heroSubtitle: { fontSize: fontSize.md, color: colors.textSecondary, lineHeight: 22 },
+  heroTitle: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: p.colors.text, marginBottom: spacing.sm },
+  heroSubtitle: { fontSize: fontSize.md, color: p.colors.textSecondary, lineHeight: 22 },
   card: { marginHorizontal: spacing.lg, padding: spacing.xxl, marginBottom: spacing.lg },
   inputGroup: { marginBottom: spacing.lg },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginBottom: spacing.sm, letterSpacing: 0.3 },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text, marginBottom: spacing.sm, letterSpacing: 0.3 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: borderRadius.xl, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', paddingHorizontal: spacing.md, height: 56 },
-  inputFocused: { borderColor: colors.primary, backgroundColor: 'rgba(255,255,255,0.8)' },
-  inputError: { borderColor: colors.error, backgroundColor: colors.errorSubtle },
+  inputFocused: { borderColor: p.colors.primary, backgroundColor: 'rgba(255,255,255,0.8)' },
+  inputError: { borderColor: p.colors.error, backgroundColor: p.colors.errorSubtle },
   inputIcon: { marginRight: spacing.sm },
-  input: { flex: 1, fontSize: fontSize.md, color: colors.text, paddingVertical: 0 },
+  input: { flex: 1, fontSize: fontSize.md, color: p.colors.text, paddingVertical: 0 },
   eyeButton: { padding: spacing.sm },
-  errorText: { fontSize: fontSize.sm, color: colors.error, marginTop: spacing.xs, marginLeft: spacing.xs },
+  errorText: { fontSize: fontSize.sm, color: p.colors.error, marginTop: spacing.xs, marginLeft: spacing.xs },
   forgotContainer: { alignSelf: 'flex-end', marginBottom: spacing.lg, marginTop: -spacing.sm },
-  forgotText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
-  loginButton: { flexDirection: 'row', backgroundColor: colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.xl, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.primaryMd, marginBottom: spacing.xl },
+  forgotText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
+  loginButton: { flexDirection: 'row', backgroundColor: p.colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.xl, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, ...shadows.primaryMd, marginBottom: spacing.xl },
   loginButtonDisabled: { opacity: 0.7 },
-  loginButtonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.bold },
+  loginButtonText: { color: p.colors.white, fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   divider: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
-  dividerText: { marginHorizontal: spacing.md, fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  dividerText: { marginHorizontal: spacing.md, fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
   googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', borderRadius: borderRadius.xl, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: spacing.sm },
   googleButtonDisabled: { opacity: 0.7 },
   googleIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#4285F4', alignItems: 'center', justifyContent: 'center' },
-  googleIconText: { color: colors.white, fontSize: fontSize.md, fontWeight: fontWeight.bold, lineHeight: 20 },
-  googleButtonText: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.semibold },
+  googleIconText: { color: p.colors.white, fontSize: fontSize.md, fontWeight: fontWeight.bold, lineHeight: 20 },
+  googleButtonText: { fontSize: fontSize.md, color: p.colors.text, fontWeight: fontWeight.semibold },
   signUpRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  signUpText: { fontSize: fontSize.md, color: colors.textSecondary },
-  signUpLink: { fontSize: fontSize.md, color: colors.primary, fontWeight: fontWeight.bold },
-  footerText: { fontSize: fontSize.xs, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xxl, marginTop: spacing.md },
+  signUpText: { fontSize: fontSize.md, color: p.colors.textSecondary },
+  signUpLink: { fontSize: fontSize.md, color: p.colors.primary, fontWeight: fontWeight.bold },
+  footerText: { fontSize: fontSize.xs, color: p.colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xxl, marginTop: spacing.md },
 });

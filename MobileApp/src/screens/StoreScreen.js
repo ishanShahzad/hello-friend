@@ -18,9 +18,13 @@ import { EmptyProducts } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import TrustScoreSheet from '../components/common/TrustScoreSheet';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function StoreScreen({ route, navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const slug = route.params?.slug || route.params?.storeSlug;
   const [store, setStore] = useState(null);
@@ -60,7 +64,7 @@ export default function StoreScreen({ route, navigation }) {
     <GlassBackground>
       <View style={styles.center}>
         <Ionicons name="storefront-outline" size={64} color="rgba(255,255,255,0.3)" />
-        <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg }}>Store not found</Text>
+        <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text, marginTop: spacing.lg }}>Store not found</Text>
         <TouchableOpacity style={styles.goBackBtn} onPress={() => navigation.goBack()}><Text style={{ color: '#fff', fontWeight: fontWeight.semibold }}>Go Back</Text></TouchableOpacity>
       </View>
     </GlassBackground>
@@ -74,7 +78,7 @@ export default function StoreScreen({ route, navigation }) {
       <View style={styles.bannerContainer}>
         {store.banner && !bannerError ? (
           <Image source={{ uri: store.banner }} style={styles.banner} contentFit="cover" cachePolicy="memory-disk" transition={200} onError={() => setBannerError(true)} />
-        ) : <View style={[styles.banner, { backgroundColor: colors.primary }]} />}
+        ) : <View style={[styles.banner, { backgroundColor: palette.colors.primary }]} />}
         <View style={styles.bannerOverlay} />
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}><Ionicons name="share-outline" size={20} color="#fff" /></TouchableOpacity>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={20} color="#fff" /></TouchableOpacity>
@@ -95,24 +99,24 @@ export default function StoreScreen({ route, navigation }) {
             {isVerified && <VerifiedBadge size="md" style={{ marginLeft: 6 }} />}
           </View>
           <TouchableOpacity onPress={() => setTrustSheetVisible(true)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(99,102,241,0.08)' }}>
-            <Ionicons name="heart" size={14} color={colors.heart} />
-            <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginLeft: 4 }}>{store.trustCount || 0} trusters</Text>
-            <Ionicons name="information-circle-outline" size={14} color={colors.primary} style={{ marginLeft: 6 }} />
+            <Ionicons name="heart" size={14} color={palette.colors.heart} />
+            <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginLeft: 4 }}>{store.trustCount || 0} trusters</Text>
+            <Ionicons name="information-circle-outline" size={14} color={palette.colors.primary} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
           {store.description && <Text style={styles.storeDescription} numberOfLines={3}>{store.description}</Text>}
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}><Ionicons name="cube-outline" size={16} color={colors.primary} /></View>
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}><Ionicons name="cube-outline" size={16} color={palette.colors.primary} /></View>
               <View><Text style={styles.statValue}>{products.length}</Text><Text style={styles.statLabel}>Products</Text></View>
             </View>
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(59,130,246,0.12)' }]}><Ionicons name="eye-outline" size={16} color={colors.info} /></View>
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(59,130,246,0.12)' }]}><Ionicons name="eye-outline" size={16} color={palette.colors.info} /></View>
               <View><Text style={styles.statValue}>{store.views || 0}</Text><Text style={styles.statLabel}>Views</Text></View>
             </View>
             {isVerified && (
               <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: 'rgba(34,197,94,0.12)' }]}><Ionicons name="shield-checkmark" size={16} color={colors.success} /></View>
+                <View style={[styles.statIcon, { backgroundColor: 'rgba(34,197,94,0.12)' }]}><Ionicons name="shield-checkmark" size={16} color={palette.colors.success} /></View>
                 <View><Text style={styles.statValue}>Verified</Text><Text style={styles.statLabel}>Store</Text></View>
               </View>
             )}
@@ -122,7 +126,7 @@ export default function StoreScreen({ route, navigation }) {
             {currentUser && <View style={{ flex: 1 }}><TrustButton storeId={store._id} storeName={store.name} initialTrustCount={store.trustCount || 0} initialIsTrusted={store.isTrusted || false} /></View>}
             {store.email && (
               <TouchableOpacity style={styles.contactButton} onPress={handleContact}>
-                <Ionicons name="mail-outline" size={18} color={colors.primary} /><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary }}>Contact</Text>
+                <Ionicons name="mail-outline" size={18} color={palette.colors.primary} /><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: palette.colors.primary }}>Contact</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -130,8 +134,8 @@ export default function StoreScreen({ route, navigation }) {
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
-        <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text }}>Products</Text>
-        <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>{products.length} items</Text>
+        <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text }}>Products</Text>
+        <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{products.length} items</Text>
       </View>
     </View>
   );
@@ -143,7 +147,7 @@ export default function StoreScreen({ route, navigation }) {
         columnWrapperStyle={styles.row} contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader} renderItem={renderProduct}
         ListEmptyComponent={() => <EmptyProducts onAdd={null} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.colors.primary]} tintColor={palette.colors.primary} />}
         showsVerticalScrollIndicator={false} initialNumToRender={8} maxToRenderPerBatch={8} windowSize={5} removeClippedSubviews
       />
       <TrustScoreSheet visible={trustSheetVisible} onClose={() => setTrustSheetVisible(false)} storeId={store?._id} storeName={store?.name} />
@@ -151,9 +155,9 @@ export default function StoreScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  goBackBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 16, marginTop: spacing.xl },
+  goBackBtn: { backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 16, marginTop: spacing.xl },
   bannerContainer: { height: 160, position: 'relative' },
   banner: { width: '100%', height: '100%' },
   bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
@@ -161,18 +165,18 @@ const styles = StyleSheet.create({
   backBtn: { position: 'absolute', top: spacing.lg, left: spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
   storeInfoCard: { marginTop: -50, padding: spacing.lg, alignItems: 'center' },
   logoContainer: { marginTop: -50, marginBottom: spacing.sm },
-  storeLogo: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: glass.bgSubtle },
-  logoPlaceholder: { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  storeLogo: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: p.glass.bgSubtle },
+  logoPlaceholder: { backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  storeName: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center' },
-  storeDescription: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xl, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: glass.borderSubtle, marginBottom: spacing.md, width: '100%' },
+  storeName: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text, textAlign: 'center' },
+  storeDescription: { fontSize: fontSize.sm, color: p.colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, lineHeight: 20 },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xl, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: p.glass.borderSubtle, marginBottom: spacing.md, width: '100%' },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   statIcon: { width: 34, height: 34, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  statValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary },
+  statValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary },
   actionsRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.md, width: '100%' },
-  contactButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: 16, borderWidth: 2, borderColor: colors.primary },
+  contactButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: 16, borderWidth: 2, borderColor: p.colors.primary },
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   productWrapper: { flex: 1, marginBottom: spacing.sm },

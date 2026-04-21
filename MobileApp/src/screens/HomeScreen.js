@@ -34,17 +34,13 @@ import TortroseLogo from '../components/common/TortroseLogo';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { 
-  colors, 
-  spacing, 
-  fontSize, 
-  borderRadius, 
-  shadows, 
-  fontWeight,
-  typography,
-} from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight, typography } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function HomeScreen({ navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { currentUser } = useAuth();
   const { fetchCart, unreadNotifCount } = useGlobal();
   const { formatPrice } = useCurrency();
@@ -226,7 +222,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('Notifications')}
               accessibilityLabel="Notifications"
             >
-              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+              <Ionicons name="notifications-outline" size={22} color={palette.colors.primary} />
               {unreadNotifCount > 0 && (
                 <View style={styles.bellBadge}>
                   <Text style={styles.bellBadgeText}>
@@ -237,12 +233,12 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
             {!currentUser ? (
               <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
-                <Ionicons name="person-outline" size={16} color={colors.primary} />
+                <Ionicons name="person-outline" size={16} color={palette.colors.primary} />
                 <Text style={styles.loginButtonText}>Sign In</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={styles.cartIconBtn} onPress={() => navigation.navigate('Cart')}>
-                <Ionicons name="bag-outline" size={22} color={colors.primary} />
+                <Ionicons name="bag-outline" size={22} color={palette.colors.primary} />
               </TouchableOpacity>
             )}
           </View>
@@ -259,11 +255,11 @@ export default function HomeScreen({ navigation }) {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-            <Ionicons name="search-outline" size={20} color={colors.grayLight} />
+            <Ionicons name="search-outline" size={20} color={palette.colors.grayLight} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search products, brands..."
-              placeholderTextColor={colors.grayLight}
+              placeholderTextColor={palette.colors.grayLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={() => setShowAutocomplete(true)}
@@ -273,12 +269,12 @@ export default function HomeScreen({ navigation }) {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => { setSearchQuery(''); handleSearch(); }}>
-                <Ionicons name="close-circle" size={20} color={colors.grayLight} />
+                <Ionicons name="close-circle" size={20} color={palette.colors.grayLight} />
               </TouchableOpacity>
             )}
           </View>
           <TouchableOpacity style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]} onPress={() => setShowFilters(true)}>
-            <Ionicons name="options-outline" size={22} color={colors.primary} />
+            <Ionicons name="options-outline" size={22} color={palette.colors.primary} />
             {hasActiveFilters && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{selectedCategories.length + selectedBrands.length}</Text>
@@ -306,25 +302,25 @@ export default function HomeScreen({ navigation }) {
       {/* Quick Stats Banner */}
       <View style={styles.statsBanner}>
         <View style={styles.statItem}>
-          <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
+          <Ionicons name="shield-checkmark" size={18} color={palette.colors.primary} />
           <Text style={styles.statText}>Verified</Text>
           <Text style={styles.statLabel}>Stores</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Ionicons name="flash" size={18} color={colors.warning} />
+          <Ionicons name="flash" size={18} color={palette.colors.warning} />
           <Text style={styles.statText}>Fast</Text>
           <Text style={styles.statLabel}>Delivery</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Ionicons name="lock-closed" size={18} color={colors.success} />
+          <Ionicons name="lock-closed" size={18} color={palette.colors.success} />
           <Text style={styles.statText}>Secure</Text>
           <Text style={styles.statLabel}>Payments</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Ionicons name="refresh" size={18} color={colors.info} />
+          <Ionicons name="refresh" size={18} color={palette.colors.info} />
           <Text style={styles.statText}>Easy</Text>
           <Text style={styles.statLabel}>Returns</Text>
         </View>
@@ -344,14 +340,14 @@ export default function HomeScreen({ navigation }) {
               style={[styles.categoryChip, selectedCategories.length === 0 && styles.categoryChipActive]}
               onPress={() => { setSelectedCategories([]); applyFilters(); }}
             >
-              <Ionicons name="apps-outline" size={16} color={selectedCategories.length === 0 ? colors.white : colors.primary} />
+              <Ionicons name="apps-outline" size={16} color={selectedCategories.length === 0 ? palette.colors.white : palette.colors.primary} />
               <Text style={[styles.categoryChipText, selectedCategories.length === 0 && styles.categoryChipTextActive]}>All</Text>
             </TouchableOpacity>
             {categories.map(cat => {
               const isActive = selectedCategories.includes(cat);
               return (
                 <TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} onPress={() => { toggleCategory(cat); applyFilters(); }}>
-                  <Ionicons name={categoryIcons[cat] || categoryIcons.default} size={16} color={isActive ? colors.white : colors.primary} />
+                  <Ionicons name={categoryIcons[cat] || categoryIcons.default} size={16} color={isActive ? palette.colors.white : palette.colors.primary} />
                   <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text>
                 </TouchableOpacity>
               );
@@ -369,13 +365,13 @@ export default function HomeScreen({ navigation }) {
       {/* Browse Stores Banner */}
       <TouchableOpacity style={styles.storesBanner} onPress={() => navigation.navigate('Stores')} activeOpacity={0.9}>
         <View style={styles.storesBannerContent}>
-          <View style={styles.storesBannerIcon}><Ionicons name="storefront-outline" size={28} color={colors.white} /></View>
+          <View style={styles.storesBannerIcon}><Ionicons name="storefront-outline" size={28} color={palette.colors.white} /></View>
           <View style={styles.storesBannerText}>
             <Text style={styles.storesBannerTitle}>Explore Our Stores</Text>
             <Text style={styles.storesBannerSub}>Shop from verified sellers</Text>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={22} color={colors.white} />
+        <Ionicons name="chevron-forward" size={22} color={palette.colors.white} />
       </TouchableOpacity>
 
       {/* Products Section Header */}
@@ -397,13 +393,13 @@ export default function HomeScreen({ navigation }) {
             {selectedCategories.map(cat => (
               <TouchableOpacity key={cat} style={styles.activeFilterChip} onPress={() => toggleCategory(cat)}>
                 <Text style={styles.activeFilterText}>{cat}</Text>
-                <Ionicons name="close" size={14} color={colors.primary} />
+                <Ionicons name="close" size={14} color={palette.colors.primary} />
               </TouchableOpacity>
             ))}
             {selectedBrands.map(brand => (
               <TouchableOpacity key={brand} style={styles.activeFilterChip} onPress={() => toggleBrand(brand)}>
                 <Text style={styles.activeFilterText}>{brand}</Text>
-                <Ionicons name="close" size={14} color={colors.primary} />
+                <Ionicons name="close" size={14} color={palette.colors.primary} />
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.clearFiltersButton} onPress={resetFilters}>
@@ -432,7 +428,7 @@ export default function HomeScreen({ navigation }) {
               style={styles.modalCloseButton}
               accessibilityLabel="Close filters"
             >
-              <Ionicons name="close" size={24} color={colors.dark} />
+              <Ionicons name="close" size={24} color={palette.colors.dark} />
             </TouchableOpacity>
           </View>
 
@@ -441,7 +437,7 @@ export default function HomeScreen({ navigation }) {
             {/* Price Range Section */}
             <View style={styles.filterSection}>
               <View style={styles.filterSectionHeader}>
-                <Ionicons name="cash-outline" size={18} color={colors.success} />
+                <Ionicons name="cash-outline" size={18} color={palette.colors.success} />
                 <Text style={styles.filterSectionTitle}>PRICE RANGE</Text>
               </View>
               <PriceRangeFilter
@@ -454,7 +450,7 @@ export default function HomeScreen({ navigation }) {
             {/* Categories Section */}
             <View style={styles.filterSection}>
               <View style={styles.filterSectionHeader}>
-                <Ionicons name="grid-outline" size={18} color={colors.primary} />
+                <Ionicons name="grid-outline" size={18} color={palette.colors.primary} />
                 <Text style={styles.filterSectionTitle}>CATEGORIES</Text>
               </View>
               {categories.length === 0 ? (
@@ -477,7 +473,7 @@ export default function HomeScreen({ navigation }) {
                         {category}
                       </Text>
                       {selectedCategories.includes(category) && (
-                        <Ionicons name="checkmark" size={14} color={colors.white} />
+                        <Ionicons name="checkmark" size={14} color={palette.colors.white} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -488,7 +484,7 @@ export default function HomeScreen({ navigation }) {
             {/* Brands Section */}
             <View style={styles.filterSection}>
               <View style={styles.filterSectionHeader}>
-                <Ionicons name="pricetag-outline" size={18} color={colors.secondary} />
+                <Ionicons name="pricetag-outline" size={18} color={palette.colors.secondary} />
                 <Text style={styles.filterSectionTitle}>BRANDS</Text>
               </View>
               {brands.length === 0 ? (
@@ -511,7 +507,7 @@ export default function HomeScreen({ navigation }) {
                         {brand}
                       </Text>
                       {selectedBrands.includes(brand) && (
-                        <Ionicons name="checkmark" size={14} color={colors.white} />
+                        <Ionicons name="checkmark" size={14} color={palette.colors.white} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -527,7 +523,7 @@ export default function HomeScreen({ navigation }) {
               onPress={resetFilters}
               accessibilityLabel="Reset filters"
             >
-              <Ionicons name="refresh" size={18} color={colors.text} />
+              <Ionicons name="refresh" size={18} color={palette.colors.text} />
               <Text style={styles.resetButtonText}>Reset</Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -536,7 +532,7 @@ export default function HomeScreen({ navigation }) {
               accessibilityLabel="Apply filters"
             >
               <Text style={styles.applyButtonText}>Apply Filters</Text>
-              <Ionicons name="checkmark" size={18} color={colors.white} />
+              <Ionicons name="checkmark" size={18} color={palette.colors.white} />
             </TouchableOpacity>
           </View>
         </View>
@@ -547,7 +543,7 @@ export default function HomeScreen({ navigation }) {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="cube-outline" size={64} color={colors.grayLight} />
+        <Ionicons name="cube-outline" size={64} color={palette.colors.grayLight} />
       </View>
       <Text style={styles.emptyTitle}>No products found</Text>
       <Text style={styles.emptySubtitle}>
@@ -565,7 +561,7 @@ export default function HomeScreen({ navigation }) {
             fetchProducts();
           }}
         >
-          <Ionicons name="refresh" size={18} color={colors.white} />
+          <Ionicons name="refresh" size={18} color={palette.colors.white} />
           <Text style={styles.emptyActionText}>Clear Filters</Text>
         </TouchableOpacity>
       )}
@@ -591,7 +587,7 @@ export default function HomeScreen({ navigation }) {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={palette.colors.primary} />
         <Text style={styles.footerLoaderText}>Loading more products...</Text>
       </View>
     );
@@ -614,8 +610,8 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={[palette.colors.primary]}
+            tintColor={palette.colors.primary}
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -635,8 +631,8 @@ export default function HomeScreen({ navigation }) {
 
       {/* AI FAB */}
       <TouchableOpacity onPress={() => setShowAI(true)} activeOpacity={0.85}
-        style={{ position: 'absolute', bottom: 80, right: 16, width: 52, height: 52, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, zIndex: 50 }}>
-        <Ionicons name="chatbubble-ellipses" size={22} color={colors.white} />
+        style={{ position: 'absolute', bottom: 80, right: 16, width: 52, height: 52, borderRadius: 16, backgroundColor: palette.colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: palette.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, zIndex: 50 }}>
+        <Ionicons name="chatbubble-ellipses" size={22} color={palette.colors.white} />
       </TouchableOpacity>
 
       <ChatBot visible={showAI} onClose={() => setShowAI(false)} navigation={navigation} />
@@ -645,98 +641,98 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   container: { flex: 1 },
   // Hero Header — Glass style
   heroHeader: { marginHorizontal: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm, paddingBottom: spacing.md },
   heroTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.md },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  logoText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroTopRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   loginButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, gap: spacing.xs },
-  loginButtonText: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  loginButtonText: { color: p.colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   cartIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center' },
   bellIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(99,102,241,0.1)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
-  bellBadge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.white },
-  bellBadgeText: { color: colors.white, fontSize: 10, fontWeight: fontWeight.bold },
+  bellBadge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: p.colors.error, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: p.colors.white },
+  bellBadgeText: { color: p.colors.white, fontSize: 10, fontWeight: fontWeight.bold },
   greetingSection: { paddingBottom: spacing.md },
-  greetingText: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: colors.text, marginBottom: spacing.xs },
-  greetingSubtext: { fontSize: fontSize.sm, color: colors.textSecondary },
+  greetingText: { fontSize: fontSize.title, fontWeight: fontWeight.extrabold, color: p.colors.text, marginBottom: spacing.xs },
+  greetingSubtext: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   // Search
   searchContainer: { flexDirection: 'row', gap: spacing.sm },
   searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.08)', borderRadius: borderRadius.xl, paddingHorizontal: spacing.md, height: 48, gap: spacing.sm, borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' },
-  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  searchInput: { flex: 1, fontSize: fontSize.md, color: p.colors.text },
   filterButton: { backgroundColor: 'rgba(99,102,241,0.1)', width: 48, height: 48, borderRadius: borderRadius.xl, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' },
-  filterButtonActive: { backgroundColor: colors.primary },
-  filterBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: colors.error, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  filterBadgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  filterButtonActive: { backgroundColor: p.colors.primary },
+  filterBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: p.colors.error, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  filterBadgeText: { color: p.colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   // Stats banner
   statsBanner: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.7)', marginHorizontal: spacing.md, marginTop: spacing.sm, borderRadius: borderRadius.xl, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...shadows.sm, justifyContent: 'space-around' },
   statItem: { alignItems: 'center', flex: 1, gap: 2 },
-  statText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.dark },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary },
-  statDivider: { width: 1, backgroundColor: colors.light },
+  statText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.dark },
+  statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary },
+  statDivider: { width: 1, backgroundColor: p.colors.light },
   // Categories
-  categoriesSection: { paddingTop: spacing.xl, paddingBottom: spacing.md, backgroundColor: colors.white, marginTop: spacing.md },
+  categoriesSection: { paddingTop: spacing.xl, paddingBottom: spacing.md, backgroundColor: p.colors.white, marginTop: spacing.md },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.dark },
-  sectionLink: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.dark },
+  sectionLink: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   categoriesScroll: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primarySubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, borderWidth: 1, borderColor: colors.primaryLighter },
-  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryChipText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
-  categoryChipTextActive: { color: colors.white },
+  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: p.colors.primarySubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, borderWidth: 1, borderColor: p.colors.primaryLighter },
+  categoryChipActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  categoryChipText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
+  categoryChipTextActive: { color: p.colors.white },
   // Stores Banner
-  storesBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.secondary, marginHorizontal: spacing.lg, marginVertical: spacing.lg, borderRadius: borderRadius.xl, padding: spacing.lg, ...shadows.md },
+  storesBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: p.colors.secondary, marginHorizontal: spacing.lg, marginVertical: spacing.lg, borderRadius: borderRadius.xl, padding: spacing.lg, ...shadows.md },
   storesBannerContent: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   storesBannerIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   storesBannerText: {},
-  storesBannerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.white },
+  storesBannerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.white },
   storesBannerSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.8)' },
   // Products section
   productsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  productsTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.dark },
-  productCountContainer: { backgroundColor: colors.primarySubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full },
-  productCount: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  productsTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.dark },
+  productCountContainer: { backgroundColor: p.colors.primarySubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full },
+  productCount: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   // Active filters
   activeFiltersContainer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  activeFilterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLighter, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, marginRight: spacing.sm, gap: spacing.xs },
-  activeFilterText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.medium },
+  activeFilterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.primaryLighter, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, marginRight: spacing.sm, gap: spacing.xs },
+  activeFilterText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.medium },
   clearFiltersButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: 'center' },
-  clearFiltersText: { fontSize: fontSize.sm, color: colors.error, fontWeight: fontWeight.semibold },
+  clearFiltersText: { fontSize: fontSize.sm, color: p.colors.error, fontWeight: fontWeight.semibold },
   // List
   listContent: { paddingBottom: spacing.xxl },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   // Empty state
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60, paddingHorizontal: spacing.xl },
-  emptyIconContainer: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.light, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
-  emptyTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.dark, marginBottom: spacing.sm },
-  emptySubtitle: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
-  emptyActionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, marginTop: spacing.xl, gap: spacing.sm },
-  emptyActionText: { color: colors.white, fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  emptyIconContainer: { width: 100, height: 100, borderRadius: 50, backgroundColor: p.colors.light, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
+  emptyTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.dark, marginBottom: spacing.sm },
+  emptySubtitle: { fontSize: fontSize.md, color: p.colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  emptyActionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.xl, marginTop: spacing.xl, gap: spacing.sm },
+  emptyActionText: { color: p.colors.white, fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.white, borderTopLeftRadius: borderRadius.xxxl, borderTopRightRadius: borderRadius.xxxl, maxHeight: '85%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.light },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.dark },
-  modalCloseButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.light, justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: p.colors.white, borderTopLeftRadius: borderRadius.xxxl, borderTopRightRadius: borderRadius.xxxl, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: p.colors.light },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: p.colors.dark },
+  modalCloseButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: p.colors.light, justifyContent: 'center', alignItems: 'center' },
   modalBody: { padding: spacing.lg },
   filterSection: { marginBottom: spacing.xl },
   filterSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  filterSectionTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textSecondary, letterSpacing: 1 },
+  filterSectionTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: p.colors.textSecondary, letterSpacing: 1 },
   filterOptionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  filterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.light, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, gap: spacing.xs },
-  filterChipSelected: { backgroundColor: colors.primary },
-  filterChipText: { fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
-  filterChipTextSelected: { color: colors.white },
-  noFilterText: { fontSize: fontSize.md, color: colors.textSecondary, fontStyle: 'italic' },
-  modalFooter: { flexDirection: 'row', padding: spacing.lg, gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.light },
-  resetButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.light, paddingVertical: spacing.md, borderRadius: borderRadius.xl, gap: spacing.sm },
-  resetButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  applyButton: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: borderRadius.xl, gap: spacing.sm, ...shadows.md },
-  applyButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.white },
+  filterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.light, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, gap: spacing.xs },
+  filterChipSelected: { backgroundColor: p.colors.primary },
+  filterChipText: { fontSize: fontSize.sm, color: p.colors.text, fontWeight: fontWeight.medium },
+  filterChipTextSelected: { color: p.colors.white },
+  noFilterText: { fontSize: fontSize.md, color: p.colors.textSecondary, fontStyle: 'italic' },
+  modalFooter: { flexDirection: 'row', padding: spacing.lg, gap: spacing.md, borderTopWidth: 1, borderTopColor: p.colors.light },
+  resetButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: p.colors.light, paddingVertical: spacing.md, borderRadius: borderRadius.xl, gap: spacing.sm },
+  resetButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  applyButton: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: p.colors.primary, paddingVertical: spacing.md, borderRadius: borderRadius.xl, gap: spacing.sm, ...shadows.md },
+  applyButtonText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.white },
   // Pagination footer loader
   footerLoader: { paddingVertical: spacing.xl, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
-  footerLoaderText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  footerLoaderText: { fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
 });

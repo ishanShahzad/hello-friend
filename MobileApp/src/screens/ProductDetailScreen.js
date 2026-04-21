@@ -20,11 +20,15 @@ import VerifiedBadge from '../components/VerifiedBadge';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { trackProductView } from '../utils/recentlyViewed';
-import { colors, spacing, fontSize, borderRadius, shadows, fontWeight, glass } from '../styles/theme';
+import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen({ route, navigation }) {
+  const { palette } = useTheme();
+  const styles = buildStyles(palette);
+
   const { productId } = route.params;
   const { currentUser } = useAuth();
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
@@ -97,9 +101,9 @@ export default function ProductDetailScreen({ route, navigation }) {
   const renderStars = (rating) => {
     const stars = []; const full = Math.floor(rating); const half = rating % 1 >= 0.5;
     for (let i = 0; i < 5; i++) {
-      if (i < full) stars.push(<Ionicons key={i} name="star" size={16} color={colors.star} />);
-      else if (i === full && half) stars.push(<Ionicons key={i} name="star-half" size={16} color={colors.star} />);
-      else stars.push(<Ionicons key={i} name="star-outline" size={16} color={colors.star} />);
+      if (i < full) stars.push(<Ionicons key={i} name="star" size={16} color={palette.colors.star} />);
+      else if (i === full && half) stars.push(<Ionicons key={i} name="star-half" size={16} color={palette.colors.star} />);
+      else stars.push(<Ionicons key={i} name="star-outline" size={16} color={palette.colors.star} />);
     }
     return stars;
   };
@@ -112,7 +116,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   return (
     <GlassBackground>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.colors.primary} />}>
         {/* Image Gallery */}
         <View style={styles.imageSection}>
           <FlatList ref={flatListRef} data={images} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
@@ -135,10 +139,10 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
           {/* Back & Share floating */}
           <TouchableOpacity style={styles.floatBack} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color={colors.text} />
+            <Ionicons name="arrow-back" size={20} color={palette.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.floatShare} onPress={handleShare}>
-            <Ionicons name="share-outline" size={20} color={colors.text} />
+            <Ionicons name="share-outline" size={20} color={palette.colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -152,7 +156,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <View style={{ flexDirection: 'row', marginRight: spacing.sm }}>{renderStars(product.rating || 0)}</View>
               <Text style={styles.ratingText}>({product.numReviews || 0} reviews)</Text>
               <View style={styles.dot} />
-              <Text style={[styles.stockText, product.stock > 0 ? { color: colors.success } : { color: colors.error }]}>
+              <Text style={[styles.stockText, product.stock > 0 ? { color: palette.colors.success } : { color: palette.colors.error }]}>
                 {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
               </Text>
             </View>
@@ -172,9 +176,9 @@ export default function ProductDetailScreen({ route, navigation }) {
             {/* Color Variants */}
             {product.colors?.length > 0 && (
               <View style={styles.colorSection}>
-                <Text style={styles.colorLabel}>Color: <Text style={{ color: colors.text, fontWeight: fontWeight.semibold }}>{selectedColor || 'Select a color'}</Text></Text>
+                <Text style={styles.colorLabel}>Color: <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>{selectedColor || 'Select a color'}</Text></Text>
                 <View style={styles.colorRow}>
-                  {product.colors.map((color, i) => (
+                  {product.palette.colors.map((color, i) => (
                     <TouchableOpacity key={i} onPress={() => setSelectedColor(color)}
                       style={[styles.colorChip, selectedColor === color && styles.colorChipActive]}>
                       <Text style={[styles.colorChipText, selectedColor === color && styles.colorChipTextActive]}>{color}</Text>
@@ -218,7 +222,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           {/* Reviews */}
           <GlassPanel variant="card" style={styles.reviewsSection}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <View><Text style={styles.reviewsTitle}>Customer Reviews</Text><Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>{product.numReviews || 0} reviews</Text></View>
+              <View><Text style={styles.reviewsTitle}>Customer Reviews</Text><Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary }}>{product.numReviews || 0} reviews</Text></View>
               <TouchableOpacity style={styles.writeReviewBtn} onPress={() => { if (!currentUser) { navigation.navigate('Login'); return; } setReviewModalVisible(true); }}>
                 <Ionicons name="create-outline" size={14} color="#fff" /><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#fff' }}>Write</Text>
               </TouchableOpacity>
@@ -227,16 +231,16 @@ export default function ProductDetailScreen({ route, navigation }) {
               <View key={i} style={styles.reviewCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
                   <View style={styles.reviewAvatar}><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' }}>{(review.user?.name || 'U')[0].toUpperCase()}</Text></View>
-                  <View style={{ flex: 1 }}><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text }}>{review.user?.name || 'Anonymous'}</Text>
-                    <View style={{ flexDirection: 'row', gap: 2 }}>{[1,2,3,4,5].map(s => <Ionicons key={s} name={s <= review.rating ? 'star' : 'star-outline'} size={11} color={colors.star} />)}</View>
+                  <View style={{ flex: 1 }}><Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: palette.colors.text }}>{review.user?.name || 'Anonymous'}</Text>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>{[1,2,3,4,5].map(s => <Ionicons key={s} name={s <= review.rating ? 'star' : 'star-outline'} size={11} color={palette.colors.star} />)}</View>
                   </View>
                 </View>
-                <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 18 }}>{review.comment}</Text>
+                <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, lineHeight: 18 }}>{review.comment}</Text>
               </View>
             )) : (
               <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
                 <Ionicons name="chatbubble-ellipses-outline" size={32} color="rgba(255,255,255,0.3)" />
-                <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm }}>No reviews yet. Be the first!</Text>
+                <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginTop: spacing.sm }}>No reviews yet. Be the first!</Text>
               </View>
             )}
           </GlassPanel>
@@ -248,15 +252,15 @@ export default function ProductDetailScreen({ route, navigation }) {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <GlassPanel variant="strong" style={styles.modalSheet}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text }}>Write a Review</Text>
-              <TouchableOpacity onPress={() => setReviewModalVisible(false)} style={styles.modalClose}><Ionicons name="close" size={20} color={colors.text} /></TouchableOpacity>
+              <Text style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: palette.colors.text }}>Write a Review</Text>
+              <TouchableOpacity onPress={() => setReviewModalVisible(false)} style={styles.modalClose}><Ionicons name="close" size={20} color={palette.colors.text} /></TouchableOpacity>
             </View>
-            <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.lg }} numberOfLines={1}>{product.name}</Text>
+            <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary, marginBottom: spacing.lg }} numberOfLines={1}>{product.name}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-              {[1,2,3,4,5].map(s => <TouchableOpacity key={s} onPress={() => setReviewRating(s)}><Ionicons name={s <= reviewRating ? 'star' : 'star-outline'} size={34} color={colors.star} /></TouchableOpacity>)}
+              {[1,2,3,4,5].map(s => <TouchableOpacity key={s} onPress={() => setReviewRating(s)}><Ionicons name={s <= reviewRating ? 'star' : 'star-outline'} size={34} color={palette.colors.star} /></TouchableOpacity>)}
             </View>
             <TextInput style={styles.reviewInput} value={reviewComment} onChangeText={setReviewComment} placeholder="Share your experience..." placeholderTextColor="rgba(255,255,255,0.3)" multiline numberOfLines={4} textAlignVertical="top" maxLength={500} />
-            <Text style={{ fontSize: fontSize.xs, color: colors.textSecondary, textAlign: 'right', marginBottom: spacing.md }}>{reviewComment.length}/500</Text>
+            <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary, textAlign: 'right', marginBottom: spacing.md }}>{reviewComment.length}/500</Text>
             <TouchableOpacity style={[styles.submitReviewBtn, submittingReview && { opacity: 0.6 }]} onPress={handleSubmitReview} disabled={submittingReview}>
               {submittingReview ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="send" size={16} color="#fff" /><Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' }}>Submit Review</Text></>}
             </TouchableOpacity>
@@ -268,16 +272,16 @@ export default function ProductDetailScreen({ route, navigation }) {
       <Animated.View style={[styles.bottomBar, { transform: [{ translateY: bottomBarAnim.interpolate({ inputRange: [0, 1], outputRange: [100, 0] }) }] }]}>
         <GlassPanel variant="floating" style={styles.bottomBarInner}>
           <TouchableOpacity style={[styles.iconBtn, isInWishlist && { backgroundColor: 'rgba(239,68,68,0.15)' }]} onPress={handleWishlistToggle}>
-            <Ionicons name={isInWishlist ? 'heart' : 'heart-outline'} size={22} color={isInWishlist ? colors.heart : colors.text} />
+            <Ionicons name={isInWishlist ? 'heart' : 'heart-outline'} size={22} color={isInWishlist ? palette.colors.heart : palette.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleShare}>
-            <Ionicons name="share-outline" size={22} color={colors.text} />
+            <Ionicons name="share-outline" size={22} color={palette.colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.addToCartBtn, product.stock === 0 && { backgroundColor: glass.bg }, isInCart && { backgroundColor: colors.successLight }]}
+          <TouchableOpacity style={[styles.addToCartBtn, product.stock === 0 && { backgroundColor: palette.glass.bg }, isInCart && { backgroundColor: palette.colors.successLight }]}
             onPress={handleAddToCartClick} disabled={product.stock === 0 || (isCartLoading && loadingProductId === productId)}>
             {isCartLoading && loadingProductId === productId ? <InlineLoader size="small" color="#fff" /> :
-              product.stock === 0 ? <Text style={{ color: colors.textSecondary, fontSize: fontSize.md }}>Out of Stock</Text> :
-              isInCart ? <><Ionicons name="checkmark-circle" size={18} color={colors.success} /><Text style={{ color: colors.success, fontSize: fontSize.md, fontWeight: fontWeight.semibold }}>Added to Cart</Text></> :
+              product.stock === 0 ? <Text style={{ color: palette.colors.textSecondary, fontSize: fontSize.md }}>Out of Stock</Text> :
+              isInCart ? <><Ionicons name="checkmark-circle" size={18} color={palette.colors.success} /><Text style={{ color: palette.colors.success, fontSize: fontSize.md, fontWeight: fontWeight.semibold }}>Added to Cart</Text></> :
               <><Ionicons name="cart-outline" size={18} color="#fff" /><Text style={{ color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold }}>Add to Cart</Text></>}
           </TouchableOpacity>
         </GlassPanel>
@@ -286,65 +290,65 @@ export default function ProductDetailScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const buildStyles = (p) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   imageSection: { position: 'relative' },
   imageContainer: { width, height: 340, backgroundColor: 'rgba(255,255,255,0.05)' },
   mainImage: { width: '100%', height: '100%' },
   badgesContainer: { position: 'absolute', top: spacing.md, left: spacing.md, gap: 6 },
-  featuredBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.secondary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
-  discountBadge: { backgroundColor: colors.error, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  featuredBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: p.colors.secondary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
+  discountBadge: { backgroundColor: p.colors.error, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText: { color: '#fff', fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   indicatorContainer: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: spacing.md, left: 0, right: 0, gap: 6 },
   indicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)' },
-  indicatorActive: { backgroundColor: colors.primary, width: 24 },
+  indicatorActive: { backgroundColor: p.colors.primary, width: 24 },
   floatBack: { position: 'absolute', top: spacing.xl, left: spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.85)', justifyContent: 'center', alignItems: 'center', ...shadows.sm },
   floatShare: { position: 'absolute', top: spacing.xl, right: spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.85)', justifyContent: 'center', alignItems: 'center', ...shadows.sm },
   infoCard: { padding: spacing.lg, marginBottom: spacing.md },
-  category: { fontSize: fontSize.xs, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
+  category: { fontSize: fontSize.xs, color: p.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text, marginBottom: spacing.md },
   ratingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, flexWrap: 'wrap' },
-  ratingText: { fontSize: fontSize.sm, color: colors.textSecondary },
+  ratingText: { fontSize: fontSize.sm, color: p.colors.textSecondary },
   dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: spacing.sm },
   stockText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
-  price: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.text },
-  originalPrice: { fontSize: fontSize.lg, color: colors.textSecondary, textDecorationLine: 'line-through' },
+  price: { fontSize: 28, fontWeight: fontWeight.bold, color: p.colors.text },
+  originalPrice: { fontSize: fontSize.lg, color: p.colors.textSecondary, textDecorationLine: 'line-through' },
   saveBadge: { backgroundColor: 'rgba(239,68,68,0.12)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  saveText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.error },
-  description: { fontSize: fontSize.md, color: colors.textSecondary, lineHeight: 22, marginBottom: spacing.md },
+  saveText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.error },
+  description: { fontSize: fontSize.md, color: p.colors.textSecondary, lineHeight: 22, marginBottom: spacing.md },
   colorSection: { marginBottom: spacing.lg },
-  colorLabel: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.sm },
+  colorLabel: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginBottom: spacing.sm },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  colorChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: glass.bgSubtle, borderWidth: 1.5, borderColor: glass.borderSubtle },
-  colorChipActive: { borderColor: colors.primary, backgroundColor: 'rgba(99,102,241,0.12)' },
-  colorChipText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  colorChipTextActive: { color: colors.primary },
+  colorChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: p.glass.bgSubtle, borderWidth: 1.5, borderColor: p.glass.borderSubtle },
+  colorChipActive: { borderColor: p.colors.primary, backgroundColor: 'rgba(99,102,241,0.12)' },
+  colorChipText: { fontSize: fontSize.sm, color: p.colors.textSecondary, fontWeight: fontWeight.medium },
+  colorChipTextActive: { color: p.colors.primary },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { backgroundColor: 'rgba(99,102,241,0.1)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
-  tagText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.medium },
+  tagText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.medium },
   storeCard: { padding: spacing.md, marginBottom: spacing.md },
   storeRow: { flexDirection: 'row', alignItems: 'center' },
-  storeLogo: { width: 44, height: 44, borderRadius: 22, marginRight: spacing.md, backgroundColor: glass.bgSubtle },
-  storeLogoPlaceholder: { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  storeName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  storeStats: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  storeLogo: { width: 44, height: 44, borderRadius: 22, marginRight: spacing.md, backgroundColor: p.glass.bgSubtle },
+  storeLogoPlaceholder: { backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  storeName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: p.colors.text },
+  storeStats: { fontSize: fontSize.sm, color: p.colors.textSecondary, marginTop: 2 },
   detailsSection: { padding: spacing.lg, marginBottom: spacing.md },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  detailLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
-  detailValue: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
+  detailLabel: { fontSize: fontSize.sm, color: p.colors.textSecondary },
+  detailValue: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: p.colors.text },
   reviewsSection: { padding: spacing.lg, marginBottom: spacing.md },
-  reviewsTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
-  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  reviewCard: { backgroundColor: glass.bgSubtle, borderRadius: 14, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: glass.borderSubtle },
-  reviewAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  reviewsTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.text },
+  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: p.colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  reviewCard: { backgroundColor: p.glass.bgSubtle, borderRadius: 14, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  reviewAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: p.colors.primary, justifyContent: 'center', alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.xl, paddingBottom: spacing.xxxl },
-  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  reviewInput: { backgroundColor: glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: glass.borderSubtle, padding: spacing.md, fontSize: fontSize.md, color: colors.text, minHeight: 100, marginBottom: 4 },
-  submitReviewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 14, ...shadows.md },
+  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  reviewInput: { backgroundColor: p.glass.bgSubtle, borderRadius: 14, borderWidth: 1, borderColor: p.glass.borderSubtle, padding: spacing.md, fontSize: fontSize.md, color: p.colors.text, minHeight: 100, marginBottom: 4 },
+  submitReviewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: p.colors.primary, borderRadius: 16, paddingVertical: 14, ...shadows.md },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: spacing.md },
   bottomBarInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm },
-  iconBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
-  addToCartBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 14, gap: spacing.sm },
+  iconBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: p.glass.bgSubtle, justifyContent: 'center', alignItems: 'center' },
+  addToCartBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: p.colors.primary, borderRadius: 16, paddingVertical: 14, gap: spacing.sm },
 });
