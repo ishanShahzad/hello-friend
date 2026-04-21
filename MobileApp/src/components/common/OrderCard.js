@@ -12,7 +12,7 @@ import {
 } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, style }) => {
+const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, onWhatsApp, style }) => {
   const { palette } = useTheme();
   const c = palette.colors;
   const g = palette.glass;
@@ -79,6 +79,16 @@ const OrderCard = ({ order, onPress, showCustomer = false, showItems = false, st
             <Text style={[styles.itemCount, { color: c.textSecondary }]}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
             <Text style={[styles.totalAmount, { color: c.primary }]}>{formatPrice(orderSummary.totalAmount)}</Text>
           </View>
+          {onWhatsApp && (
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation && e.stopPropagation(); onWhatsApp(order); }}
+              activeOpacity={0.7}
+              style={styles.waButton}
+              accessibilityLabel="Verify on WhatsApp"
+            >
+              <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+            </TouchableOpacity>
+          )}
           <Ionicons name="chevron-forward" size={20} color={c.textLight} />
         </View>
       </GlassPanel>
@@ -126,6 +136,7 @@ const styles = StyleSheet.create({
   summaryRow: { flex: 1 },
   itemCount: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.xs },
   totalAmount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
+  waButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(37, 211, 102, 0.15)', justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm },
   // Compact
   compactContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: spacing.md },
