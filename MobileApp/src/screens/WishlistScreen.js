@@ -16,6 +16,8 @@ import { EmptyWishlist, LoginRequired } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth as useAuthCtx } from '../contexts/AuthContext';
+import { shareWishlistAsLink, shareWishlistAsPdf } from '../utils/shareWishlist';
 
 export default function WishlistScreen({ navigation }) {
   const { palette } = useTheme();
@@ -34,14 +36,31 @@ export default function WishlistScreen({ navigation }) {
 
   useEffect(() => { if (currentUser) loadWishlist(); else setIsLoading(false); }, [currentUser, loadWishlist]);
 
+  const onShareWishlist = () => {
+    if (!wishlistItems?.length) return;
+    const userName = (currentUser?.name || 'My').split(' ')[0] + "'s";
+    Alert.alert('Share wishlist', 'How would you like to share?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Share as link', onPress: () => shareWishlistAsLink(wishlistItems, userName) },
+      { text: 'Share as PDF', onPress: () => shareWishlistAsPdf(wishlistItems, userName) },
+    ]);
+  };
+
   const heroHeader = (
     <GlassPanel variant="floating" style={styles.heroHeader}>
       <Text style={styles.heroTitle}>Wishlist</Text>
-      {wishlistItems?.length > 0 && (
-        <View style={styles.heroBadge}>
-          <Text style={styles.heroBadgeText}>{wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}</Text>
-        </View>
-      )}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        {wishlistItems?.length > 0 && (
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>{wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}</Text>
+          </View>
+        )}
+        {wishlistItems?.length > 0 && (
+          <TouchableOpacity onPress={onShareWishlist} accessibilityLabel="Share wishlist" style={styles.shareBtn} activeOpacity={0.8}>
+            <Ionicons name="share-outline" size={20} color={palette.colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
     </GlassPanel>
   );
 
@@ -112,6 +131,7 @@ const buildStyles = (p) => StyleSheet.create({
   heroTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: p.colors.text },
   heroBadge: { backgroundColor: 'rgba(99,102,241,0.15)', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   heroBadgeText: { color: p.colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  shareBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(99,102,241,0.12)', alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.md },
   wishlistItem: { marginBottom: spacing.md, overflow: 'hidden' },
   itemContent: { flexDirection: 'row', padding: spacing.md },
