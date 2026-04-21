@@ -9,6 +9,7 @@ import api from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 import StoreCard from '../components/common/StoreCard';
 import Loader from '../components/common/Loader';
+import { ProductCardSkeleton } from '../components/common/Skeleton';
 import { EmptyStores, EmptySearch } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
@@ -39,7 +40,17 @@ export default function StoresListingScreen({ navigation }) {
   const onRefresh = useCallback(() => { setRefreshing(true); fetchStores(); }, [sortBy]);
   const filteredStores = filterStoresByQuery(stores, searchQuery);
 
-  if (isLoading) return <GlassBackground><SafeAreaView style={styles.container}><Loader fullScreen message="Loading stores..." /></SafeAreaView></GlassBackground>;
+  if (isLoading) return (
+    <GlassBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: spacing.sm, paddingTop: spacing.xl }}>
+          {[0,1,2,3,4,5].map((i) => (
+            <View key={i} style={{ width: '50%', padding: spacing.xs }}><ProductCardSkeleton /></View>
+          ))}
+        </View>
+      </SafeAreaView>
+    </GlassBackground>
+  );
 
   return (
     <GlassBackground>

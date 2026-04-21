@@ -10,6 +10,7 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { useAuth } from '../contexts/AuthContext';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import Loader from '../components/common/Loader';
+import { CartItemSkeleton } from '../components/common/Skeleton';
 import { EmptyOrders, LoginRequired, ErrorState } from '../components/common/EmptyState';
 import OrderCard from '../components/common/OrderCard';
 import GlassBackground from '../components/common/GlassBackground';
@@ -57,7 +58,7 @@ export default function OrdersScreen({ navigation }) {
   );
 
   const content = !currentUser ? <LoginRequired onLogin={() => navigation.navigate('Login')} onBrowse={() => navigation.navigate('MainTabs', { screen: 'Home' })} />
-    : isLoading ? <View style={styles.loadingContainer}><Loader size="large" /></View>
+    : isLoading ? <View style={{ paddingTop: spacing.sm }}>{[0,1,2].map((i) => <CartItemSkeleton key={i} />)}</View>
     : error ? <ErrorState message={error} onRetry={fetchOrders} />
     : orders.length === 0 ? <EmptyOrders onBrowse={() => navigation.navigate('MainTabs', { screen: 'Home' })} />
     : null;

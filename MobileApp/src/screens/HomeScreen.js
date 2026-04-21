@@ -26,9 +26,10 @@ import ChatBot from '../components/ChatBot';
 import api from '../config/api';
 import ProductCard from '../components/ProductCard';
 import CurrencySelector from '../components/CurrencySelector';
-import { Loader, EmptySearch } from '../components/common';
+import { Loader, EmptySearch, ProductGridSkeleton, PersonalizedSliders, SearchAutocomplete, PriceRangeFilter } from '../components/common';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
+import { addSearchHistory } from '../utils/searchHistory';
 import TortroseLogo from '../components/common/TortroseLogo';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -63,6 +64,8 @@ export default function HomeScreen({ navigation }) {
   const [brands, setBrands] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: null });
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
   // Animation for header — use ref to avoid re-creating on every render
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -82,6 +85,8 @@ export default function HomeScreen({ navigation }) {
       if (searchQuery) {
         params.append('search', searchQuery);
       }
+      if (priceRange.min > 0) params.append('minPrice', priceRange.min);
+      if (priceRange.max && priceRange.max > 0) params.append('maxPrice', priceRange.max);
       params.append('page', pageNum);
       params.append('limit', LIMIT);
 
@@ -111,7 +116,7 @@ export default function HomeScreen({ navigation }) {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [selectedCategories, selectedBrands, searchQuery]);
+  }, [selectedCategories, selectedBrands, searchQuery, priceRange.min, priceRange.max]);
 
   const fetchFilters = async () => {
     try {
@@ -151,8 +156,12 @@ export default function HomeScreen({ navigation }) {
     setIsLoading(true);
     setPage(1);
     setHasMore(true);
+    setShowAutocomplete(false);
+    if (searchQuery && searchQuery.trim().length >= 2) {
+      addSearchHistory(searchQuery.trim());
+    }
     fetchProducts(1, false);
-  }, [fetchProducts]);
+  }, [fetchProducts, searchQuery]);
 
   const toggleCategory = (category) => {
     setSelectedCategories(prev =>
@@ -170,6 +179,7 @@ export default function HomeScreen({ navigation }) {
     setSelectedCategories([]);
     setSelectedBrands([]);
     setSearchQuery('');
+    setPriceRange({ min: 0, max: null });
   };
 
   const applyFilters = () => {
@@ -180,7 +190,7 @@ export default function HomeScreen({ navigation }) {
     fetchProducts(1, false);
   };
 
-  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0;
+  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || priceRange.min > 0 || (priceRange.max && priceRange.max > 0);
 
   // Memoized render item to prevent unnecessary re-renders
   const renderItem = useCallback(({ item, index }) => (
@@ -256,6 +266,8 @@ export default function HomeScreen({ navigation }) {
               placeholderTextColor={colors.grayLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setShowAutocomplete(true)}
+              onBlur={() => setTimeout(() => setShowAutocomplete(false), 180)}
               onSubmitEditing={handleSearch}
               returnKeyType="search"
             />
@@ -275,6 +287,21 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </GlassPanel>
+
+      {/* Search Autocomplete Overlay */}
+      <SearchAutocomplete
+        visible={showAutocomplete}
+        query={searchQuery}
+        navigation={navigation}
+        onSelectQuery={(q) => { setSearchQuery(q); setShowAutocomplete(false); setTimeout(() => handleSearch(), 50); }}
+        onSelectProduct={(p) => { setShowAutocomplete(false); navigation.navigate('ProductDetail', { productId: p._id }); }}
+        onClose={() => setShowAutocomplete(false)}
+      />
+
+      {/* Personalized Sliders — Recently Viewed, Picked for You, Price Drops, Trending */}
+      {!hasActiveFilters && !searchQuery && (
+        <PersonalizedSliders navigation={navigation} />
+      )}
 
       {/* Quick Stats Banner */}
       <View style={styles.statsBanner}>
@@ -405,6 +432,19 @@ export default function HomeScreen({ navigation }) {
 
           {/* Modal Body */}
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            {/* Price Range Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.filterSectionHeader}>
+                <Ionicons name="cash-outline" size={18} color={colors.success} />
+                <Text style={styles.filterSectionTitle}>PRICE RANGE</Text>
+              </View>
+              <PriceRangeFilter
+                min={priceRange.min}
+                max={priceRange.max}
+                onChange={(range) => setPriceRange(range)}
+              />
+            </View>
+
             {/* Categories Section */}
             <View style={styles.filterSection}>
               <View style={styles.filterSectionHeader}>
@@ -526,13 +566,16 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 
-  // Loading state with custom loader
+  // Loading state with skeleton grid
   if (isLoading && products.length === 0) {
     return (
       <GlassBackground>
         <SafeAreaView style={{ flex: 1 }}>
-        <StatusBar barStyle="light-content" />
-        <Loader fullScreen size="medium" />
+          <StatusBar barStyle="light-content" />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {renderHeader()}
+            <ProductGridSkeleton count={6} />
+          </ScrollView>
         </SafeAreaView>
       </GlassBackground>
     );
