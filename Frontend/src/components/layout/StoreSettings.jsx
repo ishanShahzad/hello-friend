@@ -297,10 +297,42 @@ const StoreSettings = () => {
             {/* Store Form */}
             <div className="glass-panel p-6 md:p-8">
                 <div className="space-y-4 md:space-y-6">
+                    {/* Seller Type — Store / Brand */}
+                    <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Listing Type</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {[
+                                { value: 'store', label: 'Store', desc: 'Independent shop / reseller', Icon: Store },
+                                { value: 'brand', label: 'Brand', desc: 'Own products / label', Icon: Sparkles },
+                            ].map(opt => {
+                                const active = (storeData.sellerType || 'store') === opt.value;
+                                const Icon = opt.Icon;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setStoreData(prev => ({ ...prev, sellerType: opt.value }))}
+                                        className="p-3 rounded-xl text-left transition-all border"
+                                        style={{
+                                            background: active ? 'linear-gradient(135deg, hsla(220, 70%, 55%, 0.15), hsla(260, 60%, 60%, 0.15))' : 'hsla(0,0%,100%,0.04)',
+                                            borderColor: active ? 'hsl(220, 70%, 55%)' : 'hsla(0,0%,100%,0.12)',
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2 font-bold text-sm" style={{ color: active ? 'hsl(220, 70%, 55%)' : 'hsl(var(--foreground))' }}>
+                                            <Icon size={14} /> {opt.label}
+                                        </div>
+                                        <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{opt.desc}</p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>You can change this anytime. It controls where you appear in the marketplace.</p>
+                    </div>
+
                     {/* Store Name */}
                     <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Store Name *</label>
-                        <input type="text" name="storeName" value={storeData.storeName} onChange={handleInputChange} className="glass-input" placeholder="Enter your store name" maxLength={50} />
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>{(storeData.sellerType || 'store') === 'brand' ? 'Brand' : 'Store'} Name *</label>
+                        <input type="text" name="storeName" value={storeData.storeName} onChange={handleInputChange} className="glass-input" placeholder={`Enter your ${(storeData.sellerType || 'store') === 'brand' ? 'brand' : 'store'} name`} maxLength={50} />
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{storeData.storeName.length}/50 characters</p>
                     </div>
 
