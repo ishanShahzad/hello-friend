@@ -1,50 +1,87 @@
+# Marketplace: Stores + Brands
 
+Sellers choose **Store** or **Brand** at signup (default: Store). Both live together in a unified "Marketplace" surface, distinguishable via a pill badge. Existing stores keep working — they default to `sellerType: 'store'` and can switch later from store settings.
 
-## WhatsApp Order Verification Button
+## Terminology
+- Nav label: **Marketplace**
+- Web URL: `/marketplace` (keep `/stores` as a redirect → `/marketplace` for backward compatibility)
+- Mobile tab/route: `Marketplace` (renamed from `Stores`)
+- Type values: `'store'` | `'brand'` — stored on the Store document as `sellerType`
 
-Add a one-tap "Verify on WhatsApp" button to each order row in the seller (and admin) order list on **web** and **mobile**. Tapping it opens WhatsApp directly with the buyer's number and a pre-filled verification message containing the customer name, order ID, items, and total.
+## Backend (Mongo)
 
-### How it works (user flow)
-
-1. Seller opens **Order Management**.
-2. Each order row gets a small green WhatsApp icon button next to the existing "View" link.
-3. Tap → opens WhatsApp (mobile app on phones, WhatsApp Web/desktop on laptops) at the buyer's phone number with a ready-to-send message.
-4. Seller just hits send — no typing required.
-
-### Pre-filled message template
-
-```text
-Hello {fullName}, this is {storeName} on Rozare.
-
-We're verifying your order #{orderId}:
-• {productName} x{qty} — {price}
-• {productName} x{qty} — {price}
-
-Total: {totalAmount}
-
-Please reply YES to confirm, or let us know if anything needs to change. Thank you!
+### `Backend/models/Store.js`
+Add field:
+```js
+sellerType: { type: String, enum: ['store', 'brand'], default: 'store', index: true }
 ```
+No data migration needed — Mongo applies the default on read/save for existing docs.
 
-### Files to change
+### `Backend/controllers/storeController.js`
+- `getAllStores`: accept optional `?type=store|brand|all` query param. Filter `{ sellerType }` when not `all`/missing.
+- `searchStores`: same `type` filter passthrough.
+- `createStore` / `updateStore`: accept and persist `sellerType` (validated against enum).
 
-**Web**
-- `Frontend/src/components/layout/orders.jsx` — add a `WhatsApp` icon button (lucide `MessageCircle` styled green) in both the desktop table row (Actions column) and mobile card. Click handler stops link propagation and calls `openWhatsApp(order)`.
-- New helper `Frontend/src/utils/whatsapp.js` — exports `buildVerifyMessage(order)` and `openWhatsAppVerify(order, currency)`. Uses `https://wa.me/<digits>?text=<encoded>` which natively routes to WhatsApp app on mobile browsers and WhatsApp Web on desktop.
+### `Backend/controllers/authController.js` (seller signup)
+- Accept `sellerType` in the seller signup payload, persist on the Store doc created during seller onboarding. Default `'store'`.
 
-**Mobile**
-- `MobileApp/src/components/common/OrderCard.js` — add a small WhatsApp action button in the card footer (visible when used inside seller/admin order management; gated by an `onWhatsApp` prop so it doesn't show on the buyer's own orders list).
-- `MobileApp/src/screens/shared/OrderManagementScreen.js` — pass `onWhatsApp={(order) => openWhatsAppVerify(order)}` to `OrderCard`.
-- New helper `MobileApp/src/utils/whatsapp.js` — same message builder; uses `Linking.openURL('whatsapp://send?phone=...&text=...')` with a `wa.me` HTTPS fallback if the app isn't installed.
+## Web (Frontend/)
 
-### Phone number handling
+### Routing — `Frontend/src/routes/AppRoutes.jsx`
+- Rename route `/stores` → `/marketplace`
+- Add a `<Navigate to="/marketplace" replace />` redirect from `/stores` (and `/stores/*` tail) so old links/SEO don't break.
 
-- Source: `order.shippingInfo.phone` (already collected at checkout — confirmed in `Backend/models/Order.js`).
-- Sanitize: strip all non-digits. If the number doesn't start with a country code, prepend the store's default country code (fallback `92` for Pakistan, matching `shippingInfo.country` default). Logic lives in `whatsapp.js` so it's identical on web and mobile.
-- If the phone field is empty, the button shows a disabled state with a tooltip "No phone number on file".
+### Page — rename `Frontend/src/pages/StoresListing.jsx` → `MarketplaceListing.jsx`
+- Add a tab bar at the top: **All** · **Brands** · **Stores** (glass pill tabs).
+- Tab state syncs with URL: `/marketplace`, `/marketplace?type=brand`, `/marketplace?type=store`.
+- Pass `type` to the existing fetch call.
+- Update page heading + SEO title/meta to "Marketplace — Stores & Brands on Rozare".
 
-### Notes
+### Nav — `Frontend/src/components/layout/Navbar.jsx`
+- Change link text "Stores" → "Marketplace", `to="/marketplace"`.
 
-- **No backend changes needed.** Phone, items, and totals are already on each order.
-- **No new packages.** `wa.me` URLs work in every browser; `Linking` is already used in the mobile app.
-- Button is **seller/admin only** — guarded by `currentUser?.role` on web and the existing `isAdmin`/seller route on mobile.
+### Card — `Frontend/src/components/common/StoreCard.jsx`
+- Add a small pill badge in the top-right corner: green "Brand" or blue "Store" depending on `store.sellerType`. Uses existing glass-pill styling tokens.
 
+### Detail page — `Frontend/src/pages/StorePage.jsx` (and `SubdomainStorePage.jsx`)
+- Show the same pill badge next to the store name in the hero header.
+
+### Search — `Frontend/src/components/common/StoreSearch.jsx` and home search input
+- Search already hits `searchStores`. Update the result row to render the type badge alongside the name. No API change beyond what backend already does.
+
+### Seller signup — `Frontend/src/components/auth/SellerSignUp.jsx`
+- In the business-details step, add a two-option segmented selector: **Store** (default) / **Brand**. Include in submit payload.
+
+### Store settings — `Frontend/src/components/layout/StoreSettings.jsx`
+- Add a "Listing type" segmented control under the General section so sellers can switch between Store and Brand later.
+
+## Mobile (MobileApp/)
+
+### Navigation — `MobileApp/src/navigation/AppNavigator.js`
+- Rename `Stores` tab/screen to `Marketplace`. Update tab label + icon stays the same (Store icon).
+- Update deep-link config: `stores` → `marketplace`.
+
+### Screen — rename `MobileApp/src/screens/StoresListingScreen.js` → `MarketplaceListingScreen.js`
+- Add 3-segment glass tab control: **All / Brands / Stores** at the top, sticky under the header.
+- Pass `type` query to API.
+
+### Card — `MobileApp/src/components/common/StoreCard.js`
+- Add the same Brand/Store pill badge in the top-right of the card image area.
+
+### Store detail — `MobileApp/src/screens/StoreScreen.js`
+- Show pill badge next to the store name in the header hero.
+
+### Home search — `MobileApp/src/screens/HomeScreen.js` (and `common/SearchAutocomplete.js`)
+- Render the type badge alongside results from `searchStores` (results already mixed since backend returns both unless filtered).
+
+### Seller signup — `MobileApp/src/screens/auth/SellerSignUpScreen.js`
+- Add the **Store / Brand** segmented selector on the business-details step. Default Store. Include in submit payload.
+
+### Seller store settings — `MobileApp/src/screens/seller/SellerStoreSettingsScreen.js`
+- Add the same "Listing type" segmented control to switch later.
+
+## Notes / Non-goals
+- No new tables, no new backend routes — just one new field + a `type` query filter.
+- Brand and Store cards share identical UI; the **only** visual difference is the pill badge.
+- "All" tab returns brands and stores mixed, ordered by the existing default sort.
+- SEO: old `/stores` URLs 301-redirect to `/marketplace` via the React `<Navigate replace>` (client-side; sufficient for our SPA setup).
