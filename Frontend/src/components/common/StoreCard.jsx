@@ -1,9 +1,23 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Package, Eye } from 'lucide-react';
+import { Store, Package, Eye, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TrustButton from './TrustButton';
 import VerifiedBadge from './VerifiedBadge';
+
+const SellerTypePill = ({ type }) => {
+    const isBrand = type === 'brand';
+    const bg = isBrand ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)';
+    const border = isBrand ? 'hsla(280, 70%, 55%, 0.35)' : 'hsla(220, 70%, 55%, 0.35)';
+    const color = isBrand ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)';
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+            style={{ background: bg, border: `1px solid ${border}`, color, backdropFilter: 'blur(8px)' }}>
+            {isBrand ? <Sparkles size={9} /> : <Store size={9} />}
+            {isBrand ? 'Brand' : 'Store'}
+        </span>
+    );
+};
 
 const StoreCard = ({ store, idx }) => {
     const navigate = useNavigate();
@@ -29,6 +43,9 @@ const StoreCard = ({ store, idx }) => {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                    <div className="absolute top-2 right-2 z-10">
+                        <SellerTypePill type={store.sellerType} />
+                    </div>
                 </div>
             ) : (
                 <div className="h-24 sm:h-28 md:h-32 relative overflow-hidden"
@@ -36,6 +53,9 @@ const StoreCard = ({ store, idx }) => {
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                     <div className="absolute inset-0 flex items-center justify-center">
                         <Store size={32} className="text-white/30" />
+                    </div>
+                    <div className="absolute top-2 right-2 z-10">
+                        <SellerTypePill type={store.sellerType} />
                     </div>
                 </div>
             )}
