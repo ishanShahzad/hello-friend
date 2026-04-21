@@ -190,7 +190,7 @@ const AdminSubdomainManagement = () => {
                                                 <input type="text" value={editSlug} onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                                     className="text-xs font-mono px-2 py-1 rounded-lg bg-transparent outline-none" style={{ border: '1px solid var(--glass-border)', color: 'hsl(var(--foreground))' }}
                                                     placeholder="new-slug" />
-                                                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>.tortrose.com</span>
+                                                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>.rozare.com</span>
                                                 <button onClick={() => handleUpdateSlug(store._id)} disabled={savingSlug}
                                                     className="p-1 rounded-lg" style={{ color: 'hsl(150, 60%, 45%)' }}>
                                                     {savingSlug ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}

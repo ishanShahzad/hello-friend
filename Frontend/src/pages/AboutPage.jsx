@@ -24,20 +24,20 @@ function AboutPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="About Tortrose — Our Story & Mission"
-        description="Learn about Tortrose — a modern online shopping marketplace built on trust, connecting independent sellers with conscious shoppers worldwide. Discover our mission to make e-commerce fair, transparent, and community-driven with verified sellers, secure payments, and global shipping."
+        title="About Rozare — Our Story & Mission"
+        description="Learn about Rozare — a modern online shopping marketplace built on trust, connecting independent sellers with conscious shoppers worldwide. Discover our mission to make e-commerce fair, transparent, and community-driven with verified sellers, secure payments, and global shipping."
         canonical="/about"
-        keywords="about tortrose, tortrose story, tortrose mission, tortrose marketplace about, who is tortrose, tortrose company, tortrose team, online marketplace mission, trusted marketplace, community marketplace, independent sellers platform, fair e-commerce, transparent shopping"
+        keywords="about rozare, rozare story, rozare mission, rozare marketplace about, who is rozare, rozare company, rozare team, online marketplace mission, trusted marketplace, community marketplace, independent sellers platform, fair e-commerce, transparent shopping"
         jsonLd={{
             '@context': 'https://schema.org',
             '@type': 'AboutPage',
-            name: 'About Tortrose',
-            description: 'Learn about Tortrose marketplace and our mission to empower independent sellers.',
-            url: 'https://tortrose.com/about',
+            name: 'About Rozare',
+            description: 'Learn about Rozare marketplace and our mission to empower independent sellers.',
+            url: 'https://rozare.com/about',
             mainEntity: {
                 '@type': 'Organization',
-                name: 'Tortrose',
-                url: 'https://tortrose.com',
+                name: 'Rozare',
+                url: 'https://rozare.com',
                 description: 'Modern online shopping marketplace for independent sellers',
             },
         }}
@@ -54,7 +54,7 @@ function AboutPage() {
             <span>Our Story</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-bold mb-4 gradient-text">
-            About Tortrose
+            About Rozare
           </h1>
           <p style={{ color: 'hsl(var(--muted-foreground))' }} className="text-base sm:text-lg max-w-2xl mx-auto">
             A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers 
@@ -117,7 +117,7 @@ function AboutPage() {
         {/* CTA */}
         <div className="glass-panel p-8 text-center">
           <h2 className="text-xl font-bold mb-3" style={{ color: 'hsl(var(--foreground))' }}>
-            Ready to join Tortrose?
+            Ready to join Rozare?
           </h2>
           <p className="text-sm mb-5" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Start shopping or become a seller today.

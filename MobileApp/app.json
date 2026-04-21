@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Tortrose — Trusted Marketplace",
-    "slug": "tortrose",
+    "name": "Rozare — Trusted Marketplace",
+    "slug": "rozare",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "tortrose",
+    "scheme": "rozare",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "description": "Tortrose is a modern marketplace built on trust. Shop from verified independent sellers, discover unique products, and enjoy a seamless shopping experience with secure payments, real-time order tracking, and multi-currency support.",
+    "description": "Rozare is a modern marketplace built on trust. Shop from verified independent sellers, discover unique products, and enjoy a seamless shopping experience with secure payments, real-time order tracking, and multi-currency support.",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -21,7 +21,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#6366f1"
       },
-      "package": "com.tortrose.app",
+      "package": "com.rozare.app",
       "versionCode": 1,
       "permissions": [
         "CAMERA",
@@ -37,7 +37,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "tortrose.com",
+              "host": "rozare.com",
               "pathPrefix": "/"
             }
           ],
@@ -51,14 +51,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tortrose.app",
+      "bundleIdentifier": "com.rozare.app",
       "buildNumber": "1",
       "associatedDomains": [
-        "applinks:tortrose.com"
+        "applinks:rozare.com"
       ],
       "infoPlist": {
-        "NSCameraUsageDescription": "Tortrose needs camera access to let you take product photos.",
-        "NSPhotoLibraryUsageDescription": "Tortrose needs photo library access to let you upload product images."
+        "NSCameraUsageDescription": "Rozare needs camera access to let you take product photos.",
+        "NSPhotoLibraryUsageDescription": "Rozare needs photo library access to let you upload product images."
       }
     },
     "web": {
@@ -79,15 +79,15 @@
           "color": "#6366f1",
           "sounds": [],
           "androidMode": "default",
-          "androidCollapsedTitle": "Tortrose"
+          "androidCollapsedTitle": "Rozare"
         }
       ],
       "expo-web-browser",
       [
         "@sentry/react-native/expo",
         {
-          "organization": "tortrose",
-          "project": "tortrose-mobile"
+          "organization": "rozare",
+          "project": "rozare-mobile"
         }
       ]
     ],

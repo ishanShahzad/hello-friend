@@ -189,7 +189,7 @@ export function buildNotificationContent(type, data = {}) {
       channelId: 'promotions',
     },
     [NotificationTypes.WELCOME]: {
-      title: '👋 Welcome to Tortrose!',
+      title: '👋 Welcome to Rozare!',
       body: 'Start exploring amazing products from trusted sellers.',
       channelId: 'general',
     },

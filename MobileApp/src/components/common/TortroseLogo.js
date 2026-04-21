@@ -1,5 +1,5 @@
 /**
- * TortroseLogo — SVG brand mark for mobile app
+ * RozareLogo — SVG brand mark for mobile app
  * Matches the website navbar logo (rose-shield icon + brand text)
  */
 
@@ -7,7 +7,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, G, Path, Ellipse, Circle, Text as SvgText } from 'react-native-svg';
 
-export default function TortroseLogo({ width = 140, height = 32, showText = true }) {
+export default function RozareLogo({ width = 140, height = 32, showText = true }) {
   const iconSize = height;
   const viewBoxW = showText ? 240 : 50;
 
@@ -74,7 +74,7 @@ export default function TortroseLogo({ width = 140, height = 32, showText = true
             letterSpacing="-0.5"
             fill="url(#logoGrad)"
           >
-            Tortrose
+            Rozare
           </SvgText>
         )}
       </Svg>

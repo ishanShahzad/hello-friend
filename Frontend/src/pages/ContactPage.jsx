@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import SEOHead from '../components/common/SEOHead';
 
 const contactMethods = [
-  { icon: <Mail size={22} />, title: 'Email Us', value: 'support@tortrose.com', desc: 'We respond within 24 hours' },
+  { icon: <Mail size={22} />, title: 'Email Us', value: 'support@rozare.com', desc: 'We respond within 24 hours' },
   { icon: <MessageSquare size={22} />, title: 'Live Chat', value: 'Available on platform', desc: 'Mon–Fri, 9 AM – 6 PM EST' },
   { icon: <MapPin size={22} />, title: 'Headquarters', value: 'Global / Remote', desc: 'Serving customers worldwide' }
 ];
@@ -35,21 +35,21 @@ function ContactPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="Contact Us — Customer Support & Help"
-        description="Contact the Tortrose support team for help with orders, shipping, payments, seller inquiries, and more. Email support@tortrose.com — we respond within 24 hours. Live chat available Mon–Fri 9AM–6PM EST."
+        description="Contact the Rozare support team for help with orders, shipping, payments, seller inquiries, and more. Email support@rozare.com — we respond within 24 hours. Live chat available Mon–Fri 9AM–6PM EST."
         canonical="/contact"
-        keywords="contact tortrose, tortrose support, tortrose help, tortrose customer service, tortrose email, support@tortrose.com, tortrose phone, tortrose live chat, order help, shipping help, payment help, seller support, buyer support, complaint, feedback"
+        keywords="contact rozare, rozare support, rozare help, rozare customer service, rozare email, support@rozare.com, rozare phone, rozare live chat, order help, shipping help, payment help, seller support, buyer support, complaint, feedback"
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'ContactPage',
-          name: 'Contact Tortrose',
-          url: 'https://tortrose.com/contact',
+          name: 'Contact Rozare',
+          url: 'https://rozare.com/contact',
           mainEntity: {
             '@type': 'Organization',
-            name: 'Tortrose',
-            url: 'https://tortrose.com',
+            name: 'Rozare',
+            url: 'https://rozare.com',
             contactPoint: {
               '@type': 'ContactPoint',
-              email: 'support@tortrose.com',
+              email: 'support@rozare.com',
               contactType: 'customer support',
               availableLanguage: 'English',
               areaServed: 'Worldwide',

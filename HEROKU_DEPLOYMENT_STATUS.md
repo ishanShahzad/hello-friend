@@ -3,8 +3,8 @@
 ## ✅ DEPLOYMENT SUCCESSFUL
 
 ### Backend URL
-- **Production URL**: https://tortrose-backend-496a749db93a.herokuapp.com/
-- **Heroku App Name**: tortrose-backend
+- **Production URL**: https://rozare-backend-496a749db93a.herokuapp.com/
+- **Heroku App Name**: rozare-backend
 - **Status**: ✅ Running and operational
 
 ### Deployment Details
@@ -28,7 +28,7 @@
 
 ### Health Check
 ```bash
-curl https://tortrose-backend-496a749db93a.herokuapp.com/health
+curl https://rozare-backend-496a749db93a.herokuapp.com/health
 ```
 Response:
 ```json
@@ -47,26 +47,26 @@ Response:
 
 ### Git Repositories Synced
 All repositories are now at commit `89d7ac0`:
-- ✅ origin (Salman-here/Tortrose)
+- ✅ origin (Salman-here/Rozare)
 - ✅ loveable (ishanShahzad/import-my-code-220b20f8)
 - ✅ hellofriend (ishanShahzad/hello-friend)
-- ✅ heroku (tortrose-backend)
+- ✅ heroku (rozare-backend)
 
 ### Next Steps
-1. Update frontend `VITE_API_URL` to point to: `https://tortrose-backend-496a749db93a.herokuapp.com`
+1. Update frontend `VITE_API_URL` to point to: `https://rozare-backend-496a749db93a.herokuapp.com`
 2. Test all API endpoints from frontend
-3. Monitor Heroku logs: `heroku logs --tail --app tortrose-backend`
+3. Monitor Heroku logs: `heroku logs --tail --app rozare-backend`
 
 ### Useful Commands
 ```bash
 # View logs
-heroku logs --tail --app tortrose-backend
+heroku logs --tail --app rozare-backend
 
 # Restart dyno
-heroku restart --app tortrose-backend
+heroku restart --app rozare-backend
 
 # Check config
-heroku config --app tortrose-backend
+heroku config --app rozare-backend
 
 # Deploy updates
 git push heroku main

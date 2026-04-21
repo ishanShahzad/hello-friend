@@ -45,7 +45,7 @@ const faqCategories = [
     icon: <Store size={18} />,
     questions: [
       { q: 'How do I become a seller?', a: 'Go to "Become a Seller" from the navigation menu. Fill in your store details and submit for verification. Once approved, you can start listing products.' },
-      { q: 'What are the seller fees?', a: 'Tortrose charges a small commission on each sale. There are no monthly fees or listing fees. You only pay when you make a sale.' },
+      { q: 'What are the seller fees?', a: 'Rozare charges a small commission on each sale. There are no monthly fees or listing fees. You only pay when you make a sale.' },
       { q: 'How do I manage my store?', a: 'The Seller Dashboard gives you full control: manage products, track orders, view analytics, configure shipping, and customize your store settings.' }
     ]
   },
@@ -107,9 +107,9 @@ function FAQPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="FAQ — Help Center & Common Questions"
-        description="Find answers to frequently asked questions about shopping on Tortrose. Learn about payments, shipping, returns, selling, order tracking, trust system, account management, and more. Get help with your Tortrose shopping experience."
+        description="Find answers to frequently asked questions about shopping on Rozare. Learn about payments, shipping, returns, selling, order tracking, trust system, account management, and more. Get help with your Rozare shopping experience."
         canonical="/faq"
-        keywords="tortrose FAQ, tortrose help, tortrose questions, how to shop on tortrose, tortrose shipping, tortrose returns, tortrose payments, tortrose refund, tortrose seller FAQ, how to sell on tortrose, tortrose order tracking, tortrose trust system, tortrose verified stores, online shopping FAQ, marketplace help, e-commerce FAQ"
+        keywords="rozare FAQ, rozare help, rozare questions, how to shop on rozare, rozare shipping, rozare returns, rozare payments, rozare refund, rozare seller FAQ, how to sell on rozare, rozare order tracking, rozare trust system, rozare verified stores, online shopping FAQ, marketplace help, e-commerce FAQ"
         jsonLd={faqJsonLd}
       />
       <motion.div
@@ -126,7 +126,7 @@ function FAQPage() {
             Frequently Asked Questions
           </h1>
           <p style={{ color: 'hsl(var(--muted-foreground))' }}>
-            Find answers to the most common questions about Tortrose.
+            Find answers to the most common questions about Rozare.
           </p>
         </div>
 

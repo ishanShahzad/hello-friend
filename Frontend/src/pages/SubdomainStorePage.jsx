@@ -86,7 +86,7 @@ const SubdomainStorePage = () => {
     const handleShare = () => {
         const url = window.location.href;
         if (navigator.share) {
-            navigator.share({ title: store?.storeName, text: `Check out ${store?.storeName} on Tortrose`, url });
+            navigator.share({ title: store?.storeName, text: `Check out ${store?.storeName} on Rozare`, url });
         } else {
             navigator.clipboard.writeText(url);
             toast.success('Store link copied to clipboard!');
@@ -134,8 +134,8 @@ const SubdomainStorePage = () => {
                 <SEOHead
                     title={store?.storeName || 'Store'}
                     description={store?.description
-                        ? `${store.description.slice(0, 140)} — Shop on Tortrose.`
-                        : `Shop products from ${store?.storeName} on Tortrose. Verified independent seller.`}
+                        ? `${store.description.slice(0, 140)} — Shop on Rozare.`
+                        : `Shop products from ${store?.storeName} on Rozare. Verified independent seller.`}
                     canonical={`/`}
                     ogImage={store?.logo || undefined}
                     ogImageAlt={`${store?.storeName} store logo`}

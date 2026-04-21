@@ -107,11 +107,11 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
               <a href="${resetURL}" class="button" style="color: white;">Reset Password</a>
             </p>
             <p>If you didn’t request a password reset, you can safely ignore this email.</p>
-            <p>Thanks,<br/>The Tortrose Team</p>
+            <p>Thanks,<br/>The Rozare Team</p>
           </div>
         </div>
         <div class="footer">
-          &copy; ${new Date().getFullYear()} Tortrose. All rights reserved.
+          &copy; ${new Date().getFullYear()} Rozare. All rights reserved.
         </div>
       </div>
     </body>
@@ -239,11 +239,11 @@ exports.resetPassword = asyncHandler(async (req, res) => {
               <a href="${goToAuthUrl}" class="button" style="color: white;">Login now!</a>
             </p>
           <p>If you did not make this change or believe an unauthorized person has accessed your account, please contact our support team immediately.</p>
-          <p>Stay safe,<br/>The Tortrose Team</p>
+          <p>Stay safe,<br/>The Rozare Team</p>
         </div>
       </div>
       <div class="footer">
-        &copy; ${new Date().getFullYear()} Tortrose. All rights reserved.
+        &copy; ${new Date().getFullYear()} Rozare. All rights reserved.
       </div>
     </div>
   </body>

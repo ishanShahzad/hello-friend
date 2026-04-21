@@ -14,7 +14,7 @@
 
 ## 🎯 The Problem (In 30 Seconds)
 
-Your website `https://www.tortrose.com` shows CORS errors when trying to load products from your backend `https://genzwinners-backend.vercel.app`.
+Your website `https://www.rozare.com` shows CORS errors when trying to load products from your backend `https://genzwinners-backend.vercel.app`.
 
 **Real Issue:** Backend is crashing (500 error) because environment variables aren't set on Vercel.
 
@@ -198,7 +198,7 @@ After completing the fix:
 - [ ] `./test-backend.sh` shows all tests passing
 - [ ] Health endpoint returns `{"status":"ok","mongoConnected":true}`
 - [ ] Products API returns data (not 500 error)
-- [ ] Frontend at www.tortrose.com loads without errors
+- [ ] Frontend at www.rozare.com loads without errors
 - [ ] No CORS errors in browser console
 - [ ] Products display on homepage
 

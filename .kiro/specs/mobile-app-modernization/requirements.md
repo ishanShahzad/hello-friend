@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document specifies the requirements for a comprehensive modernization and completion of the Tortrose MobileApp. The goal is to transform the current basic mobile app into a professional, modern e-commerce platform that matches the quality and design of the web Frontend. This includes complete role-based dashboards (Admin, Seller, User), polished UI/UX with animations and modern design patterns, complete user flows for all user states (guest, logged-in user, seller, admin), and professional loading states, empty states, and error handling throughout the application.
+This document specifies the requirements for a comprehensive modernization and completion of the Rozare MobileApp. The goal is to transform the current basic mobile app into a professional, modern e-commerce platform that matches the quality and design of the web Frontend. This includes complete role-based dashboards (Admin, Seller, User), polished UI/UX with animations and modern design patterns, complete user flows for all user states (guest, logged-in user, seller, admin), and professional loading states, empty states, and error handling throughout the application.
 
 ## Glossary
 

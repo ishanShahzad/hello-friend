@@ -12,7 +12,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
 const contactMethods = [
-  { icon: 'mail-outline', title: 'Email Us', value: 'support@tortrose.com', desc: 'We respond within 24 hours', color: palette.colors.primary },
+  { icon: 'mail-outline', title: 'Email Us', value: 'support@rozare.com', desc: 'We respond within 24 hours', color: palette.colors.primary },
   { icon: 'chatbubbles-outline', title: 'Live Chat', value: 'Available on platform', desc: 'Mon–Fri, 9 AM – 6 PM EST', color: palette.colors.success },
   { icon: 'location-outline', title: 'Headquarters', value: 'Global / Remote', desc: 'Serving customers worldwide', color: palette.colors.info },
 ];

@@ -16,7 +16,7 @@ const sections = [
   { icon: 'person-outline', title: '3. Information Sharing', content: 'We share information with: sellers (to fulfill orders); payment processors (to process transactions); shipping providers (for delivery); and service providers (for analytics and support). We never sell your personal information to third parties for marketing purposes.' },
   { icon: 'lock-closed-outline', title: '4. Data Security', content: 'We implement industry-standard security measures including SSL/TLS encryption, secure payment processing through Stripe, regular security audits, and access controls. While we strive to protect your data, no method of transmission over the internet is 100% secure.' },
   { icon: 'notifications-outline', title: '5. Cookies & Tracking', content: 'We use cookies and similar technologies for: session management; remembering preferences; analytics and performance monitoring; and personalized content. You can manage cookie preferences through your browser settings.' },
-  { icon: 'shield-checkmark-outline', title: '6. Your Rights', content: 'Depending on your jurisdiction, you may have rights to: access your personal data; correct inaccurate data; request deletion of your data; object to processing; data portability; and withdraw consent. To exercise these rights, contact us at privacy@tortrose.com.' },
+  { icon: 'shield-checkmark-outline', title: '6. Your Rights', content: 'Depending on your jurisdiction, you may have rights to: access your personal data; correct inaccurate data; request deletion of your data; object to processing; data portability; and withdraw consent. To exercise these rights, contact us at privacy@rozare.com.' },
   { icon: 'trash-outline', title: '7. Data Retention', content: 'We retain personal data for as long as necessary to provide our services, comply with legal obligations, resolve disputes, and enforce agreements. Account data is retained for the duration of your account and for a reasonable period after deletion.' },
   { icon: 'globe-outline', title: '8. International Transfers', content: 'Your data may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place for international data transfers, including standard contractual clauses and adequacy decisions where applicable.' },
 ];
@@ -41,7 +41,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <GlassPanel variant="card" style={styles.introCard}>
             <Text style={styles.introText}>
-              At Tortrose, your privacy is important to us. This policy explains what information we collect, how we use it, and what choices you have. We are committed to protecting your personal data and being transparent about our practices.
+              At Rozare, your privacy is important to us. This policy explains what information we collect, how we use it, and what choices you have. We are committed to protecting your personal data and being transparent about our practices.
             </Text>
           </GlassPanel>
 
@@ -58,7 +58,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           ))}
 
           <GlassPanel variant="card" style={styles.ctaCard}>
-            <Text style={styles.ctaText}>For privacy inquiries, email privacy@tortrose.com</Text>
+            <Text style={styles.ctaText}>For privacy inquiries, email privacy@rozare.com</Text>
             <TouchableOpacity onPress={() => navigation.navigate('TermsOfService')} activeOpacity={0.7}>
               <Text style={styles.ctaLink}>View Terms of Service →</Text>
             </TouchableOpacity>

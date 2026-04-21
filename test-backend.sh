@@ -4,7 +4,7 @@
 # Tests if the backend is working correctly
 
 BACKEND_URL="https://genzwinners-backend.vercel.app"
-FRONTEND_URL="https://www.tortrose.com"
+FRONTEND_URL="https://www.rozare.com"
 
 echo "🔍 Testing Backend Deployment..."
 echo "================================"

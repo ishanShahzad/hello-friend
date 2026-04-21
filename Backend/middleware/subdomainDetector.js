@@ -6,8 +6,8 @@ const subdomainDetector = async (req, res, next) => {
         const host = req.get('host') || '';
         const parts = host.split('.');
         
-        // Check if it's a subdomain (e.g., storename.tortrose.com)
-        // Assuming main domain is tortrose.com (2 parts)
+        // Check if it's a subdomain (e.g., storename.rozare.com)
+        // Assuming main domain is rozare.com (2 parts)
         if (parts.length > 2) {
             const subdomain = parts[0];
             

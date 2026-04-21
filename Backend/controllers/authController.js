@@ -114,7 +114,7 @@ exports.sendOTP = async (req, res) => {
         <div class="content">
             <p>Hello <strong>${username}</strong>,</p>
             
-            <p>Thank you for creating an account with Tortrose. To complete your registration and verify your email address, please use the verification code below:</p>
+            <p>Thank you for creating an account with Rozare. To complete your registration and verify your email address, please use the verification code below:</p>
             
             <div class="otp-box">
                 <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; font-weight: 600;">VERIFICATION CODE</p>
@@ -125,15 +125,15 @@ exports.sendOTP = async (req, res) => {
             <p style="color: #666; font-size: 14px;">Enter this code on the verification page to activate your account.</p>
             
             <p style="color: #999; font-size: 13px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                <strong>Didn't request this?</strong> If you didn't create an account with Tortrose, you can safely ignore this email.
+                <strong>Didn't request this?</strong> If you didn't create an account with Rozare, you can safely ignore this email.
             </p>
             
             <p style="color: #999; font-size: 12px; margin-top: 15px;">
-                <strong>Security reminder:</strong> Never share this code with anyone. Tortrose staff will never ask for your verification code.
+                <strong>Security reminder:</strong> Never share this code with anyone. Rozare staff will never ask for your verification code.
             </p>
         </div>
         <div class="footer">
-            <p style="margin: 0 0 5px 0;">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</p>
+            <p style="margin: 0 0 5px 0;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
             <div class="company-info">
                 <p style="margin: 5px 0;">This is an automated message, please do not reply to this email.</p>
             </div>
@@ -145,7 +145,7 @@ exports.sendOTP = async (req, res) => {
 
         await sendEmail({
             to: email,
-            subject: 'Verify Your Email - Tortrose',
+            subject: 'Verify Your Email - Rozare',
             text: `Your OTP for email verification is: ${otp}. Valid for 10 minutes.`,
             html: html
         });
@@ -306,7 +306,7 @@ exports.googleCallback = async (req, res) => {
 
         if (isMobile) {
             // Redirect to app deep link — WebBrowser.openAuthSessionAsync will intercept this
-            return res.redirect(`tortrose://auth/google/success?token=${encodeURIComponent(token)}`);
+            return res.redirect(`rozare://auth/google/success?token=${encodeURIComponent(token)}`);
         }
 
         // Web redirect
@@ -315,7 +315,7 @@ exports.googleCallback = async (req, res) => {
         console.error('Google callback error:', error);
         const isMobile = req.query.state === 'mobile';
         if (isMobile) {
-            return res.redirect('tortrose://auth/google/error');
+            return res.redirect('rozare://auth/google/error');
         }
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
     }
@@ -356,14 +356,14 @@ exports.sendSellerOTP = async (req, res) => {
 <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f4f4f4;margin:0;padding:0}.container{max-width:600px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:30px 20px;text-align:center}.header h1{margin:0;font-size:24px}.content{padding:30px 20px;color:#333}.otp-box{background:#f8f9fa;border:2px solid #667eea;border-radius:8px;padding:20px;text-align:center;margin:25px 0}.otp-code{font-size:36px;font-weight:700;color:#667eea;letter-spacing:8px;font-family:'Courier New',monospace}.footer{background:#f8f9fa;padding:20px;text-align:center;font-size:12px;color:#666;border-top:1px solid #e0e0e0}</style></head>
 <body><div class="container"><div class="header"><h1>Verify Your Seller Account</h1></div>
 <div class="content"><p>Hello <strong>${username}</strong>,</p>
-<p>Thank you for signing up as a seller on Tortrose. Please use the code below to verify your email:</p>
+<p>Thank you for signing up as a seller on Rozare. Please use the code below to verify your email:</p>
 <div class="otp-box"><p style="margin:0 0 10px;color:#666;font-size:14px;font-weight:600">VERIFICATION CODE</p>
 <div class="otp-code">${otp}</div>
 <p style="margin:10px 0 0;color:#999;font-size:12px">This code expires in 10 minutes</p></div>
 <p style="color:#999;font-size:13px;margin-top:25px;padding-top:20px;border-top:1px solid #e0e0e0"><strong>Didn't request this?</strong> You can safely ignore this email.</p></div>
-<div class="footer"><p style="margin:0">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</p></div></div></body></html>`;
+<div class="footer"><p style="margin:0">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p></div></div></body></html>`;
 
-        await sendEmail({ to: email, subject: 'Verify Your Seller Account - Tortrose', text: `Your OTP: ${otp}. Valid for 10 minutes.`, html });
+        await sendEmail({ to: email, subject: 'Verify Your Seller Account - Rozare', text: `Your OTP: ${otp}. Valid for 10 minutes.`, html });
 
         res.status(200).json({ msg: 'OTP sent to your email. Please verify to complete seller registration.', email });
     } catch (error) {

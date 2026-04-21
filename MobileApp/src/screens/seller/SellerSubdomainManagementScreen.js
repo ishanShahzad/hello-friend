@@ -186,7 +186,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
                     autoCapitalize="none"
                     maxLength={50}
                   />
-                  <Text style={styles.slugSuffix}>.tortrose.com</Text>
+                  <Text style={styles.slugSuffix}>.rozare.com</Text>
                   <View style={styles.slugCheck}>
                     {slugChecking ? <ActivityIndicator size="small" color={palette.colors.textSecondary} />
                       : slugAvailable === true ? <Ionicons name="checkmark-circle" size={16} color={palette.colors.success} />
@@ -234,7 +234,7 @@ export default function SellerSubdomainManagementScreen({ navigation }) {
               <Ionicons name="information-circle-outline" size={16} color={palette.colors.text} /> About Subdomains
             </Text>
             {[
-              { q: 'What is a subdomain?', a: 'A custom URL like yourstore.tortrose.com for direct store access.' },
+              { q: 'What is a subdomain?', a: 'A custom URL like yourstore.rozare.com for direct store access.' },
               { q: 'When does it activate?', a: 'After your store is verified via Store Settings.' },
               { q: 'Can I change it?', a: 'Yes! Change it anytime — old URL stops working immediately.' },
             ].map((faq, i) => (

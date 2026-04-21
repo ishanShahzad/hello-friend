@@ -69,7 +69,7 @@ const TrustedStoresPage = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
                     title="My Trusted Stores"
-                    description="Your personal list of trusted independent stores on Tortrose."
+                    description="Your personal list of trusted independent stores on Rozare."
                     canonical="/stores/trusted"
                     noindex={true}
                 />

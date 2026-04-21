@@ -12,13 +12,13 @@ const wrapper = (content) => `
 <body style="margin:0;padding:0;background:${bgColor};font-family:Arial,Helvetica,sans-serif;">
 <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
   <div style="background:linear-gradient(135deg,${brandColor},#8b5cf6);padding:32px;text-align:center;">
-    <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Tortrose</h1>
+    <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Rozare</h1>
   </div>
   <div style="padding:32px 28px;">
     ${content}
   </div>
   <div style="background:#f1f5f9;padding:20px 28px;text-align:center;">
-    <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
   </div>
 </div>
 </body>
@@ -147,7 +147,7 @@ exports.sellerAccountCreatedEmail = (userName) => {
       <div style="text-align:center;margin-bottom:24px;">
         <span style="font-size:48px;">🏪</span>
         <h2 style="color:#1e293b;margin:12px 0 8px;">Welcome, Seller ${userName}!</h2>
-        <p style="color:#64748b;margin:0 0 24px;">Your seller account has been successfully created on Tortrose.</p>
+        <p style="color:#64748b;margin:0 0 24px;">Your seller account has been successfully created on Rozare.</p>
       </div>
       <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
         <h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">What's Next?</h3>
@@ -159,7 +159,7 @@ exports.sellerAccountCreatedEmail = (userName) => {
         </ul>
       </div>
       <div style="text-align:center;">
-        <a href="${process.env.FRONTEND_URL || 'https://tortrose.com'}/seller-dashboard" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Go to Seller Dashboard</a>
+        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}/seller-dashboard" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Go to Seller Dashboard</a>
       </div>
     `)
   };
@@ -167,13 +167,13 @@ exports.sellerAccountCreatedEmail = (userName) => {
 
 exports.welcomeEmail = (userName) => {
   return {
-    subject: 'Welcome to Tortrose! 🎉',
+    subject: 'Welcome to Rozare! 🎉',
     html: wrapper(`
       <h2 style="color:#1e293b;margin:0 0 8px;">Welcome, ${userName}! 👋</h2>
-      <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Tortrose. We're excited to have you on board!</p>
+      <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Rozare. We're excited to have you on board!</p>
       <p style="color:#64748b;margin:0 0 24px;">Browse our amazing products from verified sellers and enjoy a seamless shopping experience.</p>
       <div style="text-align:center;">
-        <a href="${process.env.FRONTEND_URL || 'https://tortrose.com'}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
+        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
       </div>
     `)
   };

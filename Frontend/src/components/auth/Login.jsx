@@ -45,7 +45,7 @@ const GlassLoginPage = () => {
       <div className="w-full max-w-md glass-panel-strong overflow-hidden relative z-10">
         <div className="p-8">
           <div className="text-center mb-8">
-            <img src="/tortrose-logo.svg" alt="Tortrose" className="h-12 mx-auto mb-4" />
+            <img src="/rozare-logo.svg" alt="Rozare" className="h-12 mx-auto mb-4" />
             <div className="tag-pill mx-auto w-fit mb-4"><Sparkles size={12} /> Welcome Back</div>
             <h2 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'hsl(var(--foreground))' }}>Sign In</h2>
             <p style={{ color: 'hsl(var(--muted-foreground))' }}>Continue to your account</p>

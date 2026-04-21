@@ -221,7 +221,7 @@ const getTrustMetrics = asyncHandler(async (req, res) => {
       isVerified: !!store.verification?.isVerified,
       verifiedSince: store.verification?.reviewedAt || null,
       breakdown: [
-        { key: 'verified', label: 'Verified Store', score: verifiedScore, max: 30, description: store.verification?.isVerified ? 'Identity confirmed by Tortrose' : 'Not yet verified' },
+        { key: 'verified', label: 'Verified Store', score: verifiedScore, max: 30, description: store.verification?.isVerified ? 'Identity confirmed by Rozare' : 'Not yet verified' },
         { key: 'trusters', label: 'Community Trust', score: trustersScore, max: 25, description: `${store.trustCount || 0} shoppers trust this store` },
         { key: 'age', label: 'Store Tenure', score: ageScore, max: 20, description: `${ageDays} day${ageDays === 1 ? '' : 's'} on the platform` },
         { key: 'catalog', label: 'Product Catalog', score: catalogScore, max: 15, description: `${productCount} active product${productCount === 1 ? '' : 's'}` },

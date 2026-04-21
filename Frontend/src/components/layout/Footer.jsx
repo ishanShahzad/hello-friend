@@ -11,7 +11,7 @@ function Footer() {
             {/* Brand */}
             <div className="col-span-2 sm:col-span-1">
               <Link to="/" className="flex items-center">
-                <img src="/tortrose-logo.svg" alt="Tortrose" className="h-8" />
+                <img src="/rozare-logo.svg" alt="Rozare" className="h-8" />
               </Link>
               <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
                 A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers.
@@ -53,7 +53,7 @@ function Footer() {
           {/* Bottom */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ borderTop: '1px solid var(--glass-border)' }}>
             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              © {new Date().getFullYear()} Tortrose. All rights reserved.
+              © {new Date().getFullYear()} Rozare. All rights reserved.
             </p>
             <p className="text-xs flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
               Made with <Heart size={12} style={{ color: 'hsl(var(--destructive))' }} /> for independent sellers

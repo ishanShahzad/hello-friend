@@ -30,7 +30,7 @@ import { Loader, EmptySearch, ProductGridSkeleton, PersonalizedSliders, SearchAu
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
 import { addSearchHistory } from '../utils/searchHistory';
-import TortroseLogo from '../components/common/TortroseLogo';
+import RozareLogo from '../components/common/RozareLogo';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -214,7 +214,7 @@ export default function HomeScreen({ navigation }) {
       {/* Hero Header — Glass style matching website nav */}
       <GlassPanel variant="floating" style={styles.heroHeader}>
         <View style={styles.heroTopBar}>
-          <TortroseLogo width={140} height={32} />
+          <RozareLogo width={140} height={32} />
           <View style={styles.heroTopRight}>
             <CurrencySelector />
             <TouchableOpacity

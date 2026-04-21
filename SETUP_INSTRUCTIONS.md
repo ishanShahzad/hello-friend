@@ -32,7 +32,7 @@ The file `Backend/.env` contains all the values you need.
 - `NODE_ENV` = production
 - `MONGO_URI` (from .env)
 - `JWT_SECRET` (from .env)
-- `FRONTEND_URL` = https://www.tortrose.com
+- `FRONTEND_URL` = https://www.rozare.com
 - `CLOUDINARY_CLOUD_NAME` (from .env)
 - `CLOUDINARY_API_KEY` (from .env)
 - `CLOUDINARY_API_SECRET` (from .env)
@@ -62,7 +62,7 @@ Should see:
 {"status":"ok","mongoConnected":true}
 ```
 
-Then visit: https://www.tortrose.com - Products should load! ✅
+Then visit: https://www.rozare.com - Products should load! ✅
 
 ## MongoDB Atlas Setup
 

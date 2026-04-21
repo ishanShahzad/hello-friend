@@ -59,7 +59,7 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
             <View style={styles.logoRow}>
               <View style={styles.logoIcon}><Ionicons name="storefront" size={20} color={palette.colors.white} /></View>
-              <Text style={styles.logoText}>Tortrose</Text>
+              <Text style={styles.logoText}>Rozare</Text>
             </View>
             <View style={{ width: 40 }} />
           </View>

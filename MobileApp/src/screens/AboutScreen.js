@@ -47,7 +47,7 @@ export default function AboutScreen({ navigation }) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Hero */}
-          <Text style={styles.heroTitle}>About Tortrose</Text>
+          <Text style={styles.heroTitle}>About Rozare</Text>
           <Text style={styles.heroDesc}>
             A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers who believe in quality, transparency, and community.
           </Text>
@@ -86,7 +86,7 @@ export default function AboutScreen({ navigation }) {
 
           {/* CTA */}
           <GlassPanel variant="card" style={styles.ctaCard}>
-            <Text style={styles.ctaTitle}>Ready to join Tortrose?</Text>
+            <Text style={styles.ctaTitle}>Ready to join Rozare?</Text>
             <Text style={styles.ctaDesc}>Start shopping or become a seller today.</Text>
             <View style={styles.ctaButtons}>
               <TouchableOpacity style={styles.ctaPrimary} onPress={() => navigation.navigate('MainTabs')} activeOpacity={0.7}>

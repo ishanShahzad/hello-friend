@@ -30,10 +30,10 @@ const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
       <div class="content">
         ${bodyHtml}
         ${ctaUrl ? `<p style="text-align:center"><a href="${ctaUrl}" class="button">${ctaText || 'View Details'}</a></p>` : ''}
-        <p>Best regards,<br/>The Tortrose Team</p>
+        <p>Best regards,<br/>The Rozare Team</p>
       </div>
     </div>
-    <div class="footer">&copy; ${new Date().getFullYear()} Tortrose. All rights reserved.</div>
+    <div class="footer">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</div>
   </div>
 </body>
 </html>
@@ -202,10 +202,10 @@ exports.createStore = async (req, res) => {
                 const html = storeEmailTemplate(
                     '🎉 Your Store is Live!',
                     `<p>Hello ${seller.username || 'Seller'},</p>
-                    <p>Congratulations! Your store <strong>"${newStore.storeName}"</strong> has been successfully created on Tortrose.</p>
+                    <p>Congratulations! Your store <strong>"${newStore.storeName}"</strong> has been successfully created on Rozare.</p>
                     <div class="highlight">
                         <strong>Store URL:</strong> ${process.env.FRONTEND_URL}/store/${newStore.storeSlug}<br/>
-                        <strong>Subdomain:</strong> ${newStore.storeSlug}.tortrose.com <em>(activates after verification)</em>
+                        <strong>Subdomain:</strong> ${newStore.storeSlug}.rozare.com <em>(activates after verification)</em>
                     </div>
                     <p>Next steps:</p>
                     <ul>
@@ -827,10 +827,10 @@ exports.approveVerification = async (req, res) => {
                 const html = storeEmailTemplate(
                     '✅ Store Verified — Subdomain Activated!',
                     `<p>Hello ${seller.username || 'Seller'},</p>
-                    <p>Great news! Your store <strong>"${store.storeName}"</strong> has been verified by the Tortrose team.</p>
+                    <p>Great news! Your store <strong>"${store.storeName}"</strong> has been verified by the Rozare team.</p>
                     <div class="highlight">
                         <strong>🌐 Your subdomain is now live:</strong><br/>
-                        <a href="https://${store.storeSlug}.tortrose.com" style="color:#4F46E5;font-weight:600">${store.storeSlug}.tortrose.com</a>
+                        <a href="https://${store.storeSlug}.rozare.com" style="color:#4F46E5;font-weight:600">${store.storeSlug}.rozare.com</a>
                     </div>
                     <p>Your store now displays a verified badge and customers can access it via your custom subdomain. Share your link to start getting traffic!</p>`,
                     `${process.env.FRONTEND_URL}/seller-dashboard/subdomain`,
@@ -975,7 +975,7 @@ exports.removeVerification = async (req, res) => {
                     <p>We're writing to inform you that the verification for your store <strong>"${store.storeName}"</strong> has been removed by an administrator.</p>
                     <div class="highlight">
                         <strong>What this means:</strong><br/>
-                        • Your subdomain <strong>${store.storeSlug}.tortrose.com</strong> is no longer active<br/>
+                        • Your subdomain <strong>${store.storeSlug}.rozare.com</strong> is no longer active<br/>
                         • The verified badge has been removed from your store<br/>
                         • Your store is still accessible at its regular URL
                     </div>

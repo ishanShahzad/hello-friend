@@ -203,8 +203,8 @@ export default function SettingsScreen({ navigation }) {
             <SettingRow icon="navigate-outline" iconColor={palette.colors.warning} iconBg="rgba(245,158,11,0.15)" title="Track Order" subtitle="Track your order with email & order ID" onPress={() => navigation.navigate('TrackOrder')} />
             <SettingRow icon="mail-outline" iconColor={palette.colors.success} iconBg="rgba(16,185,129,0.15)" title="Contact Support" subtitle="Get in touch with us" onPress={() => navigation.navigate('Contact')} />
             <SettingRow icon="help-circle-outline" iconColor={palette.colors.info} iconBg="rgba(59,130,246,0.15)" title="FAQ" subtitle="Frequently asked questions" onPress={() => navigation.navigate('FAQ')} />
-            <SettingRow icon="information-circle-outline" iconColor={palette.colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Tortrose" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
-            <SettingRow icon="star-outline" iconColor={palette.colors.warning} iconBg="rgba(245,158,11,0.15)" title="Rate the App" subtitle="Share your experience" onPress={() => Alert.alert('Rate Us ⭐', 'Enjoying Tortrose?', [{ text: 'Maybe Later', style: 'cancel' }, { text: 'Rate Now', onPress: () => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com' : 'https://play.google.com') }])} showBorder={false} />
+            <SettingRow icon="information-circle-outline" iconColor={palette.colors.primary} iconBg="rgba(99,102,241,0.15)" title="About Rozare" subtitle="Our story and mission" onPress={() => navigation.navigate('About')} />
+            <SettingRow icon="star-outline" iconColor={palette.colors.warning} iconBg="rgba(245,158,11,0.15)" title="Rate the App" subtitle="Share your experience" onPress={() => Alert.alert('Rate Us ⭐', 'Enjoying Rozare?', [{ text: 'Maybe Later', style: 'cancel' }, { text: 'Rate Now', onPress: () => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com' : 'https://play.google.com') }])} showBorder={false} />
           </GlassPanel>
 
           <Text style={styles.sectionLabel}>LEGAL</Text>
@@ -219,7 +219,7 @@ export default function SettingsScreen({ navigation }) {
           </GlassPanel>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Made with ❤️ by Tortrose</Text>
+            <Text style={styles.footerText}>Made with ❤️ by Rozare</Text>
             <Text style={styles.footerVersion}>v{APP_VERSION}</Text>
           </View>
         </ScrollView>

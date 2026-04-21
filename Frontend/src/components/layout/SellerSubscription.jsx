@@ -140,7 +140,7 @@ const SellerSubscription = () => {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Tortrose Starter</h1>
+                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Rozare Starter</h1>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Manage your seller plan</p>
                 </div>
                 {getStatusBadge()}
@@ -155,7 +155,7 @@ const SellerSubscription = () => {
                         </div>
                          <div>
                             <h2 className="text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                {isSubscribed ? 'Tortrose Starter' : isTrial ? 'Free Trial' : 'No Active Plan'}
+                                {isSubscribed ? 'Rozare Starter' : isTrial ? 'Free Trial' : 'No Active Plan'}
                             </h2>
                             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 {isSubscribed
@@ -211,7 +211,7 @@ const SellerSubscription = () => {
                             <Sparkles size={12} /> 30 DAYS FREE
                         </div>
                         <h3 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                            Tortrose Starter
+                            Rozare Starter
                         </h3>
                         <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
                             <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5/mo</span>
@@ -296,7 +296,7 @@ const SellerSubscription = () => {
                 <div className="space-y-4">
                     {[
                         { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose Tortrose Starter — $0 for the first 30 days', active: false },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter — $0 for the first 30 days', active: false },
                         { step: '3', title: 'Free Period', desc: '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
                         { step: '4', title: 'Monthly Billing', desc: 'Only $5/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
                         { step: '5', title: 'Bonus Expiry', desc: 'After 6 months, bonus features transition to premium plans.', active: false },

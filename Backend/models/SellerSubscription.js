@@ -19,7 +19,7 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     },
     planName: {
         type: String,
-        default: 'Tortrose Starter',
+        default: 'Rozare Starter',
     },
     plan: {
         type: String,

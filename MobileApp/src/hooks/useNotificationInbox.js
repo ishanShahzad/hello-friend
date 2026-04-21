@@ -140,7 +140,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
       [...orderNotifs, ...pushNotifs].forEach(n => { if (!allMap.has(n.id)) allMap.set(n.id, n); });
 
       if (allMap.size === 0) {
-        allMap.set('welcome', { id: 'welcome', category: 'system', title: 'Welcome to Tortrose', body: 'Start shopping to see notifications here.', createdAt: new Date().toISOString(), read: false });
+        allMap.set('welcome', { id: 'welcome', category: 'system', title: 'Welcome to Rozare', body: 'Start shopping to see notifications here.', createdAt: new Date().toISOString(), read: false });
       }
 
       const merged = [...allMap.values()]

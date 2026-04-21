@@ -16,7 +16,7 @@ Backend is crashing (500 error) → No CORS headers sent → Browser shows CORS 
 NODE_ENV=production
 MONGO_URI=[Copy from Backend/.env]
 JWT_SECRET=[Copy from Backend/.env]
-FRONTEND_URL=https://www.tortrose.com
+FRONTEND_URL=https://www.rozare.com
 CLOUDINARY_CLOUD_NAME=[Copy from Backend/.env]
 CLOUDINARY_API_KEY=[Copy from Backend/.env]
 CLOUDINARY_API_SECRET=[Copy from Backend/.env]
@@ -26,8 +26,8 @@ clientID=[Copy from Backend/.env]
 clientSecret=[Copy from Backend/.env]
 GOOGLE_CALLBACK_URL=https://genzwinners-backend.vercel.app/api/auth/google/callback
 BREVO_API_KEY=[Copy from Backend/.env]
-BREVO_SENDER_NAME=Tortrose
-BREVO_SENDER_EMAIL=no-reply@tortrose.com
+BREVO_SENDER_NAME=Rozare
+BREVO_SENDER_EMAIL=no-reply@rozare.com
 ```
 
 **Note:** Open `Backend/.env` file and copy the actual values from there.
@@ -53,7 +53,7 @@ Should see:
 {"status":"ok","mongoConnected":true}
 ```
 
-Then visit: https://www.tortrose.com
+Then visit: https://www.rozare.com
 
 Products should load! ✅
 

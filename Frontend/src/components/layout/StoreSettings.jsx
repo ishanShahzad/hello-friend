@@ -340,7 +340,7 @@ const StoreSettings = () => {
                         {/* Subdomain Input */}
                         <div className="flex items-center gap-0 rounded-xl overflow-hidden mb-2" style={{ border: '1.5px solid var(--glass-border)', background: 'var(--glass-bg)' }}>
                             <span className="px-3 py-3 text-sm font-medium select-none" style={{ background: 'var(--glass-inner)', color: 'hsl(var(--muted-foreground))', borderRight: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>
-                                tortrose.com/
+                                rozare.com/
                             </span>
                             <input
                                 type="text"
@@ -383,7 +383,7 @@ const StoreSettings = () => {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <Globe size={14} style={{ color: 'hsl(var(--primary))' }} />
                                     <span className="text-sm font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                                        {customSubdomain}.tortrose.com
+                                        {customSubdomain}.rozare.com
                                     </span>
                                     {verification.isVerified ? (
                                         <span className="text-xs" style={{ color: 'hsl(150, 60%, 45%)' }}>← Will route to your store</span>
@@ -410,7 +410,7 @@ const StoreSettings = () => {
                                         </p>
                                         {customSubdomain.length >= 3 && (
                                             <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                                <strong className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{customSubdomain}.tortrose.com</strong> is your chosen address. It won't go live until your store is verified.
+                                                <strong className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{customSubdomain}.rozare.com</strong> is your chosen address. It won't go live until your store is verified.
                                             </p>
                                         )}
                                     </div>
@@ -435,7 +435,7 @@ const StoreSettings = () => {
                                             Apply for Brand Verification
                                         </motion.button>
                                     )}
-                                    <a href="mailto:support@tortrose.com"
+                                    <a href="mailto:support@rozare.com"
                                         className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
                                         style={{ background: 'var(--glass-inner)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
                                         <Mail size={12} /> Contact Support
@@ -443,7 +443,7 @@ const StoreSettings = () => {
                                 </div>
 
                                 <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Need help? Contact <a href="mailto:support@tortrose.com" className="underline">support@tortrose.com</a> for more information about getting verified.
+                                    Need help? Contact <a href="mailto:support@rozare.com" className="underline">support@rozare.com</a> for more information about getting verified.
                                 </p>
                             </motion.div>
                         )}
@@ -455,7 +455,7 @@ const StoreSettings = () => {
                                     <CheckCircle size={15} /> Your subdomain is live!
                                 </p>
                                 <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Customers can reach your store at <strong className="font-mono">{customSubdomain}.tortrose.com</strong>
+                                    Customers can reach your store at <strong className="font-mono">{customSubdomain}.rozare.com</strong>
                                 </p>
                             </div>
                         )}

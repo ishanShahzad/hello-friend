@@ -256,22 +256,22 @@ function Products() {
     <div className='relative flex flex-col lg:flex-row min-h-screen'>
       <SEOHead
         title={null}
-        description="Shop thousands of unique products on Tortrose — the best online shopping marketplace. Browse electronics, fashion, home decor, beauty, jewelry & more from verified independent sellers. Secure checkout, multi-currency support, worldwide shipping, best deals & discounts. Find trending products, new arrivals, and top-rated items at affordable prices."
+        description="Shop thousands of unique products on Rozare — the best online shopping marketplace. Browse electronics, fashion, home decor, beauty, jewelry & more from verified independent sellers. Secure checkout, multi-currency support, worldwide shipping, best deals & discounts. Find trending products, new arrivals, and top-rated items at affordable prices."
         canonical="/"
-        keywords="shop online, buy products online, online shopping website, best online store, tortrose products, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
+        keywords="shop online, buy products online, online shopping website, best online store, rozare products, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
         jsonLd={[
           {
             '@context': 'https://schema.org',
             '@type': 'WebSite',
-            name: 'Tortrose',
-            alternateName: 'Tortrose Marketplace',
-            url: 'https://tortrose.com',
-            description: 'Tortrose is the best online shopping marketplace to buy unique products from trusted independent sellers worldwide.',
+            name: 'Rozare',
+            alternateName: 'Rozare Marketplace',
+            url: 'https://rozare.com',
+            description: 'Rozare is the best online shopping marketplace to buy unique products from trusted independent sellers worldwide.',
             potentialAction: {
               '@type': 'SearchAction',
               target: {
                 '@type': 'EntryPoint',
-                urlTemplate: 'https://tortrose.com/?search={search_term_string}',
+                urlTemplate: 'https://rozare.com/?search={search_term_string}',
               },
               'query-input': 'required name=search_term_string',
             },
@@ -279,10 +279,10 @@ function Products() {
           {
             '@context': 'https://schema.org',
             '@type': 'CollectionPage',
-            name: 'All Products — Tortrose',
-            description: 'Browse and shop all products available on Tortrose marketplace',
-            url: 'https://tortrose.com/',
-            isPartOf: { '@type': 'WebSite', name: 'Tortrose', url: 'https://tortrose.com' },
+            name: 'All Products — Rozare',
+            description: 'Browse and shop all products available on Rozare marketplace',
+            url: 'https://rozare.com/',
+            isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
           },
         ]}
       />
