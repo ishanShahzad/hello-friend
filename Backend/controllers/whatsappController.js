@@ -57,20 +57,49 @@ exports.connect = async (req, res) => {
         const cfg = await ensureSingleton();
         cfg.instanceName = evolution.instanceName();
 
-        await evolution.createInstance().catch(() => null); // idempotent
-        const qr = await evolution.getQRCode();
+        // createInstance often returns the QR directly on a fresh install
+        const created = await evolution.createInstance().catch((e) => {
+            console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
+            return null;
+        });
 
-        const base64 = qr.base64?.startsWith('data:')
-            ? qr.base64
-            : qr.base64 ? `data:image/png;base64,${qr.base64}` : '';
+        let base64 = '';
+        let code = '';
+        if (created && (created.qrcode || created.base64 || created.qr)) {
+            const b = created.qrcode?.base64 || created.base64 || created.qr || '';
+            base64 = b;
+            code = created.qrcode?.code || created.code || '';
+        }
+
+        // Fallback / refresh via connect endpoint (with internal polling)
+        if (!base64) {
+            const qr = await evolution.getQRCode();
+            base64 = qr.base64;
+            code = qr.code;
+            if (!base64 && !code) {
+                console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
+            }
+        }
+
+        const dataUrl = base64
+            ? (base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`)
+            : '';
 
         cfg.status = 'pending_qr';
-        cfg.lastQrBase64 = base64;
+        cfg.lastQrBase64 = dataUrl;
         cfg.lastQrFetchedAt = new Date();
-        cfg.lastError = '';
+        cfg.lastError = dataUrl || code ? '' : 'Gateway returned no QR. Check EVOLUTION_API_URL is reachable and the instance is not already linked.';
         await cfg.save();
 
-        res.json({ status: cfg.status, qrBase64: base64, code: qr.code || '' });
+        if (!dataUrl && !code) {
+            return res.status(502).json({
+                msg: cfg.lastError,
+                qrBase64: '',
+                code: '',
+            });
+        }
+
+        res.json({ status: cfg.status, qrBase64: dataUrl, code });
     } catch (err) {
         const msg = err.response?.data?.message || err.message;
         await WhatsAppConfig.updateOne(

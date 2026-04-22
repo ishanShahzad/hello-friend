@@ -16,6 +16,7 @@ const client = () => axios.create({
 });
 
 // Create or fetch the WhatsApp instance (idempotent on most Evolution builds)
+// Returns the create response — which on fresh installs already includes the QR.
 exports.createInstance = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     try {
@@ -27,21 +28,52 @@ exports.createInstance = async () => {
         return data;
     } catch (err) {
         // Already exists — not fatal
-        if (err.response?.status === 403 || err.response?.data?.message?.toString().includes('already')) {
+        const msg = err.response?.data?.message?.toString() || err.response?.data?.response?.message?.toString() || '';
+        if (err.response?.status === 403 || err.response?.status === 409 || msg.toLowerCase().includes('already')) {
             return { msg: 'instance_exists' };
         }
         throw err;
     }
 };
 
-// Returns { base64, code } — base64 is a PNG data URL we render in the admin modal
+const extractQr = (data) => {
+    if (!data) return { base64: '', code: '' };
+    // Evolution returns several shapes across versions:
+    //  - { base64, code }
+    //  - { qrcode: { base64, code } }
+    //  - { instance: { ... }, qrcode: { base64, code } }
+    //  - { qr: 'data:image/png;base64,...' }
+    const qrCodeStr = typeof data?.qrcode?.code === 'string' && data.qrcode.code.startsWith('data:')
+        ? data.qrcode.code
+        : '';
+    const b64 =
+        data?.base64 ||
+        data?.qrcode?.base64 ||
+        qrCodeStr ||
+        data?.qr ||
+        (typeof data?.qrcode === 'string' ? data.qrcode : '') ||
+        '';
+    const code = data?.code || (typeof data?.qrcode?.code === 'string' ? data.qrcode.code : '') || '';
+    return { base64: b64 || '', code: code || '' };
+};
+
+// Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
+// Polls Evolution up to ~6s because the QR isn't always ready on the first request.
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    const { data } = await client().get(`/instance/connect/${instanceName()}`);
-    // Evolution returns either { base64, code } or nested under .qrcode
-    const b64 = data?.base64 || data?.qrcode?.base64 || data?.qrcode || '';
-    const code = data?.code || data?.qrcode?.code || '';
-    return { base64: b64, code, raw: data };
+    let lastRaw = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+            const { data } = await client().get(`/instance/connect/${instanceName()}`);
+            lastRaw = data;
+            const { base64, code } = extractQr(data);
+            if (base64 || code) return { base64, code, raw: data };
+        } catch (err) {
+            lastRaw = err.response?.data || { error: err.message };
+        }
+        await new Promise(r => setTimeout(r, 1500));
+    }
+    return { base64: '', code: '', raw: lastRaw };
 };
 
 exports.getStatus = async () => {
