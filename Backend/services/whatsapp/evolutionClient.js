@@ -43,14 +43,17 @@ const extractQr = (data) => {
     //  - { qrcode: { base64, code } }
     //  - { instance: { ... }, qrcode: { base64, code } }
     //  - { qr: 'data:image/png;base64,...' }
+    const qrCodeStr = typeof data?.qrcode?.code === 'string' && data.qrcode.code.startsWith('data:')
+        ? data.qrcode.code
+        : '';
     const b64 =
         data?.base64 ||
         data?.qrcode?.base64 ||
-        data?.qrcode?.code?.startsWith?.('data:') ? data?.qrcode?.code : null ||
+        qrCodeStr ||
         data?.qr ||
         (typeof data?.qrcode === 'string' ? data.qrcode : '') ||
         '';
-    const code = data?.code || data?.qrcode?.code || '';
+    const code = data?.code || (typeof data?.qrcode?.code === 'string' ? data.qrcode.code : '') || '';
     return { base64: b64 || '', code: code || '' };
 };
 
