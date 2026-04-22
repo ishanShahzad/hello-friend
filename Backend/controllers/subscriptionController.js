@@ -431,3 +431,29 @@ exports.getAllSubscriptionsForAdmin = async (req, res) => {
         res.status(500).json({ msg: 'Failed to fetch subscriptions' });
     }
 };
+
+// Returns true if a seller is entitled to bonus features (Trial OR active bonusFeaturesActive).
+// Used by feature-gating helpers like sellerHasFeaturedProducts and sellerHasWhatsAppVerify.
+const isEntitledToBonus = (sub) => {
+    if (!sub) return false;
+    if (sub.status === 'trial') {
+        return sub.trialEndDate ? new Date() < sub.trialEndDate : true;
+    }
+    if (sub.bonusFeaturesActive) {
+        return sub.bonusExpiryDate ? new Date() < sub.bonusExpiryDate : true;
+    }
+    return false;
+};
+
+// Gating helper: WhatsApp order auto-verification — Rozare Starter bonus
+exports.sellerHasWhatsAppVerify = async (sellerId) => {
+    try {
+        if (!sellerId) return false;
+        const sub = await SellerSubscription.findOne({ seller: sellerId });
+        return isEntitledToBonus(sub);
+    } catch (err) {
+        console.error('sellerHasWhatsAppVerify:', err.message);
+        return false;
+    }
+};
+

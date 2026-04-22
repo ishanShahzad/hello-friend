@@ -254,6 +254,7 @@ const SellerSubscription = () => {
                             { icon: <Shield size={14} />, text: 'Priority support & early access to new features' },
                             { icon: <Crown size={14} />, text: 'Coupon & discount management system' },
                             { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
+                            { icon: <Bot size={14} />, text: 'Automated WhatsApp order verification (poll-based, no buyer typing)' },
                         ].map((f, i) => (
                             <div key={`bonus-${i}`} className="flex items-center gap-3">
                                 <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
