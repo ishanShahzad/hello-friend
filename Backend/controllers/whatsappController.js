@@ -261,6 +261,53 @@ exports.disconnect = async (req, res) => {
     }
 };
 
+// POST /api/whatsapp/reset — admin: hard-reset the gateway instance.
+// Only allowed when not currently linked, to avoid blowing away a healthy session.
+exports.reset = async (req, res) => {
+    try {
+        if (!evolution.isConfigured()) {
+            return res.status(400).json({ msg: 'WhatsApp gateway is not configured.' });
+        }
+
+        const cfg = await ensureSingleton();
+
+        // Refuse if currently connected — caller should use Disconnect instead.
+        let liveState = '';
+        try { liveState = normalizeGatewayState(await evolution.getStatus()); } catch { liveState = ''; }
+        if (liveState === 'open' || cfg.status === 'connected') {
+            return res.status(409).json({
+                msg: 'WhatsApp is currently linked. Disconnect first before resetting the instance.',
+            });
+        }
+
+        // Best-effort: log out any half-open session, then delete the instance.
+        await evolution.logout().catch(() => null);
+        const deleted = await evolution.deleteInstance().catch((e) => ({ error: e.message }));
+
+        // Reset the singleton so the next connect starts from a clean slate.
+        cfg.status = 'disconnected';
+        cfg.linkedNumber = '';
+        cfg.linkedAt = null;
+        cfg.lastQrBase64 = '';
+        cfg.lastQrFetchedAt = null;
+        cfg.lastError = '';
+        cfg.lastSeen = new Date();
+        await cfg.save();
+
+        // Recreate immediately so the next "Link WhatsApp" can return a fresh QR.
+        const created = await evolution.createInstance().catch((e) => ({ error: e.message }));
+
+        return res.json({
+            msg: 'WhatsApp instance reset. Click "Link WhatsApp" to scan a new QR.',
+            deleted,
+            created,
+        });
+    } catch (err) {
+        console.error('whatsapp.reset:', err.message);
+        return res.status(500).json({ msg: 'Failed to reset WhatsApp instance: ' + err.message });
+    }
+};
+
 // GET /api/whatsapp/queue — admin: recent activity
 exports.getQueue = async (req, res) => {
     try {
