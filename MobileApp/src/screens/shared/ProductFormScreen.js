@@ -2,10 +2,10 @@
  * ProductFormScreen — Liquid Glass
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +49,24 @@ export default function ProductFormScreen({ navigation, route }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [isFeatured, setIsFeatured] = useState(!!product?.isFeatured);
+  const [canFeature, setCanFeature] = useState(true);
+
+  // Fetch seller subscription to determine featured-product entitlement.
+  // Trial sellers and those with active bonus features may mark products as Featured.
+  useEffect(() => {
+    if (isAdmin) { setCanFeature(true); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/subscription/status');
+        const sub = res.data?.subscription;
+        const entitled = sub?.status === 'trial' || sub?.bonusFeaturesActive === true;
+        if (!cancelled) setCanFeature(!!entitled);
+      } catch { if (!cancelled) setCanFeature(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const updateField = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +87,7 @@ export default function ProductFormScreen({ navigation, route }) {
     if (!validation.isValid) { setErrors(validation.errors); setTouched({ name: true, price: true, stock: true }); return; }
     setLoading(true);
     try {
-      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0) };
+      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
       if (isEditMode) { await api.put(`/api/products/edit/${product._id}`, { product: productData }); Alert.alert('Success', 'Product updated', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
       else { await api.post('/api/products/add', { product: productData }); Alert.alert('Success', 'Product created', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
     } catch (e) { Alert.alert('Error', e.response?.data?.message || e.response?.data?.msg || 'Failed to save'); }
