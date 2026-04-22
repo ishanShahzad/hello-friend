@@ -188,7 +188,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     const handleTabClick = (tabId) => { setActiveTab(tabId); if (isMobile) setIsSidebarOpen(false); };
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full glass-panel-strong water-shimmer" style={{ borderRadius: '0 28px 28px 0' }}>
+        <div className={`flex flex-col h-full glass-panel-strong water-shimmer ${isMobile ? 'sidebar-mobile-solid' : ''}`} style={{ borderRadius: '0 28px 28px 0' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-6 pb-4">
                 <div className="flex items-center gap-3">
