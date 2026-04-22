@@ -141,6 +141,18 @@ exports.logout = async () => {
     }
 };
 
+// Hard-delete the instance so it can be recreated cleanly.
+// Used by the admin "Reset instance" action when the QR flow is stuck.
+exports.deleteInstance = async () => {
+    if (!isConfigured()) return { msg: 'not_configured' };
+    try {
+        const { data } = await client().delete(`/instance/delete/${instanceName()}`);
+        return data;
+    } catch (err) {
+        return { error: err.response?.data || err.message };
+    }
+};
+
 // Send a plain text message — `number` is digits only (e.g., 9230012345678)
 exports.sendText = async (number, text) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
     MessageCircle, QrCode, Power, RefreshCw, X, AlertTriangle, CheckCircle2,
     Loader2, Phone, Clock, ShieldAlert, Activity, Inbox, Send, ThumbsUp, ThumbsDown,
-    TrendingUp, BarChart3, Timer,
+    TrendingUp, BarChart3, Timer, RotateCcw,
 } from 'lucide-react';
 
 
@@ -84,6 +84,9 @@ const WhatsAppVerificationPanel = () => {
     const [qrHint, setQrHint] = useState('');
     const [pairingCode, setPairingCode] = useState('');
     const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+    const [resetting, setResetting] = useState(false);
+    const [resetMsg, setResetMsg] = useState('');
     const pollRef = useRef(null);
 
     const fetchStatus = useCallback(async () => {
@@ -119,7 +122,11 @@ const WhatsAppVerificationPanel = () => {
         setQrLoading(true);
         setQrError('');
         try {
-            const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
+            const { data } = await axios.post(
+                `${API}api/whatsapp/connect`,
+                {},
+                { headers: authHeaders(), timeout: 25000 }
+            );
             setQrBase64(data.qrBase64 || '');
             setPairingCode(data.code || '');
             setQrHint(data.fallback || data.msg ? (data.msg || 'Waiting for QR…') : '');
@@ -132,7 +139,17 @@ const WhatsAppVerificationPanel = () => {
         } catch (err) {
             setQrHint('');
             setPairingCode('');
-            setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
+            const offline =
+                err.code === 'ECONNABORTED' ||
+                err.message === 'Network Error' ||
+                err.response?.status === 503 ||
+                err.response?.status === 502;
+            setQrError(
+                err.response?.data?.msg ||
+                (offline
+                    ? 'WhatsApp gateway is temporarily unavailable. Try again or reset the instance below.'
+                    : 'Failed to fetch QR code')
+            );
         } finally {
             setQrLoading(false);
         }
@@ -172,6 +189,38 @@ const WhatsAppVerificationPanel = () => {
             console.error(err);
         }
     };
+
+    const handleReset = async () => {
+        setResetting(true);
+        setResetMsg('');
+        try {
+            const { data } = await axios.post(
+                `${API}api/whatsapp/reset`,
+                {},
+                { headers: authHeaders(), timeout: 30000 }
+            );
+            setQrBase64('');
+            setPairingCode('');
+            setQrError('');
+            setQrHint('Instance reset. Click "Link WhatsApp" to scan a new QR.');
+            setResetMsg(data?.msg || 'Instance reset.');
+            setConfirmReset(false);
+            setShowQrModal(false);
+            await fetchStatus();
+        } catch (err) {
+            setResetMsg(err.response?.data?.msg || 'Failed to reset WhatsApp instance.');
+        } finally {
+            setResetting(false);
+        }
+    };
+
+    // Show reset only when the link flow is stuck: status pending_qr/connecting/error
+    // AND we currently have no usable QR or pairing code on screen.
+    const isStuckLinking =
+        ['pending_qr', 'connecting', 'error'].includes(status?.status) &&
+        !qrBase64 &&
+        !pairingCode &&
+        status?.status !== 'connected';
 
     // Auto-close QR modal on connected
     useEffect(() => {
@@ -229,6 +278,14 @@ const WhatsAppVerificationPanel = () => {
                                 style={{ color: 'hsl(var(--foreground))' }}>
                                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
                             </button>
+                            {isStuckLinking && (
+                                <button onClick={() => { setResetMsg(''); setConfirmReset(true); }}
+                                    className="px-3 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-1.5"
+                                    style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}
+                                    title="Reset the WhatsApp instance — only when stuck waiting for QR">
+                                    <RotateCcw size={14} /> Reset instance
+                                </button>
+                            )}
                             {status?.status === 'connected' ? (
                                 <button onClick={() => setConfirmDisconnect(true)}
                                     className="px-3 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-1.5"
@@ -453,6 +510,58 @@ const WhatsAppVerificationPanel = () => {
                             <button onClick={handleDisconnect}
                                 className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
                                 style={{ background: 'hsl(0,72%,55%)' }}>Disconnect</button>
+                        </div>
+                    </motion.div>
+                </motion.div>,
+                document.body
+            )}
+
+            {/* Reset instance confirm — only ever opened when stuck without a QR */}
+            {confirmReset && createPortal(
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                    onClick={() => !resetting && setConfirmReset(false)}>
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="glass-panel-strong rounded-3xl p-6 max-w-sm w-full">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}>
+                                <RotateCcw size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
+                                    Reset WhatsApp instance?
+                                </h3>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Use this only when the link flow is stuck without a QR.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="text-xs mb-4 p-3 rounded-2xl"
+                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: 'hsl(var(--foreground))' }}>
+                            This will <strong>log out, delete and recreate</strong> the gateway instance. No customer data is touched, but you'll need to scan a fresh QR. It's blocked while WhatsApp is currently linked.
+                        </div>
+
+                        {resetMsg && (
+                            <div className="text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {resetMsg}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmReset(false)}
+                                disabled={resetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-medium glass-inner disabled:opacity-50"
+                                style={{ color: 'hsl(var(--foreground))' }}>Cancel</button>
+                            <button onClick={handleReset}
+                                disabled={resetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                                style={{ background: 'hsl(38,92%,45%)' }}>
+                                {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                {resetting ? 'Resetting…' : 'Reset instance'}
+                            </button>
                         </div>
                     </motion.div>
                 </motion.div>,
