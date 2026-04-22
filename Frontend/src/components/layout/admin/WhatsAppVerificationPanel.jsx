@@ -341,7 +341,7 @@ const WhatsAppVerificationPanel = () => {
                 </motion.div>,
                 document.body
             )}
-        </GlassBackground>
+        </>
     );
 };
 
