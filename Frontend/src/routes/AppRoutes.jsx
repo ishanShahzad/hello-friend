@@ -53,6 +53,7 @@ import TrackOrderPage from '../pages/TrackOrderPage'
 import SellerSignUp from '../components/auth/SellerSignUp'
 import OrderConfirmationPage from '../pages/OrderConfirmationPage'
 import WhatsAppVerificationPanel from '../components/layout/admin/WhatsAppVerificationPanel'
+import AdminBroadcastPanel from '../components/layout/admin/AdminBroadcastPanel'
 
 function AppRoutes() {
     const navigate = useNavigate()
