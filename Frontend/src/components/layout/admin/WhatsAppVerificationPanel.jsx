@@ -35,7 +35,42 @@ const formatTime = (d) => {
     try { return new Date(d).toLocaleString(); } catch { return '—'; }
 };
 
-const WhatsAppVerificationPanel = () => {
+const StatCard = ({ icon: Icon, label, value, sub, color }) => (
+    <div className="glass-panel-strong rounded-2xl p-4 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</span>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}1A`, color }}>
+                <Icon size={14} />
+            </div>
+        </div>
+        <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>{value ?? 0}</div>
+        {sub && <div className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{sub}</div>}
+    </div>
+);
+
+const Timeline = ({ data }) => {
+    const max = Math.max(1, ...data.map(d => d.sent));
+    return (
+        <div className="flex items-end gap-2 h-32">
+            {data.map((d, i) => {
+                const sentH = (d.sent / max) * 100;
+                const confirmedH = (d.confirmed / max) * 100;
+                const declinedH = (d.declined / max) * 100;
+                const dayLabel = new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' });
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full flex-1 flex items-end gap-0.5">
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${sentH}%`, background: 'hsl(220,70%,55%)', minHeight: d.sent ? 4 : 0 }} title={`${d.sent} sent`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${confirmedH}%`, background: 'hsl(150,70%,40%)', minHeight: d.confirmed ? 4 : 0 }} title={`${d.confirmed} confirmed`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${declinedH}%`, background: 'hsl(0,72%,55%)', minHeight: d.declined ? 4 : 0 }} title={`${d.declined} declined`} />
+                        </div>
+                        <span className="text-[9px] font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{dayLabel}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
     const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
     const [stats, setStats] = useState(null);
