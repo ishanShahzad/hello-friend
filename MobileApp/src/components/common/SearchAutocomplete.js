@@ -16,6 +16,7 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
   const styles = makeStyles(palette);
   const [history, setHistory] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [storeSuggestions, setStoreSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
 
@@ -23,14 +24,19 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
 
   useEffect(() => {
     if (!visible) return;
-    if (!query || query.trim().length < 2) { setSuggestions([]); return; }
+    if (!query || query.trim().length < 2) { setSuggestions([]); setStoreSuggestions([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/api/products/get-products?search=${encodeURIComponent(query.trim())}&limit=6`);
-        setSuggestions(res.data?.products || []);
-      } catch { setSuggestions([]); } finally { setLoading(false); }
+        const q = encodeURIComponent(query.trim());
+        const [productsRes, storesRes] = await Promise.allSettled([
+          api.get(`/api/products/get-products?search=${q}&limit=5`),
+          api.get(`/api/stores/search?q=${q}&limit=4`),
+        ]);
+        setSuggestions(productsRes.status === 'fulfilled' ? (productsRes.value.data?.products || []) : []);
+        setStoreSuggestions(storesRes.status === 'fulfilled' ? (storesRes.value.data?.stores || storesRes.value.data?.results || []) : []);
+      } catch { setSuggestions([]); setStoreSuggestions([]); } finally { setLoading(false); }
     }, 280);
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query, visible]);
