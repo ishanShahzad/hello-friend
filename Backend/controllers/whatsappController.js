@@ -15,7 +15,7 @@ exports.getStatus = async (req, res) => {
 
         let liveState = null;
         if (evolution.isConfigured()) {
-            try { liveState = await evolution.getStatus(); } catch (_) { liveState = null; }
+            try { liveState = await evolution.getStatus(); } catch { liveState = null; }
         }
 
         // Reconcile DB with live Evolution status
@@ -23,6 +23,7 @@ exports.getStatus = async (req, res) => {
             cfg.status = 'connected';
             cfg.linkedAt = cfg.linkedAt || new Date();
             cfg.lastSeen = new Date();
+            cfg.lastError = '';
             await cfg.save();
         } else if (liveState?.state === 'close' && cfg.status === 'connected') {
             cfg.status = 'disconnected';
@@ -38,6 +39,7 @@ exports.getStatus = async (req, res) => {
             instanceName: cfg.instanceName || evolution.instanceName(),
             sentInLastHour: cfg.sentInLastHour,
             lastError: cfg.lastError,
+            qrBase64: cfg.lastQrBase64 || '',
             liveState: liveState?.state || null,
         });
     } catch (err) {
@@ -57,6 +59,28 @@ exports.connect = async (req, res) => {
         const cfg = await ensureSingleton();
         cfg.instanceName = evolution.instanceName();
 
+        let liveState = null;
+        try {
+            liveState = await evolution.getStatus();
+        } catch {
+            liveState = null;
+        }
+
+        if (liveState?.state === 'open') {
+            cfg.status = 'connected';
+            cfg.linkedAt = cfg.linkedAt || new Date();
+            cfg.lastSeen = new Date();
+            cfg.lastError = '';
+            await cfg.save();
+            return res.json({
+                status: cfg.status,
+                qrBase64: '',
+                code: '',
+                msg: 'WhatsApp is already linked.',
+                alreadyLinked: true,
+            });
+        }
+
         // createInstance often returns the QR directly on a fresh install
         const created = await evolution.createInstance().catch((e) => {
             console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
@@ -72,10 +96,12 @@ exports.connect = async (req, res) => {
         }
 
         // Fallback / refresh via connect endpoint (with internal polling)
+        let qrState = liveState?.state || '';
         if (!base64) {
             const qr = await evolution.getQRCode();
             base64 = qr.base64;
             code = qr.code;
+            qrState = qr.state || qrState;
             if (!base64 && !code) {
                 console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
             }
@@ -85,11 +111,33 @@ exports.connect = async (req, res) => {
             ? (base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`)
             : '';
 
-        cfg.status = 'pending_qr';
-        cfg.lastQrBase64 = dataUrl;
+        cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
+        cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
         cfg.lastQrFetchedAt = new Date();
-        cfg.lastError = dataUrl || code ? '' : 'Gateway returned no QR. Check EVOLUTION_API_URL is reachable and the instance is not already linked.';
+        cfg.lastSeen = new Date();
+        cfg.lastError = dataUrl || code || qrState === 'open'
+            ? ''
+            : 'Gateway returned no QR. Check EVOLUTION_API_URL is reachable and the instance is not already linked.';
         await cfg.save();
+
+        if (cfg.status === 'connected') {
+            return res.json({
+                status: cfg.status,
+                qrBase64: '',
+                code: '',
+                msg: 'WhatsApp linked successfully.',
+                alreadyLinked: true,
+            });
+        }
+
+        if (!dataUrl && !code && cfg.lastQrBase64) {
+            return res.json({
+                status: cfg.status,
+                qrBase64: cfg.lastQrBase64,
+                code: '',
+                cached: true,
+            });
+        }
 
         if (!dataUrl && !code) {
             return res.status(502).json({

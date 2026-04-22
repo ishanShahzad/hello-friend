@@ -92,6 +92,10 @@ const WhatsAppVerificationPanel = () => {
                 axios.get(`${API}api/whatsapp/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
             ]);
             setStatus(s.data);
+            if (s.data?.qrBase64) {
+                setQrBase64(s.data.qrBase64);
+                setQrError('');
+            }
             setQueue(q.data.items || []);
             if (st.data) setStats(st.data);
         } catch (err) {
@@ -105,13 +109,30 @@ const WhatsAppVerificationPanel = () => {
         fetchStatus();
     }, [fetchStatus]);
 
+    const requestQr = useCallback(async () => {
+        setQrLoading(true);
+        setQrError('');
+        try {
+            const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
+            setQrBase64(data.qrBase64 || '');
+            if (data.alreadyLinked) {
+                setQrError('');
+            }
+            await fetchStatus();
+        } catch (err) {
+            setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
+        } finally {
+            setQrLoading(false);
+        }
+    }, [fetchStatus]);
+
     // Refresh QR every 25s while modal is open and not yet connected
     useEffect(() => {
         if (showQrModal && status?.status !== 'connected') {
             const id = setInterval(() => requestQr(), 25000);
             return () => clearInterval(id);
         }
-    }, [showQrModal, status?.status]);
+    }, [showQrModal, status?.status, requestQr]);
 
     // Poll status every 5s while QR modal is open, every 30s otherwise
     useEffect(() => {
@@ -121,22 +142,9 @@ const WhatsAppVerificationPanel = () => {
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [showQrModal, fetchStatus]);
 
-    const requestQr = async () => {
-        setQrLoading(true);
-        setQrError('');
-        try {
-            const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
-            setQrBase64(data.qrBase64 || '');
-            await fetchStatus();
-        } catch (err) {
-            setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
-        } finally {
-            setQrLoading(false);
-        }
-    };
-
     const openQrModal = async () => {
         setShowQrModal(true);
+        setQrBase64(status?.qrBase64 || '');
         await requestQr();
     };
 
