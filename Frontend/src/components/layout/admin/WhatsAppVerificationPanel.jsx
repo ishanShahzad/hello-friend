@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
     MessageCircle, QrCode, Power, RefreshCw, X, AlertTriangle, CheckCircle2,
-    Loader2, Phone, Clock, ShieldAlert, Activity, Inbox,
+    Loader2, Phone, Clock, ShieldAlert, Activity, Inbox, Send, ThumbsUp, ThumbsDown,
+    TrendingUp, BarChart3, Timer,
 } from 'lucide-react';
 
 
@@ -37,6 +38,7 @@ const formatTime = (d) => {
 const WhatsAppVerificationPanel = () => {
     const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showQrModal, setShowQrModal] = useState(false);
     const [qrLoading, setQrLoading] = useState(false);
@@ -47,12 +49,14 @@ const WhatsAppVerificationPanel = () => {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [s, q] = await Promise.all([
+            const [s, q, st] = await Promise.all([
                 axios.get(`${API}api/whatsapp/status`, { headers: authHeaders() }),
                 axios.get(`${API}api/whatsapp/queue`, { headers: authHeaders() }),
+                axios.get(`${API}api/whatsapp/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
             ]);
             setStatus(s.data);
             setQueue(q.data.items || []);
+            if (st.data) setStats(st.data);
         } catch (err) {
             console.error('whatsapp panel fetch error:', err);
         } finally {
