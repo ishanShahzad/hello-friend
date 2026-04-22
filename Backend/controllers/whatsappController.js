@@ -126,5 +126,75 @@ exports.getQueue = async (req, res) => {
     }
 };
 
+// GET /api/whatsapp/stats — admin: aggregate analytics
+exports.getStats = async (req, res) => {
+    try {
+        const now = new Date();
+        const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const [byStatus, last24h, last7d, total, recentSeries, avgResponse] = await Promise.all([
+            WhatsAppPendingMessage.aggregate([
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+            ]),
+            WhatsAppPendingMessage.countDocuments({ createdAt: { $gte: dayAgo } }),
+            WhatsAppPendingMessage.countDocuments({ createdAt: { $gte: weekAgo } }),
+            WhatsAppPendingMessage.countDocuments({}),
+            WhatsAppPendingMessage.aggregate([
+                { $match: { createdAt: { $gte: weekAgo } } },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                        sent: { $sum: { $cond: [{ $in: ['$status', ['sent', 'voted_yes', 'voted_no']] }, 1, 0] } },
+                        confirmed: { $sum: { $cond: [{ $eq: ['$status', 'voted_yes'] }, 1, 0] } },
+                        declined: { $sum: { $cond: [{ $eq: ['$status', 'voted_no'] }, 1, 0] } },
+                    },
+                },
+                { $sort: { _id: 1 } },
+            ]),
+            WhatsAppPendingMessage.aggregate([
+                { $match: { repliedAt: { $ne: null }, sentAt: { $ne: null } } },
+                {
+                    $project: {
+                        responseMs: { $subtract: ['$repliedAt', '$sentAt'] },
+                    },
+                },
+                { $group: { _id: null, avg: { $avg: '$responseMs' } } },
+            ]),
+        ]);
+
+        const counts = byStatus.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
+        const sent = (counts.sent || 0) + (counts.voted_yes || 0) + (counts.voted_no || 0);
+        const confirmed = counts.voted_yes || 0;
+        const declined = counts.voted_no || 0;
+        const failed = counts.failed || 0;
+        const queued = counts.queued || 0;
+        const expired = counts.expired || 0;
+        const replied = confirmed + declined;
+        const responseRate = sent > 0 ? Math.round((replied / sent) * 100) : 0;
+        const confirmationRate = replied > 0 ? Math.round((confirmed / replied) * 100) : 0;
+        const avgResponseMinutes = avgResponse[0]?.avg ? Math.round(avgResponse[0].avg / 60000) : null;
+
+        res.json({
+            total,
+            last24h,
+            last7d,
+            sent,
+            confirmed,
+            declined,
+            failed,
+            queued,
+            expired,
+            responseRate,
+            confirmationRate,
+            avgResponseMinutes,
+            timeline: recentSeries.map(d => ({ date: d._id, sent: d.sent, confirmed: d.confirmed, declined: d.declined })),
+        });
+    } catch (err) {
+        console.error('whatsapp.getStats:', err.message);
+        res.status(500).json({ msg: 'Failed to fetch WhatsApp stats' });
+    }
+};
+
 // Public webhook receiver (signed via header)
 exports.webhook = require('../services/whatsapp/webhookHandler').handleEvolutionWebhook;

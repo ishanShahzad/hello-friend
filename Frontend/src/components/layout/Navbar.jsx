@@ -128,12 +128,17 @@ function Navbar() {
                         <motion.div
                             initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
                             transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-                            className="fixed top-0 left-0 h-full w-72 z-[70] flex flex-col glass-panel-strong"
+                            className="fixed top-0 left-0 h-full w-72 z-[70] flex flex-col sidebar-mobile-solid"
                             style={{ borderRadius: '0 28px 28px 0' }}>
 
                             {/* Drawer header */}
-                            <div className="flex items-center justify-between p-5 border-b border-white/15">
-                                <img src="/rozare-logo.svg" alt="Rozare" className="h-8" />
+                            <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)' }}>
+                                        <ShoppingBag size={18} color="white" />
+                                    </div>
+                                    <span className="text-lg font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Rozare</span>
+                                </div>
                                 <button onClick={() => setMobileMenuOpen(false)}
                                     className="p-2 rounded-xl glass-button">
                                     <X size={20} />

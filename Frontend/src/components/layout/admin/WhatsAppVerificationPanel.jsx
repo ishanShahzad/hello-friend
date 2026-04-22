@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
     MessageCircle, QrCode, Power, RefreshCw, X, AlertTriangle, CheckCircle2,
-    Loader2, Phone, Clock, ShieldAlert, Activity, Inbox,
+    Loader2, Phone, Clock, ShieldAlert, Activity, Inbox, Send, ThumbsUp, ThumbsDown,
+    TrendingUp, BarChart3, Timer,
 } from 'lucide-react';
 
 
@@ -34,9 +35,46 @@ const formatTime = (d) => {
     try { return new Date(d).toLocaleString(); } catch { return '—'; }
 };
 
+const StatCard = ({ icon: Icon, label, value, sub, color }) => (
+    <div className="glass-panel-strong rounded-2xl p-4 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</span>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}1A`, color }}>
+                <Icon size={14} />
+            </div>
+        </div>
+        <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>{value ?? 0}</div>
+        {sub && <div className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{sub}</div>}
+    </div>
+);
+
+const Timeline = ({ data }) => {
+    const max = Math.max(1, ...data.map(d => d.sent));
+    return (
+        <div className="flex items-end gap-2 h-32">
+            {data.map((d, i) => {
+                const sentH = (d.sent / max) * 100;
+                const confirmedH = (d.confirmed / max) * 100;
+                const declinedH = (d.declined / max) * 100;
+                const dayLabel = new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' });
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full flex-1 flex items-end gap-0.5">
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${sentH}%`, background: 'hsl(220,70%,55%)', minHeight: d.sent ? 4 : 0 }} title={`${d.sent} sent`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${confirmedH}%`, background: 'hsl(150,70%,40%)', minHeight: d.confirmed ? 4 : 0 }} title={`${d.confirmed} confirmed`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${declinedH}%`, background: 'hsl(0,72%,55%)', minHeight: d.declined ? 4 : 0 }} title={`${d.declined} declined`} />
+                        </div>
+                        <span className="text-[9px] font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{dayLabel}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 const WhatsAppVerificationPanel = () => {
-    const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showQrModal, setShowQrModal] = useState(false);
     const [qrLoading, setQrLoading] = useState(false);
@@ -47,12 +85,14 @@ const WhatsAppVerificationPanel = () => {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [s, q] = await Promise.all([
+            const [s, q, st] = await Promise.all([
                 axios.get(`${API}api/whatsapp/status`, { headers: authHeaders() }),
                 axios.get(`${API}api/whatsapp/queue`, { headers: authHeaders() }),
+                axios.get(`${API}api/whatsapp/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
             ]);
             setStatus(s.data);
             setQueue(q.data.items || []);
+            if (st.data) setStats(st.data);
         } catch (err) {
             console.error('whatsapp panel fetch error:', err);
         } finally {
@@ -206,6 +246,47 @@ const WhatsAppVerificationPanel = () => {
                         <strong style={{ color: 'hsl(var(--foreground))' }}>Heads up:</strong> This automates a personal WhatsApp account. Use a <strong>dedicated business number</strong> to avoid risking your personal account. Messages are sent with a random 8–25s delay and capped at 60/hour to mitigate ban risk.
                     </div>
                 </div>
+
+                {/* Analytics */}
+                {stats && (
+                    <div className="mb-6">
+                        <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2 mb-3 px-1"
+                            style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <BarChart3 size={14} /> Analytics
+                        </h2>
+
+                        {/* Top KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                            <StatCard icon={Send} label="Messages Sent" value={stats.sent} sub={`${stats.last24h} in last 24h`} color="hsl(220,70%,55%)" />
+                            <StatCard icon={ThumbsUp} label="Confirmed" value={stats.confirmed} sub={`${stats.confirmationRate}% of replies`} color="hsl(150,70%,40%)" />
+                            <StatCard icon={ThumbsDown} label="Declined" value={stats.declined} sub="Orders rejected by buyer" color="hsl(0,72%,55%)" />
+                            <StatCard icon={TrendingUp} label="Response Rate" value={`${stats.responseRate}%`} sub={`${stats.last7d} sent this week`} color="hsl(38,92%,50%)" />
+                        </div>
+
+                        {/* Secondary KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                            <StatCard icon={Clock} label="In Queue" value={stats.queued} color="hsl(220,15%,55%)" />
+                            <StatCard icon={AlertTriangle} label="Failed" value={stats.failed} color="hsl(0,72%,55%)" />
+                            <StatCard icon={Timer} label="Avg Reply Time" value={stats.avgResponseMinutes != null ? `${stats.avgResponseMinutes}m` : '—'} color="hsl(260,60%,60%)" />
+                            <StatCard icon={MessageCircle} label="Total All Time" value={stats.total} color="hsl(180,60%,40%)" />
+                        </div>
+
+                        {/* 7-day timeline sparkline */}
+                        {stats.timeline && stats.timeline.length > 0 && (
+                            <div className="glass-panel-strong rounded-3xl p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Last 7 Days</h3>
+                                    <div className="flex gap-3 text-[10px]">
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(220,70%,55%)' }} />Sent</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(150,70%,40%)' }} />Confirmed</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(0,72%,55%)' }} />Declined</span>
+                                    </div>
+                                </div>
+                                <Timeline data={stats.timeline} />
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Recent activity */}
                 <div className="glass-panel-strong rounded-3xl p-6">

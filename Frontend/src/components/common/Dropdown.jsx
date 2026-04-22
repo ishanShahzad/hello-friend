@@ -14,9 +14,12 @@ const NavDropdown = () => {
     const updatePosition = useCallback(() => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
+            const isMobile = window.innerWidth < 640;
+            // On mobile, anchor to viewport edges instead of the (possibly off-canvas) trigger
             setPos({
-                top: rect.bottom + 8,
-                right: window.innerWidth - rect.right,
+                top: isMobile ? rect.bottom + 8 : rect.bottom + 8,
+                right: isMobile ? 16 : window.innerWidth - rect.right,
+                left: isMobile ? 16 : 'auto',
             });
         }
     }, []);
@@ -70,8 +73,8 @@ const NavDropdown = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="fixed w-56 glass-panel-strong overflow-hidden z-[100] p-1"
-                    style={{ top: pos.top, right: pos.right }}
+                    className="fixed glass-panel-strong overflow-hidden z-[100] p-1 sidebar-mobile-solid sm:!bg-transparent"
+                    style={{ top: pos.top, right: pos.right, left: pos.left, width: pos.left === 'auto' ? '14rem' : 'auto', maxWidth: 'calc(100vw - 32px)' }}
                 >
                     {menuItems.map((item, index) =>
                         item.divider ? (
