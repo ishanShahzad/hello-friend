@@ -5,7 +5,6 @@ const Order = require('../../models/Order');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
-const WhatsAppPendingMessage = require('./../../models/WhatsAppPendingMessage');
 const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
