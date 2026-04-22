@@ -122,16 +122,16 @@ const StoresListing = () => {
         >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
-                    title="Marketplace — Discover Trusted Stores & Brands"
-                    description="Discover thousands of verified stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques and more — all in one place."
-                    canonical="/marketplace"
-                    keywords="marketplace, online stores, brands, verified sellers, trusted brands, independent shops, fashion brands, electronics stores, rozare marketplace"
+                    title={seoMeta.title}
+                    description={seoMeta.description}
+                    canonical={seoMeta.canonical}
+                    keywords={seoMeta.keywords}
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'CollectionPage',
-                        name: 'Marketplace — Rozare',
-                        description: 'Browse all verified stores and brands on Rozare Marketplace',
-                        url: 'https://rozare.com/marketplace',
+                        name: seoMeta.title,
+                        description: seoMeta.description,
+                        url: `https://rozare.com${seoMeta.canonical}`,
                         isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
                     }}
                 />
