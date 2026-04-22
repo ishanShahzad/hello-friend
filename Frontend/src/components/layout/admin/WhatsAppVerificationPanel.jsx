@@ -73,6 +73,7 @@ const Timeline = ({ data }) => {
 };
 
 const WhatsAppVerificationPanel = () => {
+    const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
