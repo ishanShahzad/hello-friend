@@ -515,6 +515,58 @@ const WhatsAppVerificationPanel = () => {
                 </motion.div>,
                 document.body
             )}
+
+            {/* Reset instance confirm — only ever opened when stuck without a QR */}
+            {confirmReset && createPortal(
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                    onClick={() => !resetting && setConfirmReset(false)}>
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="glass-panel-strong rounded-3xl p-6 max-w-sm w-full">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}>
+                                <RotateCcw size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
+                                    Reset WhatsApp instance?
+                                </h3>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Use this only when the link flow is stuck without a QR.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="text-xs mb-4 p-3 rounded-2xl"
+                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: 'hsl(var(--foreground))' }}>
+                            This will <strong>log out, delete and recreate</strong> the gateway instance. No customer data is touched, but you'll need to scan a fresh QR. It's blocked while WhatsApp is currently linked.
+                        </div>
+
+                        {resetMsg && (
+                            <div className="text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {resetMsg}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmReset(false)}
+                                disabled={resetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-medium glass-inner disabled:opacity-50"
+                                style={{ color: 'hsl(var(--foreground))' }}>Cancel</button>
+                            <button onClick={handleReset}
+                                disabled={resetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                                style={{ background: 'hsl(38,92%,45%)' }}>
+                                {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                {resetting ? 'Resetting…' : 'Reset instance'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>,
+                document.body
+            )}
         </>
     );
 };
