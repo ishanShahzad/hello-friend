@@ -132,12 +132,25 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
       try { const stored = await AsyncStorage.getItem(NOTIF_STORE_KEY); if (stored) pushNotifs = JSON.parse(stored); } catch {}
 
       let orderNotifs = [];
+      let broadcastNotifs = [];
       if (currentUser) {
         try { const res = await api.get('/api/order/user-orders'); orderNotifs = buildNotificationsFromOrders(res.data?.orders || []); } catch {}
+        try {
+          const res = await api.get('/api/notifications/me');
+          broadcastNotifs = (res.data?.items || []).map(b => ({
+            id: `broadcast_${b._id}`,
+            category: b.category === 'promo' ? 'promo' : 'system',
+            title: b.title,
+            body: b.body,
+            createdAt: b.createdAt,
+            read: !!b.read,
+            data: { type: 'admin_broadcast', linkTo: b.linkTo, broadcastId: b._id },
+          }));
+        } catch {}
       }
 
       const allMap = new Map();
-      [...orderNotifs, ...pushNotifs].forEach(n => { if (!allMap.has(n.id)) allMap.set(n.id, n); });
+      [...broadcastNotifs, ...orderNotifs, ...pushNotifs].forEach(n => { if (!allMap.has(n.id)) allMap.set(n.id, n); });
 
       if (allMap.size === 0) {
         allMap.set('welcome', { id: 'welcome', category: 'system', title: 'Welcome to Rozare', body: 'Start shopping to see notifications here.', createdAt: new Date().toISOString(), read: false });
