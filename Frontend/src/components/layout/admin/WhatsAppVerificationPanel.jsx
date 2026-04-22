@@ -82,6 +82,7 @@ const WhatsAppVerificationPanel = () => {
     const [qrBase64, setQrBase64] = useState('');
     const [qrError, setQrError] = useState('');
     const [qrHint, setQrHint] = useState('');
+    const [qrDiagnostic, setQrDiagnostic] = useState('');
     const [pairingCode, setPairingCode] = useState('');
     const [confirmDisconnect, setConfirmDisconnect] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
@@ -101,8 +102,10 @@ const WhatsAppVerificationPanel = () => {
                 setQrBase64(s.data.qrBase64);
                 setQrError('');
             }
+            setQrDiagnostic(s.data?.lastError || '');
             if (s.data?.status === 'connected') {
                 setQrHint('');
+                setQrDiagnostic('');
                 setPairingCode('');
             }
             setQueue(q.data.items || []);
@@ -129,6 +132,7 @@ const WhatsAppVerificationPanel = () => {
             );
             setQrBase64(data.qrBase64 || '');
             setPairingCode(data.code || '');
+            setQrDiagnostic(data.gatewayDiagnostic || '');
             setQrHint(data.fallback || data.msg ? (data.msg || 'Waiting for QR…') : '');
             if (data.recovered) {
                 setResetMsg('The previous stuck link session was recreated automatically.');
@@ -136,6 +140,7 @@ const WhatsAppVerificationPanel = () => {
             if (data.alreadyLinked) {
                 setQrError('');
                 setQrHint('');
+                setQrDiagnostic('');
                 setPairingCode('');
             }
             await fetchStatus();
@@ -179,6 +184,7 @@ const WhatsAppVerificationPanel = () => {
         setQrBase64(status?.qrBase64 || '');
         setQrError('');
         setQrHint(status?.status === 'connected' ? '' : 'Starting WhatsApp link session…');
+        setQrDiagnostic(status?.lastError || '');
         setPairingCode('');
         await requestQr();
     };
@@ -479,6 +485,11 @@ const WhatsAppVerificationPanel = () => {
                                                 <div className="mt-1 text-base font-extrabold tracking-[0.2em]" style={{ color: 'hsl(var(--foreground))' }}>
                                                     {pairingCode}
                                                 </div>
+                                            </div>
+                                        )}
+                                        {qrDiagnostic && (
+                                            <div className="mt-3 text-[10px] leading-relaxed" style={{ color: 'hsl(var(--foreground))' }}>
+                                                {qrDiagnostic}
                                             </div>
                                         )}
                                     </div>

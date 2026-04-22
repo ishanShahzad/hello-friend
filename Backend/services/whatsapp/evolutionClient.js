@@ -51,9 +51,29 @@ const pickInstancePayload = (data) => {
     return data?.instance || data;
 };
 
+const readStateValue = (...values) => {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) return value;
+        if (value && typeof value === 'object') {
+            if (typeof value.state === 'string' && value.state.trim()) return value.state;
+            if (typeof value.status === 'string' && value.status.trim()) return value.status;
+            if (typeof value.connectionState === 'string' && value.connectionState.trim()) return value.connectionState;
+        }
+    }
+    return '';
+};
+
 const extractState = (data) => {
     const src = pickInstancePayload(data) || data || {};
-    return src?.state || src?.status || src?.connectionStatus || src?.connectionState || '';
+    return readStateValue(
+        src?.state,
+        src?.status,
+        src?.connectionStatus,
+        src?.connectionState,
+        src?.instance,
+        src?.instance?.connectionStatus,
+        data?.instance,
+    );
 };
 
 const extractQr = (data) => {
@@ -63,11 +83,14 @@ const extractQr = (data) => {
     const qrCodeStr = typeof src?.qrcode?.code === 'string' && src.qrcode.code.startsWith('data:')
         ? src.qrcode.code
         : '';
+    const qrOrCodeStr = typeof src?.qrOrCode === 'string' ? src.qrOrCode : '';
+    const qrOrCodeIsDataUrl = qrOrCodeStr.startsWith('data:');
     const pairCodeStr = typeof src?.pairingCode === 'string' ? src.pairingCode : '';
 
     const b64 =
         src?.base64 ||
         src?.qrcode?.base64 ||
+        (qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
         qrCodeStr ||
         src?.qr ||
         src?.qrCode ||
@@ -77,6 +100,7 @@ const extractQr = (data) => {
     const code =
         src?.code ||
         (typeof src?.qrcode?.code === 'string' ? src.qrcode.code : '') ||
+        (!qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
         pairCodeStr ||
         '';
 

@@ -23,28 +23,54 @@ const toDataUrl = (value = '') => {
     return value.startsWith('data:') ? value : `data:image/png;base64,${value}`;
 };
 
+const pickQrPayload = (payload) => {
+    if (!payload) return null;
+    if (Array.isArray(payload)) return pickQrPayload(payload[0]);
+    if (Array.isArray(payload?.data)) return pickQrPayload(payload.data[0]);
+    if (Array.isArray(payload?.instances)) return pickQrPayload(payload.instances[0]);
+    return payload?.instance || payload;
+};
+
 const extractInlineQr = (payload) => {
-    const qrCodeStr = typeof payload?.qrcode?.code === 'string' && payload.qrcode.code.startsWith('data:')
-        ? payload.qrcode.code
+    const src = pickQrPayload(payload) || payload || {};
+    const qrCodeStr = typeof src?.qrcode?.code === 'string' && src.qrcode.code.startsWith('data:')
+        ? src.qrcode.code
         : '';
+    const qrOrCodeStr = typeof src?.qrOrCode === 'string' ? src.qrOrCode : '';
+    const qrOrCodeIsDataUrl = qrOrCodeStr.startsWith('data:');
 
     const base64 =
-        payload?.qrcode?.base64 ||
-        payload?.base64 ||
-        payload?.qr ||
-        payload?.qrCode ||
-        payload?.codeBase64 ||
+        src?.qrcode?.base64 ||
+        src?.base64 ||
+        (qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
+        src?.qr ||
+        src?.qrCode ||
+        src?.codeBase64 ||
         qrCodeStr ||
-        (typeof payload?.qrcode === 'string' ? payload.qrcode : '') ||
+        (typeof src?.qrcode === 'string' ? src.qrcode : '') ||
         '';
 
     const code =
-        payload?.qrcode?.code ||
-        payload?.pairingCode ||
-        payload?.code ||
+        src?.qrcode?.code ||
+        src?.pairingCode ||
+        (!qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
+        src?.code ||
         '';
 
     return { dataUrl: toDataUrl(base64), code: typeof code === 'string' ? code : '' };
+};
+
+const describeGatewayQrState = (payload) => {
+    const src = pickQrPayload(payload) || payload || {};
+    const count = Number(src?.count ?? src?.qrcode?.count ?? -1);
+    const state = normalizeGatewayState(src);
+    if (count === 0 && state === 'connecting') {
+        return 'Gateway is connected to the instance but is returning count: 0, so the QR is not being generated upstream yet.';
+    }
+    if (count === 0) {
+        return 'Gateway responded without a QR image yet (count: 0).';
+    }
+    return '';
 };
 
 const getGatewayErrorMessage = (err) => {
@@ -84,8 +110,9 @@ const requestGatewayQr = async (startingState = '') => {
     const createdQr = extractInlineQr(created);
     let dataUrl = createdQr.dataUrl;
     let code = createdQr.code;
-    let qrState = startingState;
+    let qrState = normalizeGatewayState(pickQrPayload(created) || created) || startingState;
     let recoverableGatewayFailure = Number(created?.__status) >= 500;
+    let gatewayDiagnostic = describeGatewayQrState(created);
 
     if (!dataUrl) {
         const qr = await evolution.getQRCode().catch((e) => ({
@@ -101,13 +128,14 @@ const requestGatewayQr = async (startingState = '') => {
         code = qr.code || code;
         qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
         recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
+        gatewayDiagnostic = describeGatewayQrState(qr.raw) || gatewayDiagnostic;
 
         if (!dataUrl && !code) {
             console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
         }
     }
 
-    return { dataUrl, code, qrState, recoverableGatewayFailure };
+    return { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic };
 };
 
 // GET /api/whatsapp/status — admin
@@ -186,12 +214,12 @@ exports.connect = async (req, res) => {
 
         let autoRecovered = false;
         let recoveryMessage = '';
-        let { dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(liveState);
+        let { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(liveState);
 
         if (!dataUrl && !code && isStuckConnectingWithoutQr(cfg, qrState || liveState)) {
             console.warn('whatsapp.connect: instance stuck in connecting without QR, recreating gateway instance');
             await recreateGatewayInstance();
-            ({ dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(''));
+            ({ dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(''));
             autoRecovered = true;
             recoveryMessage = 'The previous link session was stuck, so a fresh WhatsApp session was started automatically.';
         }
@@ -200,7 +228,7 @@ exports.connect = async (req, res) => {
         cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
         cfg.lastQrFetchedAt = new Date();
         cfg.lastSeen = new Date();
-        cfg.lastError = '';
+        cfg.lastError = (!dataUrl && !code && gatewayDiagnostic) ? gatewayDiagnostic.slice(0, 500) : '';
         await cfg.save();
 
         if (cfg.status === 'connected') {
@@ -234,6 +262,7 @@ exports.connect = async (req, res) => {
                 retryable: true,
                 recovered: autoRecovered,
                 gatewayState: qrState || 'unknown',
+                gatewayDiagnostic,
                 msg: autoRecovered
                     ? `${recoveryMessage} If the QR still does not appear within a few seconds, the gateway itself is not producing one yet.`
                     : (recoverableGatewayFailure
