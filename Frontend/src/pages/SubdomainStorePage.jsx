@@ -209,6 +209,7 @@ const SubdomainStorePage = () => {
                                         style={{ color: 'hsl(var(--foreground))' }}>
                                         {store?.storeName}
                                     </h1>
+                                    <SellerTypePill type={store?.sellerType} />
                                     {store?.verification?.isVerified && <VerifiedBadge size="lg" />}
                                     {store && (
                                         <TrustButton
