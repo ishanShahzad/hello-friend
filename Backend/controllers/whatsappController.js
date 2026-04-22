@@ -61,8 +61,9 @@ const extractInlineQr = (payload) => {
 };
 
 const describeGatewayQrState = (payload) => {
-    const count = Number(payload?.count ?? payload?.qrcode?.count ?? -1);
-    const state = normalizeGatewayState(payload);
+    const src = pickQrPayload(payload) || payload || {};
+    const count = Number(src?.count ?? src?.qrcode?.count ?? -1);
+    const state = normalizeGatewayState(src);
     if (count === 0 && state === 'connecting') {
         return 'Gateway is connected to the instance but is returning count: 0, so the QR is not being generated upstream yet.';
     }
@@ -111,6 +112,7 @@ const requestGatewayQr = async (startingState = '') => {
     let code = createdQr.code;
     let qrState = normalizeGatewayState(pickQrPayload(created) || created) || startingState;
     let recoverableGatewayFailure = Number(created?.__status) >= 500;
+    let gatewayDiagnostic = describeGatewayQrState(created);
 
     if (!dataUrl) {
         const qr = await evolution.getQRCode().catch((e) => ({
@@ -126,13 +128,14 @@ const requestGatewayQr = async (startingState = '') => {
         code = qr.code || code;
         qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
         recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
+        gatewayDiagnostic = describeGatewayQrState(qr.raw) || gatewayDiagnostic;
 
         if (!dataUrl && !code) {
             console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
         }
     }
 
-    return { dataUrl, code, qrState, recoverableGatewayFailure };
+    return { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic };
 };
 
 // GET /api/whatsapp/status — admin
@@ -211,25 +214,14 @@ exports.connect = async (req, res) => {
 
         let autoRecovered = false;
         let recoveryMessage = '';
-        let { dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(liveState);
-        let gatewayDiagnostic = '';
+        let { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(liveState);
 
         if (!dataUrl && !code && isStuckConnectingWithoutQr(cfg, qrState || liveState)) {
             console.warn('whatsapp.connect: instance stuck in connecting without QR, recreating gateway instance');
             await recreateGatewayInstance();
-            ({ dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(''));
+            ({ dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(''));
             autoRecovered = true;
             recoveryMessage = 'The previous link session was stuck, so a fresh WhatsApp session was started automatically.';
-        }
-
-        if (!dataUrl && !code) {
-            try {
-                const latestStatus = await evolution.getStatus().catch(() => null);
-                gatewayDiagnostic = describeGatewayQrState(latestStatus);
-                qrState = normalizeGatewayState(latestStatus) || qrState;
-            } catch {
-                gatewayDiagnostic = '';
-            }
         }
 
         cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
