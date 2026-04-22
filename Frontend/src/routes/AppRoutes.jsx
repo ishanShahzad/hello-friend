@@ -219,6 +219,11 @@ function AppRoutes() {
                             <WhatsAppVerificationPanel />
                         </ProtectedRoute>
                     } />
+                    <Route path='/admin-dashboard/broadcast' element={
+                        <ProtectedRoute role={'admin'}>
+                            <AdminBroadcastPanel />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* SELLER DASHBOARD */}
