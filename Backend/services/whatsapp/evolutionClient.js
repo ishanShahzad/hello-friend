@@ -36,24 +36,50 @@ exports.createInstance = async () => {
     }
 };
 
+const pickInstancePayload = (data) => {
+    if (!data) return null;
+    if (Array.isArray(data)) {
+        return data.find((item) => {
+            const name = item?.instanceName || item?.name || item?.instance?.instanceName || item?.instance?.name;
+            return name === instanceName();
+        }) || data[0] || null;
+    }
+
+    if (Array.isArray(data?.instances)) return pickInstancePayload(data.instances);
+    if (Array.isArray(data?.data)) return pickInstancePayload(data.data);
+
+    return data?.instance || data;
+};
+
+const extractState = (data) => {
+    const src = pickInstancePayload(data) || data || {};
+    return src?.state || src?.status || src?.connectionStatus || src?.connectionState || '';
+};
+
 const extractQr = (data) => {
     if (!data) return { base64: '', code: '' };
-    // Evolution returns several shapes across versions:
-    //  - { base64, code }
-    //  - { qrcode: { base64, code } }
-    //  - { instance: { ... }, qrcode: { base64, code } }
-    //  - { qr: 'data:image/png;base64,...' }
-    const qrCodeStr = typeof data?.qrcode?.code === 'string' && data.qrcode.code.startsWith('data:')
-        ? data.qrcode.code
+
+    const src = pickInstancePayload(data) || data || {};
+    const qrCodeStr = typeof src?.qrcode?.code === 'string' && src.qrcode.code.startsWith('data:')
+        ? src.qrcode.code
         : '';
+    const pairCodeStr = typeof src?.pairingCode === 'string' ? src.pairingCode : '';
+
     const b64 =
-        data?.base64 ||
-        data?.qrcode?.base64 ||
+        src?.base64 ||
+        src?.qrcode?.base64 ||
         qrCodeStr ||
-        data?.qr ||
-        (typeof data?.qrcode === 'string' ? data.qrcode : '') ||
+        src?.qr ||
+        src?.qrCode ||
+        src?.codeBase64 ||
+        (typeof src?.qrcode === 'string' ? src.qrcode : '') ||
         '';
-    const code = data?.code || (typeof data?.qrcode?.code === 'string' ? data.qrcode.code : '') || '';
+    const code =
+        src?.code ||
+        (typeof src?.qrcode?.code === 'string' ? src.qrcode.code : '') ||
+        pairCodeStr ||
+        '';
+
     return { base64: b64 || '', code: code || '' };
 };
 
@@ -62,18 +88,36 @@ const extractQr = (data) => {
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     let lastRaw = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-        try {
-            const { data } = await client().get(`/instance/connect/${instanceName()}`);
-            lastRaw = data;
-            const { base64, code } = extractQr(data);
-            if (base64 || code) return { base64, code, raw: data };
-        } catch (err) {
-            lastRaw = err.response?.data || { error: err.message };
+    const requesters = [
+        () => client().get(`/instance/connect/${instanceName()}`),
+        () => client().post(`/instance/connect/${instanceName()}`, {}),
+        () => client().get(`/instance/connectionState/${instanceName()}`),
+        () => client().get('/instance/fetchInstances'),
+    ];
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+        for (const request of requesters) {
+            try {
+                const { data } = await request();
+                lastRaw = data;
+                const { base64, code } = extractQr(data);
+                if (base64 || code) {
+                    return { base64, code, state: extractState(data), raw: data };
+                }
+            } catch (err) {
+                lastRaw = err.response?.data || { error: err.message };
+            }
         }
+
+        const state = extractState(lastRaw);
+        if (state === 'open') {
+            return { base64: '', code: '', state, raw: lastRaw };
+        }
+
         await new Promise(r => setTimeout(r, 1500));
     }
-    return { base64: '', code: '', raw: lastRaw };
+
+    return { base64: '', code: '', state: extractState(lastRaw), raw: lastRaw };
 };
 
 exports.getStatus = async () => {
