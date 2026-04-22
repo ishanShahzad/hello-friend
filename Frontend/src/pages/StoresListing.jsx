@@ -2,20 +2,60 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Store, Search, Home, ChevronRight, Sparkles, Heart, ChevronDown, Check, ShoppingBag, Layers } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import StoreCard from '../components/common/StoreCard';
 import Loader from '../components/common/Loader';
 import SEOHead from '../components/common/SEOHead';
 
 const StoresListing = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialType = ['brand', 'store', 'all'].includes(searchParams.get('type')) ? searchParams.get('type') : 'all';
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('newest');
-    const [typeFilter, setTypeFilter] = useState('all'); // all | brand | store
+    const [typeFilter, setTypeFilter] = useState(initialType); // all | brand | store
     const [sortOpen, setSortOpen] = useState(false);
     const sortRef = useRef(null);
+
+    // Sync typeFilter -> URL
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams);
+        if (typeFilter === 'all') params.delete('type');
+        else params.set('type', typeFilter);
+        setSearchParams(params, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [typeFilter]);
+
+    // SEO meta varies per type
+    const seoMeta = typeFilter === 'brand'
+        ? {
+            title: 'Brands on Rozare — Verified Fashion, Tech & Lifestyle Brands',
+            description: 'Discover verified brands on Rozare. Shop directly from official fashion, beauty, electronics and lifestyle brands — authentic, trusted, and curated.',
+            canonical: '/marketplace?type=brand',
+            keywords: 'brands, official brands, verified brands, fashion brands, beauty brands, tech brands, rozare brands',
+            heading: 'Brands',
+            subheading: 'Shop directly from verified brands worldwide',
+        }
+        : typeFilter === 'store'
+        ? {
+            title: 'Stores on Rozare — Independent Sellers & Local Shops',
+            description: 'Browse independent stores and local sellers on Rozare. Discover unique products from trusted small businesses worldwide.',
+            canonical: '/marketplace?type=store',
+            keywords: 'stores, independent sellers, online stores, local shops, small business, rozare stores',
+            heading: 'Stores',
+            subheading: 'Discover independent sellers worldwide',
+        }
+        : {
+            title: 'Marketplace — Discover Trusted Stores & Brands',
+            description: 'Discover thousands of verified stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques and more — all in one place.',
+            canonical: '/marketplace',
+            keywords: 'marketplace, online stores, brands, verified sellers, trusted brands, independent shops, fashion brands, electronics stores, rozare marketplace',
+            heading: 'Marketplace',
+            subheading: 'Discover stores and brands from sellers worldwide',
+        };
+
 
     const buttonRef = useRef(null);
     const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
@@ -82,16 +122,16 @@ const StoresListing = () => {
         >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
-                    title="Marketplace — Discover Trusted Stores & Brands"
-                    description="Discover thousands of verified stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques and more — all in one place."
-                    canonical="/marketplace"
-                    keywords="marketplace, online stores, brands, verified sellers, trusted brands, independent shops, fashion brands, electronics stores, rozare marketplace"
+                    title={seoMeta.title}
+                    description={seoMeta.description}
+                    canonical={seoMeta.canonical}
+                    keywords={seoMeta.keywords}
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'CollectionPage',
-                        name: 'Marketplace — Rozare',
-                        description: 'Browse all verified stores and brands on Rozare Marketplace',
-                        url: 'https://rozare.com/marketplace',
+                        name: seoMeta.title,
+                        description: seoMeta.description,
+                        url: `https://rozare.com${seoMeta.canonical}`,
                         isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
                     }}
                 />
@@ -108,7 +148,7 @@ const StoresListing = () => {
                         <span>Home</span>
                     </Link>
                     <ChevronRight size={14} className="mx-1.5 opacity-50" />
-                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Marketplace</span>
+                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{seoMeta.heading}</span>
                 </motion.div>
 
                 {/* Hero Header — Glass Panel */}
@@ -132,10 +172,10 @@ const StoresListing = () => {
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight"
                                     style={{ color: 'hsl(var(--foreground))' }}>
-                                    Marketplace
+                                    {seoMeta.heading}
                                 </h1>
                                 <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Discover stores and brands from sellers worldwide
+                                    {seoMeta.subheading}
                                 </p>
                             </div>
                         </div>

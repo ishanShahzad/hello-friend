@@ -16,6 +16,7 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
   const styles = makeStyles(palette);
   const [history, setHistory] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [storeSuggestions, setStoreSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
 
@@ -23,14 +24,19 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
 
   useEffect(() => {
     if (!visible) return;
-    if (!query || query.trim().length < 2) { setSuggestions([]); return; }
+    if (!query || query.trim().length < 2) { setSuggestions([]); setStoreSuggestions([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/api/products/get-products?search=${encodeURIComponent(query.trim())}&limit=6`);
-        setSuggestions(res.data?.products || []);
-      } catch { setSuggestions([]); } finally { setLoading(false); }
+        const q = encodeURIComponent(query.trim());
+        const [productsRes, storesRes] = await Promise.allSettled([
+          api.get(`/api/products/get-products?search=${q}&limit=5`),
+          api.get(`/api/stores/search?q=${q}&limit=4`),
+        ]);
+        setSuggestions(productsRes.status === 'fulfilled' ? (productsRes.value.data?.products || []) : []);
+        setStoreSuggestions(storesRes.status === 'fulfilled' ? (storesRes.value.data?.stores || storesRes.value.data?.results || []) : []);
+      } catch { setSuggestions([]); setStoreSuggestions([]); } finally { setLoading(false); }
     }, 280);
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query, visible]);
@@ -74,7 +80,56 @@ export default function SearchAutocomplete({ visible, query, onSelectQuery, onSe
               <Text style={styles.sectionTitle}>SUGGESTIONS</Text>
               {loading && <ActivityIndicator size="small" color={colors.primary} />}
             </View>
-            {suggestions.length === 0 && !loading && <Text style={styles.emptyText}>No matches found</Text>}
+
+            {/* Stores & Brands */}
+            {storeSuggestions.length > 0 && (
+              <View style={{ marginBottom: spacing.xs }}>
+                <Text style={styles.subSectionLabel}>Stores & Brands</Text>
+                {storeSuggestions.map((st) => {
+                  const isBrand = st.sellerType === 'brand';
+                  const badgeBg = isBrand ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)';
+                  const badgeBorder = isBrand ? 'rgba(168,85,247,0.35)' : 'rgba(59,130,246,0.35)';
+                  const badgeColor = isBrand ? '#a855f7' : '#3b82f6';
+                  return (
+                    <TouchableOpacity
+                      key={st._id}
+                      style={styles.suggestionRow}
+                      onPress={() => navigation?.navigate('Store', { storeSlug: st.storeSlug, storeName: st.storeName })}
+                      accessibilityLabel={`View ${st.storeName}`}
+                    >
+                      {st.logo ? (
+                        <Image source={{ uri: st.logo }} style={styles.storeLogoImg} contentFit="cover" cachePolicy="memory-disk" />
+                      ) : (
+                        <View style={[styles.storeLogoImg, { alignItems: 'center', justifyContent: 'center' }]}>
+                          <Ionicons name={isBrand ? 'sparkles' : 'storefront'} size={20} color={badgeColor} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.suggestionName} numberOfLines={1}>{st.storeName}</Text>
+                          <View style={[styles.typePill, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                            <Ionicons name={isBrand ? 'sparkles' : 'storefront'} size={9} color={badgeColor} />
+                            <Text style={[styles.typePillText, { color: badgeColor }]}>{isBrand ? 'Brand' : 'Store'}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.suggestionMeta} numberOfLines={1}>
+                          {(st.trustCount || 0)} {(st.trustCount || 0) === 1 ? 'truster' : 'trusters'}
+                        </Text>
+                      </View>
+                      <Ionicons name="arrow-up-outline" size={16} color={colors.textSecondary} style={{ transform: [{ rotate: '45deg' }] }} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Products */}
+            {suggestions.length > 0 && storeSuggestions.length > 0 && (
+              <Text style={styles.subSectionLabel}>Products</Text>
+            )}
+            {suggestions.length === 0 && storeSuggestions.length === 0 && !loading && (
+              <Text style={styles.emptyText}>No matches found</Text>
+            )}
             {suggestions.map((p) => (
               <TouchableOpacity key={p._id} style={styles.suggestionRow} onPress={() => onSelectProduct(p)} accessibilityLabel={`View ${p.name}`}>
                 <Image source={{ uri: p.images?.[0]?.url || p.image }} style={styles.suggestionImg} contentFit="cover" cachePolicy="memory-disk" />
@@ -115,4 +170,8 @@ const makeStyles = (palette) => { const colors = palette.colors; const glass = p
   emptyText: { fontSize: fontSize.sm, color: colors.textSecondary, paddingVertical: spacing.md, textAlign: 'center' },
   emptyHint: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
   emptyHintText: { fontSize: fontSize.sm, color: colors.textSecondary },
+  subSectionLabel: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.textSecondary, letterSpacing: 0.6, marginTop: spacing.xs, marginBottom: 2, textTransform: 'uppercase' },
+  storeLogoImg: { width: 44, height: 44, borderRadius: 22, backgroundColor: glass.bgSubtle, borderWidth: 1, borderColor: glass.border },
+  typePill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
+  typePillText: { fontSize: 9, fontWeight: fontWeight.bold, letterSpacing: 0.4, textTransform: 'uppercase' },
 }); };

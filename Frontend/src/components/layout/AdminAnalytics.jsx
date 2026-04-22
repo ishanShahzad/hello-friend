@@ -280,6 +280,68 @@ const AdminAnalytics = () => {
                 </motion.div>
             )}
 
+            {/* Marketplace composition: Brands vs Stores */}
+            {(s.brandCount !== undefined || s.storeCount !== undefined) && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.33 }}
+                    className="glass-panel water-shimmer p-5 sm:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Marketplace Composition</h3>
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Brands vs independent stores · Last {timeRange} days new sign-ups</p>
+                        </div>
+                        <div className="p-2 rounded-xl" style={{ background: 'rgba(139,92,246,0.12)', color: 'hsl(280,60%,55%)' }}>
+                            <Sparkles size={18} />
+                        </div>
+                    </div>
+                    {(() => {
+                        const brand = s.brandCount || 0;
+                        const store = s.storeCount || 0;
+                        const total = brand + store || 1;
+                        const brandPct = Math.round((brand / total) * 100);
+                        const storePct = 100 - brandPct;
+                        return (
+                            <>
+                                <div className="grid grid-cols-2 gap-4 mb-5">
+                                    <div className="glass-inner p-4 rounded-xl">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(139,92,246,0.15)' }}>
+                                                <Sparkles size={14} style={{ color: 'hsl(280,70%,55%)' }} />
+                                            </div>
+                                            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(280,70%,55%)' }}>Brands</span>
+                                        </div>
+                                        <p className="text-2xl font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>{brand}</p>
+                                        <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            {brandPct}% of marketplace · +{s.newBrandsInPeriod || 0} new
+                                        </p>
+                                    </div>
+                                    <div className="glass-inner p-4 rounded-xl">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(99,102,241,0.15)' }}>
+                                                <Store size={14} style={{ color: 'hsl(220,70%,55%)' }} />
+                                            </div>
+                                            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(220,70%,55%)' }}>Stores</span>
+                                        </div>
+                                        <p className="text-2xl font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>{store}</p>
+                                        <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            {storePct}% of marketplace · +{s.newStoresOnlyInPeriod || 0} new
+                                        </p>
+                                    </div>
+                                </div>
+                                {/* Stacked bar */}
+                                <div className="w-full h-2.5 rounded-full overflow-hidden flex" style={{ background: 'hsla(220, 10%, 50%, 0.12)' }}>
+                                    <div style={{ width: `${brandPct}%`, background: 'linear-gradient(90deg, hsl(280,70%,55%), hsl(280,60%,65%))' }} />
+                                    <div style={{ width: `${storePct}%`, background: 'linear-gradient(90deg, hsl(220,70%,55%), hsl(200,80%,55%))' }} />
+                                </div>
+                                <div className="flex justify-between mt-2 text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <span>{brandPct}% Brands</span>
+                                    <span>{storePct}% Stores</span>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </motion.div>
+            )}
+
             {/* Stores + User Roles */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Stores */}

@@ -261,6 +261,12 @@ exports.getAdminAnalytics = async (req, res) => {
             return d >= prevStart && d < startDate;
         }).length;
 
+        // Brand vs Store split (current totals + new in period)
+        const brandCount = allStores.filter(s => s.sellerType === 'brand').length;
+        const storeCount = totalStores - brandCount;
+        const newBrandsInPeriod = allStores.filter(s => s.sellerType === 'brand' && new Date(s.createdAt) >= startDate).length;
+        const newStoresOnlyInPeriod = newStoresInPeriod - newBrandsInPeriod;
+
         // Top stores by order revenue
         const storeRevenueMap = {};
         allOrders.forEach(o => {
@@ -362,6 +368,10 @@ exports.getAdminAnalytics = async (req, res) => {
                     pendingVerification,
                     newStoresInPeriod,
                     storesChange: calcChange(newStoresInPeriod, prevNewStores),
+                    brandCount,
+                    storeCount,
+                    newBrandsInPeriod,
+                    newStoresOnlyInPeriod,
                     totalUsers: allUsers.length,
                     totalSellers: roleCounts.seller,
                     totalProducts: allProducts.length,
