@@ -6,7 +6,7 @@ import {
     MessageCircle, QrCode, Power, RefreshCw, X, AlertTriangle, CheckCircle2,
     Loader2, Phone, Clock, ShieldAlert, Activity, Inbox,
 } from 'lucide-react';
-import GlassBackground from '../../common/GlassBackground';
+
 
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('jwtToken')}` });
@@ -119,7 +119,7 @@ const WhatsAppVerificationPanel = () => {
     const meta = STATUS_META[status?.status] || STATUS_META.disconnected;
 
     return (
-        <GlassBackground>
+        <>
             <div className="min-h-screen p-4 lg:p-8 max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="glass-panel-strong rounded-3xl p-6 mb-6">
