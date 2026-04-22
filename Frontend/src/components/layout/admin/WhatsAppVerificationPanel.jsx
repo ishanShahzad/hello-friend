@@ -130,6 +130,9 @@ const WhatsAppVerificationPanel = () => {
             setQrBase64(data.qrBase64 || '');
             setPairingCode(data.code || '');
             setQrHint(data.fallback || data.msg ? (data.msg || 'Waiting for QR…') : '');
+            if (data.recovered) {
+                setResetMsg('The previous stuck link session was recreated automatically.');
+            }
             if (data.alreadyLinked) {
                 setQrError('');
                 setQrHint('');
@@ -220,6 +223,7 @@ const WhatsAppVerificationPanel = () => {
         ['pending_qr', 'connecting', 'error'].includes(status?.status) &&
         !qrBase64 &&
         !pairingCode &&
+        !qrLoading &&
         status?.status !== 'connected';
 
     // Auto-close QR modal on connected
@@ -316,6 +320,13 @@ const WhatsAppVerificationPanel = () => {
                         <div className="mt-4 p-4 rounded-2xl text-xs"
                             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'hsl(0,72%,55%)' }}>
                             <strong>Last error:</strong> {status.lastError}
+                        </div>
+                    )}
+
+                    {resetMsg && !confirmReset && (
+                        <div className="mt-4 p-4 rounded-2xl text-xs"
+                            style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: 'hsl(var(--foreground))' }}>
+                            {resetMsg}
                         </div>
                     )}
                 </div>
@@ -483,6 +494,16 @@ const WhatsAppVerificationPanel = () => {
                             <p className="text-[10px] text-center mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 QR refreshes automatically every 25s. Keep this window open until you see "Connected".
                             </p>
+
+                            {isStuckLinking && (
+                                <button
+                                    onClick={() => { setResetMsg(''); setConfirmReset(true); }}
+                                    className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1.5"
+                                    style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}
+                                >
+                                    <RotateCcw size={14} /> Reset stuck instance
+                                </button>
+                            )}
                         </motion.div>
                     </motion.div>
                 </AnimatePresence>,
