@@ -148,7 +148,7 @@ const StoresListing = () => {
                         <span>Home</span>
                     </Link>
                     <ChevronRight size={14} className="mx-1.5 opacity-50" />
-                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Marketplace</span>
+                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{seoMeta.heading}</span>
                 </motion.div>
 
                 {/* Hero Header — Glass Panel */}
