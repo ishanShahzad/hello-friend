@@ -78,10 +78,26 @@ const NotificationsPage = () => {
             });
         }
 
+        // Admin broadcasts addressed to this user
+        broadcasts.forEach(b => {
+            const cat = b.category === 'promo' ? 'payment' : b.category === 'order' ? 'order' : 'store';
+            const type = b.category === 'promo' ? 'success' : 'info';
+            notifs.push({
+                id: `broadcast-${b._id}`,
+                type,
+                category: cat,
+                title: b.title,
+                description: b.body,
+                time: b.createdAt,
+                icon: 'store',
+                linkTo: b.linkTo || undefined,
+            });
+        });
+
         // Sort by time descending
         notifs.sort((a, b) => new Date(b.time) - new Date(a.time));
         return notifs;
-    }, [products, orders, stores, isAdmin]);
+    }, [products, orders, stores, broadcasts, isAdmin]);
 
     const markAsRead = (id) => {
         const newRead = [...readIds, id];
