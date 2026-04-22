@@ -229,6 +229,7 @@ const aiActionRoutes = require('./routes/aiActionRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const storeReviewRoutes = require('./routes/storeReviewRoutes');
+const whatsappRoutes = require('./routes/whatsappRoutes');
 const Cart = require('./models/Cart');
 const { sendEmail } = require('./controllers/mailController');
 const User = require('./models/User');
@@ -256,11 +257,16 @@ app.use('/api/ai-actions', aiActionRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/store-reviews', storeReviewRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // ── Trial expiration (runs on persistent Heroku dyno) ──
 const { processTrialExpirations } = require('./controllers/subscriptionController');
 setInterval(processTrialExpirations, 60 * 60 * 1000); // every hour
 setTimeout(processTrialExpirations, 30000); // 30s after boot
+
+// ── WhatsApp queue processor (Evolution API) ──
+const { startQueueProcessor } = require('./services/whatsapp/queue');
+startQueueProcessor();
 
 // ── Centralized error handler ──
 app.use((err, req, res, next) => {
