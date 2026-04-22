@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, Package, Eye, Share2, Home, Globe, MapPin, Users } from 'lucide-react';
+import { Store, Package, Eye, Share2, Home, Globe, MapPin, Users, Sparkles } from 'lucide-react';
+
+const SellerTypePill = ({ type }) => {
+    const isBrand = type === 'brand';
+    const bg = isBrand ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)';
+    const border = isBrand ? 'hsla(280, 70%, 55%, 0.35)' : 'hsla(220, 70%, 55%, 0.35)';
+    const color = isBrand ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)';
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+            style={{ background: bg, border: `1px solid ${border}`, color, backdropFilter: 'blur(8px)' }}>
+            {isBrand ? <Sparkles size={9} /> : <Store size={9} />}
+            {isBrand ? 'Brand' : 'Store'}
+        </span>
+    );
+};
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import ProductCard from '../components/common/ProductCard';
