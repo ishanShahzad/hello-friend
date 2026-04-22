@@ -8,6 +8,50 @@ const ensureSingleton = async () => {
     return cfg;
 };
 
+const normalizeGatewayState = (payload) => {
+    const raw = payload?.state || payload?.status || payload?.connectionState || payload?.connectionStatus || payload?.instance?.state || '';
+    const normalized = String(raw || '').trim().toLowerCase();
+
+    if (['open', 'connected', 'online'].includes(normalized)) return 'open';
+    if (['connecting', 'pairing', 'qr', 'pending_qr', 'pending'].includes(normalized)) return 'connecting';
+    if (['close', 'closed', 'disconnected', 'logout', 'offline'].includes(normalized)) return 'close';
+    return normalized;
+};
+
+const toDataUrl = (value = '') => {
+    if (!value || typeof value !== 'string') return '';
+    return value.startsWith('data:') ? value : `data:image/png;base64,${value}`;
+};
+
+const extractInlineQr = (payload) => {
+    const qrCodeStr = typeof payload?.qrcode?.code === 'string' && payload.qrcode.code.startsWith('data:')
+        ? payload.qrcode.code
+        : '';
+
+    const base64 =
+        payload?.qrcode?.base64 ||
+        payload?.base64 ||
+        payload?.qr ||
+        payload?.qrCode ||
+        payload?.codeBase64 ||
+        qrCodeStr ||
+        (typeof payload?.qrcode === 'string' ? payload.qrcode : '') ||
+        '';
+
+    const code =
+        payload?.qrcode?.code ||
+        payload?.pairingCode ||
+        payload?.code ||
+        '';
+
+    return { dataUrl: toDataUrl(base64), code: typeof code === 'string' ? code : '' };
+};
+
+const getGatewayErrorMessage = (err) => {
+    const data = err?.response?.data;
+    return data?.message || data?.msg || data?.error || err?.message || 'Unknown gateway error';
+};
+
 // GET /api/whatsapp/status — admin
 exports.getStatus = async (req, res) => {
     try {
@@ -50,23 +94,24 @@ exports.getStatus = async (req, res) => {
 
 // POST /api/whatsapp/connect — admin: ensure instance + return QR
 exports.connect = async (req, res) => {
+    let cfg = null;
     try {
         if (!evolution.isConfigured()) {
             return res.status(400).json({
                 msg: 'WhatsApp gateway is not configured. Add EVOLUTION_API_URL and EVOLUTION_API_KEY in backend secrets, then redeploy.',
             });
         }
-        const cfg = await ensureSingleton();
+        cfg = await ensureSingleton();
         cfg.instanceName = evolution.instanceName();
 
-        let liveState = null;
+        let liveState = '';
         try {
-            liveState = await evolution.getStatus();
+            liveState = normalizeGatewayState(await evolution.getStatus());
         } catch {
-            liveState = null;
+            liveState = '';
         }
 
-        if (liveState?.state === 'open') {
+        if (liveState === 'open') {
             cfg.status = 'connected';
             cfg.linkedAt = cfg.linkedAt || new Date();
             cfg.lastSeen = new Date();
@@ -84,32 +129,35 @@ exports.connect = async (req, res) => {
         // createInstance often returns the QR directly on a fresh install
         const created = await evolution.createInstance().catch((e) => {
             console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
-            return null;
+            return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
         });
 
-        let base64 = '';
-        let code = '';
-        if (created && (created.qrcode || created.base64 || created.qr)) {
-            const b = created.qrcode?.base64 || created.base64 || created.qr || '';
-            base64 = b;
-            code = created.qrcode?.code || created.code || '';
-        }
+        const createdQr = extractInlineQr(created);
+        let dataUrl = createdQr.dataUrl;
+        let code = createdQr.code;
+        let qrState = liveState;
+        let recoverableGatewayFailure = Number(created?.__status) >= 500;
 
         // Fallback / refresh via connect endpoint (with internal polling)
-        let qrState = liveState?.state || '';
-        if (!base64) {
-            const qr = await evolution.getQRCode();
-            base64 = qr.base64;
-            code = qr.code;
-            qrState = qr.state || qrState;
-            if (!base64 && !code) {
+        if (!dataUrl) {
+            const qr = await evolution.getQRCode().catch((e) => ({
+                base64: '',
+                code: '',
+                state: '',
+                raw: e.response?.data || null,
+                __error: getGatewayErrorMessage(e),
+                __status: e.response?.status || 0,
+            }));
+
+            dataUrl = toDataUrl(qr.base64);
+            code = qr.code || code;
+            qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
+            recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
+
+            if (!dataUrl && !code) {
                 console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
             }
         }
-
-        const dataUrl = base64
-            ? (base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`)
-            : '';
 
         cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
         cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
@@ -117,7 +165,7 @@ exports.connect = async (req, res) => {
         cfg.lastSeen = new Date();
         cfg.lastError = dataUrl || code || qrState === 'open'
             ? ''
-            : 'Gateway returned no QR. Check EVOLUTION_API_URL is reachable and the instance is not already linked.';
+            : (recoverableGatewayFailure ? '' : 'Unable to get a QR from the WhatsApp gateway right now.');
         await cfg.save();
 
         if (cfg.status === 'connected') {
@@ -136,25 +184,57 @@ exports.connect = async (req, res) => {
                 qrBase64: cfg.lastQrBase64,
                 code: '',
                 cached: true,
+                fallback: true,
+                retryable: true,
+                msg: 'Showing the last available QR while the gateway refreshes a new one.',
             });
         }
 
         if (!dataUrl && !code) {
-            return res.status(502).json({
-                msg: cfg.lastError,
+            return res.json({
+                status: cfg.status,
                 qrBase64: '',
                 code: '',
+                fallback: true,
+                retryable: true,
+                gatewayState: qrState || 'unknown',
+                msg: recoverableGatewayFailure
+                    ? 'WhatsApp gateway is still preparing the QR. Keep this window open and retry in a few seconds.'
+                    : 'QR is not ready yet. Keep this window open and retry in a few seconds.',
             });
         }
 
-        res.json({ status: cfg.status, qrBase64: dataUrl, code });
+        res.json({ status: cfg.status, qrBase64: dataUrl, code, fallback: false });
     } catch (err) {
-        const msg = err.response?.data?.message || err.message;
-        await WhatsAppConfig.updateOne(
-            { singletonKey: 'main' },
-            { $set: { status: 'error', lastError: String(msg).slice(0, 500) } }
-        );
+        const msg = getGatewayErrorMessage(err);
+        const gatewayStatus = Number(err?.response?.status || 0);
+        const fallback = gatewayStatus >= 500;
+
+        if (cfg) {
+            cfg.status = fallback ? 'pending_qr' : 'error';
+            cfg.lastError = fallback ? '' : String(msg).slice(0, 500);
+            cfg.lastSeen = new Date();
+            await cfg.save().catch(() => null);
+        } else {
+            await WhatsAppConfig.updateOne(
+                { singletonKey: 'main' },
+                { $set: { status: fallback ? 'pending_qr' : 'error', lastError: fallback ? '' : String(msg).slice(0, 500) } }
+            ).catch(() => null);
+        }
+
         console.error('whatsapp.connect:', msg);
+
+        if (fallback) {
+            return res.json({
+                status: 'pending_qr',
+                qrBase64: '',
+                code: '',
+                fallback: true,
+                retryable: true,
+                msg: 'WhatsApp gateway is temporarily unavailable, but the link session is still active. Retry in a few seconds.',
+            });
+        }
+
         res.status(500).json({ msg: 'Failed to start WhatsApp connection: ' + msg });
     }
 };
