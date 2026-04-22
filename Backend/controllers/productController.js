@@ -145,6 +145,24 @@ exports.deleteProduct = async (req, res) => {
 
 }
 
+// Helper: check if a seller is entitled to the "Featured product" premium bonus.
+// Allowed during trial OR when bonusFeaturesActive is true and not expired.
+async function sellerCanFeatureProduct(userId) {
+    try {
+        const SellerSubscription = require('../models/SellerSubscription');
+        const sub = await SellerSubscription.findOne({ seller: userId });
+        if (!sub) return true; // No record yet — treat as trial-grace
+        if (sub.status === 'trial') return true;
+        if (sub.bonusFeaturesActive && (!sub.bonusExpiryDate || new Date() < sub.bonusExpiryDate)) {
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error('sellerCanFeatureProduct error:', e);
+        return false;
+    }
+}
+
 exports.editProduct = async (req, res) => {
     try {
         const { id } = req.params
@@ -165,6 +183,14 @@ exports.editProduct = async (req, res) => {
         // Sellers can only edit their own products
         if (role === 'seller' && existingProduct.seller?.toString() !== userId) {
             return res.status(403).json({ msg: 'You can only edit your own products' })
+        }
+
+        // Gate: only entitled sellers (trial or active bonus) can mark a product as Featured.
+        if (role === 'seller' && product && product.isFeatured === true) {
+            const entitled = await sellerCanFeatureProduct(userId);
+            if (!entitled) {
+                product.isFeatured = false;
+            }
         }
         
         console.log(req.body);
@@ -199,8 +225,17 @@ exports.addProduct = async (req, res) => {
             }
         }
         
+        // Gate: only entitled sellers (trial or active bonus) can publish a Featured product.
+        let safeProduct = product;
+        if (role === 'seller' && product?.isFeatured === true) {
+            const entitled = await sellerCanFeatureProduct(userId);
+            if (!entitled) {
+                safeProduct = { ...product, isFeatured: false };
+            }
+        }
+
         const newProduct = new Product({
-            ...product,
+            ...safeProduct,
             seller: role === 'seller' ? userId : null // Only set seller for seller role
         })
         console.log('New product object:', newProduct);

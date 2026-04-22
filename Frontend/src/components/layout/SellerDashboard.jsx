@@ -563,6 +563,10 @@ const SellerDashboard = () => {
                             onSave={handleSaveProduct}
                             onClose={() => { setIsFormOpen(false); setEditingProduct(null); }}
                             uploadingImages={uploadingImages}
+                            canFeature={
+                                subscriptionData?.status === 'trial' ||
+                                subscriptionData?.bonusFeaturesActive === true
+                            }
                         />
                     )}
                 </AnimatePresence>,
@@ -807,7 +811,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 };
 
 // ============================
-const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) => {
+const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
@@ -1131,15 +1135,30 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                         )}
                     </div>
 
-                    {/* Featured Checkbox */}
-                    <div className="flex items-center gap-3 glass-inner rounded-xl p-4">
-                        <input id="featured" type="checkbox" disabled={uploadingImages}
-                            checked={product.isFeatured}
+                    {/* Featured Checkbox — gated behind Rozare Starter bonus features */}
+                    <div className="flex items-start gap-3 glass-inner rounded-xl p-4" style={!canFeature ? { opacity: 0.85 } : undefined}>
+                        <input id="featured" type="checkbox" disabled={uploadingImages || !canFeature}
+                            checked={!!product.isFeatured && canFeature}
                             onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
-                            className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
-                        <label htmlFor="featured" className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                            Feature this product on homepage
-                        </label>
+                            className="h-4 w-4 rounded mt-0.5" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <label htmlFor="featured" className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))', cursor: canFeature ? 'pointer' : 'not-allowed' }}>
+                                    Feature this product on homepage
+                                </label>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                    style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    <Crown size={10} /> PREMIUM
+                                </span>
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {canFeature
+                                    ? 'Adds a Featured badge to your product across the homepage and store.'
+                                    : (
+                                        <>Available with the Rozare Starter bonus features. <Link to="/seller-dashboard/subscription" className="underline font-semibold" style={{ color: 'hsl(270, 60%, 55%)' }}>Upgrade now →</Link></>
+                                    )}
+                            </p>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}

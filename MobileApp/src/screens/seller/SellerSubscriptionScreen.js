@@ -30,6 +30,7 @@ const FEATURES = [
   { icon: 'globe-outline', text: 'Custom subdomain stays active' },
   { icon: 'headset-outline', text: 'Priority support & new features early access' },
   { icon: 'analytics-outline', text: 'Advanced analytics & growth insights' },
+  { icon: 'star-outline', text: 'Featured product highlighting on the homepage (Bonus)' },
 ];
 
 const STEPS = [

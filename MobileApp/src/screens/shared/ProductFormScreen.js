@@ -2,7 +2,7 @@
  * ProductFormScreen — Liquid Glass
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   Alert, KeyboardAvoidingView, Platform,
@@ -49,6 +49,24 @@ export default function ProductFormScreen({ navigation, route }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [isFeatured, setIsFeatured] = useState(!!product?.isFeatured);
+  const [canFeature, setCanFeature] = useState(true);
+
+  // Fetch seller subscription to determine featured-product entitlement.
+  // Trial sellers and those with active bonus features may mark products as Featured.
+  useEffect(() => {
+    if (isAdmin) { setCanFeature(true); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/subscription/status');
+        const sub = res.data?.subscription;
+        const entitled = sub?.status === 'trial' || sub?.bonusFeaturesActive === true;
+        if (!cancelled) setCanFeature(!!entitled);
+      } catch { if (!cancelled) setCanFeature(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const updateField = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +87,7 @@ export default function ProductFormScreen({ navigation, route }) {
     if (!validation.isValid) { setErrors(validation.errors); setTouched({ name: true, price: true, stock: true }); return; }
     setLoading(true);
     try {
-      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0) };
+      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
       if (isEditMode) { await api.put(`/api/products/edit/${product._id}`, { product: productData }); Alert.alert('Success', 'Product updated', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
       else { await api.post('/api/products/add', { product: productData }); Alert.alert('Success', 'Product created', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
     } catch (e) { Alert.alert('Error', e.response?.data?.message || e.response?.data?.msg || 'Failed to save'); }
@@ -217,6 +235,47 @@ export default function ProductFormScreen({ navigation, route }) {
               onTagsUpdated={setTags}
               productData={{ name: formData.name, description: formData.description, category: formData.category, brand: formData.brand }}
             />
+          </GlassPanel>
+
+          {/* Featured Product (Premium / Bonus) */}
+          <GlassPanel variant="card" style={styles.section}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                  <Text style={styles.sectionTitle}>Feature on Homepage</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(139,92,246,0.15)' }}>
+                    <Ionicons name="star" size={10} color="#8B5CF6" />
+                    <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: '#8B5CF6' }}>PREMIUM</Text>
+                  </View>
+                </View>
+                <Text style={{ ...typography.caption, color: palette.colors.textSecondary, marginTop: spacing.xs }}>
+                  {canFeature
+                    ? 'Adds a Featured badge on the homepage and store.'
+                    : 'Available with the Rozare Starter bonus features. Subscribe to unlock.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={!canFeature}
+                onPress={() => setIsFeatured(v => !v)}
+                activeOpacity={0.8}
+                style={{
+                  width: 52, height: 30, borderRadius: 15, padding: 3,
+                  backgroundColor: (canFeature && isFeatured) ? palette.colors.primary : 'rgba(255,255,255,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                  opacity: canFeature ? 1 : 0.5,
+                  justifyContent: 'center',
+                }}>
+                <View style={{
+                  width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+                  alignSelf: (canFeature && isFeatured) ? 'flex-end' : 'flex-start',
+                }} />
+              </TouchableOpacity>
+            </View>
+            {!canFeature && (
+              <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+                <Text style={{ ...typography.caption, color: '#8B5CF6', fontWeight: fontWeight.bold }}>Upgrade to unlock →</Text>
+              </TouchableOpacity>
+            )}
           </GlassPanel>
 
           <View style={styles.submitContainer}>
