@@ -230,6 +230,7 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const storeReviewRoutes = require('./routes/storeReviewRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const Cart = require('./models/Cart');
 const { sendEmail } = require('./controllers/mailController');
 const User = require('./models/User');
@@ -258,6 +259,7 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/store-reviews', storeReviewRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ── Trial expiration (runs on persistent Heroku dyno) ──
 const { processTrialExpirations } = require('./controllers/subscriptionController');
@@ -267,6 +269,13 @@ setTimeout(processTrialExpirations, 30000); // 30s after boot
 // ── WhatsApp queue processor (Evolution API) ──
 const { startQueueProcessor } = require('./services/whatsapp/queue');
 startQueueProcessor();
+
+// ── Admin broadcast dispatcher (runs every minute on the persistent dyno) ──
+const { processDueBroadcasts } = require('./controllers/notificationController');
+setInterval(() => {
+  processDueBroadcasts().catch(err => console.error('[broadcast] tick error:', err.message));
+}, 60 * 1000);
+setTimeout(() => processDueBroadcasts().catch(() => {}), 15000);
 
 // ── Centralized error handler ──
 app.use((err, req, res, next) => {
