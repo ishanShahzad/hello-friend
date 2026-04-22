@@ -92,6 +92,10 @@ const WhatsAppVerificationPanel = () => {
                 axios.get(`${API}api/whatsapp/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
             ]);
             setStatus(s.data);
+            if (s.data?.qrBase64) {
+                setQrBase64(s.data.qrBase64);
+                setQrError('');
+            }
             setQueue(q.data.items || []);
             if (st.data) setStats(st.data);
         } catch (err) {
@@ -127,6 +131,9 @@ const WhatsAppVerificationPanel = () => {
         try {
             const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
             setQrBase64(data.qrBase64 || '');
+            if (data.alreadyLinked) {
+                setQrError('');
+            }
             await fetchStatus();
         } catch (err) {
             setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
@@ -137,6 +144,7 @@ const WhatsAppVerificationPanel = () => {
 
     const openQrModal = async () => {
         setShowQrModal(true);
+        setQrBase64(status?.qrBase64 || '');
         await requestQr();
     };
 
