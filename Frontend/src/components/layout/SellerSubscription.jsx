@@ -250,6 +250,7 @@ const SellerSubscription = () => {
                         {[
                             { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
                             { icon: <Sparkles size={14} />, text: 'Smart tag AI generator for products' },
+                            { icon: <Star size={14} />, text: 'Featured product highlighting on the homepage' },
                             { icon: <Shield size={14} />, text: 'Priority support & early access to new features' },
                             { icon: <Crown size={14} />, text: 'Coupon & discount management system' },
                             { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
