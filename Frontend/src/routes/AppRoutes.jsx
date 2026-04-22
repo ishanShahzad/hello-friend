@@ -212,6 +212,11 @@ function AppRoutes() {
                             <ComplaintsManagement />
                         </ProtectedRoute>
                     } />
+                    <Route path='/admin-dashboard/whatsapp-verification' element={
+                        <ProtectedRoute role={'admin'}>
+                            <WhatsAppVerificationPanel />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* SELLER DASHBOARD */}
