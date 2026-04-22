@@ -109,6 +109,23 @@ const WhatsAppVerificationPanel = () => {
         fetchStatus();
     }, [fetchStatus]);
 
+    async function requestQr() {
+        setQrLoading(true);
+        setQrError('');
+        try {
+            const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
+            setQrBase64(data.qrBase64 || '');
+            if (data.alreadyLinked) {
+                setQrError('');
+            }
+            await fetchStatus();
+        } catch (err) {
+            setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
+        } finally {
+            setQrLoading(false);
+        }
+    }
+
     // Refresh QR every 25s while modal is open and not yet connected
     useEffect(() => {
         if (showQrModal && status?.status !== 'connected') {
@@ -124,23 +141,6 @@ const WhatsAppVerificationPanel = () => {
         pollRef.current = setInterval(fetchStatus, interval);
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [showQrModal, fetchStatus]);
-
-    const requestQr = async () => {
-        setQrLoading(true);
-        setQrError('');
-        try {
-            const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
-            setQrBase64(data.qrBase64 || '');
-            if (data.alreadyLinked) {
-                setQrError('');
-            }
-            await fetchStatus();
-        } catch (err) {
-            setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
-        } finally {
-            setQrLoading(false);
-        }
-    };
 
     const openQrModal = async () => {
         setShowQrModal(true);
