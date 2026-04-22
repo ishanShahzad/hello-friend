@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, KeyboardAvoidingView, Platform, Switch,
+  Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -235,6 +235,47 @@ export default function ProductFormScreen({ navigation, route }) {
               onTagsUpdated={setTags}
               productData={{ name: formData.name, description: formData.description, category: formData.category, brand: formData.brand }}
             />
+          </GlassPanel>
+
+          {/* Featured Product (Premium / Bonus) */}
+          <GlassPanel variant="card" style={styles.section}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                  <Text style={styles.sectionTitle}>Feature on Homepage</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(139,92,246,0.15)' }}>
+                    <Ionicons name="star" size={10} color="#8B5CF6" />
+                    <Text style={{ fontSize: 10, fontWeight: fontWeight.bold, color: '#8B5CF6' }}>PREMIUM</Text>
+                  </View>
+                </View>
+                <Text style={{ ...typography.caption, color: palette.colors.textSecondary, marginTop: spacing.xs }}>
+                  {canFeature
+                    ? 'Adds a Featured badge on the homepage and store.'
+                    : 'Available with the Rozare Starter bonus features. Subscribe to unlock.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={!canFeature}
+                onPress={() => setIsFeatured(v => !v)}
+                activeOpacity={0.8}
+                style={{
+                  width: 52, height: 30, borderRadius: 15, padding: 3,
+                  backgroundColor: (canFeature && isFeatured) ? palette.colors.primary : 'rgba(255,255,255,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                  opacity: canFeature ? 1 : 0.5,
+                  justifyContent: 'center',
+                }}>
+                <View style={{
+                  width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+                  alignSelf: (canFeature && isFeatured) ? 'flex-end' : 'flex-start',
+                }} />
+              </TouchableOpacity>
+            </View>
+            {!canFeature && (
+              <TouchableOpacity onPress={() => navigation.navigate('SellerSubscription')} style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+                <Text style={{ ...typography.caption, color: '#8B5CF6', fontWeight: fontWeight.bold }}>Upgrade to unlock →</Text>
+              </TouchableOpacity>
+            )}
           </GlassPanel>
 
           <View style={styles.submitContainer}>
