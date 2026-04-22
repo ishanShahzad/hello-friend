@@ -211,6 +211,47 @@ const WhatsAppVerificationPanel = () => {
                     </div>
                 </div>
 
+                {/* Analytics */}
+                {stats && (
+                    <div className="mb-6">
+                        <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2 mb-3 px-1"
+                            style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <BarChart3 size={14} /> Analytics
+                        </h2>
+
+                        {/* Top KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                            <StatCard icon={Send} label="Messages Sent" value={stats.sent} sub={`${stats.last24h} in last 24h`} color="hsl(220,70%,55%)" />
+                            <StatCard icon={ThumbsUp} label="Confirmed" value={stats.confirmed} sub={`${stats.confirmationRate}% of replies`} color="hsl(150,70%,40%)" />
+                            <StatCard icon={ThumbsDown} label="Declined" value={stats.declined} sub="Orders rejected by buyer" color="hsl(0,72%,55%)" />
+                            <StatCard icon={TrendingUp} label="Response Rate" value={`${stats.responseRate}%`} sub={`${stats.last7d} sent this week`} color="hsl(38,92%,50%)" />
+                        </div>
+
+                        {/* Secondary KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                            <StatCard icon={Clock} label="In Queue" value={stats.queued} color="hsl(220,15%,55%)" />
+                            <StatCard icon={AlertTriangle} label="Failed" value={stats.failed} color="hsl(0,72%,55%)" />
+                            <StatCard icon={Timer} label="Avg Reply Time" value={stats.avgResponseMinutes != null ? `${stats.avgResponseMinutes}m` : '—'} color="hsl(260,60%,60%)" />
+                            <StatCard icon={MessageCircle} label="Total All Time" value={stats.total} color="hsl(180,60%,40%)" />
+                        </div>
+
+                        {/* 7-day timeline sparkline */}
+                        {stats.timeline && stats.timeline.length > 0 && (
+                            <div className="glass-panel-strong rounded-3xl p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Last 7 Days</h3>
+                                    <div className="flex gap-3 text-[10px]">
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(220,70%,55%)' }} />Sent</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(150,70%,40%)' }} />Confirmed</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(0,72%,55%)' }} />Declined</span>
+                                    </div>
+                                </div>
+                                <Timeline data={stats.timeline} />
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Recent activity */}
                 <div className="glass-panel-strong rounded-3xl p-6">
                     <div className="flex items-center justify-between mb-4">
