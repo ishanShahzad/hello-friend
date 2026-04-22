@@ -9,7 +9,32 @@ const { recordCouponUsage } = require('./couponController');
 const { sendEmail } = require('./mailController');
 const { orderConfirmationEmail, orderStatusUpdateEmail, newOrderSellerEmail, buyerOrderConfirmationRequestEmail } = require('../utils/emailTemplates');
 const { generateConfirmationToken } = require('./orderConfirmationController');
+const { sellerHasWhatsAppVerify } = require('./subscriptionController');
+const { enqueueOrderConfirmation } = require('../services/whatsapp/queue');
+const WhatsAppConfig = require('../models/WhatsAppConfig');
 const User = require('../models/User');
+
+// Enqueue WhatsApp confirmation if admin connected AND any seller in the order has the bonus
+const maybeEnqueueWhatsAppConfirmation = async (order, productItems) => {
+    try {
+        if (!order?.confirmation?.token) return;
+        const cfg = await WhatsAppConfig.findOne({ singletonKey: 'main' });
+        if (!cfg || cfg.status !== 'connected') return;
+
+        const sellerIds = [...new Set((productItems || []).map(p => p.seller?.toString()).filter(Boolean))];
+        let entitled = false;
+        for (const sid of sellerIds) {
+            // eslint-disable-next-line no-await-in-loop
+            if (await sellerHasWhatsAppVerify(sid)) { entitled = true; break; }
+        }
+        if (!entitled) return;
+
+        await enqueueOrderConfirmation(order);
+        console.log(`[order] WhatsApp confirmation enqueued for ${order.orderId}`);
+    } catch (err) {
+        console.error('maybeEnqueueWhatsAppConfirmation:', err.message);
+    }
+};
 
 
 exports.placeOrder = async (req, res) => {
