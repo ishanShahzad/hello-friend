@@ -172,10 +172,10 @@ const StoresListing = () => {
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight"
                                     style={{ color: 'hsl(var(--foreground))' }}>
-                                    Marketplace
+                                    {seoMeta.heading}
                                 </h1>
                                 <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Discover stores and brands from sellers worldwide
+                                    {seoMeta.subheading}
                                 </p>
                             </div>
                         </div>
