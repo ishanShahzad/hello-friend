@@ -31,6 +31,7 @@ const FEATURES = [
   { icon: 'headset-outline', text: 'Priority support & new features early access' },
   { icon: 'analytics-outline', text: 'Advanced analytics & growth insights' },
   { icon: 'star-outline', text: 'Featured product highlighting on the homepage (Bonus)' },
+  { icon: 'logo-whatsapp', text: 'Automated WhatsApp order verification — poll-based, no typing (Bonus)' },
 ];
 
 const STEPS = [
