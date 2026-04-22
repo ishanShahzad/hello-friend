@@ -55,11 +55,13 @@ const getGatewayErrorMessage = (err) => {
 const QR_STUCK_THRESHOLD_MS = 45000;
 
 const isStuckConnectingWithoutQr = (cfg, liveState) => {
-    if (liveState !== 'connecting') return false;
+    const hasConnectingSignal = liveState === 'connecting' || ['connecting', 'pending_qr'].includes(cfg?.status);
+    if (!hasConnectingSignal) return false;
     if (cfg?.lastQrBase64) return false;
 
-    const lastAttemptAt = cfg?.lastQrFetchedAt ? new Date(cfg.lastQrFetchedAt).getTime() : 0;
-    if (!lastAttemptAt) return true;
+    const referenceAt = cfg?.lastQrFetchedAt || cfg?.lastSeen || cfg?.updatedAt || null;
+    const lastAttemptAt = referenceAt ? new Date(referenceAt).getTime() : 0;
+    if (!lastAttemptAt) return false;
 
     return (Date.now() - lastAttemptAt) > QR_STUCK_THRESHOLD_MS;
 };
