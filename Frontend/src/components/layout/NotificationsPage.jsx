@@ -17,12 +17,18 @@ const NotificationsPage = () => {
         try { return JSON.parse(localStorage.getItem('readNotifIds') || '[]'); } catch { return []; }
     });
     const [stores, setStores] = useState([]);
+    const [broadcasts, setBroadcasts] = useState([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        const token = localStorage.getItem('jwtToken');
+        // Always fetch admin broadcasts addressed to this user
+        axios.get(`${import.meta.env.VITE_API_URL}api/notifications/me`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => setBroadcasts(res.data?.items || []))
+            .catch(() => setBroadcasts([]));
+
         if (isAdmin) {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
             axios.get(`${import.meta.env.VITE_API_URL}api/store/all`, { headers: { Authorization: `Bearer ${token}` } })
                 .then(res => setStores(res.data?.stores || []))
                 .catch(() => setStores([]))
