@@ -15,7 +15,7 @@ exports.getStatus = async (req, res) => {
 
         let liveState = null;
         if (evolution.isConfigured()) {
-            try { liveState = await evolution.getStatus(); } catch (_) { liveState = null; }
+            try { liveState = await evolution.getStatus(); } catch { liveState = null; }
         }
 
         // Reconcile DB with live Evolution status
@@ -62,7 +62,7 @@ exports.connect = async (req, res) => {
         let liveState = null;
         try {
             liveState = await evolution.getStatus();
-        } catch (_) {
+        } catch {
             liveState = null;
         }
 
