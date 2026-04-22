@@ -109,7 +109,7 @@ const WhatsAppVerificationPanel = () => {
         fetchStatus();
     }, [fetchStatus]);
 
-    async function requestQr() {
+    const requestQr = useCallback(async () => {
         setQrLoading(true);
         setQrError('');
         try {
@@ -124,7 +124,7 @@ const WhatsAppVerificationPanel = () => {
         } finally {
             setQrLoading(false);
         }
-    }
+    }, [fetchStatus]);
 
     // Refresh QR every 25s while modal is open and not yet connected
     useEffect(() => {
@@ -132,7 +132,7 @@ const WhatsAppVerificationPanel = () => {
             const id = setInterval(() => requestQr(), 25000);
             return () => clearInterval(id);
         }
-    }, [showQrModal, status?.status]);
+    }, [showQrModal, status?.status, requestQr]);
 
     // Poll status every 5s while QR modal is open, every 30s otherwise
     useEffect(() => {
