@@ -81,6 +81,8 @@ const WhatsAppVerificationPanel = () => {
     const [qrLoading, setQrLoading] = useState(false);
     const [qrBase64, setQrBase64] = useState('');
     const [qrError, setQrError] = useState('');
+    const [qrHint, setQrHint] = useState('');
+    const [pairingCode, setPairingCode] = useState('');
     const [confirmDisconnect, setConfirmDisconnect] = useState(false);
     const pollRef = useRef(null);
 
@@ -95,6 +97,10 @@ const WhatsAppVerificationPanel = () => {
             if (s.data?.qrBase64) {
                 setQrBase64(s.data.qrBase64);
                 setQrError('');
+            }
+            if (s.data?.status === 'connected') {
+                setQrHint('');
+                setPairingCode('');
             }
             setQueue(q.data.items || []);
             if (st.data) setStats(st.data);
@@ -115,11 +121,17 @@ const WhatsAppVerificationPanel = () => {
         try {
             const { data } = await axios.post(`${API}api/whatsapp/connect`, {}, { headers: authHeaders() });
             setQrBase64(data.qrBase64 || '');
+            setPairingCode(data.code || '');
+            setQrHint(data.fallback || data.msg ? (data.msg || 'Waiting for QR…') : '');
             if (data.alreadyLinked) {
                 setQrError('');
+                setQrHint('');
+                setPairingCode('');
             }
             await fetchStatus();
         } catch (err) {
+            setQrHint('');
+            setPairingCode('');
             setQrError(err.response?.data?.msg || 'Failed to fetch QR code');
         } finally {
             setQrLoading(false);
@@ -145,6 +157,9 @@ const WhatsAppVerificationPanel = () => {
     const openQrModal = async () => {
         setShowQrModal(true);
         setQrBase64(status?.qrBase64 || '');
+        setQrError('');
+        setQrHint(status?.status === 'connected' ? '' : 'Starting WhatsApp link session…');
+        setPairingCode('');
         await requestQr();
     };
 
@@ -386,7 +401,19 @@ const WhatsAppVerificationPanel = () => {
                                         <div className="text-sm font-bold">Connected!</div>
                                     </div>
                                 ) : (
-                                    <div className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Waiting for QR…</div>
+                                    <div className="text-center px-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        <div className="text-xs">{qrHint || 'Waiting for QR…'}</div>
+                                        {pairingCode && (
+                                            <div className="mt-3">
+                                                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                    Pairing code
+                                                </div>
+                                                <div className="mt-1 text-base font-extrabold tracking-[0.2em]" style={{ color: 'hsl(var(--foreground))' }}>
+                                                    {pairingCode}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
