@@ -52,6 +52,62 @@ const getGatewayErrorMessage = (err) => {
     return data?.message || data?.msg || data?.error || err?.message || 'Unknown gateway error';
 };
 
+const QR_STUCK_THRESHOLD_MS = 45000;
+
+const isStuckConnectingWithoutQr = (cfg, liveState) => {
+    if (liveState !== 'connecting') return false;
+    if (cfg?.lastQrBase64) return false;
+
+    const lastAttemptAt = cfg?.lastQrFetchedAt ? new Date(cfg.lastQrFetchedAt).getTime() : 0;
+    if (!lastAttemptAt) return true;
+
+    return (Date.now() - lastAttemptAt) > QR_STUCK_THRESHOLD_MS;
+};
+
+const recreateGatewayInstance = async () => {
+    await evolution.logout().catch(() => null);
+    await evolution.deleteInstance().catch(() => null);
+    return evolution.createInstance().catch((e) => ({
+        __error: getGatewayErrorMessage(e),
+        __status: e.response?.status || 0,
+    }));
+};
+
+const requestGatewayQr = async (startingState = '') => {
+    const created = await evolution.createInstance().catch((e) => {
+        console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
+        return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
+    });
+
+    const createdQr = extractInlineQr(created);
+    let dataUrl = createdQr.dataUrl;
+    let code = createdQr.code;
+    let qrState = startingState;
+    let recoverableGatewayFailure = Number(created?.__status) >= 500;
+
+    if (!dataUrl) {
+        const qr = await evolution.getQRCode().catch((e) => ({
+            base64: '',
+            code: '',
+            state: '',
+            raw: e.response?.data || null,
+            __error: getGatewayErrorMessage(e),
+            __status: e.response?.status || 0,
+        }));
+
+        dataUrl = toDataUrl(qr.base64);
+        code = qr.code || code;
+        qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
+        recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
+
+        if (!dataUrl && !code) {
+            console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
+        }
+    }
+
+    return { dataUrl, code, qrState, recoverableGatewayFailure };
+};
+
 // GET /api/whatsapp/status — admin
 exports.getStatus = async (req, res) => {
     try {
@@ -126,46 +182,23 @@ exports.connect = async (req, res) => {
             });
         }
 
-        // createInstance often returns the QR directly on a fresh install
-        const created = await evolution.createInstance().catch((e) => {
-            console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
-            return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
-        });
+        let autoRecovered = false;
+        let recoveryMessage = '';
+        let { dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(liveState);
 
-        const createdQr = extractInlineQr(created);
-        let dataUrl = createdQr.dataUrl;
-        let code = createdQr.code;
-        let qrState = liveState;
-        let recoverableGatewayFailure = Number(created?.__status) >= 500;
-
-        // Fallback / refresh via connect endpoint (with internal polling)
-        if (!dataUrl) {
-            const qr = await evolution.getQRCode().catch((e) => ({
-                base64: '',
-                code: '',
-                state: '',
-                raw: e.response?.data || null,
-                __error: getGatewayErrorMessage(e),
-                __status: e.response?.status || 0,
-            }));
-
-            dataUrl = toDataUrl(qr.base64);
-            code = qr.code || code;
-            qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
-            recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
-
-            if (!dataUrl && !code) {
-                console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
-            }
+        if (!dataUrl && !code && isStuckConnectingWithoutQr(cfg, qrState || liveState)) {
+            console.warn('whatsapp.connect: instance stuck in connecting without QR, recreating gateway instance');
+            await recreateGatewayInstance();
+            ({ dataUrl, code, qrState, recoverableGatewayFailure } = await requestGatewayQr(''));
+            autoRecovered = true;
+            recoveryMessage = 'The previous link session was stuck, so a fresh WhatsApp session was started automatically.';
         }
 
         cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
         cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
         cfg.lastQrFetchedAt = new Date();
         cfg.lastSeen = new Date();
-        cfg.lastError = dataUrl || code || qrState === 'open'
-            ? ''
-            : (recoverableGatewayFailure ? '' : 'Unable to get a QR from the WhatsApp gateway right now.');
+        cfg.lastError = '';
         await cfg.save();
 
         if (cfg.status === 'connected') {
@@ -197,14 +230,17 @@ exports.connect = async (req, res) => {
                 code: '',
                 fallback: true,
                 retryable: true,
+                recovered: autoRecovered,
                 gatewayState: qrState || 'unknown',
-                msg: recoverableGatewayFailure
-                    ? 'WhatsApp gateway is still preparing the QR. Keep this window open and retry in a few seconds.'
-                    : 'QR is not ready yet. Keep this window open and retry in a few seconds.',
+                msg: autoRecovered
+                    ? `${recoveryMessage} If the QR still does not appear within a few seconds, the gateway itself is not producing one yet.`
+                    : (recoverableGatewayFailure
+                        ? 'WhatsApp gateway is still preparing the QR. Keep this window open and retry in a few seconds.'
+                        : 'QR is not ready yet. Keep this window open and retry in a few seconds.'),
             });
         }
 
-        res.json({ status: cfg.status, qrBase64: dataUrl, code, fallback: false });
+        res.json({ status: cfg.status, qrBase64: dataUrl, code, fallback: false, recovered: autoRecovered, msg: recoveryMessage });
     } catch (err) {
         const msg = getGatewayErrorMessage(err);
         const gatewayStatus = Number(err?.response?.status || 0);
