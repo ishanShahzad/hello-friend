@@ -9,6 +9,7 @@ router.get('/status', verifyToken, admin, ctrl.getStatus);
 router.post('/connect', verifyToken, admin, ctrl.connect);
 router.post('/disconnect', verifyToken, admin, ctrl.disconnect);
 router.get('/queue', verifyToken, admin, ctrl.getQueue);
+router.get('/stats', verifyToken, admin, ctrl.getStats);
 
 // Public webhook (validated via shared secret in handler)
 router.post('/webhook', ctrl.webhook);
