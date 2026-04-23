@@ -105,11 +105,14 @@ const recreateGatewayInstance = async () => {
 };
 
 const requestGatewayQr = async (startingState = '') => {
-    // Evolution API v2.x: Create instance first (doesn't generate QR yet)
+    // Evolution API v2.x: Create instance (QR is auto-generated)
     const created = await evolution.createInstance().catch((e) => {
         console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
         return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
     });
+
+    // Wait a moment for instance to initialize
+    await new Promise(r => setTimeout(r, 2000));
 
     const createdQr = extractInlineQr(created);
     let dataUrl = createdQr.dataUrl;
@@ -118,7 +121,7 @@ const requestGatewayQr = async (startingState = '') => {
     let recoverableGatewayFailure = Number(created?.__status) >= 500;
     let gatewayDiagnostic = describeGatewayQrState(created);
 
-    // Evolution API v2.x: getQRCode now handles connecting and fetching QR
+    // Evolution API v2.x: Fetch QR code from instance data
     const qr = await evolution.getQRCode().catch((e) => ({
         base64: '',
         code: '',

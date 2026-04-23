@@ -524,6 +524,20 @@ const WhatsAppVerificationPanel = () => {
                                 QR refreshes automatically every 25s. Keep this window open until you see "Connected".
                             </p>
 
+                            {!qrBase64 && !pairingCode && !qrLoading && status?.status !== 'connected' && (
+                                <div className="mt-4 p-4 rounded-2xl text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: 'hsl(var(--foreground))' }}>
+                                    <div className="font-bold mb-2">QR Code Not Generating?</div>
+                                    <div className="text-[10px] leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        This usually means Evolution API on Railway cannot connect to WhatsApp servers. Check:
+                                        <ul className="list-disc ml-4 mt-1">
+                                            <li>Railway logs for "Connection Failure" or "error in validating connection"</li>
+                                            <li>Network/firewall settings allowing outbound connections</li>
+                                            <li>Try clicking "Reset instance" below to recreate</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+
                             {isStuckLinking && (
                                 <button
                                     onClick={() => { setResetMsg(''); setConfirmReset(true); }}

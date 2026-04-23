@@ -83,45 +83,52 @@ const extractQr = (data) => {
 
     const src = pickInstancePayload(data) || data || {};
     
-    // Evolution API v2.x response format investigation
-    // Log the structure to understand what we're getting
+    // Evolution API v2.x response format - log everything to debug
     if (src && typeof src === 'object') {
-        const keys = Object.keys(src).slice(0, 25);
+        const keys = Object.keys(src).slice(0, 30);
         console.log('QR data keys:', keys.join(', '));
-        if (src.qrcode) console.log('qrcode object:', JSON.stringify(src.qrcode).slice(0, 300));
-        if (src.pairingCode) console.log('pairingCode found:', src.pairingCode);
-        if (src.code) console.log('code found:', src.code);
+        
+        // Log specific fields that might contain QR
+        if (src.qrcode) console.log('qrcode field type:', typeof src.qrcode, 'value:', JSON.stringify(src.qrcode).slice(0, 100));
+        if (src.pairingCode) console.log('pairingCode:', src.pairingCode);
+        if (src.code) console.log('code:', src.code);
+        if (src.base64) console.log('base64 length:', src.base64?.length);
     }
     
-    // Evolution API v2.x stores QR/pairing code in various possible locations
-    const qrcodeObj = src?.qrcode || src?.qr || {};
-    
-    // Try to extract pairing code first (more reliable in v2.x)
+    // Evolution API v2.x stores QR/pairing code in various formats
+    // Try to extract pairing code first (8-digit code)
     const pairCodeStr = 
         src?.pairingCode ||
-        qrcodeObj?.pairingCode ||
-        src?.code ||
-        qrcodeObj?.code ||
+        src?.qrcode?.pairingCode ||
+        (typeof src?.code === 'string' && src.code.length < 20 ? src.code : '') ||
         '';
     
-    // Try to extract base64 QR image from multiple possible locations
-    const qrCodeStr = typeof qrcodeObj?.code === 'string' && qrcodeObj.code.startsWith('data:')
-        ? qrcodeObj.code
-        : '';
-    const qrOrCodeStr = typeof src?.qrOrCode === 'string' ? src.qrOrCode : '';
-    const qrOrCodeIsDataUrl = qrOrCodeStr.startsWith('data:');
-
-    const b64 =
-        qrcodeObj?.base64 ||
-        src?.base64 ||
-        src?.qrBase64 ||
-        (qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
-        qrCodeStr ||
-        src?.qr?.base64 ||
-        src?.qrCode ||
-        src?.codeBase64 ||
-        (typeof qrcodeObj === 'string' && qrcodeObj.startsWith('data:') ? qrcodeObj : '') ||
-        '';
+    // Try to extract base64 QR image
+    // Evolution API v2.x might store it as:
+    // - qrcode.base64
+    // - qrcode (direct string)
+    // - base64
+    const qrcodeField = src?.qrcode;
+    let b64 = '';
+    
+    if (typeof qrcodeField === 'string') {
+        // qrcode is a direct base64 string
+        b64 = qrcodeField.startsWith('data:') ? qrcodeField : `data:image/png;base64,${qrcodeField}`;
+    } else if (qrcodeField && typeof qrcodeField === 'object') {
+        // qrcode is an object with base64 field
+        b64 = qrcodeField.base64 || qrcodeField.code || '';
+        if (b64 && !b64.startsWith('data:')) {
+            b64 = `data:image/png;base64,${b64}`;
+        }
+    }
+    
+    // Fallback to other possible locations
+    if (!b64) {
+        b64 = src?.base64 || src?.qrBase64 || src?.qrCode || '';
+        if (b64 && !b64.startsWith('data:')) {
+            b64 = `data:image/png;base64,${b64}`;
+        }
+    }
     
     // Only use pairingCode if it's NOT a data URL (data URLs are QR codes)
     const code = (typeof pairCodeStr === 'string' && !pairCodeStr.startsWith('data:')) ? pairCodeStr : '';
@@ -131,40 +138,16 @@ const extractQr = (data) => {
 };
 
 // Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
-// Polls Evolution up to ~15s because the QR isn't always ready on the first request.
-// Evolution API v2.x requires calling /instance/connect to start the connection and generate QR.
+// Evolution API v2.x with WHATSAPP-BAILEYS auto-generates QR on instance creation
+// The QR code is available in the instance data from /instance/fetchInstances
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    let lastRaw = null;
-
-    // Evolution API v2.x: Must call /instance/connect to START the WhatsApp connection
-    // This triggers the QR generation process
-    try {
-        const connectResult = await exports.connectInstance();
-        console.log('Connect result:', JSON.stringify(connectResult).slice(0, 300));
-        
-        // Check if QR is immediately available in connect response
-        const { base64: connectBase64, code: connectCode } = extractQr(connectResult);
-        if (connectBase64 || connectCode) {
-            return { 
-                base64: connectBase64, 
-                code: connectCode, 
-                state: extractState(connectResult), 
-                raw: connectResult 
-            };
-        }
-    } catch (err) {
-        console.warn('Evolution connect error:', err.message);
-    }
-
-    // Wait a moment for QR to be generated after connection starts
-    await new Promise(r => setTimeout(r, 3000));
-
-    for (let attempt = 0; attempt < 15; attempt++) {
+    
+    // Evolution API v2.x: QR code is generated automatically and stored in instance data
+    // We just need to fetch the instance to get the QR
+    for (let attempt = 0; attempt < 20; attempt++) {
         try {
-            // Primary method: fetch all instances and find ours
             const { data: instances } = await client().get('/instance/fetchInstances');
-            lastRaw = instances;
             
             const ourInstance = Array.isArray(instances) 
                 ? instances.find(i => (i.instanceName || i.name) === instanceName())
@@ -186,26 +169,21 @@ exports.getQRCode = async () => {
                     return { base64: '', code: '', state, raw: ourInstance };
                 }
                 
-                // If state is 'connecting', keep polling - QR might appear soon
-                if (state === 'connecting' && attempt < 10) {
+                // If state is 'connecting', QR should appear soon - keep polling
+                if (state === 'connecting' && attempt < 15) {
                     await new Promise(r => setTimeout(r, 2000));
                     continue;
                 }
             }
         } catch (err) {
-            lastRaw = err.response?.data || { error: err.message };
-        }
-
-        // Check if already connected
-        const state = extractState(lastRaw);
-        if (state === 'open') {
-            return { base64: '', code: '', state, raw: lastRaw };
+            console.error('Error fetching instances:', err.message);
         }
 
         await new Promise(r => setTimeout(r, 1500));
     }
 
-    return { base64: '', code: '', state: extractState(lastRaw), raw: lastRaw };
+    // If we get here, QR was never generated
+    return { base64: '', code: '', state: 'close', raw: null };
 };
 
 exports.getStatus = async () => {
