@@ -222,6 +222,9 @@ exports.connect = async (req, res) => {
         let recoveryMessage = '';
         let { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(liveState);
 
+        // Disable auto-recreation to prevent spam when Evolution API has network issues
+        // User can manually click "Reset instance" button if needed
+        /*
         if (!dataUrl && !code && isStuckConnectingWithoutQr(cfg, qrState || liveState)) {
             console.warn('whatsapp.connect: instance stuck in connecting without QR, recreating gateway instance');
             await recreateGatewayInstance();
@@ -229,6 +232,7 @@ exports.connect = async (req, res) => {
             autoRecovered = true;
             recoveryMessage = 'The previous link session was stuck, so a fresh WhatsApp session was started automatically.';
         }
+        */
 
         cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
         cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
