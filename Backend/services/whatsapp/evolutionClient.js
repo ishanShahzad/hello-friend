@@ -281,16 +281,25 @@ exports.connectInstance = async () => {
 exports.requestPairingCode = async (phoneNumber) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     try {
-        // Phone number should be in format: 1234567890 (no + or country code prefix in some versions)
-        const { data } = await client().post(`/instance/connectionState/${instanceName()}`, {
-            state: 'open',
-            number: phoneNumber,
+        // Evolution API v2.x: Request pairing code
+        // Phone number should be in format: 923001234567 (country code + number, no +)
+        const { data } = await client().post(`/instance/fetchInstances/${instanceName()}/pairing-code`, {
+            phoneNumber: phoneNumber,
         });
         console.log('Evolution pairing code response:', JSON.stringify(data).slice(0, 300));
         return data;
     } catch (err) {
-        console.error('Evolution pairing code failed:', err.response?.data || err.message);
-        throw err;
+        // Try alternative endpoint
+        try {
+            const { data } = await client().get(`/instance/connect/${instanceName()}`, {
+                params: { number: phoneNumber }
+            });
+            console.log('Evolution pairing code (alt) response:', JSON.stringify(data).slice(0, 300));
+            return data;
+        } catch (err2) {
+            console.error('Evolution pairing code failed:', err.response?.data || err.message);
+            throw err;
+        }
     }
 };
 

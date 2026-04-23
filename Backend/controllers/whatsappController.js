@@ -334,6 +334,60 @@ exports.disconnect = async (req, res) => {
     }
 };
 
+// POST /api/whatsapp/pairing-code — admin: request pairing code with phone number
+exports.requestPairingCode = async (req, res) => {
+    try {
+        if (!evolution.isConfigured()) {
+            return res.status(400).json({ msg: 'WhatsApp gateway is not configured.' });
+        }
+
+        const { phoneNumber } = req.body;
+        if (!phoneNumber) {
+            return res.status(400).json({ msg: 'Phone number is required' });
+        }
+
+        // Phone number should be digits only (e.g., 923001234567)
+        const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+        if (cleanNumber.length < 10) {
+            return res.status(400).json({ msg: 'Invalid phone number format. Use country code + number (e.g., 923001234567)' });
+        }
+
+        const cfg = await ensureSingleton();
+
+        // Create instance if not exists
+        await evolution.createInstance().catch(() => null);
+
+        // Request pairing code
+        const result = await evolution.requestPairingCode(cleanNumber).catch((e) => {
+            console.error('Pairing code request failed:', e.response?.data || e.message);
+            return { error: e.response?.data || e.message };
+        });
+
+        if (result.error) {
+            return res.status(500).json({ 
+                msg: 'Failed to request pairing code', 
+                error: result.error 
+            });
+        }
+
+        // Extract pairing code from response
+        const code = result.code || result.pairingCode || result.data?.code || result.data?.pairingCode || '';
+
+        cfg.status = 'connecting';
+        cfg.lastSeen = new Date();
+        await cfg.save();
+
+        res.json({ 
+            code, 
+            msg: code ? 'Pairing code generated' : 'Pairing code requested - check instance status',
+            raw: result 
+        });
+    } catch (err) {
+        console.error('whatsapp.requestPairingCode:', err.message);
+        res.status(500).json({ msg: 'Failed to request pairing code: ' + err.message });
+    }
+};
+
 // POST /api/whatsapp/reset — admin: hard-reset the gateway instance.
 // Only allowed when not currently linked, to avoid blowing away a healthy session.
 exports.reset = async (req, res) => {

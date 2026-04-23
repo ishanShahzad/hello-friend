@@ -84,6 +84,9 @@ const WhatsAppVerificationPanel = () => {
     const [qrHint, setQrHint] = useState('');
     const [qrDiagnostic, setQrDiagnostic] = useState('');
     const [pairingCode, setPairingCode] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [showPairingInput, setShowPairingInput] = useState(false);
+    const [pairingLoading, setPairingLoading] = useState(false);
     const [confirmDisconnect, setConfirmDisconnect] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
     const [resetting, setResetting] = useState(false);
@@ -178,6 +181,37 @@ const WhatsAppVerificationPanel = () => {
         pollRef.current = setInterval(fetchStatus, interval);
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [showQrModal, fetchStatus]);
+
+    const requestPairingCode = async () => {
+        if (!phoneNumber || phoneNumber.length < 10) {
+            setQrError('Please enter a valid phone number with country code (e.g., 923001234567)');
+            return;
+        }
+
+        setPairingLoading(true);
+        setQrError('');
+        try {
+            const { data } = await axios.post(
+                `${API}api/whatsapp/pairing-code`,
+                { phoneNumber },
+                { headers: authHeaders(), timeout: 15000 }
+            );
+            
+            if (data.code) {
+                setPairingCode(data.code);
+                setQrHint('Enter this code in WhatsApp when prompted');
+                setShowPairingInput(false);
+            } else {
+                setQrHint(data.msg || 'Pairing code requested. Check status in a moment.');
+            }
+            
+            await fetchStatus();
+        } catch (err) {
+            setQrError(err.response?.data?.msg || 'Failed to request pairing code');
+        } finally {
+            setPairingLoading(false);
+        }
+    };
 
     const openQrModal = async () => {
         setShowQrModal(true);
@@ -519,6 +553,53 @@ const WhatsAppVerificationPanel = () => {
                                 style={{ color: 'hsl(var(--foreground))' }}>
                                 <RefreshCw size={14} className={qrLoading ? 'animate-spin' : ''} /> Refresh QR
                             </button>
+
+                            {!showPairingInput && !pairingCode && status?.status !== 'connected' && (
+                                <button
+                                    onClick={() => setShowPairingInput(true)}
+                                    className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium glass-inner inline-flex items-center justify-center gap-1.5"
+                                    style={{ color: 'hsl(var(--foreground))' }}
+                                >
+                                    <Phone size={14} /> Get Pairing Code Instead
+                                </button>
+                            )}
+
+                            {showPairingInput && (
+                                <div className="mt-4 p-4 rounded-2xl glass-inner">
+                                    <div className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                                        Request Pairing Code
+                                    </div>
+                                    <div className="text-[10px] mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Enter your WhatsApp number with country code (e.g., 923001234567)
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                                        placeholder="923001234567"
+                                        className="w-full px-3 py-2 rounded-lg text-sm glass-inner mb-3"
+                                        style={{ color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowPairingInput(false)}
+                                            className="flex-1 py-2 rounded-lg text-xs font-medium glass-inner"
+                                            style={{ color: 'hsl(var(--foreground))' }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={requestPairingCode}
+                                            disabled={pairingLoading || !phoneNumber}
+                                            className="flex-1 py-2 rounded-lg text-xs font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                            style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))' }}
+                                        >
+                                            {pairingLoading ? <Loader2 size={12} className="animate-spin" /> : <Phone size={12} />}
+                                            {pairingLoading ? 'Requesting...' : 'Get Code'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             <p className="text-[10px] text-center mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 QR refreshes automatically every 25s. Keep this window open until you see "Connected".
