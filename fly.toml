@@ -1,0 +1,32 @@
+app = "rozare-evolution-api"
+primary_region = "iad"
+
+[build]
+  image = "atendai/evolution-api:v2.2.3"
+
+[env]
+  SERVER_TYPE = "http"
+  SERVER_PORT = "8080"
+  AUTHENTICATION_API_KEY = "rozareplatform"
+  AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES = "true"
+  DATABASE_ENABLED = "true"
+  DATABASE_PROVIDER = "postgresql"
+  DATABASE_CONNECTION_CLIENT_NAME = "evolution"
+  CONFIG_SESSION_PHONE_CLIENT = "Rozare"
+  CONFIG_SESSION_PHONE_NAME = "Chrome"
+  QRCODE_LIMIT = "30"
+  LOG_LEVEL = "ERROR"
+  DEL_INSTANCE = "false"
+  WEBHOOK_GLOBAL_ENABLED = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
