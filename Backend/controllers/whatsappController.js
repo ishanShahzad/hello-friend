@@ -105,10 +105,19 @@ const recreateGatewayInstance = async () => {
 };
 
 const requestGatewayQr = async (startingState = '') => {
+    // Evolution API v2.x: Create instance first (doesn't generate QR yet)
     const created = await evolution.createInstance().catch((e) => {
         console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
         return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
     });
+
+    // Evolution API v2.x: Must explicitly connect to trigger QR generation
+    await evolution.connectInstance().catch((e) => {
+        console.warn('whatsapp.connectInstance warn:', e.response?.data || e.message);
+    });
+
+    // Wait for QR to be generated
+    await new Promise(r => setTimeout(r, 2000));
 
     const createdQr = extractInlineQr(created);
     let dataUrl = createdQr.dataUrl;
@@ -117,25 +126,24 @@ const requestGatewayQr = async (startingState = '') => {
     let recoverableGatewayFailure = Number(created?.__status) >= 500;
     let gatewayDiagnostic = describeGatewayQrState(created);
 
-    if (!dataUrl) {
-        const qr = await evolution.getQRCode().catch((e) => ({
-            base64: '',
-            code: '',
-            state: '',
-            raw: e.response?.data || null,
-            __error: getGatewayErrorMessage(e),
-            __status: e.response?.status || 0,
-        }));
+    // Always fetch QR code since v2.x doesn't return it on create
+    const qr = await evolution.getQRCode().catch((e) => ({
+        base64: '',
+        code: '',
+        state: '',
+        raw: e.response?.data || null,
+        __error: getGatewayErrorMessage(e),
+        __status: e.response?.status || 0,
+    }));
 
-        dataUrl = toDataUrl(qr.base64);
-        code = qr.code || code;
-        qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
-        recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
-        gatewayDiagnostic = describeGatewayQrState(qr.raw) || gatewayDiagnostic;
+    dataUrl = toDataUrl(qr.base64) || dataUrl;
+    code = qr.code || code;
+    qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
+    recoverableGatewayFailure = recoverableGatewayFailure || Number(qr.__status) >= 500;
+    gatewayDiagnostic = describeGatewayQrState(qr.raw) || gatewayDiagnostic;
 
-        if (!dataUrl && !code) {
-            console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
-        }
+    if (!dataUrl && !code) {
+        console.warn('whatsapp.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
     }
 
     return { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic };
