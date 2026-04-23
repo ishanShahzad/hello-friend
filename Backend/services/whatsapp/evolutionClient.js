@@ -86,13 +86,23 @@ const extractQr = (data) => {
     // Evolution API v2.x response format investigation
     // Log the structure to understand what we're getting
     if (src && typeof src === 'object') {
-        const keys = Object.keys(src).slice(0, 20);
+        const keys = Object.keys(src).slice(0, 25);
         console.log('QR data keys:', keys.join(', '));
-        if (src.qrcode) console.log('qrcode object:', JSON.stringify(src.qrcode).slice(0, 200));
+        if (src.qrcode) console.log('qrcode object:', JSON.stringify(src.qrcode).slice(0, 300));
+        if (src.pairingCode) console.log('pairingCode found:', src.pairingCode);
+        if (src.code) console.log('code found:', src.code);
     }
     
-    // Evolution API v2.x stores QR in various possible locations
+    // Evolution API v2.x stores QR/pairing code in various possible locations
     const qrcodeObj = src?.qrcode || src?.qr || {};
+    
+    // Try to extract pairing code first (more reliable in v2.x)
+    const pairCodeStr = 
+        src?.pairingCode ||
+        qrcodeObj?.pairingCode ||
+        src?.code ||
+        qrcodeObj?.code ||
+        '';
     
     // Try to extract base64 QR image from multiple possible locations
     const qrCodeStr = typeof qrcodeObj?.code === 'string' && qrcodeObj.code.startsWith('data:')
@@ -100,8 +110,6 @@ const extractQr = (data) => {
         : '';
     const qrOrCodeStr = typeof src?.qrOrCode === 'string' ? src.qrOrCode : '';
     const qrOrCodeIsDataUrl = qrOrCodeStr.startsWith('data:');
-    const pairCodeStr = typeof src?.pairingCode === 'string' ? src.pairingCode : 
-                        typeof qrcodeObj?.pairingCode === 'string' ? qrcodeObj.pairingCode : '';
 
     const b64 =
         qrcodeObj?.base64 ||
@@ -115,13 +123,8 @@ const extractQr = (data) => {
         (typeof qrcodeObj === 'string' && qrcodeObj.startsWith('data:') ? qrcodeObj : '') ||
         '';
     
-    const code =
-        pairCodeStr ||
-        src?.code ||
-        qrcodeObj?.code ||
-        (typeof qrcodeObj?.code === 'string' && !qrcodeObj.code.startsWith('data:') ? qrcodeObj.code : '') ||
-        (!qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
-        '';
+    // Only use pairingCode if it's NOT a data URL (data URLs are QR codes)
+    const code = (typeof pairCodeStr === 'string' && !pairCodeStr.startsWith('data:')) ? pairCodeStr : '';
 
     console.log(`Extracted QR: hasBase64=${!!b64}, hasCode=${!!code}, base64Length=${b64.length}, code=${code}`);
     return { base64: b64 || '', code: code || '' };
@@ -129,28 +132,35 @@ const extractQr = (data) => {
 
 // Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
 // Polls Evolution up to ~15s because the QR isn't always ready on the first request.
-// Evolution API v2.x requires using /instance/connect endpoint to trigger QR generation.
+// Evolution API v2.x requires calling /instance/connect to start the connection and generate QR.
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     let lastRaw = null;
 
-    // Evolution API v2.x: Must call /instance/connect to trigger QR generation
-    // This is different from v1.x which auto-generated QR on instance creation
+    // Evolution API v2.x: Must call /instance/connect to START the WhatsApp connection
+    // This triggers the QR generation process
     try {
-        // Use POST to /instance/connect to trigger QR generation
-        const { data } = await client().post(`/instance/connect/${instanceName()}`, {});
-        lastRaw = data;
-        console.log('Evolution connect response:', JSON.stringify(data).slice(0, 500));
+        const connectResult = await exports.connectInstance();
+        console.log('Connect result:', JSON.stringify(connectResult).slice(0, 300));
+        
+        // Check if QR is immediately available in connect response
+        const { base64: connectBase64, code: connectCode } = extractQr(connectResult);
+        if (connectBase64 || connectCode) {
+            return { 
+                base64: connectBase64, 
+                code: connectCode, 
+                state: extractState(connectResult), 
+                raw: connectResult 
+            };
+        }
     } catch (err) {
-        // If POST fails, the endpoint might not exist in this version
-        console.warn('Evolution connect POST failed:', err.response?.status, err.response?.data?.message || err.message);
-        lastRaw = err.response?.data || { error: err.message };
+        console.warn('Evolution connect error:', err.message);
     }
 
-    // Wait a moment for QR to be generated
-    await new Promise(r => setTimeout(r, 2000));
+    // Wait a moment for QR to be generated after connection starts
+    await new Promise(r => setTimeout(r, 3000));
 
-    for (let attempt = 0; attempt < 12; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
         try {
             // Primary method: fetch all instances and find ours
             const { data: instances } = await client().get('/instance/fetchInstances');
@@ -164,14 +174,22 @@ exports.getQRCode = async () => {
                 const { base64, code } = extractQr(ourInstance);
                 const state = extractState(ourInstance);
                 
-                console.log(`QR attempt ${attempt + 1}: state=${state}, hasBase64=${!!base64}, hasCode=${!!code}`);
+                console.log(`QR attempt ${attempt + 1}: state=${state}, hasBase64=${!!base64}, hasCode=${!!code}, connectionStatus=${ourInstance.connectionStatus}`);
                 
+                // If we have QR or pairing code, return it
                 if (base64 || code) {
                     return { base64, code, state, raw: ourInstance };
                 }
                 
+                // If already connected, no QR needed
                 if (state === 'open') {
                     return { base64: '', code: '', state, raw: ourInstance };
+                }
+                
+                // If state is 'connecting', keep polling - QR might appear soon
+                if (state === 'connecting' && attempt < 10) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    continue;
                 }
             }
         } catch (err) {
@@ -235,25 +253,35 @@ exports.restartInstance = async () => {
 };
 
 // Trigger QR generation by connecting instance (Evolution API v2.x)
+// This actually starts the WhatsApp connection process
 exports.connectInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
-        // Try POST first (some versions use POST)
-        const { data } = await client().post(`/instance/connect/${instanceName()}`, {});
-        console.log('Evolution connect (POST) response:', JSON.stringify(data).slice(0, 300));
+        // Evolution API v2.x: Use GET /instance/connect/{instance} to start connection
+        const { data } = await client().get(`/instance/connect/${instanceName()}`);
+        console.log('Evolution connect response:', JSON.stringify(data).slice(0, 300));
         return data;
     } catch (err) {
-        // If POST fails with 404, try GET
-        if (err.response?.status === 404) {
-            try {
-                const { data } = await client().get(`/instance/connect/${instanceName()}`);
-                console.log('Evolution connect (GET) response:', JSON.stringify(data).slice(0, 300));
-                return data;
-            } catch (getErr) {
-                return { error: getErr.response?.data || getErr.message };
-            }
-        }
+        console.warn('Evolution connect failed:', err.response?.status, err.response?.data?.message || err.message);
         return { error: err.response?.data || err.message };
+    }
+};
+
+// Request pairing code instead of QR (Evolution API v2.x)
+// More reliable than QR for some WhatsApp versions
+exports.requestPairingCode = async (phoneNumber) => {
+    if (!isConfigured()) throw new Error('Evolution API not configured');
+    try {
+        // Phone number should be in format: 1234567890 (no + or country code prefix in some versions)
+        const { data } = await client().post(`/instance/connectionState/${instanceName()}`, {
+            state: 'open',
+            number: phoneNumber,
+        });
+        console.log('Evolution pairing code response:', JSON.stringify(data).slice(0, 300));
+        return data;
+    } catch (err) {
+        console.error('Evolution pairing code failed:', err.response?.data || err.message);
+        throw err;
     }
 };
 

@@ -457,15 +457,43 @@ const WhatsAppVerificationPanel = () => {
                                 <li>1. Open <strong>WhatsApp</strong> on your phone</li>
                                 <li>2. Tap <strong>Settings</strong> → <strong>Linked Devices</strong></li>
                                 <li>3. Tap <strong>Link a Device</strong></li>
-                                <li>4. Scan the QR code below</li>
+                                <li>4. {pairingCode ? 'Enter the pairing code below' : 'Scan the QR code below'}</li>
                             </ol>
 
                             <div className="aspect-square rounded-2xl glass-inner flex items-center justify-center overflow-hidden p-4">
-                                {qrLoading && !qrBase64 ? (
-                                    <Loader2 size={32} className="animate-spin" style={{ color: 'hsl(150,70%,40%)' }} />
+                                {qrLoading && !qrBase64 && !pairingCode ? (
+                                    <div className="text-center">
+                                        <Loader2 size={32} className="animate-spin mx-auto mb-2" style={{ color: 'hsl(150,70%,40%)' }} />
+                                        <div className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            Starting WhatsApp connection...
+                                        </div>
+                                    </div>
                                 ) : qrError ? (
                                     <div className="text-center text-xs px-4" style={{ color: 'hsl(0,72%,55%)' }}>
                                         {qrError}
+                                    </div>
+                                ) : pairingCode ? (
+                                    <div className="text-center w-full">
+                                        <div className="mb-3">
+                                            <div className="text-xs uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                Pairing Code
+                                            </div>
+                                            <div className="text-4xl font-extrabold tracking-[0.3em] py-4 px-6 rounded-xl glass-panel-strong" 
+                                                style={{ color: 'hsl(150,70%,40%)', fontFamily: 'monospace' }}>
+                                                {pairingCode}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] leading-relaxed px-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            Enter this code in WhatsApp when prompted. The code expires in a few minutes.
+                                        </div>
+                                        {qrBase64 && (
+                                            <div className="mt-4 pt-4 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+                                                <div className="text-[10px] mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                    Or scan QR code:
+                                                </div>
+                                                <img src={qrBase64} alt="WhatsApp QR" className="w-48 h-48 mx-auto object-contain" />
+                                            </div>
+                                        )}
                                     </div>
                                 ) : qrBase64 ? (
                                     <img src={qrBase64} alt="WhatsApp QR" className="w-full h-full object-contain" />
@@ -476,17 +504,7 @@ const WhatsAppVerificationPanel = () => {
                                     </div>
                                 ) : (
                                     <div className="text-center px-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        <div className="text-xs">{qrHint || 'Waiting for QR…'}</div>
-                                        {pairingCode && (
-                                            <div className="mt-3">
-                                                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                                    Pairing code
-                                                </div>
-                                                <div className="mt-1 text-base font-extrabold tracking-[0.2em]" style={{ color: 'hsl(var(--foreground))' }}>
-                                                    {pairingCode}
-                                                </div>
-                                            </div>
-                                        )}
+                                        <div className="text-xs">{qrHint || 'Waiting for QR or pairing code...'}</div>
                                         {qrDiagnostic && (
                                             <div className="mt-3 text-[10px] leading-relaxed" style={{ color: 'hsl(var(--foreground))' }}>
                                                 {qrDiagnostic}
