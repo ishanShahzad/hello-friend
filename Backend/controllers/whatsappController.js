@@ -95,10 +95,13 @@ const isStuckConnectingWithoutQr = (cfg, liveState) => {
 const recreateGatewayInstance = async () => {
     await evolution.logout().catch(() => null);
     await evolution.deleteInstance().catch(() => null);
-    return evolution.createInstance().catch((e) => ({
+    await new Promise(r => setTimeout(r, 1000)); // Wait 1s after delete
+    const created = await evolution.createInstance().catch((e) => ({
         __error: getGatewayErrorMessage(e),
         __status: e.response?.status || 0,
     }));
+    await new Promise(r => setTimeout(r, 2000)); // Wait 2s for instance to initialize
+    return created;
 };
 
 const requestGatewayQr = async (startingState = '') => {

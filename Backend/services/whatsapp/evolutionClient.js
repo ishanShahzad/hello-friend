@@ -17,6 +17,7 @@ const client = () => axios.create({
 
 // Create or fetch the WhatsApp instance (idempotent on most Evolution builds)
 // Returns the create response — which on fresh installs already includes the QR.
+// Evolution API v2.x: Use mobile=false to force QR code generation instead of pairing code
 exports.createInstance = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     try {
@@ -24,6 +25,7 @@ exports.createInstance = async () => {
             instanceName: instanceName(),
             qrcode: true,
             integration: 'WHATSAPP-BAILEYS',
+            number: '', // Empty to trigger QR mode
         });
         return data;
     } catch (err) {
@@ -112,13 +114,21 @@ const extractQr = (data) => {
 };
 
 // Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
-// Polls Evolution up to ~12s because the QR isn't always ready on the first request.
+// Polls Evolution up to ~15s because the QR isn't always ready on the first request.
 // Evolution API v2.x requires fetching instances to get QR code data.
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     let lastRaw = null;
 
-    for (let attempt = 0; attempt < 10; attempt++) {
+    // First attempt: restart instance to trigger QR generation
+    try {
+        await client().put(`/instance/restart/${instanceName()}`);
+        await new Promise(r => setTimeout(r, 2000)); // Wait 2s for restart
+    } catch (err) {
+        // Ignore restart errors
+    }
+
+    for (let attempt = 0; attempt < 12; attempt++) {
         try {
             // Primary method: fetch all instances and find ours
             const { data: instances } = await client().get('/instance/fetchInstances');
@@ -195,6 +205,17 @@ exports.deleteInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
         const { data } = await client().delete(`/instance/delete/${instanceName()}`);
+        return data;
+    } catch (err) {
+        return { error: err.response?.data || err.message };
+    }
+};
+
+// Restart instance to trigger QR generation (Evolution API v2.x)
+exports.restartInstance = async () => {
+    if (!isConfigured()) return { msg: 'not_configured' };
+    try {
+        const { data } = await client().put(`/instance/restart/${instanceName()}`);
         return data;
     } catch (err) {
         return { error: err.response?.data || err.message };
