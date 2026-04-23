@@ -257,12 +257,43 @@ exports.restartInstance = async () => {
 exports.connectInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
-        // Evolution API v2.x: Use GET /instance/connect/{instance} to start connection
-        const { data } = await client().get(`/instance/connect/${instanceName()}`);
-        console.log('Evolution connect response:', JSON.stringify(data).slice(0, 300));
-        return data;
+        // Evolution API v2.x: The correct endpoint might be different
+        // Try multiple approaches to start the connection
+        
+        // Approach 1: GET /instance/connect/{instance}
+        try {
+            const { data } = await client().get(`/instance/connect/${instanceName()}`);
+            console.log('Evolution connect (GET) response:', JSON.stringify(data).slice(0, 300));
+            if (data && (data.qrcode || data.pairingCode || data.base64)) {
+                return data;
+            }
+        } catch (err) {
+            console.warn('GET /instance/connect failed:', err.response?.status);
+        }
+        
+        // Approach 2: POST /instance/connect/{instance} with empty body
+        try {
+            const { data } = await client().post(`/instance/connect/${instanceName()}`, {});
+            console.log('Evolution connect (POST) response:', JSON.stringify(data).slice(0, 300));
+            if (data && (data.qrcode || data.pairingCode || data.base64)) {
+                return data;
+            }
+        } catch (err) {
+            console.warn('POST /instance/connect failed:', err.response?.status);
+        }
+        
+        // Approach 3: PUT /instance/restart/{instance} to force restart
+        try {
+            const { data } = await client().put(`/instance/restart/${instanceName()}`);
+            console.log('Evolution restart response:', JSON.stringify(data).slice(0, 300));
+            return data;
+        } catch (err) {
+            console.warn('PUT /instance/restart failed:', err.response?.status);
+        }
+        
+        return { msg: 'no_method_worked' };
     } catch (err) {
-        console.warn('Evolution connect failed:', err.response?.status, err.response?.data?.message || err.message);
+        console.error('Evolution connectInstance error:', err.message);
         return { error: err.response?.data || err.message };
     }
 };
