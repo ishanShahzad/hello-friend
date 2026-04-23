@@ -80,59 +80,83 @@ const extractQr = (data) => {
     if (!data) return { base64: '', code: '' };
 
     const src = pickInstancePayload(data) || data || {};
-    const qrCodeStr = typeof src?.qrcode?.code === 'string' && src.qrcode.code.startsWith('data:')
-        ? src.qrcode.code
+    
+    // Evolution API v2.x stores QR in qrcode object with pairingCode
+    const qrcodeObj = src?.qrcode || {};
+    const qrCodeStr = typeof qrcodeObj?.code === 'string' && qrcodeObj.code.startsWith('data:')
+        ? qrcodeObj.code
         : '';
     const qrOrCodeStr = typeof src?.qrOrCode === 'string' ? src.qrOrCode : '';
     const qrOrCodeIsDataUrl = qrOrCodeStr.startsWith('data:');
     const pairCodeStr = typeof src?.pairingCode === 'string' ? src.pairingCode : '';
 
     const b64 =
+        qrcodeObj?.base64 ||
         src?.base64 ||
-        src?.qrcode?.base64 ||
         (qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
         qrCodeStr ||
         src?.qr ||
         src?.qrCode ||
         src?.codeBase64 ||
-        (typeof src?.qrcode === 'string' ? src.qrcode : '') ||
+        (typeof qrcodeObj === 'string' ? qrcodeObj : '') ||
         '';
+    
     const code =
-        src?.code ||
-        (typeof src?.qrcode?.code === 'string' ? src.qrcode.code : '') ||
-        (!qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
         pairCodeStr ||
+        src?.code ||
+        (typeof qrcodeObj?.code === 'string' && !qrcodeObj.code.startsWith('data:') ? qrcodeObj.code : '') ||
+        (!qrOrCodeIsDataUrl ? qrOrCodeStr : '') ||
         '';
 
     return { base64: b64 || '', code: code || '' };
 };
 
 // Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
-// Polls Evolution up to ~6s because the QR isn't always ready on the first request.
+// Polls Evolution up to ~12s because the QR isn't always ready on the first request.
+// Evolution API v2.x requires fetching instances to get QR code data.
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     let lastRaw = null;
-    const requesters = [
-        () => client().get(`/instance/connect/${instanceName()}`),
-        () => client().post(`/instance/connect/${instanceName()}`, {}),
-        () => client().get(`/instance/connectionState/${instanceName()}`),
-        () => client().get('/instance/fetchInstances'),
-    ];
 
-    for (let attempt = 0; attempt < 8; attempt++) {
-        for (const request of requesters) {
-            try {
-                const { data } = await request();
-                lastRaw = data;
-                const { base64, code } = extractQr(data);
+    for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+            // Primary method: fetch all instances and find ours
+            const { data: instances } = await client().get('/instance/fetchInstances');
+            lastRaw = instances;
+            
+            const ourInstance = Array.isArray(instances) 
+                ? instances.find(i => (i.instanceName || i.name) === instanceName())
+                : instances;
+            
+            if (ourInstance) {
+                const { base64, code } = extractQr(ourInstance);
+                const state = extractState(ourInstance);
+                
                 if (base64 || code) {
-                    return { base64, code, state: extractState(data), raw: data };
+                    return { base64, code, state, raw: ourInstance };
                 }
-            } catch (err) {
-                lastRaw = err.response?.data || { error: err.message };
+                
+                if (state === 'open') {
+                    return { base64: '', code: '', state, raw: ourInstance };
+                }
             }
+        } catch (err) {
+            lastRaw = err.response?.data || { error: err.message };
         }
 
+        // Fallback: try the connect endpoint
+        try {
+            const { data } = await client().get(`/instance/connect/${instanceName()}`);
+            lastRaw = data;
+            const { base64, code } = extractQr(data);
+            if (base64 || code) {
+                return { base64, code, state: extractState(data), raw: data };
+            }
+        } catch (err) {
+            // Ignore connect endpoint errors
+        }
+
+        // Check if already connected
         const state = extractState(lastRaw);
         if (state === 'open') {
             return { base64: '', code: '', state, raw: lastRaw };
