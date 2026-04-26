@@ -91,9 +91,22 @@ export default function HomeScreen({ navigation }) {
       const paginationInfo = res.data.pagination;
 
       if (append) {
-        setProducts(prev => [...prev, ...newProducts]);
+        // Dedupe across pages to avoid React duplicate-key warnings when the
+        // backend pagination window overlaps (e.g. a product shifts between pages).
+        setProducts(prev => {
+          const seen = new Set(prev.map(p => p._id));
+          const additions = newProducts.filter(p => p?._id && !seen.has(p._id));
+          return [...prev, ...additions];
+        });
       } else {
-        setProducts(newProducts);
+        // Dedupe on initial fetch too (defensive).
+        const seen = new Set();
+        const unique = newProducts.filter(p => {
+          if (!p?._id || seen.has(p._id)) return false;
+          seen.add(p._id);
+          return true;
+        });
+        setProducts(unique);
       }
 
       if (paginationInfo) {
@@ -378,7 +391,7 @@ export default function HomeScreen({ navigation }) {
       <PersonalizedSliders navigation={navigation} />
 
       {/* Browse Stores Banner */}
-      <TouchableOpacity style={styles.storesBanner} onPress={() => navigation.navigate('Stores')} activeOpacity={0.9}>
+      <TouchableOpacity style={styles.storesBanner} onPress={() => navigation.navigate('Marketplace')} activeOpacity={0.9}>
         <View style={styles.storesBannerContent}>
           <View style={styles.storesBannerIcon}><Ionicons name="storefront-outline" size={28} color={palette.colors.white} /></View>
           <View style={styles.storesBannerText}>

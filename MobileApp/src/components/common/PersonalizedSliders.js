@@ -55,15 +55,22 @@ const SliderCard = ({ product, onPress, formatPrice, palette }) => {
   );
 };
 
-const Section = ({ icon, title, subtitle, color, products, formatPrice, navigation, palette }) => {
+const Section = ({ icon, title, subtitle, color, products, formatPrice, navigation, palette, sectionKey }) => {
   const styles = makeStyles(palette);
   if (!products || products.length === 0) return null;
+  // Deduplicate by _id to guard against backend responses that return the same product twice.
+  const seen = new Set();
+  const unique = products.filter((p) => {
+    if (!p?._id || seen.has(p._id)) return false;
+    seen.add(p._id);
+    return true;
+  });
   return (
     <View style={styles.section}>
       <SectionHeader icon={icon} title={title} subtitle={subtitle} color={color} palette={palette} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollRow} decelerationRate="fast" snapToInterval={172} snapToAlignment="start">
-        {products.map((p) => (
-          <SliderCard key={p._id} product={p} formatPrice={formatPrice} palette={palette} onPress={() => navigation.navigate('ProductDetail', { productId: p._id })} />
+        {unique.map((p) => (
+          <SliderCard key={`${sectionKey}_${p._id}`} product={p} formatPrice={formatPrice} palette={palette} onPress={() => navigation.navigate('ProductDetail', { productId: p._id })} />
         ))}
       </ScrollView>
     </View>
@@ -138,10 +145,10 @@ export default function PersonalizedSliders({ navigation }) {
 
   return (
     <View>
-      <Section icon="time-outline" title="Recently Viewed" subtitle="Continue where you left off" color={colors.info} products={recentlyViewed} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section icon="sparkles" title="Picked for You" subtitle="Based on what you've explored" color={colors.primary} products={picked} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section icon="pricetag" title="Price Drops" subtitle="Hot deals right now" color={colors.error} products={priceDrops} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section icon="trending-up" title="Trending Now" subtitle="Most popular products" color={colors.success} products={trending} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+      <Section sectionKey="recent" icon="time-outline" title="Recently Viewed" subtitle="Continue where you left off" color={colors.info} products={recentlyViewed} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+      <Section sectionKey="picked" icon="sparkles" title="Picked for You" subtitle="Based on what you've explored" color={colors.primary} products={picked} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+      <Section sectionKey="drops" icon="pricetag" title="Price Drops" subtitle="Hot deals right now" color={colors.error} products={priceDrops} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+      <Section sectionKey="trending" icon="trending-up" title="Trending Now" subtitle="Most popular products" color={colors.success} products={trending} formatPrice={formatPrice} navigation={navigation} palette={palette} />
     </View>
   );
 }

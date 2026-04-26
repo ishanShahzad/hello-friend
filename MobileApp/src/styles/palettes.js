@@ -183,7 +183,9 @@ export const darkPalette = {
     infoLighter: 'rgba(96,165,250,0.25)',
     infoSubtle: 'rgba(96,165,250,0.12)',
 
-    // Neutrals — inverted scale
+    // Neutrals — inverted scale (for background-ish surfaces).
+    // `white` and `black` remain literal colours so callers using them as
+    // icon/text tints on coloured CTAs/gradients stay readable in both themes.
     dark: '#f9fafb',
     darkLight: '#e5e7eb',
     gray: '#9ca3af',
@@ -191,8 +193,8 @@ export const darkPalette = {
     grayLighter: '#374151',
     light: '#1f2937',
     lighter: '#111827',
-    white: '#0b1020',
-    black: '#ffffff',
+    white: '#ffffff',
+    black: '#000000',
 
     // Surfaces
     background: '#0b1020',

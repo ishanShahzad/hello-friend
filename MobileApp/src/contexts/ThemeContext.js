@@ -74,7 +74,19 @@ export function ThemeProvider({ children }) {
 }
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  const context = useContext(ThemeContext);
+  if (!context || !context.palette) {
+    // Fallback to light palette if context not ready
+    return {
+      mode: 'system',
+      resolvedMode: 'light',
+      isDark: false,
+      palette: lightPalette,
+      setMode: () => {},
+      toggle: () => {},
+    };
+  }
+  return context;
 }
 
 /**

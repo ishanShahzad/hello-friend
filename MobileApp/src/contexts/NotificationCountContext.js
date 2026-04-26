@@ -51,7 +51,7 @@ export const NotificationCountProvider = ({ children }) => {
       setUnreadNotifCount(prev => prev + 1);
     });
     return () => {
-      if (notifListenerRef.current) Notifications.removeNotificationSubscription(notifListenerRef.current);
+      if (notifListenerRef.current) notifListenerRef.current.remove();
     };
   }, [refreshUnreadCount]);
 

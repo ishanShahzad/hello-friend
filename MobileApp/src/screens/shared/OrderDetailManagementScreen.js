@@ -15,19 +15,20 @@ import GlassPanel from '../../components/common/GlassPanel';
 import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const STATUS_CONFIG = {
+const getStatusConfig = (palette) => ({
   pending: { color: palette.colors.warning, icon: 'time-outline', label: 'Pending' },
   processing: { color: palette.colors.info, icon: 'sync-outline', label: 'Processing' },
   shipped: { color: palette.colors.primary, icon: 'airplane-outline', label: 'Shipped' },
   delivered: { color: palette.colors.success, icon: 'checkmark-circle-outline', label: 'Delivered' },
   cancelled: { color: palette.colors.error, icon: 'close-circle-outline', label: 'Cancelled' },
-};
+});
 
 const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 export default function OrderDetailManagementScreen({ route, navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const STATUS_CONFIG = getStatusConfig(palette);
 
   const { orderId, isAdmin } = route.params;
   const [order, setOrder] = useState(null);
@@ -85,7 +86,7 @@ export default function OrderDetailManagementScreen({ route, navigation }) {
         <GlassPanel variant="floating" style={styles.header}>
           <View>
             <Text style={styles.orderIdLabel}>Order</Text>
-            <Text style={styles.orderId}>#{order._id.slice(-8).toUpperCase()}</Text>
+            <Text style={styles.orderId}>#{(order._id || '').toString().slice(-8).toUpperCase() || 'N/A'}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
             <Ionicons name={statusConfig.icon} size={16} color="white" />

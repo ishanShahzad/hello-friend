@@ -18,26 +18,26 @@ import { isBiometricEnabled, setBiometricEnabled, isBiometricAvailable, authenti
 
 const APP_VERSION = '1.0.0';
 
-function SettingRow({ icon, iconColor, iconBg, title, subtitle, onPress, rightElement, showBorder = true }) {
-  return (
-    <TouchableOpacity style={[styles.settingRow, showBorder && styles.settingRowBorder]} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <View style={[styles.settingIcon, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={20} color={iconColor} />
-      </View>
-      <View style={styles.settingText}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
-      </View>
-      {rightElement || (onPress && <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />)}
-    </TouchableOpacity>
-  );
-}
-
 const SETTINGS_KEYS = { NOTIFICATIONS: 'settings_notifications_enabled', EMAIL_UPDATES: 'settings_email_updates' };
 
 export default function SettingsScreen({ navigation }) {
   const { mode: themeMode, setMode: setThemeMode, palette } = useTheme();
   const styles = buildStyles(palette);
+
+  function SettingRow({ icon, iconColor, iconBg, title, subtitle, onPress, rightElement, showBorder = true }) {
+    return (
+      <TouchableOpacity style={[styles.settingRow, showBorder && styles.settingRowBorder]} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
+        <View style={[styles.settingIcon, { backgroundColor: iconBg }]}>
+          <Ionicons name={icon} size={20} color={iconColor} />
+        </View>
+        <View style={styles.settingText}>
+          <Text style={styles.settingTitle}>{title}</Text>
+          {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
+        </View>
+        {rightElement || (onPress && <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />)}
+      </TouchableOpacity>
+    );
+  }
 
   const { logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);

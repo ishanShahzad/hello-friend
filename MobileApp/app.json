@@ -46,8 +46,7 @@
             "DEFAULT"
           ]
         }
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "ios": {
       "supportsTablet": true,

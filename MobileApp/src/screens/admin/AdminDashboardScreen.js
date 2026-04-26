@@ -14,6 +14,8 @@ import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import ChatBot from '../../components/ChatBot';
+import { spacing, fontSize, borderRadius, fontWeight, typography, shadows } from '../../styles/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TILE_GAP = spacing.sm;
@@ -32,69 +34,66 @@ export const calculateAdminStats = (users, stores, products, orders) => {
   return { totalUsers, totalStores, totalProducts, totalOrders, pendingVerifications, revenue };
 };
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'pending': return palette.colors.warning;
-    case 'processing': return palette.colors.info;
-    case 'shipped': return palette.colors.primary;
-    case 'delivered': return palette.colors.success;
-    case 'cancelled': return palette.colors.error;
-    default: return palette.colors.gray;
-  }
-};
-
 const getStatusLabel = (status) => {
   return (status || 'unknown').charAt(0).toUpperCase() + (status || 'unknown').slice(1);
 };
 
-/* ── Compact Stat Pill ── */
-const StatPill = ({ icon, iconColor, label, value, onPress }) => {
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
-  const formatValue = (v) => {
-    if (typeof v === 'number') {
-      if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-      if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
-      return v.toLocaleString();
-    }
-    return v;
-  };
-  return (
-    <Wrapper {...wrapperProps} style={styles.statPill}>
-      <GlassPanel variant="card" style={styles.statPillInner}>
-        <View style={[styles.statIcon, { backgroundColor: `${iconColor}18` }]}>
-          <Ionicons name={icon} size={20} color={iconColor} />
-        </View>
-        <Text style={styles.statValue}>{formatValue(value)}</Text>
-        <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
-      </GlassPanel>
-    </Wrapper>
-  );
-};
-
-/* ── Quick Action Tile ── */
-const QuickTile = ({ icon, color, label, onPress, badge }) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.quickTile}>
-    <GlassPanel variant="inner" style={styles.quickTileInner}>
-      <View style={[styles.quickTileIcon, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon} size={22} color={color} />
-        {badge > 0 && (
-          <View style={[styles.tileBadge, { backgroundColor: color }]}>
-            <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : badge}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.quickTileLabel} numberOfLines={1}>{label}</Text>
-    </GlassPanel>
-  </TouchableOpacity>
-);
-
-import { spacing, fontSize, borderRadius, fontWeight, typography, shadows } from '../../styles/theme';
-import { useTheme } from '../../contexts/ThemeContext';
-
 export default function AdminDashboardScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return palette.colors.warning;
+      case 'processing': return palette.colors.info;
+      case 'shipped': return palette.colors.primary;
+      case 'delivered': return palette.colors.success;
+      case 'cancelled': return palette.colors.error;
+      default: return palette.colors.gray;
+    }
+  };
+
+  /* ── Compact Stat Pill ── */
+  const StatPill = ({ icon, iconColor, label, value, onPress }) => {
+    const Wrapper = onPress ? TouchableOpacity : View;
+    const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
+    const formatValue = (v) => {
+      if (typeof v === 'number') {
+        if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+        if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+        return v.toLocaleString();
+      }
+      return v;
+    };
+    return (
+      <Wrapper {...wrapperProps} style={styles.statPill}>
+        <GlassPanel variant="card" style={styles.statPillInner}>
+          <View style={[styles.statIcon, { backgroundColor: `${iconColor}18` }]}>
+            <Ionicons name={icon} size={20} color={iconColor} />
+          </View>
+          <Text style={styles.statValue}>{formatValue(value)}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+        </GlassPanel>
+      </Wrapper>
+    );
+  };
+
+  /* ── Quick Action Tile ── */
+  const QuickTile = ({ icon, color, label, onPress, badge }) => (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.quickTile}>
+      <GlassPanel variant="inner" style={styles.quickTileInner}>
+        <View style={[styles.quickTileIcon, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon} size={22} color={color} />
+          {badge > 0 && (
+            <View style={[styles.tileBadge, { backgroundColor: color }]}>
+              <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : badge}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.quickTileLabel} numberOfLines={1}>{label}</Text>
+      </GlassPanel>
+    </TouchableOpacity>
+  );
 
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -134,7 +133,7 @@ export default function AdminDashboardScreen({ navigation }) {
   const quickActions = [
     { icon: 'people-outline', color: palette.colors.primary, label: 'Users', onPress: () => navigation.navigate('AdminUserManagement'), badge: stats.totalUsers },
     { icon: 'shield-checkmark-outline', color: palette.colors.info, label: 'Verifications', onPress: () => navigation.navigate('StoreVerification'), badge: stats.pendingVerifications },
-    { icon: 'business-outline', color: palette.colors.secondary, label: 'All Stores', onPress: () => navigation.navigate('StoreOverview') },
+    { icon: 'business-outline', color: palette.colors.secondary, label: 'All Stores', onPress: () => navigation.navigate('AdminStoreOverview') },
     { icon: 'bar-chart-outline', color: palette.colors.info, label: 'Analytics', onPress: () => navigation.navigate('AdminAnalytics') },
     { icon: 'grid-outline', color: palette.colors.warning, label: 'Products', onPress: () => navigation.navigate('AdminProductManagement') },
     { icon: 'list-outline', color: palette.colors.success, label: 'Orders', onPress: () => navigation.navigate('AdminOrderManagement'), badge: stats.totalOrders },

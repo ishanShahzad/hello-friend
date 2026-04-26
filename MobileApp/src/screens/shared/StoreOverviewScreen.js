@@ -152,11 +152,11 @@ export default function StoreOverviewScreen({ route, navigation }) {
               )}
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: palette.colors.primary }]}
-              onPress={() => navigation.navigate('ProductManagement', { storeId, isAdmin: true })}>
+              onPress={() => navigation.navigate('AdminProductManagement', { storeId, isAdmin: true })}>
               <Ionicons name="cube" size={20} color="white" /><Text style={styles.actionButtonText}>Products</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: palette.colors.info }]}
-              onPress={() => navigation.navigate('OrderManagement', { storeId, isAdmin: true })}>
+              onPress={() => navigation.navigate('AdminOrderManagement', { storeId, isAdmin: true })}>
               <Ionicons name="receipt" size={20} color="white" /><Text style={styles.actionButtonText}>Orders</Text>
             </TouchableOpacity>
           </View>

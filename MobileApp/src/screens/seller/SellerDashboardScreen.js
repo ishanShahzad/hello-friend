@@ -33,53 +33,53 @@ export const calculateSellerStats = (products, orders) => {
   return { totalProducts, totalOrders, pendingOrders, revenue };
 };
 
-/* ── Mini Stat Card ── */
-const MiniStat = ({ icon, iconColor, label, value, onPress }) => {
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
-  const formatValue = (v) => {
-    if (typeof v === 'number') {
-      if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-      if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
-      return v.toLocaleString();
-    }
-    return v;
-  };
-  return (
-    <Wrapper {...wrapperProps} style={styles.miniStat}>
-      <GlassPanel variant="card" style={styles.miniStatInner}>
-        <View style={[styles.miniStatIcon, { backgroundColor: `${iconColor}15` }]}>
-          <Ionicons name={icon} size={18} color={iconColor} />
-        </View>
-        <View style={styles.miniStatContent}>
-          <Text style={styles.miniStatValue}>{formatValue(value)}</Text>
-          <Text style={styles.miniStatLabel} numberOfLines={1}>{label}</Text>
-        </View>
-      </GlassPanel>
-    </Wrapper>
-  );
-};
-
-/* ── Quick Action Tile ── */
-const QuickTile = ({ icon, color, label, onPress, badge }) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.quickTile}>
-    <GlassPanel variant="inner" style={styles.quickTileInner}>
-      <View style={[styles.quickTileIcon, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon} size={22} color={color} />
-        {badge > 0 && (
-          <View style={[styles.tileBadge, { backgroundColor: color }]}>
-            <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : badge}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.quickTileLabel} numberOfLines={1}>{label}</Text>
-    </GlassPanel>
-  </TouchableOpacity>
-);
-
 export default function SellerDashboardScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+
+  /* ── Mini Stat Card ── */
+  const MiniStat = ({ icon, iconColor, label, value, onPress }) => {
+    const Wrapper = onPress ? TouchableOpacity : View;
+    const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
+    const formatValue = (v) => {
+      if (typeof v === 'number') {
+        if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+        if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+        return v.toLocaleString();
+      }
+      return v;
+    };
+    return (
+      <Wrapper {...wrapperProps} style={styles.miniStat}>
+        <GlassPanel variant="card" style={styles.miniStatInner}>
+          <View style={[styles.miniStatIcon, { backgroundColor: `${iconColor}15` }]}>
+            <Ionicons name={icon} size={18} color={iconColor} />
+          </View>
+          <View style={styles.miniStatContent}>
+            <Text style={styles.miniStatValue}>{formatValue(value)}</Text>
+            <Text style={styles.miniStatLabel} numberOfLines={1}>{label}</Text>
+          </View>
+        </GlassPanel>
+      </Wrapper>
+    );
+  };
+
+  /* ── Quick Action Tile ── */
+  const QuickTile = ({ icon, color, label, onPress, badge }) => (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.quickTile}>
+      <GlassPanel variant="inner" style={styles.quickTileInner}>
+        <View style={[styles.quickTileIcon, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon} size={22} color={color} />
+          {badge > 0 && (
+            <View style={[styles.tileBadge, { backgroundColor: color }]}>
+              <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : badge}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.quickTileLabel} numberOfLines={1}>{label}</Text>
+      </GlassPanel>
+    </TouchableOpacity>
+  );
 
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);

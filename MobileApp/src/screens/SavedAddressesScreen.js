@@ -28,6 +28,24 @@ export default function SavedAddressesScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
 
+  function FormField({ label, error, icon, multiline, ...rest }) {
+    return (
+      <View style={{ marginBottom: spacing.md }}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <View style={[styles.inputWrap, error && styles.inputWrapError, multiline && { minHeight: 64, alignItems: 'flex-start' }]}>
+          {icon ? <Ionicons name={icon} size={16} color={palette.colors.textSecondary} style={{ marginRight: 6, marginTop: multiline ? 4 : 0 }} /> : null}
+          <TextInput
+            style={[styles.input, multiline && { minHeight: 60, textAlignVertical: 'top' }]}
+            placeholderTextColor={palette.colors.textLight}
+            multiline={multiline}
+            {...rest}
+          />
+        </View>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </View>
+    );
+  }
+
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -262,24 +280,6 @@ export default function SavedAddressesScreen({ navigation }) {
         </Modal>
       </SafeAreaView>
     </GlassBackground>
-  );
-}
-
-function FormField({ label, error, icon, multiline, ...rest }) {
-  return (
-    <View style={{ marginBottom: spacing.md }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.inputWrap, error && styles.inputWrapError, multiline && { minHeight: 64, alignItems: 'flex-start' }]}>
-        {icon ? <Ionicons name={icon} size={16} color={palette.colors.textSecondary} style={{ marginRight: 6, marginTop: multiline ? 4 : 0 }} /> : null}
-        <TextInput
-          style={[styles.input, multiline && { minHeight: 60, textAlignVertical: 'top' }]}
-          placeholderTextColor={palette.colors.textLight}
-          multiline={multiline}
-          {...rest}
-        />
-      </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
   );
 }
 

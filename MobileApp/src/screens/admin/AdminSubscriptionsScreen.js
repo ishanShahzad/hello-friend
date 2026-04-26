@@ -15,11 +15,11 @@ import api from '../../config/api';
 import Loader from '../../components/common/Loader';
 import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
-import { EmptyState } from '../../components/common/EmptyState';
+import EmptyState from '../../components/common/EmptyState';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const STATUS_FILTERS = [
+const getStatusFilters = (palette) => [
   { key: 'all', label: 'All', icon: 'apps-outline', color: palette.colors.primary },
   { key: 'trial', label: 'Trial', icon: 'time-outline', color: palette.colors.warning },
   { key: 'free_period', label: 'Free', icon: 'gift-outline', color: palette.colors.info },
@@ -28,14 +28,14 @@ const STATUS_FILTERS = [
   { key: 'blocked', label: 'Blocked', icon: 'ban-outline', color: palette.colors.error },
 ];
 
-const STATUS_META = {
+const getStatusMeta = (palette) => ({
   trial:       { color: palette.colors.warning,         label: 'Trial' },
   free_period: { color: palette.colors.info,            label: 'Free Period' },
   active:      { color: palette.colors.success,         label: 'Active' },
   past_due:    { color: palette.colors.error,           label: 'Past Due' },
   cancelled:   { color: palette.colors.gray,            label: 'Cancelled' },
   blocked:     { color: palette.colors.error,           label: 'Blocked' },
-};
+});
 
 const formatDate = (date) => {
   if (!date) return '—';
@@ -46,6 +46,8 @@ const formatDate = (date) => {
 export default function AdminSubscriptionsScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const STATUS_FILTERS = getStatusFilters(palette);
+  const STATUS_META = getStatusMeta(palette);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -15,14 +15,14 @@ import Loader from '../../components/common/Loader';
 import { spacing, fontSize, borderRadius, fontWeight } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const STATUS_MAP = {
+const getStatusMap = (palette) => ({
   trial: { label: 'Free Trial', color: palette.colors.primary, icon: 'time-outline' },
   free_period: { label: '90-Day Free', color: palette.colors.success, icon: 'sparkles-outline' },
   active: { label: 'Active', color: palette.colors.success, icon: 'checkmark-circle-outline' },
   past_due: { label: 'Past Due', color: palette.colors.warning, icon: 'alert-circle-outline' },
   blocked: { label: 'Blocked', color: palette.colors.error, icon: 'lock-closed-outline' },
   cancelled: { label: 'Cancelled', color: palette.colors.gray, icon: 'close-circle-outline' },
-};
+});
 
 const FEATURES = [
   { icon: 'storefront-outline', text: 'Keep your store & products visible to all customers' },
@@ -105,6 +105,7 @@ export default function SellerSubscriptionScreen({ navigation }) {
 
   if (loading) return <GlassBackground><SafeAreaView style={{ flex: 1 }}><Loader fullScreen message="Loading subscription..." /></SafeAreaView></GlassBackground>;
 
+  const STATUS_MAP = getStatusMap(palette);
   const status = STATUS_MAP[subscription?.status] || STATUS_MAP.trial;
   const isBlocked = subscription?.status === 'blocked';
   const isTrial = subscription?.status === 'trial';

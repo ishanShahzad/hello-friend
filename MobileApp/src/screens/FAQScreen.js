@@ -70,28 +70,28 @@ const faqCategories = [
   },
 ];
 
-function FAQItem({ q, a }) {
-  const [open, setOpen] = useState(false);
-
-  const toggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen(!open);
-  };
-
-  return (
-    <TouchableOpacity style={styles.faqItem} onPress={toggle} activeOpacity={0.7}>
-      <View style={styles.faqHeader}>
-        <Text style={styles.faqQuestion}>{q}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={palette.colors.textSecondary} />
-      </View>
-      {open && <Text style={styles.faqAnswer}>{a}</Text>}
-    </TouchableOpacity>
-  );
-}
-
 export default function FAQScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+
+  function FAQItem({ q, a }) {
+    const [open, setOpen] = useState(false);
+
+    const toggle = () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setOpen(!open);
+    };
+
+    return (
+      <TouchableOpacity style={styles.faqItem} onPress={toggle} activeOpacity={0.7}>
+        <View style={styles.faqHeader}>
+          <Text style={styles.faqQuestion}>{q}</Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={palette.colors.textSecondary} />
+        </View>
+        {open && <Text style={styles.faqAnswer}>{a}</Text>}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <GlassBackground>

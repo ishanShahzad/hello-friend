@@ -20,7 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const APP_VERSION = '1.0.0';
 
-export const getMenuItemsForRole = (role) => {
+export const getMenuItemsForRole = (role, palette) => {
   const baseItems = [
     { id: 'orders', title: 'My Orders', icon: 'receipt-outline', screen: 'Orders', color: palette.colors.primary },
     { id: 'addresses', title: 'Saved Addresses', icon: 'location-outline', screen: 'SavedAddresses', color: palette.colors.info },
@@ -124,7 +124,7 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
-  const menuItems = getMenuItemsForRole(currentUser.role);
+  const menuItems = getMenuItemsForRole(currentUser.role, palette);
   const roleLabel = currentUser.role?.charAt(0).toUpperCase() + currentUser.role?.slice(1);
 
   return (

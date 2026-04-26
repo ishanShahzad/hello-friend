@@ -123,7 +123,7 @@ export default function useNotificationInbox({ currentUser, onCountChange } = {}
         await AsyncStorage.setItem(NOTIF_STORE_KEY, JSON.stringify(arr.slice(0, 200)));
       } catch {}
     });
-    return () => { if (listenerRef.current) Notifications.removeNotificationSubscription(listenerRef.current); };
+    return () => { if (listenerRef.current) listenerRef.current.remove(); };
   }, []);
 
   const fetchNotifications = useCallback(async () => {

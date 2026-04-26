@@ -127,5 +127,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: colors.primary, fontSize: fontSize.md, fontWeight: fontWeight.semibold },
 });
 
+export { EmptyState };
 export default EmptyState;
 

@@ -11,7 +11,7 @@ import GlassPanel from '../components/common/GlassPanel';
 import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
-const contactMethods = [
+const getContactMethods = (palette) => [
   { icon: 'mail-outline', title: 'Email Us', value: 'support@rozare.com', desc: 'We respond within 24 hours', color: palette.colors.primary },
   { icon: 'chatbubbles-outline', title: 'Live Chat', value: 'Available on platform', desc: 'Mon–Fri, 9 AM – 6 PM EST', color: palette.colors.success },
   { icon: 'location-outline', title: 'Headquarters', value: 'Global / Remote', desc: 'Serving customers worldwide', color: palette.colors.info },
@@ -20,6 +20,7 @@ const contactMethods = [
 export default function ContactScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const contactMethods = getContactMethods(palette);
 
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);

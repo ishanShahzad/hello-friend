@@ -23,12 +23,13 @@ const RANGES = [
   { label: '90 Days', value: '90' },
 ];
 
-const STATUS_COLORS = [palette.colors.warning, palette.colors.info, palette.colors.primary, palette.colors.success, palette.colors.error, '#f43f5e'];
+const getStatusColors = (palette) => [palette.colors.warning, palette.colors.info, palette.colors.primary, palette.colors.success, palette.colors.error, '#f43f5e'];
 const CAT_COLORS = ['#6366f1', '#10b981', '#0ea5e9', '#8b5cf6', '#f97316', '#ec4899'];
 
 export default function SellerAnalyticsScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const STATUS_COLORS = getStatusColors(palette);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

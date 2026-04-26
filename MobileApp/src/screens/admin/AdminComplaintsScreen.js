@@ -36,23 +36,25 @@ const STATUSES = [
   { value: 'closed', label: 'Closed' },
 ];
 
-const statusColors = {
+const getStatusColors = (palette) => ({
   open: palette.colors.error,
   in_progress: palette.colors.warning,
   resolved: palette.colors.success,
   closed: palette.colors.gray,
-};
+});
 
-const priorityColors = {
+const getPriorityColors = (palette) => ({
   low: palette.colors.gray,
   medium: palette.colors.info,
   high: palette.colors.warning,
   urgent: palette.colors.error,
-};
+});
 
 export default function AdminComplaintsScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const statusColors = getStatusColors(palette);
+  const priorityColors = getPriorityColors(palette);
 
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);

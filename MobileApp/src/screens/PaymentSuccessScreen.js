@@ -9,7 +9,7 @@ import api from '../config/api';
 import { useGlobal } from '../contexts/GlobalContext';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { useReviewPrompt } from '../hooks/useReviewPrompt';
+import { recordSuccessfulOrder } from '../hooks/useReviewPrompt';
 import { trackPaymentEvent } from '../utils/breadcrumbs';
 import { spacing, fontSize, borderRadius, shadows, fontWeight } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -22,13 +22,11 @@ export default function PaymentSuccessScreen({ navigation, route }) {
   const { orderId } = route.params || {};
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { trackOrderCompleted } = useReviewPrompt();
-
   useEffect(() => {
     trackPaymentEvent('success', { orderId });
     api.delete('/api/cart/clear').then(() => fetchCart()).catch(() => {});
     // Increment successful-order counter & request native review after threshold
-    trackOrderCompleted();
+    recordSuccessfulOrder();
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),

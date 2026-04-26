@@ -105,7 +105,7 @@ export default function TrustedStoresScreen({ navigation }) {
             <Ionicons name="heart-outline" size={56} color="rgba(255,255,255,0.3)" />
             <Text style={styles.authTitle}>No Trusted Stores Yet</Text>
             <Text style={styles.authSub}>Start exploring stores and tap Trust to add them!</Text>
-            <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Stores')}>
+            <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('MainTabs', { screen: 'Marketplace' })}>
               <Ionicons name="storefront" size={18} color="#fff" /><Text style={{ color: '#fff', fontWeight: fontWeight.semibold }}>Explore Stores</Text>
             </TouchableOpacity>
           </View>

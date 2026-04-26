@@ -16,17 +16,17 @@ import Loader from '../components/common/Loader';
 import { ErrorState } from '../components/common/EmptyState';
 import GlassBackground from '../components/common/GlassBackground';
 import GlassPanel from '../components/common/GlassPanel';
-import { generateAndShareInvoice } from '../utils/invoiceUtils';
+import { shareInvoice } from '../utils/invoiceUtils';
 import { useTheme } from '../contexts/ThemeContext';
 
-const statusConfig = {
+const getStatusConfig = (palette) => ({
   pending: { color: statusColors.pending.solid, bgColor: statusColors.pending.bg, icon: 'time-outline', label: 'Pending', description: 'Your order is being reviewed' },
   confirmed: { color: statusColors.confirmed?.solid || palette.colors.info, bgColor: statusColors.confirmed?.bg || palette.colors.infoLight, icon: 'checkmark-circle-outline', label: 'Confirmed', description: 'Your order has been confirmed' },
   processing: { color: statusColors.processing.solid, bgColor: statusColors.processing.bg, icon: 'hourglass-outline', label: 'Processing', description: 'Your order is being prepared' },
   shipped: { color: statusColors.shipped.solid, bgColor: statusColors.shipped.bg, icon: 'airplane-outline', label: 'Shipped', description: 'Your order is on the way' },
   delivered: { color: statusColors.delivered.solid, bgColor: statusColors.delivered.bg, icon: 'checkmark-done-outline', label: 'Delivered', description: 'Your order has been delivered' },
   cancelled: { color: statusColors.cancelled.solid, bgColor: statusColors.cancelled.bg, icon: 'close-circle-outline', label: 'Cancelled', description: 'Your order has been cancelled' },
-};
+});
 const statusTimeline = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 
 export const canCancelOrder = (status) => ['pending', 'processing'].includes(status?.toLowerCase());
@@ -98,7 +98,7 @@ export default function OrderDetailScreen({ route, navigation }) {
   const handleShareInvoice = useCallback(async () => {
     try {
       setSharingInvoice(true);
-      await generateAndShareInvoice(order);
+      await shareInvoice(order?._id || order?.orderId);
     } catch (err) {
       Alert.alert('Share Failed', err.message || 'Unable to generate invoice.');
     } finally { setSharingInvoice(false); }
@@ -116,6 +116,7 @@ export default function OrderDetailScreen({ route, navigation }) {
   if (error) return <GlassBackground><View style={styles.center}><ErrorState message={error} onRetry={fetchOrderDetail} /></View></GlassBackground>;
   if (!order) return <GlassBackground><View style={styles.center}><ErrorState message="Order not found" onRetry={() => navigation.goBack()} /></View></GlassBackground>;
 
+  const statusConfig = getStatusConfig(palette);
   const status = order.orderStatus || 'pending';
   const config = statusConfig[status] || statusConfig.pending;
   const currentStatusIndex = statusTimeline.indexOf(status);

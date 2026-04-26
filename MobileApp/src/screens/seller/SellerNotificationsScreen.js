@@ -21,14 +21,14 @@ const CATEGORIES = [
   { key: 'store', label: 'Store', icon: 'storefront-outline' },
 ];
 
-const CATEGORY_STYLES = {
+const getCategoryStyles = (palette) => ({
   orders: { icon: 'receipt-outline', color: palette.colors.primary, bg: 'rgba(99,102,241,0.15)' },
   stock: { icon: 'cube-outline', color: palette.colors.warning, bg: 'rgba(245,158,11,0.15)' },
   reviews: { icon: 'star-outline', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   store: { icon: 'storefront-outline', color: palette.colors.success, bg: 'rgba(16,185,129,0.15)' },
   delivery: { icon: 'bicycle-outline', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)' },
   system: { icon: 'information-circle-outline', color: palette.colors.info, bg: 'rgba(59,130,246,0.15)' },
-};
+});
 
 function formatTime(dateStr) {
   const diffMs = Date.now() - new Date(dateStr);
@@ -45,6 +45,7 @@ function formatTime(dateStr) {
 export default function SellerNotificationsScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const CATEGORY_STYLES = getCategoryStyles(palette);
 
   const { currentUser, token } = useAuth();
   const [notifications, setNotifications] = useState([]);

@@ -32,13 +32,13 @@ export const filterUsers = (users, role, searchQuery) => {
   return filtered;
 };
 
-const getRoleColor = (role) => {
-  switch (role) { case 'admin': return palette.colors.error; case 'seller': return palette.colors.success; default: return palette.colors.info; }
-};
-
 export default function AdminUserManagementScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+
+  const getRoleColor = (role) => {
+    switch (role) { case 'admin': return palette.colors.error; case 'seller': return palette.colors.success; default: return palette.colors.info; }
+  };
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);

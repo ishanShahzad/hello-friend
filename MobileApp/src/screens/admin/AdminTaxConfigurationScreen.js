@@ -15,7 +15,7 @@ import GlassPanel from '../../components/common/GlassPanel';
 import { spacing, fontSize, fontWeight, borderRadius, typography } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const TAX_TYPES = [
+const getTaxTypes = (palette) => [
   { key: 'none', label: 'No Tax', icon: 'close-circle-outline', color: palette.colors.textSecondary, desc: 'No tax charged' },
   { key: 'percentage', label: 'Percentage (%)', icon: 'trending-up-outline', color: palette.colors.info, desc: 'Percentage of subtotal' },
   { key: 'fixed', label: 'Fixed Amount', icon: 'cash-outline', color: palette.colors.success, desc: 'Flat amount per order' },
@@ -24,6 +24,7 @@ const TAX_TYPES = [
 export default function AdminTaxConfigurationScreen() {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const TAX_TYPES = getTaxTypes(palette);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

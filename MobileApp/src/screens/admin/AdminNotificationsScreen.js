@@ -22,14 +22,14 @@ const CATEGORIES = [
   { key: 'system', label: 'System', icon: 'settings-outline' },
 ];
 
-const CATEGORY_STYLES = {
+const getCategoryStyles = (palette) => ({
   orders: { icon: 'receipt-outline', color: palette.colors.primary, bg: 'rgba(99,102,241,0.15)' },
   users: { icon: 'people-outline', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
   stores: { icon: 'storefront-outline', color: palette.colors.success, bg: 'rgba(16,185,129,0.15)' },
   products: { icon: 'cube-outline', color: palette.colors.warning, bg: 'rgba(245,158,11,0.15)' },
   system: { icon: 'settings-outline', color: palette.colors.info, bg: 'rgba(59,130,246,0.15)' },
   verification: { icon: 'shield-checkmark-outline', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)' },
-};
+});
 
 function formatTime(dateStr) {
   const diffMs = Date.now() - new Date(dateStr);
@@ -46,6 +46,7 @@ function formatTime(dateStr) {
 export default function AdminNotificationsScreen({ navigation }) {
   const { palette } = useTheme();
   const styles = buildStyles(palette);
+  const CATEGORY_STYLES = getCategoryStyles(palette);
 
   const { currentUser, token } = useAuth();
   const [notifications, setNotifications] = useState([]);
