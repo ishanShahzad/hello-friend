@@ -609,11 +609,12 @@ const WhatsAppVerificationPanel = () => {
                                 <div className="mt-4 p-4 rounded-2xl text-xs" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: 'hsl(var(--foreground))' }}>
                                     <div className="font-bold mb-2">QR Code Not Generating?</div>
                                     <div className="text-[10px] leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        This usually means Evolution API on Railway cannot connect to WhatsApp servers. Check:
+                                        This usually means the Evolution API gateway on your Oracle Cloud VM cannot reach WhatsApp servers. Check:
                                         <ul className="list-disc ml-4 mt-1">
-                                            <li>Railway logs for "Connection Failure" or "error in validating connection"</li>
-                                            <li>Network/firewall settings allowing outbound connections</li>
-                                            <li>Try clicking "Reset instance" below to recreate</li>
+                                            <li>Oracle VM container logs (<code>docker compose logs -f evolution-api</code>) for "Connection Failure" or "error in validating connection"</li>
+                                            <li>Oracle VCN security list and Ubuntu UFW allow inbound TCP 8080 and outbound to WhatsApp</li>
+                                            <li>The VM has a public IP and <code>EVOLUTION_API_URL</code> on Heroku points to it</li>
+                                            <li>Try clicking "Reset instance" below to recreate the session</li>
                                         </ul>
                                     </div>
                                 </div>
