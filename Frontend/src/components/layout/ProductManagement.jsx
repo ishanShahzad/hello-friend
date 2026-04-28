@@ -21,13 +21,36 @@ const ProductManagement = () => {
         const checkStore = async () => {
             try {
                 const token = localStorage.getItem('jwtToken');
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/store/my-store`, { headers: { Authorization: `Bearer ${token}` } });
+                
+                if (!token) {
+                    console.error('No JWT token found');
+                    setHasStore(false);
+                    setStoreLoading(false);
+                    return;
+                }
+                
+                console.log('Checking store with API URL:', import.meta.env.VITE_API_URL);
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/store/my-store`, { 
+                    headers: { Authorization: `Bearer ${token}` } 
+                });
+                
+                console.log('Store check response:', res.data);
                 setHasStore(!!res.data?.store);
             } catch (err) {
+                console.error('Store check error:', err.response?.status, err.response?.data);
+                
                 // Only treat a confirmed "no store" (404) as missing.
                 // 401/403/network errors shouldn't show the misleading "Store Required" banner.
-                if (err?.response?.status === 404) setHasStore(false);
-                else setHasStore(true);
+                if (err?.response?.status === 404) {
+                    setHasStore(false);
+                } else if (err?.response?.status === 401 || err?.response?.status === 403) {
+                    // Authentication error - user needs to log in again
+                    console.error('Authentication error - token may be invalid');
+                    setHasStore(false);
+                } else {
+                    // Network or other errors - assume store exists to avoid false negative
+                    setHasStore(true);
+                }
             }
             finally { setStoreLoading(false); }
         };
