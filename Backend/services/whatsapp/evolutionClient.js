@@ -138,14 +138,29 @@ const extractQr = (data) => {
 };
 
 // Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
-// Evolution API v2.x with WHATSAPP-BAILEYS auto-generates QR on instance creation
-// The QR code is available in the instance data from /instance/fetchInstances
+// Evolution API v2.x requires explicit /instance/connect call to start WhatsApp connection
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     
-    // Evolution API v2.x: QR code is generated automatically and stored in instance data
-    // We just need to fetch the instance to get the QR
-    for (let attempt = 0; attempt < 20; attempt++) {
+    // Evolution API v2.x: Must call /instance/connect to trigger QR generation
+    // First, try to connect the instance
+    try {
+        console.log('Triggering instance connection...');
+        const connectResult = await client().get(`/instance/connect/${instanceName()}`);
+        console.log('Connect result:', JSON.stringify(connectResult.data).slice(0, 300));
+        
+        // Check if QR is in the connect response
+        const { base64: connectBase64, code: connectCode } = extractQr(connectResult.data);
+        if (connectBase64 || connectCode) {
+            console.log('QR found in connect response');
+            return { base64: connectBase64, code: connectCode, state: 'connecting', raw: connectResult.data };
+        }
+    } catch (err) {
+        console.warn('Connect call failed:', err.response?.status, err.message);
+    }
+    
+    // Poll for QR code in instance data
+    for (let attempt = 0; attempt < 15; attempt++) {
         try {
             const { data: instances } = await client().get('/instance/fetchInstances');
             
@@ -170,8 +185,8 @@ exports.getQRCode = async () => {
                 }
                 
                 // If state is 'connecting', QR should appear soon - keep polling
-                if (state === 'connecting' && attempt < 15) {
-                    await new Promise(r => setTimeout(r, 2000));
+                if (state === 'connecting' && attempt < 10) {
+                    await new Promise(r => setTimeout(r, 1500));
                     continue;
                 }
             }
@@ -179,7 +194,7 @@ exports.getQRCode = async () => {
             console.error('Error fetching instances:', err.message);
         }
 
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1000));
     }
 
     // If we get here, QR was never generated
