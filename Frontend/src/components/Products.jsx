@@ -47,7 +47,11 @@ function Products() {
     Object.keys(f || {}).forEach((key) => {
       const value = f[key]
       if (Array.isArray(value)) {
-        if (key === 'priceRange') params.append(key, value.join(','))
+        if (key === 'priceRange') {
+          const min = String(value[0] ?? '0')
+          const max = String(value[1] ?? '5000')
+          if (min !== '0' || max !== '5000') params.append(key, `${min},${max}`)
+        }
         else value.forEach(item => params.append(key, item))
       }
     })
