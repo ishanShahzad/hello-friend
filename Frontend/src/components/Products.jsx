@@ -47,7 +47,11 @@ function Products() {
     Object.keys(f || {}).forEach((key) => {
       const value = f[key]
       if (Array.isArray(value)) {
-        if (key === 'priceRange') params.append(key, value.join(','))
+        if (key === 'priceRange') {
+          const min = String(value[0] ?? '0')
+          const max = String(value[1] ?? '5000')
+          if (min !== '0' || max !== '5000') params.append(key, `${min},${max}`)
+        }
         else value.forEach(item => params.append(key, item))
       }
     })
@@ -59,7 +63,7 @@ function Products() {
     setLoading(true); setError(null)
     try {
       const query = serializeFilters()
-      navigate(`${location.pathname}?${query}`, { replace: true })
+      navigate(query ? `${location.pathname}?${query}` : location.pathname, { replace: true })
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
       setProducts(res.data.products || [])
       setCurrentPage(1)
