@@ -109,6 +109,8 @@ const orderSchema = mongoose.Schema(
             confirmedAt: { type: Date, default: null },
             confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', null], default: null },
             declinedAt: { type: Date, default: null },
+            voteChangeCount: { type: Number, default: 0 },
+            lockMessageSent: { type: Boolean, default: false }
         }
     },
     { timestamps: true }

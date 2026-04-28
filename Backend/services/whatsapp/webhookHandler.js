@@ -149,17 +149,52 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const alreadyConfirmed = !!order.confirmation?.confirmedAt;
                 const alreadyDeclined = !!order.confirmation?.declinedAt;
                 
-                // If user is changing their vote, allow it ONLY if order hasn't been processed yet
+                // SPAM/COST PROTECTION: Track vote changes
+                if (!order.confirmation.voteChangeCount) {
+                    order.confirmation.voteChangeCount = 0;
+                }
+                
+                // COST PROTECTION: Limit vote changes to 1 (initial vote + 1 change = max 2 messages)
+                const MAX_VOTE_CHANGES = 1;
+                
+                // If user is changing their vote
                 if ((alreadyConfirmed && !isYes) || (alreadyDeclined && isYes)) {
-                    // User changed their mind - update the order
-                    console.log(`[whatsapp] User changed vote for order ${order.orderId}: ${isYes ? 'confirm' : 'cancel'}`);
+                    // Check if they've exceeded the change limit
+                    if (order.confirmation.voteChangeCount >= MAX_VOTE_CHANGES) {
+                        console.log(`[whatsapp] Vote change limit reached for order ${order.orderId}. Blocking.`);
+                        
+                        // Send ONE "decision locked" message (only if not sent before)
+                        if (!order.confirmation.lockMessageSent) {
+                            try {
+                                const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                                const lockedMessage = [
+                                    `Hey ${firstName}! 👋`,
+                                    ``,
+                                    `Your decision for order *#${order.orderId}* is now locked. 🔒`,
+                                    ``,
+                                    `Need help? Contact our support team. 💙`,
+                                ].join('\n');
+                                await evolution.sendText(job.phone, lockedMessage);
+                                order.confirmation.lockMessageSent = true;
+                                await order.save();
+                            } catch (err) {
+                                console.error('[whatsapp] Failed to send locked message:', err.message);
+                            }
+                        }
+                        
+                        continue; // Block this vote change
+                    }
+                    
+                    // Allow the change - increment counter
+                    console.log(`[whatsapp] Vote change #${order.confirmation.voteChangeCount + 1} for order ${order.orderId}: ${isYes ? 'confirm' : 'cancel'}`);
+                    order.confirmation.voteChangeCount += 1;
                     
                     // Reset previous decision
                     order.confirmation.confirmedAt = null;
                     order.confirmation.declinedAt = null;
                 }
                 
-                // Skip if already finalized AND user is voting the same way again
+                // Skip if already finalized AND user is voting the same way again (duplicate)
                 if ((alreadyConfirmed && isYes) || (alreadyDeclined && !isYes)) {
                     console.log(`[whatsapp] Duplicate vote ignored for order ${order.orderId}`);
                     continue;
