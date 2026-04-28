@@ -23,13 +23,26 @@ const {
     checkSubdomainAvailability
 } = require('../controllers/storeController');
 const verifyToken = require('../middleware/authMiddleware');
+const User = require('../models/User');
 
-// Middleware to check if user is a seller
-const isSellerAuth = (req, res, next) => {
-    if (req.user.role !== 'seller') {
-        return res.status(403).json({ msg: 'Seller access only' });
+// Middleware to check if user is a seller (reads live role from DB so a freshly
+// promoted seller doesn't get blocked by an older JWT still claiming role: 'user')
+const isSellerAuth = async (req, res, next) => {
+    try {
+        if (req.user?.role === 'seller') return next();
+        const userId = req.user?._id || req.user?.id;
+        if (!userId) return res.status(401).json({ msg: 'Authentication required' });
+        const user = await User.findById(userId).select('role');
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        if (user.role !== 'seller') {
+            return res.status(403).json({ msg: 'Seller access only' });
+        }
+        req.user.role = 'seller';
+        next();
+    } catch (err) {
+        console.error('isSellerAuth error:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
-    next();
 };
 
 // Middleware to validate store data
