@@ -9,6 +9,39 @@ const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
 const { markVoted } = require('./queue');
+const evolution = require('./evolutionClient');
+
+// Send friendly confirmation/cancellation message
+const sendResponseMessage = async (phone, isConfirmed, orderId, buyerName) => {
+    try {
+        const firstName = buyerName?.split(' ')[0] || 'there';
+        
+        const message = isConfirmed
+            ? [
+                `🎉 Awesome, ${firstName}!`,
+                ``,
+                `Your order *#${orderId}* is confirmed! ✅`,
+                ``,
+                `We'll start processing it right away. You'll receive updates as your order moves forward.`,
+                ``,
+                `Thanks for shopping with Rozare! 💙`,
+            ].join('\n')
+            : [
+                `Got it, ${firstName}! 👍`,
+                ``,
+                `Your order *#${orderId}* has been cancelled. ❌`,
+                ``,
+                `No worries! Feel free to place a new order anytime you're ready.`,
+                ``,
+                `We're here if you need anything! 💙`,
+            ].join('\n');
+
+        await evolution.sendText(phone, message);
+        console.log(`[whatsapp] Sent ${isConfirmed ? 'confirmation' : 'cancellation'} message to ${phone}`);
+    } catch (err) {
+        console.error('[whatsapp] Failed to send response message:', err.message);
+    }
+};
 
 // Run the existing seller-notification side-effects after auto-confirm
 const notifySellersOfConfirmation = async (order) => {
@@ -112,20 +145,44 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const order = await Order.findById(job.order);
                 if (!order) continue;
 
-                // Skip if already finalized via another channel
-                if (order.confirmation?.confirmedAt || order.confirmation?.declinedAt) continue;
+                // HANDLE VOTE CHANGES: Check if user already voted differently
+                const alreadyConfirmed = !!order.confirmation?.confirmedAt;
+                const alreadyDeclined = !!order.confirmation?.declinedAt;
+                
+                // If user is changing their vote, allow it ONLY if order hasn't been processed yet
+                if ((alreadyConfirmed && !isYes) || (alreadyDeclined && isYes)) {
+                    // User changed their mind - update the order
+                    console.log(`[whatsapp] User changed vote for order ${order.orderId}: ${isYes ? 'confirm' : 'cancel'}`);
+                    
+                    // Reset previous decision
+                    order.confirmation.confirmedAt = null;
+                    order.confirmation.declinedAt = null;
+                }
+                
+                // Skip if already finalized AND user is voting the same way again
+                if ((alreadyConfirmed && isYes) || (alreadyDeclined && !isYes)) {
+                    console.log(`[whatsapp] Duplicate vote ignored for order ${order.orderId}`);
+                    continue;
+                }
 
                 if (isYes) {
                     order.confirmation.confirmedAt = new Date();
                     order.confirmation.confirmedVia = 'whatsapp';
                     order.orderStatus = 'confirmed';
                     await order.save();
+                    
+                    // Send friendly confirmation message
+                    await sendResponseMessage(job.phone, true, order.orderId, order.shippingInfo?.fullName);
+                    
                     notifySellersOfConfirmation(order);
                 } else {
                     order.confirmation.declinedAt = new Date();
                     order.confirmation.confirmedVia = 'whatsapp';
                     order.orderStatus = 'cancelled';
                     await order.save();
+                    
+                    // Send friendly cancellation message
+                    await sendResponseMessage(job.phone, false, order.orderId, order.shippingInfo?.fullName);
                 }
             }
             return res.status(200).json({ ok: true });

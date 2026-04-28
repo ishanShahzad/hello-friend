@@ -6,30 +6,27 @@ const formatMoney = (n) => {
 };
 
 exports.buildOrderSummaryText = (order) => {
-    const buyerName = order.shippingInfo?.fullName || 'there';
-    const lines = (order.orderItems || []).map((it) => {
-        const subtotal = (it.price || 0) * (it.quantity || 0);
-        return `• ${it.name} × ${it.quantity} — ${formatMoney(subtotal)}`;
-    });
+    const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+    const itemCount = order.orderItems?.length || 0;
+    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
 
     return [
-        `Hi ${buyerName}, this is *Rozare* 👋`,
+        `Hey ${buyerName}! 👋`,
         ``,
-        `We received your order *#${order.orderId}*. Please review and confirm:`,
+        `Thanks for your order! 🎉`,
         ``,
-        ...lines,
+        `📦 *Order #${order.orderId}*`,
+        `💰 Total: *${formatMoney(order.orderSummary?.totalAmount)}* (${itemText})`,
+        `📍 ${order.shippingInfo?.city || 'Your location'}`,
         ``,
-        `*Total: ${formatMoney(order.orderSummary?.totalAmount)}*`,
-        `Shipping to: ${order.shippingInfo?.address || ''}, ${order.shippingInfo?.city || ''}`,
-        ``,
-        `A confirmation poll will follow. Tap *Yes* to confirm or *No* to cancel.`,
+        `Please confirm your order below 👇`,
     ].join('\n');
 };
 
 exports.buildPollPayload = (order) => ({
-    name: `Confirm order #${order.orderId}?`,
+    name: `Ready to confirm? 🤔`,
     selectableCount: 1,
-    values: ['✅ Yes, confirm', '❌ No, cancel'],
+    values: ['✅ Yes, confirm my order!', '❌ No, cancel it'],
 });
 
 // Normalize phone to digits-only (Evolution API expects "9230012345678" style)
