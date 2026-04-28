@@ -23,7 +23,12 @@ const ProductManagement = () => {
                 const token = localStorage.getItem('jwtToken');
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}api/store/my-store`, { headers: { Authorization: `Bearer ${token}` } });
                 setHasStore(!!res.data?.store);
-            } catch { setHasStore(false); }
+            } catch (err) {
+                // Only treat a confirmed "no store" (404) as missing.
+                // 401/403/network errors shouldn't show the misleading "Store Required" banner.
+                if (err?.response?.status === 404) setHasStore(false);
+                else setHasStore(true);
+            }
             finally { setStoreLoading(false); }
         };
         checkStore();
