@@ -29,7 +29,7 @@ const NotificationsPage = () => {
 
         if (isAdmin) {
             setLoading(true);
-            axios.get(`${import.meta.env.VITE_API_URL}api/store/all`, { headers: { Authorization: `Bearer ${token}` } })
+            axios.get(`${import.meta.env.VITE_API_URL}api/stores/all`, { headers: { Authorization: `Bearer ${token}` } })
                 .then(res => setStores(res.data?.stores || []))
                 .catch(() => setStores([]))
                 .finally(() => setLoading(false));

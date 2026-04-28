@@ -30,7 +30,7 @@ const ProductManagement = () => {
                 }
                 
                 console.log('Checking store with API URL:', import.meta.env.VITE_API_URL);
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/store/my-store`, { 
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/my-store`, { 
                     headers: { Authorization: `Bearer ${token}` } 
                 });
                 
