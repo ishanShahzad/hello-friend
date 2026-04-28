@@ -63,7 +63,7 @@ function Products() {
     setLoading(true); setError(null)
     try {
       const query = serializeFilters()
-      navigate(`${location.pathname}?${query}`, { replace: true })
+      navigate(query ? `${location.pathname}?${query}` : location.pathname, { replace: true })
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
       setProducts(res.data.products || [])
       setCurrentPage(1)
