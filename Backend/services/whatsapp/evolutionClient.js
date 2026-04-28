@@ -321,9 +321,13 @@ exports.requestPairingCode = async (phoneNumber) => {
 // Send a plain text message — `number` is digits only (e.g., 9230012345678)
 exports.sendText = async (number, text) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
+    
+    // Evolution API v1.7.4 uses different payload format
     const { data } = await client().post(`/message/sendText/${instanceName()}`, {
         number,
-        text,
+        textMessage: {
+            text
+        },
         delay: 0,
     });
     // Common shapes: { key: { id }, message } or { messageId }
@@ -334,11 +338,15 @@ exports.sendText = async (number, text) => {
 // Send a poll — Evolution path: /message/sendPoll/{instance}
 exports.sendPoll = async (number, { name, values, selectableCount = 1 }) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
+    
+    // Evolution API v1.7.4 uses different payload format
     const { data } = await client().post(`/message/sendPoll/${instanceName()}`, {
         number,
-        name,
-        selectableCount,
-        values,
+        pollMessage: {
+            name,
+            selectableCount,
+            values
+        },
         delay: 0,
     });
     const messageId = data?.key?.id || data?.messageId || data?.id || '';
