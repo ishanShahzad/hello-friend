@@ -1,7 +1,17 @@
-// Thin wrapper around Evolution API REST endpoints.
-// Docs: https://doc.evolution-api.com/
+// Thin wrapper around the Evolution API REST endpoints (v2.x).
+// Docs: https://doc.evolution-api.com/v2/
+//
+// Key differences from v1.7.4:
+//   - Message payloads are flat: { number, text } instead of { number, textMessage: { text } }
+//   - Poll payload is flat:      { number, name, values, selectableCount } instead of nested pollMessage
+//   - /instance/connect returns  { pairingCode, code, count } where `code` is the raw QR string
+//     (we convert it to a PNG data URL with the `qrcode` npm package so the admin UI can render it)
+//   - /instance/fetchInstances returns [{ instance: { status: 'open'|'close'|'connecting', ... }}]
+//     (no qrcode field here — only connection state)
+//   - /webhook/set uses { enabled, url, webhookByEvents, webhookBase64, events } (camelCase)
 
 const axios = require('axios');
+const QRCode = require('qrcode');
 
 const baseUrl = () => (process.env.EVOLUTION_API_URL || '').replace(/\/+$/, '');
 const apiKey = () => process.env.EVOLUTION_API_KEY || '';
@@ -11,12 +21,64 @@ const isConfigured = () => Boolean(baseUrl() && apiKey());
 
 const client = () => axios.create({
     baseURL: baseUrl(),
-    timeout: 20000,
+    timeout: 25000,
     headers: { apikey: apiKey(), 'Content-Type': 'application/json' },
 });
 
-// Create or fetch the WhatsApp instance (idempotent on most Evolution builds)
-// Evolution API v2.x: QR is NOT generated on instance creation - must call /instance/connect after
+// Turn a raw QR "code" string into a base64 PNG data URL we can render in the admin modal.
+// Evolution v2 returns the raw QR text (e.g. "2@y8eK+bjt...") from /instance/connect — not a base64 image.
+const qrTextToDataUrl = async (raw) => {
+    if (!raw || typeof raw !== 'string') return '';
+    if (raw.startsWith('data:')) return raw; // already a data URL
+    if (/^[A-Za-z0-9+/=]{200,}$/.test(raw)) {
+        // Looks like base64 already — wrap it
+        return `data:image/png;base64,${raw}`;
+    }
+    try {
+        // Typical WhatsApp QR payloads start with "2@" — convert to PNG
+        return await QRCode.toDataURL(raw, { errorCorrectionLevel: 'L', margin: 1, width: 320 });
+    } catch (err) {
+        console.warn('[evolution] qrTextToDataUrl failed:', err.message);
+        return '';
+    }
+};
+
+// Best-effort: extract QR (base64 data URL) and pairing code from any v2 response shape we've seen.
+const extractQrFromResponse = async (data) => {
+    if (!data) return { base64: '', code: '', rawCode: '' };
+
+    // Common v2 /instance/connect shape: { pairingCode, code, count }
+    // Sometimes Evolution nests under data.instance or data.qrcode depending on build.
+    const src = data?.instance || data;
+
+    // Pairing code (8-char human code) — separate from the QR string
+    const pairingCode = src?.pairingCode || data?.pairingCode || '';
+
+    // Raw QR text — v2 puts the full "2@..." payload in .code
+    const rawCode = (typeof src?.code === 'string' && src.code.length > 20 ? src.code : '') ||
+                    (typeof data?.code === 'string' && data.code.length > 20 ? data.code : '');
+
+    // Some builds also attach a ready base64 PNG
+    const rawBase64 =
+        src?.qrcode?.base64 ||
+        data?.qrcode?.base64 ||
+        src?.base64 ||
+        data?.base64 ||
+        '';
+
+    let base64 = '';
+    if (rawBase64) {
+        base64 = rawBase64.startsWith('data:') ? rawBase64 : `data:image/png;base64,${rawBase64}`;
+    } else if (rawCode) {
+        base64 = await qrTextToDataUrl(rawCode);
+    }
+
+    return { base64, code: pairingCode, rawCode };
+};
+
+// Create (or no-op fetch if it already exists) the WhatsApp instance.
+// In v2 we can register the webhook in the same call — but since the admin endpoint
+// registers the webhook separately after connection, we keep creation minimal here.
 exports.createInstance = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     try {
@@ -24,188 +86,85 @@ exports.createInstance = async () => {
             instanceName: instanceName(),
             qrcode: true,
             integration: 'WHATSAPP-BAILEYS',
+            // Reasonable production defaults:
+            rejectCall: false,
+            groupsIgnore: true,
+            alwaysOnline: false,
+            readMessages: false,
+            readStatus: false,
+            syncFullHistory: false,
         });
-        console.log('Evolution instance created:', JSON.stringify(data).slice(0, 300));
+        console.log('[evolution] instance created:', JSON.stringify(data).slice(0, 300));
         return data;
     } catch (err) {
-        // Already exists — not fatal
-        const msg = err.response?.data?.message?.toString() || err.response?.data?.response?.message?.toString() || '';
-        if (err.response?.status === 403 || err.response?.status === 409 || msg.toLowerCase().includes('already')) {
-            console.log('Evolution instance already exists');
+        // 403 (already exists), 409 (conflict), or message containing "already" — not fatal
+        const msg = (err.response?.data?.message || err.response?.data?.response?.message || '').toString();
+        const status = err.response?.status;
+        if (status === 403 || status === 409 || /already|in use|exists/i.test(msg)) {
+            console.log('[evolution] instance already exists');
             return { msg: 'instance_exists' };
         }
         throw err;
     }
 };
 
-const pickInstancePayload = (data) => {
-    if (!data) return null;
-    if (Array.isArray(data)) {
-        return data.find((item) => {
-            const name = item?.instanceName || item?.name || item?.instance?.instanceName || item?.instance?.name;
-            return name === instanceName();
-        }) || data[0] || null;
-    }
-
-    if (Array.isArray(data?.instances)) return pickInstancePayload(data.instances);
-    if (Array.isArray(data?.data)) return pickInstancePayload(data.data);
-
-    return data?.instance || data;
-};
-
-const readStateValue = (...values) => {
-    for (const value of values) {
-        if (typeof value === 'string' && value.trim()) return value;
-        if (value && typeof value === 'object') {
-            if (typeof value.state === 'string' && value.state.trim()) return value.state;
-            if (typeof value.status === 'string' && value.status.trim()) return value.status;
-            if (typeof value.connectionState === 'string' && value.connectionState.trim()) return value.connectionState;
-        }
-    }
-    return '';
-};
-
-const extractState = (data) => {
-    const src = pickInstancePayload(data) || data || {};
-    return readStateValue(
-        src?.state,
-        src?.status,
-        src?.connectionStatus,
-        src?.connectionState,
-        src?.instance,
-        src?.instance?.connectionStatus,
-        data?.instance,
-    );
-};
-
-const extractQr = (data) => {
-    if (!data) return { base64: '', code: '' };
-
-    const src = pickInstancePayload(data) || data || {};
-    
-    // Evolution API v2.x response format - log everything to debug
-    if (src && typeof src === 'object') {
-        const keys = Object.keys(src).slice(0, 30);
-        console.log('QR data keys:', keys.join(', '));
-        
-        // Log specific fields that might contain QR
-        if (src.qrcode) console.log('qrcode field type:', typeof src.qrcode, 'value:', JSON.stringify(src.qrcode).slice(0, 100));
-        if (src.pairingCode) console.log('pairingCode:', src.pairingCode);
-        if (src.code) console.log('code:', src.code);
-        if (src.base64) console.log('base64 length:', src.base64?.length);
-    }
-    
-    // Evolution API v2.x stores QR/pairing code in various formats
-    // Try to extract pairing code first (8-digit code)
-    const pairCodeStr = 
-        src?.pairingCode ||
-        src?.qrcode?.pairingCode ||
-        (typeof src?.code === 'string' && src.code.length < 20 ? src.code : '') ||
-        '';
-    
-    // Try to extract base64 QR image
-    // Evolution API v2.x might store it as:
-    // - qrcode.base64
-    // - qrcode (direct string)
-    // - base64
-    const qrcodeField = src?.qrcode;
-    let b64 = '';
-    
-    if (typeof qrcodeField === 'string') {
-        // qrcode is a direct base64 string
-        b64 = qrcodeField.startsWith('data:') ? qrcodeField : `data:image/png;base64,${qrcodeField}`;
-    } else if (qrcodeField && typeof qrcodeField === 'object') {
-        // qrcode is an object with base64 field
-        b64 = qrcodeField.base64 || qrcodeField.code || '';
-        if (b64 && !b64.startsWith('data:')) {
-            b64 = `data:image/png;base64,${b64}`;
-        }
-    }
-    
-    // Fallback to other possible locations
-    if (!b64) {
-        b64 = src?.base64 || src?.qrBase64 || src?.qrCode || '';
-        if (b64 && !b64.startsWith('data:')) {
-            b64 = `data:image/png;base64,${b64}`;
-        }
-    }
-    
-    // Only use pairingCode if it's NOT a data URL (data URLs are QR codes)
-    const code = (typeof pairCodeStr === 'string' && !pairCodeStr.startsWith('data:')) ? pairCodeStr : '';
-
-    console.log(`Extracted QR: hasBase64=${!!b64}, hasCode=${!!code}, base64Length=${b64.length}, code=${code}`);
-    return { base64: b64 || '', code: code || '' };
-};
-
-// Returns { base64, code } — base64 is a PNG data URL we render in the admin modal.
-// Evolution API v2.x requires explicit /instance/connect call to start WhatsApp connection
+// GET /instance/connect/{instance} — v2's authoritative way to obtain the QR / pairing code.
+// Response: { pairingCode, code, count }
 exports.getQRCode = async () => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    
-    // Evolution API v2.x: Must call /instance/connect to trigger QR generation
-    // First, try to connect the instance
+
+    // Always try /instance/connect first — this is what actually triggers QR generation in v2
+    let connectData = null;
     try {
-        console.log('Triggering instance connection...');
-        const connectResult = await client().get(`/instance/connect/${instanceName()}`);
-        console.log('Connect result:', JSON.stringify(connectResult.data).slice(0, 300));
-        
-        // Check if QR is in the connect response
-        const { base64: connectBase64, code: connectCode } = extractQr(connectResult.data);
-        if (connectBase64 || connectCode) {
-            console.log('QR found in connect response');
-            return { base64: connectBase64, code: connectCode, state: 'connecting', raw: connectResult.data };
-        }
+        const resp = await client().get(`/instance/connect/${instanceName()}`);
+        connectData = resp.data;
+        console.log('[evolution] /instance/connect response:', JSON.stringify(connectData).slice(0, 300));
     } catch (err) {
-        console.warn('Connect call failed:', err.response?.status, err.message);
-    }
-    
-    // Poll for QR code in instance data
-    for (let attempt = 0; attempt < 15; attempt++) {
-        try {
-            const { data: instances } = await client().get('/instance/fetchInstances');
-            
-            const ourInstance = Array.isArray(instances) 
-                ? instances.find(i => (i.instanceName || i.name) === instanceName())
-                : instances;
-            
-            if (ourInstance) {
-                const { base64, code } = extractQr(ourInstance);
-                const state = extractState(ourInstance);
-                
-                console.log(`QR attempt ${attempt + 1}: state=${state}, hasBase64=${!!base64}, hasCode=${!!code}, connectionStatus=${ourInstance.connectionStatus}`);
-                
-                // If we have QR or pairing code, return it
-                if (base64 || code) {
-                    return { base64, code, state, raw: ourInstance };
-                }
-                
-                // If already connected, no QR needed
-                if (state === 'open') {
-                    return { base64: '', code: '', state, raw: ourInstance };
-                }
-                
-                // If state is 'connecting', QR should appear soon - keep polling
-                if (state === 'connecting' && attempt < 10) {
-                    await new Promise(r => setTimeout(r, 1500));
-                    continue;
-                }
-            }
-        } catch (err) {
-            console.error('Error fetching instances:', err.message);
+        const status = err.response?.status;
+        // 404 means instance doesn't exist yet — caller will create it and retry
+        console.warn('[evolution] /instance/connect failed:', status, err.message);
+        if (status === 404) {
+            return { base64: '', code: '', state: 'not_found', raw: err.response?.data || null };
         }
-
-        await new Promise(r => setTimeout(r, 1000));
     }
 
-    // If we get here, QR was never generated
-    return { base64: '', code: '', state: 'close', raw: null };
+    if (connectData) {
+        const { base64, code, rawCode } = await extractQrFromResponse(connectData);
+        if (base64 || code) {
+            return { base64, code, state: 'connecting', raw: connectData, rawCode };
+        }
+    }
+
+    // Fallback: poll /instance/connectionState to see if already connected
+    try {
+        const { data: stateData } = await client().get(`/instance/connectionState/${instanceName()}`);
+        const state = stateData?.instance?.state || stateData?.state || '';
+        if (state === 'open') {
+            return { base64: '', code: '', state: 'open', raw: stateData };
+        }
+        // Keep polling /instance/connect a couple times — some v2 builds need a second hit
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await new Promise(r => setTimeout(r, 1200));
+            try {
+                const { data: retry } = await client().get(`/instance/connect/${instanceName()}`);
+                const out = await extractQrFromResponse(retry);
+                if (out.base64 || out.code) {
+                    return { base64: out.base64, code: out.code, state: 'connecting', raw: retry, rawCode: out.rawCode };
+                }
+            } catch { /* try again */ }
+        }
+        return { base64: '', code: '', state: state || 'close', raw: stateData };
+    } catch (err) {
+        console.warn('[evolution] /instance/connectionState failed:', err.message);
+        return { base64: '', code: '', state: 'close', raw: null };
+    }
 };
 
+// GET /instance/connectionState/{instance} — returns { instance: { instanceName, state: 'open'|'close'|'connecting' } }
 exports.getStatus = async () => {
     if (!isConfigured()) return { state: 'not_configured' };
     try {
         const { data } = await client().get(`/instance/connectionState/${instanceName()}`);
-        // Returns { instance: { state: 'open' | 'connecting' | 'close' } }
         return data?.instance || data || {};
     } catch (err) {
         return { state: 'error', error: err.response?.data || err.message };
@@ -215,6 +174,7 @@ exports.getStatus = async () => {
 exports.logout = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
+        // v2 uses DELETE /instance/logout/{instance}
         const { data } = await client().delete(`/instance/logout/${instanceName()}`);
         return data;
     } catch (err) {
@@ -223,7 +183,6 @@ exports.logout = async () => {
 };
 
 // Hard-delete the instance so it can be recreated cleanly.
-// Used by the admin "Reset instance" action when the QR flow is stuck.
 exports.deleteInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
@@ -234,7 +193,7 @@ exports.deleteInstance = async () => {
     }
 };
 
-// Restart instance to trigger QR generation (Evolution API v2.x)
+// PUT /instance/restart/{instance} — v2 supports this to force a re-pair
 exports.restartInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
@@ -245,121 +204,86 @@ exports.restartInstance = async () => {
     }
 };
 
-// Trigger QR generation by connecting instance (Evolution API v2.x)
-// This actually starts the WhatsApp connection process
+// Trigger QR generation (alias for getQRCode for the controller's convenience).
 exports.connectInstance = async () => {
     if (!isConfigured()) return { msg: 'not_configured' };
     try {
-        // Evolution API v2.x: The correct endpoint might be different
-        // Try multiple approaches to start the connection
-        
-        // Approach 1: GET /instance/connect/{instance}
-        try {
-            const { data } = await client().get(`/instance/connect/${instanceName()}`);
-            console.log('Evolution connect (GET) response:', JSON.stringify(data).slice(0, 300));
-            if (data && (data.qrcode || data.pairingCode || data.base64)) {
-                return data;
-            }
-        } catch (err) {
-            console.warn('GET /instance/connect failed:', err.response?.status);
-        }
-        
-        // Approach 2: POST /instance/connect/{instance} with empty body
-        try {
-            const { data } = await client().post(`/instance/connect/${instanceName()}`, {});
-            console.log('Evolution connect (POST) response:', JSON.stringify(data).slice(0, 300));
-            if (data && (data.qrcode || data.pairingCode || data.base64)) {
-                return data;
-            }
-        } catch (err) {
-            console.warn('POST /instance/connect failed:', err.response?.status);
-        }
-        
-        // Approach 3: PUT /instance/restart/{instance} to force restart
-        try {
-            const { data } = await client().put(`/instance/restart/${instanceName()}`);
-            console.log('Evolution restart response:', JSON.stringify(data).slice(0, 300));
-            return data;
-        } catch (err) {
-            console.warn('PUT /instance/restart failed:', err.response?.status);
-        }
-        
-        return { msg: 'no_method_worked' };
+        const { data } = await client().get(`/instance/connect/${instanceName()}`);
+        return data;
     } catch (err) {
-        console.error('Evolution connectInstance error:', err.message);
+        console.error('[evolution] connectInstance error:', err.message);
         return { error: err.response?.data || err.message };
     }
 };
 
-// Request pairing code instead of QR (Evolution API v2.x)
-// More reliable than QR for some WhatsApp versions
+// Request an 8-character pairing code for a specific phone (alternative to QR).
+// v2: pass ?number=<phone> to /instance/connect/{instance}
 exports.requestPairingCode = async (phoneNumber) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
+    const cleanNumber = String(phoneNumber || '').replace(/[^0-9]/g, '');
+    if (!cleanNumber) throw new Error('Phone number is required');
     try {
-        // Evolution API v2.x: Request pairing code
-        // Phone number should be in format: 923001234567 (country code + number, no +)
-        const { data } = await client().post(`/instance/fetchInstances/${instanceName()}/pairing-code`, {
-            phoneNumber: phoneNumber,
+        const { data } = await client().get(`/instance/connect/${instanceName()}`, {
+            params: { number: cleanNumber },
         });
-        console.log('Evolution pairing code response:', JSON.stringify(data).slice(0, 300));
-        return data;
+        console.log('[evolution] pairing-code response:', JSON.stringify(data).slice(0, 300));
+        // v2 returns { pairingCode, code, count }
+        return {
+            code: data?.pairingCode || '',
+            pairingCode: data?.pairingCode || '',
+            rawQr: data?.code || '',
+            raw: data,
+        };
     } catch (err) {
-        // Try alternative endpoint
-        try {
-            const { data } = await client().get(`/instance/connect/${instanceName()}`, {
-                params: { number: phoneNumber }
-            });
-            console.log('Evolution pairing code (alt) response:', JSON.stringify(data).slice(0, 300));
-            return data;
-        } catch (err2) {
-            console.error('Evolution pairing code failed:', err.response?.data || err.message);
-            throw err;
-        }
+        console.error('[evolution] pairing-code failed:', err.response?.data || err.message);
+        throw err;
     }
 };
 
-// Send a plain text message — `number` is digits only (e.g., 9230012345678)
+// ─── Messaging — Evolution API v2 FLAT payload format ─────────────────────────
+// `number` is digits only (e.g., "923001234567")
+
+// POST /message/sendText/{instance}  —  { number, text, delay? }
 exports.sendText = async (number, text) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    
-    // Evolution API v1.7.4 uses different payload format
     const { data } = await client().post(`/message/sendText/${instanceName()}`, {
         number,
-        textMessage: {
-            text
-        },
+        text,
         delay: 0,
     });
-    // Common shapes: { key: { id }, message } or { messageId }
     const messageId = data?.key?.id || data?.messageId || data?.id || '';
     return { messageId, raw: data };
 };
 
-// Send a poll — Evolution path: /message/sendPoll/{instance}
+// POST /message/sendPoll/{instance}  —  { number, name, selectableCount, values, delay? }
 exports.sendPoll = async (number, { name, values, selectableCount = 1 }) => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    
-    // Evolution API v1.7.4 uses different payload format
     const { data } = await client().post(`/message/sendPoll/${instanceName()}`, {
         number,
-        pollMessage: {
-            name,
-            selectableCount,
-            values
-        },
+        name,
+        selectableCount,
+        values,
         delay: 0,
     });
     const messageId = data?.key?.id || data?.messageId || data?.id || '';
     return { messageId, raw: data };
 };
 
-// Register webhook URL with Evolution so vote events flow back
+// Register the webhook URL — v2 payload uses camelCase fields.
+// POST /webhook/set/{instance}  —  { enabled, url, webhookByEvents, webhookBase64, events, headers? }
 exports.setWebhook = async (url, secret = '') => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
     const { data } = await client().post(`/webhook/set/${instanceName()}`, {
+        enabled: true,
         url,
-        webhook_by_events: false,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: [
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE',
+            'CONNECTION_UPDATE',
+            'QRCODE_UPDATED',
+        ],
         ...(secret ? { headers: { 'x-rozare-webhook-secret': secret } } : {}),
     });
     return data;

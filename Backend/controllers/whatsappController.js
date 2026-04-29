@@ -101,15 +101,53 @@ const recreateGatewayInstance = async () => {
         __status: e.response?.status || 0,
     }));
     await new Promise(r => setTimeout(r, 2000)); // Wait 2s for instance to initialize
+    await registerWebhookIfPossible();
     return created;
 };
 
-const requestGatewayQr = async (startingState = '') => {
+// Resolve the public-facing URL the Evolution API should POST webhooks to.
+// Uses BACKEND_PUBLIC_URL if set, otherwise derives from the incoming request
+// (works on Heroku thanks to x-forwarded-proto / host headers).
+const resolveWebhookUrl = (req) => {
+    if (process.env.BACKEND_PUBLIC_URL) {
+        return process.env.BACKEND_PUBLIC_URL.replace(/\/+$/, '') + '/api/whatsapp/webhook';
+    }
+    if (!req) return '';
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    if (!host) return '';
+    return `${proto}://${host}/api/whatsapp/webhook`;
+};
+
+// Best-effort webhook registration — safe to call multiple times.
+// Called after createInstance so Evolution knows where to POST events.
+const registerWebhookIfPossible = async (req = null) => {
+    try {
+        if (!evolution.isConfigured()) return;
+        const url = resolveWebhookUrl(req);
+        if (!url) {
+            console.warn('[whatsapp] webhook URL could not be resolved (set BACKEND_PUBLIC_URL)');
+            return;
+        }
+        const secret = process.env.EVOLUTION_WEBHOOK_SECRET || '';
+        await evolution.setWebhook(url, secret);
+        console.log('[whatsapp] webhook registered with Evolution:', url);
+    } catch (err) {
+        // Non-fatal — the admin panel still works, webhooks just won't flow
+        console.warn('[whatsapp] setWebhook failed (non-fatal):', err.response?.data || err.message);
+    }
+};
+
+const requestGatewayQr = async (startingState = '', req = null) => {
     // Evolution API v2.x: Create instance (QR is auto-generated)
     const created = await evolution.createInstance().catch((e) => {
         console.warn('whatsapp.createInstance warn:', e.response?.data || e.message);
         return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
     });
+
+    // Register webhook immediately after instance exists (idempotent — safe to call repeatedly)
+    // This ensures poll votes flow back to the backend the moment WhatsApp is linked.
+    await registerWebhookIfPossible(req);
 
     // Wait a moment for instance to initialize
     await new Promise(r => setTimeout(r, 2000));
@@ -220,7 +258,7 @@ exports.connect = async (req, res) => {
 
         let autoRecovered = false;
         let recoveryMessage = '';
-        let { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(liveState);
+        let { dataUrl, code, qrState, recoverableGatewayFailure, gatewayDiagnostic } = await requestGatewayQr(liveState, req);
 
         // Disable auto-recreation to prevent spam when Evolution API has network issues
         // User can manually click "Reset instance" button if needed
@@ -361,6 +399,9 @@ exports.requestPairingCode = async (req, res) => {
         // Create instance if not exists
         await evolution.createInstance().catch(() => null);
 
+        // Make sure the webhook is registered so the voted events flow back when the user links.
+        await registerWebhookIfPossible(req);
+
         // Request pairing code
         const result = await evolution.requestPairingCode(cleanNumber).catch((e) => {
             console.error('Pairing code request failed:', e.response?.data || e.message);
@@ -427,6 +468,9 @@ exports.reset = async (req, res) => {
 
         // Recreate immediately so the next "Link WhatsApp" can return a fresh QR.
         const created = await evolution.createInstance().catch((e) => ({ error: e.message }));
+
+        // Re-register webhook so poll votes flow back once the user scans the fresh QR.
+        await registerWebhookIfPossible(req);
 
         return res.json({
             msg: 'WhatsApp instance reset. Click "Link WhatsApp" to scan a new QR.',

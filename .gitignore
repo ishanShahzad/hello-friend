@@ -4,9 +4,15 @@ node_modules/
 .vscode/
 dist/
 build/
-node_modules/
-.env
-.DS_Store
-.vscode/
-dist/
-build/
+
+# Secrets — never commit
+*.key
+*.pem
+ssh-key-*
+id_rsa
+id_ed25519
+.env.local
+.env.*.local
+
+# Infra env files (template is .env.example)
+infra/evolution/.env
