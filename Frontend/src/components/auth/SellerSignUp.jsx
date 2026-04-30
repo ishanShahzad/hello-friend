@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2, Store, Phone, MapPin, ArrowLeft, ArrowRight, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
+import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SellerSignUp = () => {
@@ -47,7 +48,7 @@ const SellerSignUp = () => {
 
   const handleStep2Next = (e) => {
     e.preventDefault();
-    if (!sellerForm.phoneNumber || sellerForm.phoneNumber.trim().length < 10) { setError('Please enter a valid phone number (at least 10 digits)'); return; }
+    if (!sellerForm.phoneNumber || !isValidPhone(sellerForm.phoneNumber)) { setError('Please enter a valid phone number (select your country and enter the number)'); return; }
     if (!sellerForm.address || sellerForm.address.trim().length < 5) { setError('Please enter a valid address'); return; }
     if (!sellerForm.city || sellerForm.city.trim().length < 2) { setError('Please enter your city'); return; }
     if (!sellerForm.country || sellerForm.country.trim().length < 2) { setError('Please enter your country'); return; }
@@ -193,7 +194,15 @@ const SellerSignUp = () => {
               <div className="space-y-4">
                 <div>
                   <label className="flex text-sm font-medium mb-1 items-center gap-2"><Phone size={14} style={{ color: 'hsl(var(--primary))' }} /> Phone Number <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
-                  <input type="tel" name="phoneNumber" value={sellerForm.phoneNumber} onChange={handleSellerChange} className="glass-input" placeholder="+1 234 567 8900" required disabled={loading} />
+                  <PhoneField
+                    name="phoneNumber"
+                    value={sellerForm.phoneNumber}
+                    onChange={(v) => setSellerForm((prev) => ({ ...prev, phoneNumber: v || '' }))}
+                    profileCountry={sellerForm.country}
+                    disabled={loading}
+                    required
+                    placeholder="Phone number"
+                  />
                 </div>
                 <div>
                   <label className="flex text-sm font-medium mb-1 items-center gap-2"><Store size={14} style={{ color: 'hsl(var(--primary))' }} /> Business Name (Optional)</label>

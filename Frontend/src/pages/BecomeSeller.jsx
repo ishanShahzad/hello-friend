@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import SEOHead from '../components/common/SEOHead';
+import PhoneField, { isValidPhone } from '../components/common/PhoneField';
 
 export default function BecomeSeller() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function BecomeSeller() {
 
   const handleStep1Next = (e) => {
     e.preventDefault();
-    if (!formData.phoneNumber || formData.phoneNumber.trim().length < 10) { toast.error('Please enter a valid phone number (at least 10 digits)'); return; }
+    if (!formData.phoneNumber || !isValidPhone(formData.phoneNumber)) { toast.error('Please enter a valid phone number (select your country and enter the number)'); return; }
     if (!formData.address || formData.address.trim().length < 5) { toast.error('Please enter a valid address'); return; }
     if (!formData.city || formData.city.trim().length < 2) { toast.error('Please enter your city'); return; }
     if (!formData.country || formData.country.trim().length < 2) { toast.error('Please enter your country'); return; }
@@ -163,7 +164,14 @@ export default function BecomeSeller() {
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <Phone size={14} style={{ color: 'hsl(var(--primary))' }} /> Phone Number <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
                 </label>
-                <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} placeholder="+1 234 567 8900" className="glass-input" required />
+                <PhoneField
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={(v) => setFormData((prev) => ({ ...prev, phoneNumber: v || '' }))}
+                  profileCountry={formData.country}
+                  required
+                  placeholder="Phone number"
+                />
               </div>
               <div>
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>

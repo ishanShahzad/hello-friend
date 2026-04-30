@@ -7,6 +7,7 @@ import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
+import PhoneField, { isValidPhone } from '../common/PhoneField';
 
 const StoreSettings = () => {
     const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
@@ -99,7 +100,7 @@ const StoreSettings = () => {
     const handleApplyVerification = async () => {
         if (!applicationMessage.trim()) { toast.error('Please provide a message'); return; }
         if (!contactEmail.trim()) { toast.error('Please provide your contact email'); return; }
-        if (!contactPhone.trim()) { toast.error('Please provide your contact phone'); return; }
+        if (!contactPhone.trim() || !isValidPhone(contactPhone)) { toast.error('Please enter a valid contact phone (select your country and enter the number)'); return; }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(contactEmail)) { toast.error('Please provide a valid email'); return; }
         try {
@@ -710,7 +711,12 @@ const StoreSettings = () => {
                         </div>
                         <div className="mb-4">
                             <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Contact Phone *</label>
-                            <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className="glass-input" placeholder="+1 234 567 8900" required />
+                            <PhoneField
+                                value={contactPhone}
+                                onChange={(v) => setContactPhone(v || '')}
+                                required
+                                placeholder="Contact phone"
+                            />
                         </div>
                         <div className="mb-4">
                             <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Application Message *</label>

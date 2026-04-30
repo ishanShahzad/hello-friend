@@ -1,18 +1,32 @@
 /**
  * WhatsApp order verification helper.
  * Generates a wa.me link with a pre-filled verification message.
+ *
+ * Accepts any of:
+ *   "+923028588506" (E.164 from PhoneField)
+ *   "923028588506"  (already international digits)
+ *   "03028588506"   (domestic — leading 0 stripped, default CC prepended)
+ *   "3028588506"    (domestic, no leading 0)
+ * Always returns a wa.me-safe digit string with country code, or '' if invalid.
  */
 
-const DEFAULT_COUNTRY_CODE = '92'; // Pakistan default, matches shippingInfo.country fallback
+const DEFAULT_COUNTRY_CODE = '92'; // Pakistan — matches backend WHATSAPP_DEFAULT_COUNTRY_CODE fallback
 
 export const sanitizePhone = (rawPhone) => {
   if (!rawPhone) return '';
-  let digits = String(rawPhone).replace(/\D/g, '');
+  const raw = String(rawPhone).trim();
+
+  const hadPlus = raw.startsWith('+');
+  const hadDoubleZero = /^00\d/.test(raw);
+
+  let digits = raw.replace(/\D/g, '');
   if (!digits) return '';
-  // Strip leading zeros
+
+  if (hadPlus) return digits;                 // already E.164
+  if (hadDoubleZero) return digits.replace(/^00/, '');
+
   digits = digits.replace(/^0+/, '');
-  // If the number is short (likely local), prepend default country code
-  if (digits.length <= 10) {
+  if (digits.length > 0 && digits.length <= 10) {
     digits = DEFAULT_COUNTRY_CODE + digits;
   }
   return digits;

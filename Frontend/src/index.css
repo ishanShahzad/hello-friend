@@ -181,6 +181,60 @@ input, select, textarea {
 }
 
 /* ====================
+   PhoneField (react-phone-number-input) glass theme
+==================== */
+.rozare-phone-field .PhoneInput {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+.rozare-phone-field .PhoneInputCountry {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0 0.6rem;
+    height: 100%;
+    border-radius: 0.75rem;
+    background: var(--glass-bg, rgba(255, 255, 255, 0.18));
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.25));
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+.rozare-phone-field .PhoneInputCountry:hover,
+.rozare-phone-field .PhoneInputCountry:focus-within {
+    border-color: var(--glass-border-strong, rgba(255, 255, 255, 0.4));
+}
+.rozare-phone-field .PhoneInputCountryIcon {
+    width: 1.5rem;
+    height: 1.1rem;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    border-radius: 2px;
+}
+.rozare-phone-field .PhoneInputCountryIcon--border {
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.rozare-phone-field .PhoneInputCountrySelectArrow {
+    width: 0.35rem;
+    height: 0.35rem;
+    margin-left: 0.15rem;
+    opacity: 0.55;
+    color: hsl(var(--foreground));
+}
+.rozare-phone-field .PhoneInputCountrySelect {
+    /* Native <select> sits invisibly on top of the flag; style the fallback text */
+    color: hsl(var(--foreground));
+}
+.rozare-phone-field .PhoneInputInput {
+    flex: 1;
+    min-width: 0; /* allow shrink inside flex container */
+}
+.rozare-phone-field.has-error .PhoneInputInput,
+.rozare-phone-field.has-error .PhoneInputCountry {
+    border-color: hsl(0, 72%, 55%) !important;
+}
+
+/* ====================
    Scrollbars
 ==================== */
 ::-webkit-scrollbar { width: 8px; }

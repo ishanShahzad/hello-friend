@@ -6,6 +6,7 @@ import {
     MapPin, Phone, Home
 } from 'lucide-react';
 import Loader from '../common/Loader';
+import PhoneField from '../common/PhoneField';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -434,7 +435,7 @@ const UserProfile = () => {
                             {[
                                 { label: 'Full Name', name: 'fullName', icon: <User size={12} /> },
                                 { label: 'Email', name: 'email', icon: <Mail size={12} />, type: 'email' },
-                                { label: 'Phone', name: 'phone', icon: <Phone size={12} />, type: 'tel' },
+                                { label: 'Phone', name: 'phone', icon: <Phone size={12} />, custom: 'phone' },
                                 { label: 'Address', name: 'address', icon: <Home size={12} /> },
                                 { label: 'City', name: 'city' },
                                 { label: 'State', name: 'state' },
@@ -446,9 +447,19 @@ const UserProfile = () => {
                                         style={{ color: 'hsl(var(--muted-foreground))' }}>
                                         {field.icon} {field.label}
                                     </label>
-                                    <input type={field.type || 'text'} name={field.name}
-                                        value={shippingForm[field.name] || ''} onChange={handleShippingChange}
-                                        className="glass-input" placeholder={`Enter ${field.label.toLowerCase()}`} />
+                                    {field.custom === 'phone' ? (
+                                        <PhoneField
+                                            name="phone"
+                                            value={shippingForm.phone || ''}
+                                            onChange={(v) => setShippingForm((prev) => ({ ...prev, phone: v || '' }))}
+                                            profileCountry={shippingForm.country}
+                                            placeholder="Phone (used for WhatsApp order updates)"
+                                        />
+                                    ) : (
+                                        <input type={field.type || 'text'} name={field.name}
+                                            value={shippingForm[field.name] || ''} onChange={handleShippingChange}
+                                            className="glass-input" placeholder={`Enter ${field.label.toLowerCase()}`} />
+                                    )}
                                 </div>
                             ))}
                         </div>

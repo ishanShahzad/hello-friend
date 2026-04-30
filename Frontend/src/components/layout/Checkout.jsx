@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Minus, Plus, CreditCard, DollarSign, Truck, MapPin, User, Mail, Phone, Home, Navigation, CreditCardIcon, X, Loader2, ChevronDown, ChevronUp, Zap, Ticket, Tag, Check } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useGlobal } from "../../contexts/GlobalContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { loadStripe } from '@stripe/stripe-js'
 import Loader from "../common/Loader";
+import PhoneField, { isValidPhone } from "../common/PhoneField";
 
 export default function Checkout() {
 
@@ -292,6 +293,7 @@ export default function Checkout() {
     trigger,
     setValue,
     getValues,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     mode: "all",
@@ -841,15 +843,21 @@ export default function Checkout() {
                               })}
                               error={errors.email}
                             />
-                            <InputField
-                              icon={<Phone className="w-5 h-5  text-gray-400" />}
-                              placeholder="Phone"
-                              type="tel"
-                              {...register("phone", {
+                            <Controller
+                              name="phone"
+                              control={control}
+                              rules={{
                                 required: "Phone is required",
-                                minLength: { value: 6, message: "Invalid phone" },
-                              })}
-                              error={errors.phone}
+                                validate: (v) => isValidPhone(v) || "Enter a valid phone number (pick the country and enter your number)",
+                              }}
+                              render={({ field, fieldState }) => (
+                                <PhoneField
+                                  {...field}
+                                  placeholder="Phone (WhatsApp will use this)"
+                                  profileCountry={watch("country")}
+                                  error={fieldState.error}
+                                />
+                              )}
                             />
                             <InputField
                               icon={<Home className="w-5 h-5  text-gray-400" />}

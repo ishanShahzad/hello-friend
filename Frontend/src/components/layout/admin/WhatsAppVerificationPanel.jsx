@@ -7,6 +7,7 @@ import {
     Loader2, Phone, Clock, ShieldAlert, Activity, Inbox, Send, ThumbsUp, ThumbsDown,
     TrendingUp, BarChart3, Timer, RotateCcw,
 } from 'lucide-react';
+import PhoneField, { isValidPhone } from '../../common/PhoneField';
 
 
 const API = import.meta.env.VITE_API_URL;
@@ -183,17 +184,19 @@ const WhatsAppVerificationPanel = () => {
     }, [showQrModal, fetchStatus]);
 
     const requestPairingCode = async () => {
-        if (!phoneNumber || phoneNumber.length < 10) {
-            setQrError('Please enter a valid phone number with country code (e.g., 923001234567)');
+        if (!isValidPhone(phoneNumber)) {
+            setQrError('Please enter a valid phone number (pick your country and type the number).');
             return;
         }
+        // Backend expects digits only (e.g. 923001234567)
+        const digitsOnly = String(phoneNumber).replace(/\D/g, '');
 
         setPairingLoading(true);
         setQrError('');
         try {
             const { data } = await axios.post(
                 `${API}api/whatsapp/pairing-code`,
-                { phoneNumber },
+                { phoneNumber: digitsOnly },
                 { headers: authHeaders(), timeout: 15000 }
             );
             
@@ -570,15 +573,12 @@ const WhatsAppVerificationPanel = () => {
                                         Request Pairing Code
                                     </div>
                                     <div className="text-[10px] mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        Enter your WhatsApp number with country code (e.g., 923001234567)
+                                        Pick your country, then enter your WhatsApp number.
                                     </div>
-                                    <input
-                                        type="tel"
+                                    <PhoneField
                                         value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                                        placeholder="923001234567"
-                                        className="w-full px-3 py-2 rounded-lg text-sm glass-inner mb-3"
-                                        style={{ color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}
+                                        onChange={(v) => setPhoneNumber(v || '')}
+                                        placeholder="Phone number"
                                     />
                                     <div className="flex gap-2">
                                         <button
