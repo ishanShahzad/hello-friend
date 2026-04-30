@@ -505,6 +505,45 @@ exports.getQueue = async (req, res) => {
     }
 };
 
+// POST /api/whatsapp/queue/:id/retry — admin: retry a failed message.
+// Re-normalises the phone from the linked order (so fixing shippingInfo.phone
+// in the admin UI before retrying works), resets attempts, and re-queues.
+exports.retryQueueItem = async (req, res) => {
+    try {
+        const Order = require('../models/Order');
+        const { normalizePhone } = require('../services/whatsapp/messageBuilder');
+
+        const job = await WhatsAppPendingMessage.findById(req.params.id);
+        if (!job) return res.status(404).json({ msg: 'Queue item not found' });
+
+        const order = await Order.findById(job.order);
+        if (!order) return res.status(404).json({ msg: 'Linked order not found' });
+
+        const freshPhone = normalizePhone(order.shippingInfo?.phone);
+        if (!freshPhone || freshPhone.length < 8) {
+            return res.status(400).json({
+                msg: `Order phone "${order.shippingInfo?.phone}" is still invalid after normalisation. Update the shipping phone first.`,
+            });
+        }
+
+        job.phone = freshPhone;
+        job.status = 'queued';
+        job.attempts = 0;
+        job.lastError = '';
+        job.nextAttemptAt = new Date(Date.now() + 2000); // retry in 2s
+        await job.save();
+
+        res.json({
+            msg: 'Queued for retry',
+            phone: `${freshPhone.slice(0, 3)}••••${freshPhone.slice(-3)}`,
+            orderId: job.orderId,
+        });
+    } catch (err) {
+        console.error('whatsapp.retryQueueItem:', err.message);
+        res.status(500).json({ msg: 'Failed to retry: ' + err.message });
+    }
+};
+
 // GET /api/whatsapp/stats — admin: aggregate analytics
 exports.getStats = async (req, res) => {
     try {
@@ -546,7 +585,9 @@ exports.getStats = async (req, res) => {
         const sent = (counts.sent || 0) + (counts.voted_yes || 0) + (counts.voted_no || 0);
         const confirmed = counts.voted_yes || 0;
         const declined = counts.voted_no || 0;
-        const failed = counts.failed || 0;
+        const failedSend = counts.failed || 0;
+        const invalidNumber = counts.failed_invalid_number || 0;
+        const failed = failedSend + invalidNumber;
         const queued = counts.queued || 0;
         const expired = counts.expired || 0;
         const replied = confirmed + declined;
@@ -562,6 +603,8 @@ exports.getStats = async (req, res) => {
             confirmed,
             declined,
             failed,
+            failedSend,
+            invalidNumber,
             queued,
             expired,
             responseRate,

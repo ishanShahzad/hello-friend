@@ -11,6 +11,7 @@ router.post('/disconnect', verifyToken, admin, ctrl.disconnect);
 router.post('/reset', verifyToken, admin, ctrl.reset);
 router.post('/pairing-code', verifyToken, admin, ctrl.requestPairingCode);
 router.get('/queue', verifyToken, admin, ctrl.getQueue);
+router.post('/queue/:id/retry', verifyToken, admin, ctrl.retryQueueItem);
 router.get('/stats', verifyToken, admin, ctrl.getStats);
 
 // Public webhook (validated via shared secret in handler)

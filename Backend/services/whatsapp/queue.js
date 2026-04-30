@@ -106,6 +106,20 @@ const processOne = async () => {
             return;
         }
 
+        // Verify the number is actually on WhatsApp BEFORE burning 3 send attempts on it.
+        // Evolution v2: POST /chat/whatsappNumbers/{instance}
+        // Returns null on unknown (network error / endpoint missing) — in that case we
+        // proceed optimistically so a transient blip doesn't kill an otherwise valid number.
+        const existsOnWhatsApp = await evolution.checkWhatsAppNumber(job.phone);
+        if (existsOnWhatsApp === false) {
+            job.status = 'failed_invalid_number';
+            job.lastError = `Phone ${job.phone} is not a WhatsApp account. Verify the number has country code (e.g. 923001234567 for Pakistan) and that WhatsApp is installed.`;
+            job.attempts = (job.attempts || 0) + 1;
+            await job.save();
+            console.warn(`[whatsapp] skip order ${order.orderId} — ${job.phone} is not on WhatsApp`);
+            return;
+        }
+
         const summaryText = buildOrderSummaryText(order);
         const summaryRes = await evolution.sendText(job.phone, summaryText);
         await incrementSentCounter();
@@ -127,10 +141,24 @@ const processOne = async () => {
         console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone}`);
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
-        const failedFinal = attempts >= MAX_ATTEMPTS;
+        const status = err.response?.status;
+        const errBody = err.response?.data;
+
+        // Evolution responds 400 with { response: { message: [{ exists: false, number: "..." }] } }
+        // when the destination number is not a WhatsApp account. Don't retry those.
+        const notOnWhatsApp =
+            status === 400 &&
+            Array.isArray(errBody?.response?.message) &&
+            errBody.response.message.some(m => m?.exists === false);
+
+        const failedFinal = notOnWhatsApp || attempts >= MAX_ATTEMPTS;
         job.attempts = attempts;
-        job.lastError = err.response?.data ? JSON.stringify(err.response.data).slice(0, 500) : err.message;
-        if (failedFinal) {
+        job.lastError = errBody ? JSON.stringify(errBody).slice(0, 500) : err.message;
+
+        if (notOnWhatsApp) {
+            job.status = 'failed_invalid_number';
+            job.lastError = `Number ${job.phone} is not registered on WhatsApp. Check country code and try again.`;
+        } else if (failedFinal) {
             job.status = 'failed';
         } else {
             job.status = 'queued';
@@ -139,7 +167,7 @@ const processOne = async () => {
             job.nextAttemptAt = new Date(Date.now() + backoff);
         }
         await job.save();
-        console.error(`[whatsapp] send failed (attempt ${attempts}):`, job.lastError);
+        console.error(`[whatsapp] send failed (attempt ${attempts}, status=${status}):`, job.lastError);
     }
 };
 

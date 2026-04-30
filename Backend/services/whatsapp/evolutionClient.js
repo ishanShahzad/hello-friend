@@ -289,5 +289,29 @@ exports.setWebhook = async (url, secret = '') => {
     return data;
 };
 
+// Check whether a phone number is registered on WhatsApp.
+// POST /chat/whatsappNumbers/{instance}  body: { numbers: ["923001234567"] }
+// Response: [{ exists: boolean, jid: string, number: string }]
+// Returns `true` / `false`, or `null` if the check itself couldn't be completed
+// (network error, endpoint missing on an old build, etc.) so callers can decide
+// whether to proceed optimistically or bail out.
+exports.checkWhatsAppNumber = async (number) => {
+    if (!isConfigured()) return null;
+    const clean = String(number || '').replace(/\D/g, '');
+    if (!clean) return false;
+    try {
+        const { data } = await client().post(`/chat/whatsappNumbers/${instanceName()}`, {
+            numbers: [clean],
+        });
+        if (Array.isArray(data) && data.length > 0) {
+            return Boolean(data[0]?.exists);
+        }
+        return null;
+    } catch (err) {
+        console.warn('[evolution] checkWhatsAppNumber failed:', err.response?.data || err.message);
+        return null; // unknown — let the caller try to send anyway
+    }
+};
+
 exports.isConfigured = isConfigured;
 exports.instanceName = instanceName;

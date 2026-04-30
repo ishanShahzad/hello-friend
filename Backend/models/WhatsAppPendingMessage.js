@@ -14,7 +14,7 @@ const whatsAppPendingMessageSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ['queued', 'sending', 'sent', 'voted_yes', 'voted_no', 'failed', 'expired'],
+        enum: ['queued', 'sending', 'sent', 'voted_yes', 'voted_no', 'failed', 'failed_invalid_number', 'expired'],
         default: 'queued',
         index: true,
     },
