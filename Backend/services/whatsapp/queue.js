@@ -231,34 +231,43 @@ exports.stopQueueProcessor = () => {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Reply matching — called by webhook handler.
-// Previously we matched by pollMessageId; now we match by buyer phone
-// because a reply to a plain text message doesn't always quote the original.
 //
-// Rules:
-//   - Must have a job in status 'sent' for this phone (most recent first).
-//   - Idempotent: if the job is already 'voted_yes'/'voted_no', return it so
-//     the caller can detect a vote change but not double-count.
+// Split into two operations so the handler can CHECK the order-level guard
+// BEFORE persisting the vote. This prevents the admin dashboard from
+// showing "declined" when the buyer tapped NO *after* already confirming.
+//
+// Step 1: findPendingJobByPhone — returns the most recent matching job
+//         without modifying it.
+// Step 2: applyVote — actually writes the status after the handler decides
+//         the vote is allowed.
 // ──────────────────────────────────────────────────────────────────────────
-exports.markVotedByPhone = async (phone, vote) => {
-    const status = vote === 'yes' ? 'voted_yes' : 'voted_no';
 
-    // Look at the newest matching pending job for this phone that's still
-    // waiting for (or may have flipped) a reply.
-    const job = await WhatsAppPendingMessage.findOne({
+// Returns the newest pending/voted job for this phone, or null.
+exports.findPendingJobByPhone = async (phone) => {
+    return WhatsAppPendingMessage.findOne({
         phone,
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     }).sort({ createdAt: -1 });
+};
 
-    if (!job) return null;
-
-    // If it's already the same vote, no-op (idempotent). If it's the other
-    // vote, update it (handled as a vote-change by webhookHandler).
+// Persist the buyer's decision on the job document.
+// Only call this AFTER confirming the order guard allows the vote.
+exports.applyVote = async (job, vote) => {
+    const status = vote === 'yes' ? 'voted_yes' : 'voted_no';
     if (job.status !== status) {
         job.status = status;
         job.repliedAt = new Date();
         await job.save();
     }
     return job;
+};
+
+// Legacy compat — still used by the old markVotedByPhone callers.
+// Now delegates to the two-step approach but keeps the same signature.
+exports.markVotedByPhone = async (phone, vote) => {
+    const job = await exports.findPendingJobByPhone(phone);
+    if (!job) return null;
+    return exports.applyVote(job, vote);
 };
 
 // Legacy — still used by older code paths until fully removed

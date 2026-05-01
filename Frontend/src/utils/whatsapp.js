@@ -94,6 +94,11 @@ export const hasWhatsAppPhone = (order) =>
 export const isOrderConfirmedByBuyer = (order) =>
   Boolean(order?.confirmation?.confirmedAt);
 
+// True if the buyer has made ANY decision (confirmed OR cancelled).
+// Use this for showing the confirmation-source badge on seller/admin views.
+export const isOrderDecidedByBuyer = (order) =>
+  Boolean(order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt);
+
 // True specifically when the Rozare WhatsApp poll/reply flow finalised the order.
 export const isOrderHandledByWhatsAppAutomation = (order) =>
   Boolean(

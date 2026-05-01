@@ -23,7 +23,7 @@ const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
-const { markVotedByPhone } = require('./queue');
+const { findPendingJobByPhone, applyVote } = require('./queue');
 const { parseConfirmReply } = require('./messageBuilder');
 const evolution = require('./evolutionClient');
 
@@ -368,9 +368,13 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     if (pollVote) { decision = pollVote; decisionSource = 'poll'; }
                 }
 
-                // Match the sent job by phone (new flow) — short-circuits if
-                // there's no pending confirmation waiting for this buyer.
-                const job = await markVotedByPhone(phone, decision || 'yes');
+                // Find the pending job for this buyer WITHOUT changing it.
+                // We'll only persist the vote AFTER confirming the order guard
+                // allows the decision. This prevents the admin dashboard from
+                // showing "declined" when the buyer tapped NO after already
+                // confirming (the old code wrote the flip, then blocked the
+                // order update — leaving the job and order out of sync).
+                const job = await findPendingJobByPhone(phone);
                 if (!job) continue;
 
                 // If the buyer sent *something* but we couldn't decide, nudge them.
@@ -437,6 +441,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     order.confirmation.confirmedVia = 'whatsapp';
                     order.orderStatus = 'confirmed';
                     await order.save();
+                    // NOW persist the vote on the job (dashboard reads this)
+                    await applyVote(job, 'yes');
                     await sendResponseMessage(phone, true, order.orderId, order.shippingInfo?.fullName);
                     notifySellers(order, true);
                 } else {
@@ -444,6 +450,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     order.confirmation.confirmedVia = 'whatsapp';
                     order.orderStatus = 'cancelled';
                     await order.save();
+                    // NOW persist the vote on the job (dashboard reads this)
+                    await applyVote(job, 'no');
                     await sendResponseMessage(phone, false, order.orderId, order.shippingInfo?.fullName);
                     notifySellers(order, false);
                 }
