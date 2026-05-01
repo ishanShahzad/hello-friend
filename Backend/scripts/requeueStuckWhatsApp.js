@@ -14,8 +14,8 @@ const FORCE_ORDER_IDS = (process.env.REQUEUE_ORDER_IDS || '')
     .split(',').map((s) => s.trim()).filter(Boolean);
 
 (async () => {
-    const uri = process.env.MONGO_URL || process.env.MONGODB_URI;
-    if (!uri) { console.error('MONGO_URL / MONGODB_URI not set'); process.exit(1); }
+    const uri = process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URI;
+    if (!uri) { console.error('MONGO_URI / MONGO_URL / MONGODB_URI not set'); process.exit(1); }
     await mongoose.connect(uri);
     console.log('Connected to Mongo');
 
