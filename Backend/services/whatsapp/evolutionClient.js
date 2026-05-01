@@ -269,23 +269,29 @@ exports.sendPoll = async (number, { name, values, selectableCount = 1 }) => {
     return { messageId, raw: data };
 };
 
-// Register the webhook URL — v2 payload uses camelCase fields.
-// POST /webhook/set/{instance}  —  { enabled, url, webhookByEvents, webhookBase64, events, headers? }
+// Register the webhook URL.
+// POST /webhook/set/{instance}
+// Evolution v2.3.7 expects the fields WRAPPED in a `webhook` object —
+// the published OpenAPI spec shows a flat body but the server validator
+// requires:  { webhook: { enabled, url, webhookByEvents, webhookBase64, events, headers? } }
 exports.setWebhook = async (url, secret = '') => {
     if (!isConfigured()) throw new Error('Evolution API not configured');
-    const { data } = await client().post(`/webhook/set/${instanceName()}`, {
-        enabled: true,
-        url,
-        webhookByEvents: false,
-        webhookBase64: false,
-        events: [
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'CONNECTION_UPDATE',
-            'QRCODE_UPDATED',
-        ],
-        ...(secret ? { headers: { 'x-rozare-webhook-secret': secret } } : {}),
-    });
+    const payload = {
+        webhook: {
+            enabled: true,
+            url,
+            webhookByEvents: false,
+            webhookBase64: false,
+            events: [
+                'MESSAGES_UPSERT',
+                'MESSAGES_UPDATE',
+                'CONNECTION_UPDATE',
+                'QRCODE_UPDATED',
+            ],
+            ...(secret ? { headers: { 'x-rozare-webhook-secret': secret } } : {}),
+        },
+    };
+    const { data } = await client().post(`/webhook/set/${instanceName()}`, payload);
     return data;
 };
 

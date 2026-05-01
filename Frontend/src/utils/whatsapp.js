@@ -89,6 +89,29 @@ export const openWhatsAppVerify = (order, formatPrice) => {
 export const hasWhatsAppPhone = (order) =>
   Boolean(sanitizePhone(order?.shippingInfo?.phone));
 
-// True if buyer already self-confirmed via email (manual verify no longer needed)
+// True if buyer already self-confirmed the order by any channel — means
+// the manual "Verify on WhatsApp" button is no longer needed.
 export const isOrderConfirmedByBuyer = (order) =>
-  Boolean(order?.confirmation?.confirmedAt && order?.confirmation?.confirmedVia === 'email');
+  Boolean(order?.confirmation?.confirmedAt);
+
+// True specifically when the Rozare WhatsApp poll/reply flow finalised the order.
+export const isOrderHandledByWhatsAppAutomation = (order) =>
+  Boolean(
+    order?.confirmation?.confirmedVia === 'whatsapp' &&
+    (order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt)
+  );
+
+// Human-friendly label for the source badge shown on admin/seller order rows.
+// Returns '' when nothing should be displayed.
+export const getConfirmationSourceLabel = (order) => {
+  if (!order?.confirmation) return '';
+  const via = order.confirmation.confirmedVia;
+  const confirmed = !!order.confirmation.confirmedAt;
+  const declined = !!order.confirmation.declinedAt;
+  if (!via || (!confirmed && !declined)) return '';
+  const action = confirmed ? 'Confirmed' : 'Cancelled';
+  if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;
+  if (via === 'email')    return `${action} by buyer via email link`;
+  if (via === 'manual')   return `${action} manually`;
+  return `${action} by buyer`;
+};

@@ -76,6 +76,38 @@ const OrderDetail = () => {
                 </div>
             </div>
 
+            {/* Buyer decision banner — shows how the order was confirmed or cancelled */}
+            {(order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt) && (() => {
+                const confirmed = !!order.confirmation.confirmedAt;
+                const via = order.confirmation.confirmedVia;
+                const whenIso = confirmed ? order.confirmation.confirmedAt : order.confirmation.declinedAt;
+                const verbPast = confirmed ? 'Confirmed' : 'Cancelled';
+                const viaLabel = via === 'whatsapp'
+                    ? 'Rozare WhatsApp automation'
+                    : via === 'email'
+                        ? 'email confirmation link'
+                        : (via || 'the order confirmation flow');
+                const palette = confirmed
+                    ? { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', title: 'hsl(150, 60%, 35%)' }
+                    : { bg: 'rgba(239, 68, 68, 0.08)',  border: 'rgba(239, 68, 68, 0.25)',  title: 'hsl(0, 70%, 45%)' };
+                return (
+                    <div className="mx-4 sm:mx-6 p-3 rounded-xl flex items-start gap-3"
+                        style={{ background: palette.bg, border: `1px solid ${palette.border}` }}>
+                        <span className="text-base" style={{ color: palette.title }}>
+                            {confirmed ? '✅' : '❌'}
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold" style={{ color: palette.title }}>
+                                {verbPast} by buyer via {viaLabel}
+                            </p>
+                            <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {new Date(whenIso).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                 {/* Customer Information */}
                 <div className="lg:col-span-1">

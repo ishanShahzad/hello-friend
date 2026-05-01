@@ -90,21 +90,39 @@ const OrderDetail = () => {
                     </div>
                 </div>
 
-                {/* Buyer-side email confirmation status */}
-                {order?.confirmation?.confirmedAt && (
-                    <div className="mt-4 p-3 rounded-xl flex items-start gap-3"
-                        style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                        <CheckCircle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'hsl(150, 60%, 40%)' }} />
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold" style={{ color: 'hsl(150, 60%, 35%)' }}>
-                                You confirmed this order via {order.confirmation.confirmedVia || 'email'}
-                            </p>
-                            <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Confirmed on {new Date(order.confirmation.confirmedAt).toLocaleString()} — the seller has been notified and will process your order shortly.
-                            </p>
+                {/* Buyer-side confirmation / cancellation status */}
+                {(order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt) && (() => {
+                    const confirmed = !!order.confirmation.confirmedAt;
+                    const via = order.confirmation.confirmedVia;
+                    const whenIso = confirmed ? order.confirmation.confirmedAt : order.confirmation.declinedAt;
+                    const verbPast = confirmed ? 'confirmed' : 'cancelled';
+                    const viaLabel = via === 'whatsapp'
+                        ? 'Rozare WhatsApp'
+                        : via === 'email'
+                            ? 'the email confirmation link'
+                            : via || 'the order confirmation flow';
+                    const palette = confirmed
+                        ? { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', title: 'hsl(150, 60%, 35%)' }
+                        : { bg: 'rgba(239, 68, 68, 0.08)',  border: 'rgba(239, 68, 68, 0.25)',  title: 'hsl(0, 70%, 45%)' };
+                    const Icon = confirmed ? CheckCircle : XCircle;
+                    return (
+                        <div className="mt-4 p-3 rounded-xl flex items-start gap-3"
+                            style={{ background: palette.bg, border: `1px solid ${palette.border}` }}>
+                            <Icon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: palette.title }} />
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold" style={{ color: palette.title }}>
+                                    You {verbPast} this order via {viaLabel}
+                                </p>
+                                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    {verbPast.charAt(0).toUpperCase() + verbPast.slice(1)} on {new Date(whenIso).toLocaleString()}
+                                    {confirmed
+                                        ? ' — the seller has been notified and will process your order shortly.'
+                                        : ' — nothing has been charged, and your cart is still saved.'}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

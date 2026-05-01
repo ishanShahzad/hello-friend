@@ -4,7 +4,7 @@
 const WhatsAppPendingMessage = require('../../models/WhatsAppPendingMessage');
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const evolution = require('./evolutionClient');
-const { buildOrderSummaryText, buildPollPayload, normalizePhone } = require('./messageBuilder');
+const { buildOrderConfirmationMessage, normalizePhone } = require('./messageBuilder');
 const Order = require('../../models/Order');
 
 const MIN_DELAY_MS = 8 * 1000;
@@ -107,9 +107,6 @@ const processOne = async () => {
         }
 
         // Verify the number is actually on WhatsApp BEFORE burning 3 send attempts on it.
-        // Evolution v2: POST /chat/whatsappNumbers/{instance}
-        // Returns null on unknown (network error / endpoint missing) — in that case we
-        // proceed optimistically so a transient blip doesn't kill an otherwise valid number.
         const existsOnWhatsApp = await evolution.checkWhatsAppNumber(job.phone);
         if (existsOnWhatsApp === false) {
             job.status = 'failed_invalid_number';
@@ -120,19 +117,17 @@ const processOne = async () => {
             return;
         }
 
-        const summaryText = buildOrderSummaryText(order);
-        const summaryRes = await evolution.sendText(job.phone, summaryText);
+        // ── Single-message flow ──
+        // Previously: 2 messages (summary text + poll).
+        // Now: ONE message that asks the buyer to reply YES or NO. Much less
+        // noisy for buyers, cheaper, and avoids the broken sendButtons/poll
+        // chain entirely (Evolution API issues #2390, #2404).
+        const text = buildOrderConfirmationMessage(order);
+        const sendRes = await evolution.sendText(job.phone, text);
         await incrementSentCounter();
 
-        // Small natural pause between text + poll
-        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
-
-        const pollPayload = buildPollPayload(order);
-        const pollRes = await evolution.sendPoll(job.phone, pollPayload);
-        await incrementSentCounter();
-
-        job.summaryMessageId = summaryRes.messageId || '';
-        job.pollMessageId = pollRes.messageId || '';
+        job.summaryMessageId = sendRes.messageId || '';
+        job.pollMessageId = ''; // no longer used — match by phone instead
         job.status = 'sent';
         job.sentAt = new Date();
         job.attempts = (job.attempts || 0) + 1;
@@ -144,8 +139,6 @@ const processOne = async () => {
         const status = err.response?.status;
         const errBody = err.response?.data;
 
-        // Evolution responds 400 with { response: { message: [{ exists: false, number: "..." }] } }
-        // when the destination number is not a WhatsApp account. Don't retry those.
         const notOnWhatsApp =
             status === 400 &&
             Array.isArray(errBody?.response?.message) &&
@@ -162,7 +155,6 @@ const processOne = async () => {
             job.status = 'failed';
         } else {
             job.status = 'queued';
-            // Exponential backoff: 30s, 2min
             const backoff = attempts === 1 ? 30 * 1000 : 2 * 60 * 1000;
             job.nextAttemptAt = new Date(Date.now() + backoff);
         }
@@ -195,7 +187,39 @@ exports.stopQueueProcessor = () => {
     timer = null;
 };
 
-// Mark a pending message as voted — called by webhook handler
+// ──────────────────────────────────────────────────────────────────────────
+// Reply matching — called by webhook handler.
+// Previously we matched by pollMessageId; now we match by buyer phone
+// because a reply to a plain text message doesn't always quote the original.
+//
+// Rules:
+//   - Must have a job in status 'sent' for this phone (most recent first).
+//   - Idempotent: if the job is already 'voted_yes'/'voted_no', return it so
+//     the caller can detect a vote change but not double-count.
+// ──────────────────────────────────────────────────────────────────────────
+exports.markVotedByPhone = async (phone, vote) => {
+    const status = vote === 'yes' ? 'voted_yes' : 'voted_no';
+
+    // Look at the newest matching pending job for this phone that's still
+    // waiting for (or may have flipped) a reply.
+    const job = await WhatsAppPendingMessage.findOne({
+        phone,
+        status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
+    }).sort({ createdAt: -1 });
+
+    if (!job) return null;
+
+    // If it's already the same vote, no-op (idempotent). If it's the other
+    // vote, update it (handled as a vote-change by webhookHandler).
+    if (job.status !== status) {
+        job.status = status;
+        job.repliedAt = new Date();
+        await job.save();
+    }
+    return job;
+};
+
+// Legacy — still used by older code paths until fully removed
 exports.markVoted = async (pollMessageId, vote) => {
     const status = vote === 'yes' ? 'voted_yes' : 'voted_no';
     const job = await WhatsAppPendingMessage.findOneAndUpdate(

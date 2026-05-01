@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle } from 'lucide-react';
-import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer } from '../../utils/whatsapp';
+import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer, getConfirmationSourceLabel } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
@@ -180,7 +180,7 @@ const OrderManagement = () => {
                                                             const confirmed = isOrderConfirmedByBuyer(order);
                                                             const enabled = hasPhone && !confirmed;
                                                             const title = confirmed
-                                                                ? `Buyer confirmed via email${order.confirmation?.confirmedAt ? ' · ' + new Date(order.confirmation.confirmedAt).toLocaleDateString() : ''}`
+                                                                ? `${getConfirmationSourceLabel(order) || 'Confirmed by buyer'}${order.confirmation?.confirmedAt ? ' · ' + new Date(order.confirmation.confirmedAt).toLocaleDateString() : ''}`
                                                                 : (hasPhone ? 'Verify on WhatsApp' : 'No phone number on file');
                                                             return (
                                                                 <button

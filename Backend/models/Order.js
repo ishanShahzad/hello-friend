@@ -113,8 +113,25 @@ const orderSchema = mongoose.Schema(
             lockMessageSent: { type: Boolean, default: false }
         }
     },
-    { timestamps: true }
+    { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+// Human-friendly label for the admin/seller UI. Example:
+//   "Confirmed by buyer via Rozare WhatsApp automation"
+//   "Cancelled by buyer via Rozare WhatsApp automation"
+//   "Confirmed by buyer via email link"
+orderSchema.virtual('confirmationSourceLabel').get(function () {
+    const via = this.confirmation?.confirmedVia;
+    if (!via) return '';
+    const confirmed = !!this.confirmation?.confirmedAt;
+    const declined = !!this.confirmation?.declinedAt;
+    const action = confirmed ? 'Confirmed' : declined ? 'Cancelled' : '';
+    if (!action) return '';
+    if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;
+    if (via === 'email')    return `${action} by buyer via email confirmation link`;
+    if (via === 'manual')   return `${action} manually`;
+    return `${action} by buyer`;
+});
 
 
 
