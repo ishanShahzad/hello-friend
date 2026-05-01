@@ -5,6 +5,7 @@ const WhatsAppPendingMessage = require('../../models/WhatsAppPendingMessage');
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const evolution = require('./evolutionClient');
 const {
+    buildOrderButtonsPayload,
     buildOrderListPayload,
     buildOrderConfirmationMessage,
     normalizePhone,
@@ -121,35 +122,49 @@ const processOne = async () => {
             return;
         }
 
-        // ── List-first flow with text fallback ──
+        // ── Tiered send strategy ──
         //
-        // sendList uses WhatsApp's LEGACY listType=SINGLE_SELECT format,
-        // which actually renders tappable buttons on regular
-        // linked-device WhatsApp (unlike sendButtons → native-flow, which
-        // Meta silently drops for non-Cloud-API senders).
+        // Priority 1 — TWO INLINE REPLY BUTTONS via sendButtons.
+        //   On the Evolution homolog image, sendButtons produces an
+        //   interactiveMessage (NOT the old viewOnceMessage wrapper), which
+        //   WhatsApp now relays to regular Baileys-linked devices. The buyer
+        //   sees "✅ Confirm order" and "❌ Cancel order" buttons directly
+        //   below the message — no menu, no extra tap.
         //
-        // The buyer sees one "Confirm or Cancel" tap-to-open button.
-        // Opening it shows "✅ Confirm order" and "❌ Cancel order" rows.
-        // Tapping a row produces a listResponseMessage webhook event that
-        // carries the rowId (confirm_ORD-xxx / cancel_ORD-xxx) — parsed in
-        // webhookHandler.extractDecision.
+        // Priority 2 — LIST message via sendList.
+        //   If Meta tightens the rules later or the button send fails, a
+        //   list menu (one tap-to-open button → 2-row SINGLE_SELECT menu)
+        //   is the next-most-friendly form and still delivers reliably.
         //
-        // If sendList throws (network error, instance disconnected, etc.),
-        // we fall back to a plain text YES/NO message so the buyer is
-        // never stuck.
-        const listPayload = buildOrderListPayload(order);
+        // Priority 3 — PLAIN TEXT YES/NO.
+        //   Last-resort so the buyer is never stuck.
+        //
+        // Rich reply envelopes (button click / list reply / plain text) are
+        // all handled by webhookHandler.extractDecision, keyed on the
+        // confirm_ORD-xxx / cancel_ORD-xxx id scheme.
+
+        const buttonsPayload = buildOrderButtonsPayload(order);
         let sendRes;
-        let usedFallback = false;
+        let strategy = 'buttons';
+
         try {
-            sendRes = await evolution.sendList(job.phone, listPayload);
-        } catch (listErr) {
+            sendRes = await evolution.sendButtons(job.phone, buttonsPayload);
+        } catch (btnErr) {
             console.warn(
-                `[whatsapp] sendList failed for order ${order.orderId}, falling back to text:`,
-                listErr.response?.data || listErr.message
+                `[whatsapp] sendButtons failed for order ${order.orderId}, trying list:`,
+                btnErr.response?.data || btnErr.message
             );
-            usedFallback = true;
-            const text = buildOrderConfirmationMessage(order);
-            sendRes = await evolution.sendText(job.phone, text);
+            strategy = 'list';
+            try {
+                sendRes = await evolution.sendList(job.phone, buildOrderListPayload(order));
+            } catch (listErr) {
+                console.warn(
+                    `[whatsapp] sendList also failed for order ${order.orderId}, falling back to text:`,
+                    listErr.response?.data || listErr.message
+                );
+                strategy = 'text';
+                sendRes = await evolution.sendText(job.phone, buildOrderConfirmationMessage(order));
+            }
         }
         await incrementSentCounter();
 
@@ -160,10 +175,7 @@ const processOne = async () => {
         job.attempts = (job.attempts || 0) + 1;
         await job.save();
 
-        console.log(
-            `[whatsapp] sent order ${order.orderId} → ${job.phone}` +
-            (usedFallback ? ' (text fallback)' : ' (list)')
-        );
+        console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone} (${strategy})`);
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
         const status = err.response?.status;
