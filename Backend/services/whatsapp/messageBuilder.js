@@ -1,20 +1,26 @@
-// Builds the single WhatsApp message we send to the buyer to confirm an order.
+// Builds the WhatsApp message we send to the buyer to confirm an order.
 //
-// Design notes:
-//   - WhatsApp interactive buttons (sendButtons) are broken for standard
-//     Baileys clients as of Evolution v2.3.7 (upstream issues #2390, #2404)
-//     because Meta no longer delivers them to non-Cloud-API senders.
-//   - Polls work, but require 2 separate messages (summary + poll) and
-//     reading pollUpdateMessage events is fragile when there's no
-//     message-quote linkage.
-//   - What actually works reliably today: ONE plain text message with two
-//     "suggested reply" tokens (YES / NO, plus forgiving alternates like
-//     "1" / "2", "confirm" / "cancel" in multiple languages).
+// Flow (button-first, text-safe fallback):
+//   1. Send an interactive "native flow" message with 2 reply buttons:
+//        [✅ Confirm order]   [❌ Cancel order]
+//      Each button carries a stable id of the form
+//        confirm_ORD-xxxxxxxxx     or     cancel_ORD-xxxxxxxxx
+//      so the webhook can detect the buyer's choice unambiguously — even
+//      if the button chips fail to render and the buyer types "yes" / "no"
+//      or anything else in their own words.
 //
-// Consumers:
-//   - queue.js                  → sends buildOrderConfirmationMessage() once
-//   - webhookHandler.js         → parses the buyer's free-text reply with
-//                                 parseConfirmReply() below
+//   2. When the tap comes back, WhatsApp may deliver it as any of:
+//        - buttonsResponseMessage.selectedButtonId  (older clients)
+//        - interactiveResponseMessage               (v2 native flow)
+//        - templateButtonReplyMessage               (template flow)
+//        - plain conversation text  (modern WA reflects the displayText
+//                                    as a regular message from the buyer)
+//      All four paths are handled in webhookHandler.extractReplyText.
+//
+//   3. If Evolution can't render buttons for a specific phone (very rare in
+//      practice, but possible on outdated clients), the underlying text is
+//      still human-readable — "Please tap a button OR reply YES / NO" — so
+//      no buyer is ever stuck.
 
 const formatMoney = (n) => {
     const v = Number(n || 0);
@@ -22,8 +28,63 @@ const formatMoney = (n) => {
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Outgoing: the single confirmation message
+// Button ids — MUST start with these prefixes. Webhook handler uses the
+// prefix to classify the click, and the suffix (orderId) to double-check
+// we're reacting to the right order.
 // ──────────────────────────────────────────────────────────────────────────
+const CONFIRM_BTN_PREFIX = 'confirm_';
+const CANCEL_BTN_PREFIX  = 'cancel_';
+
+exports.buildConfirmButtonId = (orderId) => `${CONFIRM_BTN_PREFIX}${orderId}`;
+exports.buildCancelButtonId  = (orderId) => `${CANCEL_BTN_PREFIX}${orderId}`;
+
+exports.CONFIRM_BTN_PREFIX = CONFIRM_BTN_PREFIX;
+exports.CANCEL_BTN_PREFIX  = CANCEL_BTN_PREFIX;
+
+// ──────────────────────────────────────────────────────────────────────────
+// Outgoing — interactive buttons payload (primary) + plain text body that
+// sits above the buttons and provides a full fallback.
+// ──────────────────────────────────────────────────────────────────────────
+
+exports.buildOrderButtonsPayload = (order) => {
+    const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+    const itemCount = order.orderItems?.length || 0;
+    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
+    const total = formatMoney(order.orderSummary?.totalAmount);
+    const city = order.shippingInfo?.city || 'your location';
+
+    // Evolution supports: title (bold header), description (body), footer (small).
+    // We put the order summary in description so the buttons appear right below it.
+    return {
+        title: `Rozare — Order #${order.orderId}`,
+        description: [
+            `Hey ${buyerName}! 👋`,
+            ``,
+            `Thanks for your order with Rozare! 🎉`,
+            ``,
+            `💰 Total: *${total}* (${itemText})`,
+            `📍 Shipping to ${city}`,
+            ``,
+            `Please tap a button below to confirm or cancel.`,
+        ].join('\n'),
+        footer: `Rozare order confirmation · You can also reply YES or NO`,
+        buttons: [
+            {
+                type: 'reply',
+                displayText: '✅ Confirm order',
+                id: exports.buildConfirmButtonId(order.orderId),
+            },
+            {
+                type: 'reply',
+                displayText: '❌ Cancel order',
+                id: exports.buildCancelButtonId(order.orderId),
+            },
+        ],
+    };
+};
+
+// A plain-text fallback used only if sendButtons fails entirely (network
+// error etc.) — we still want the buyer to be able to decide.
 exports.buildOrderConfirmationMessage = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
@@ -44,17 +105,21 @@ exports.buildOrderConfirmationMessage = (order) => {
         ``,
         `   *✅ YES*  — to confirm & start processing`,
         `   *❌ NO*   — to cancel this order`,
-        ``,
-        `_(You can also reply with "confirm" or "cancel" — we'll understand.)_`,
     ].join('\n');
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Incoming: parse the buyer's free-text reply
+// Incoming — classify the buyer's reply.
+//
+// Sources we handle (checked in this order):
+//   1. Button click  → extractButtonDecision() below, called from the
+//                      webhook handler with the raw Baileys message.
+//                      Returns { decision: 'yes'|'no', orderId: 'ORD-xxx' }
+//                      or null.
+//   2. Text reply    → parseConfirmReply() uses a multilingual YES/NO
+//                      dictionary and tolerates emoji/punctuation.
 // ──────────────────────────────────────────────────────────────────────────
-// Returns: 'yes' | 'no' | null
-// Tolerant to emoji, punctuation, capitalisation, and a handful of
-// multi-language affirmatives/negatives common in Rozare's markets.
+
 const YES_WORDS = [
     'yes', 'y', 'yeah', 'yep', 'yup', 'yess', 'yesss',
     'ok', 'okay', 'kk',
@@ -67,7 +132,7 @@ const YES_WORDS = [
     'naam', 'aiwa',
     // Hindi
     'haa', 'haaji',
-    // Single digit shortcut
+    // Single-digit shortcut
     '1',
 ];
 
@@ -80,20 +145,14 @@ const NO_WORDS = [
     'nahi', 'nahin', 'nhi', 'mana',
     // Arabic (romanised)
     'la',
-    // Single digit shortcut
+    // Single-digit shortcut
     '2',
 ];
 
-// Normalise: strip emoji / punctuation / whitespace, lowercase.
-// Using \p{Emoji}/\p{Symbol} unicode property escapes handles every emoji
-// including compound sequences without the ASCII-overlap footgun of
-// hardcoded code-point ranges.
 const normaliseReply = (text) =>
     String(text || '')
         .toLowerCase()
-        // Drop emoji & symbols (flag, heart, thumbs-up, etc.)
         .replace(/\p{Extended_Pictographic}/gu, ' ')
-        // Collapse remaining punctuation to single spaces, keep letters/digits
         .replace(/[^\p{L}\p{N}\s]/gu, ' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -102,13 +161,10 @@ exports.parseConfirmReply = (text) => {
     const clean = normaliseReply(text);
     if (!clean) return null;
 
-    // Check every whitespace-separated token so "Yes please" / "Cancel it" both work.
     const tokens = clean.split(' ');
-
     const hasYes = tokens.some((t) => YES_WORDS.includes(t));
     const hasNo = tokens.some((t) => NO_WORDS.includes(t));
 
-    // If both appear (e.g. "not yes" / "yes no"), the *first* decisive token wins.
     if (hasYes && hasNo) {
         for (const t of tokens) {
             if (YES_WORDS.includes(t)) return 'yes';
@@ -118,18 +174,27 @@ exports.parseConfirmReply = (text) => {
     if (hasYes) return 'yes';
     if (hasNo) return 'no';
 
-    // Also allow a full-phrase match ("i'd like to confirm", "please cancel this")
     if (/\bconfirm(ing|ed)?\b/.test(clean)) return 'yes';
     if (/\bcancel(ling|led)?\b/.test(clean)) return 'no';
 
     return null;
 };
 
-// Default country code for numbers entered without one (e.g. "03028588506").
+// Decide yes/no purely from a button id string (e.g. "confirm_ORD-123").
+// Returns 'yes' | 'no' | null.
+exports.parseButtonId = (id) => {
+    if (!id || typeof id !== 'string') return null;
+    if (id.startsWith(CONFIRM_BTN_PREFIX)) return 'yes';
+    if (id.startsWith(CANCEL_BTN_PREFIX))  return 'no';
+    return null;
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// Phone normalisation (unchanged)
+// ──────────────────────────────────────────────────────────────────────────
 const DEFAULT_COUNTRY_CODE = String(process.env.WHATSAPP_DEFAULT_COUNTRY_CODE || '92')
     .replace(/[^\d]/g, '') || '92';
 
-// Normalize phone to digits-only E.164-style (Evolution API expects "923001234567").
 exports.normalizePhone = (raw) => {
     if (!raw) return '';
     let p = String(raw).trim();
@@ -150,8 +215,7 @@ exports.normalizePhone = (raw) => {
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Legacy exports kept for any code still referring to them (queue.js updated
-// separately). These are not used by the new single-message flow.
+// Legacy (kept so any caller still referencing it won't break)
 // ──────────────────────────────────────────────────────────────────────────
 exports.buildOrderSummaryText = exports.buildOrderConfirmationMessage;
 exports.buildPollPayload = (order) => ({

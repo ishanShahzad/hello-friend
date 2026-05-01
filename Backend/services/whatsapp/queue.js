@@ -4,7 +4,11 @@
 const WhatsAppPendingMessage = require('../../models/WhatsAppPendingMessage');
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const evolution = require('./evolutionClient');
-const { buildOrderConfirmationMessage, normalizePhone } = require('./messageBuilder');
+const {
+    buildOrderButtonsPayload,
+    buildOrderConfirmationMessage,
+    normalizePhone,
+} = require('./messageBuilder');
 const Order = require('../../models/Order');
 
 const MIN_DELAY_MS = 8 * 1000;
@@ -117,23 +121,38 @@ const processOne = async () => {
             return;
         }
 
-        // ── Single-message flow ──
-        // Previously: 2 messages (summary text + poll).
-        // Now: ONE message that asks the buyer to reply YES or NO. Much less
-        // noisy for buyers, cheaper, and avoids the broken sendButtons/poll
-        // chain entirely (Evolution API issues #2390, #2404).
-        const text = buildOrderConfirmationMessage(order);
-        const sendRes = await evolution.sendText(job.phone, text);
+        // ── Button-first flow ──
+        // Send an interactive two-button message ("Confirm" / "Cancel").
+        // If the button API fails for any reason (rare — Evolution/WhatsApp
+        // outage, exotic region, etc.), fall back to a plain text YES/NO
+        // message so the buyer is never stuck.
+        const buttons = buildOrderButtonsPayload(order);
+        let sendRes;
+        let usedFallback = false;
+        try {
+            sendRes = await evolution.sendButtons(job.phone, buttons);
+        } catch (btnErr) {
+            console.warn(
+                `[whatsapp] sendButtons failed for order ${order.orderId}, falling back to text:`,
+                btnErr.response?.data || btnErr.message
+            );
+            usedFallback = true;
+            const text = buildOrderConfirmationMessage(order);
+            sendRes = await evolution.sendText(job.phone, text);
+        }
         await incrementSentCounter();
 
         job.summaryMessageId = sendRes.messageId || '';
-        job.pollMessageId = ''; // no longer used — match by phone instead
+        job.pollMessageId = ''; // not used in the button flow — match by phone instead
         job.status = 'sent';
         job.sentAt = new Date();
         job.attempts = (job.attempts || 0) + 1;
         await job.save();
 
-        console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone}`);
+        console.log(
+            `[whatsapp] sent order ${order.orderId} → ${job.phone}` +
+            (usedFallback ? ' (text fallback)' : ' (buttons)')
+        );
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
         const status = err.response?.status;

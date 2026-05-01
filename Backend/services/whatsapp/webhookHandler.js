@@ -156,28 +156,102 @@ const notifySellers = async (order, isConfirmed) => {
 // Message parsing helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-// Pull the raw text out of a Baileys message envelope, ignoring our own
-// outgoing messages (fromMe === true).
-const extractReplyText = (msg) => {
+// ──────────────────────────────────────────────────────────────────────────
+// Decision extraction — looks at a Baileys message envelope and returns
+// one of:
+//   { source: 'button', decision: 'yes'|'no', rawId: '...' }
+//   { source: 'text',   text: '...' }
+//   null
+//
+// Sources we handle (in priority order):
+//   1. Native-flow / interactive button click (v2.3.7 "viewOnceMessage →
+//      interactiveResponseMessage → nativeFlowResponseMessage"):
+//         msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson
+//         → { id: "confirm_ORD-xxx", ... }
+//   2. Classic buttonsResponseMessage (older WA clients):
+//         msg.message.buttonsResponseMessage.selectedButtonId
+//   3. Template button reply (template flow):
+//         msg.message.templateButtonReplyMessage.selectedId
+//   4. List reply (in case we ever switch):
+//         msg.message.listResponseMessage.singleSelectReply.selectedRowId
+//   5. Plain text:
+//         msg.message.conversation  or  msg.message.extendedTextMessage.text
+//      Some WA clients reflect a tapped button as plain text = displayText,
+//      so text fallback catches that too via parseConfirmReply.
+// ──────────────────────────────────────────────────────────────────────────
+
+const { parseButtonId } = require('./messageBuilder');
+
+const extractDecision = (msg) => {
     if (!msg || typeof msg !== 'object') return null;
-    // Skip messages we sent
+    // Skip our own outgoing messages
     if (msg?.key?.fromMe) return null;
 
     const m = msg.message || {};
-    // Plain text ("conversation") or extended text with quoted context
-    const text =
-        m.conversation ||
-        m.extendedTextMessage?.text ||
-        // Interactive button reply (in case Meta ever re-enables them)
-        m.buttonsResponseMessage?.selectedDisplayText ||
-        m.buttonsResponseMessage?.selectedButtonId ||
-        m.templateButtonReplyMessage?.selectedDisplayText ||
-        // List reply
-        m.listResponseMessage?.title ||
-        // Poll vote (legacy — still handled if any old polls are out in the wild)
-        m.pollUpdateMessage ? null : null; // poll parsed separately below
 
-    if (typeof text === 'string' && text.trim()) return text.trim();
+    // ── 1. Native-flow interactive response (v2.3.7 shape) ───────────
+    // Evolution wraps the payload; the actual id is in
+    // interactiveResponseMessage.nativeFlowResponseMessage.paramsJson
+    // (a JSON-stringified object with `.id`).
+    const interactive =
+        m.interactiveResponseMessage ||
+        m.viewOnceMessage?.message?.interactiveResponseMessage ||
+        m.ephemeralMessage?.message?.interactiveResponseMessage;
+    if (interactive) {
+        const nf = interactive.nativeFlowResponseMessage || interactive.body;
+        const paramsJson = nf?.paramsJson;
+        if (paramsJson) {
+            try {
+                const parsed = JSON.parse(paramsJson);
+                // paramsJson shape varies by client — look at all likely fields
+                const btnId = parsed?.id || parsed?.button_id || parsed?.buttonId;
+                const decision = parseButtonId(btnId);
+                if (decision) return { source: 'button', decision, rawId: btnId };
+            } catch { /* malformed — fall through */ }
+        }
+        // Some builds include `name: 'quick_reply'` alongside a top-level id
+        const directId = interactive?.id || interactive?.buttonId;
+        const decision = parseButtonId(directId);
+        if (decision) return { source: 'button', decision, rawId: directId };
+    }
+
+    // ── 2. Classic buttonsResponseMessage ─────────────────────────────
+    const btnResp = m.buttonsResponseMessage;
+    if (btnResp) {
+        const id = btnResp.selectedButtonId;
+        const decision = parseButtonId(id);
+        if (decision) return { source: 'button', decision, rawId: id };
+        // Fall back to the display text if the id doesn't match our prefixes
+        const display = btnResp.selectedDisplayText;
+        if (display) return { source: 'text', text: display };
+    }
+
+    // ── 3. Template button reply ──────────────────────────────────────
+    const tpl = m.templateButtonReplyMessage;
+    if (tpl) {
+        const id = tpl.selectedId;
+        const decision = parseButtonId(id);
+        if (decision) return { source: 'button', decision, rawId: id };
+        const display = tpl.selectedDisplayText;
+        if (display) return { source: 'text', text: display };
+    }
+
+    // ── 4. List reply ──────────────────────────────────────────────────
+    const list = m.listResponseMessage;
+    if (list) {
+        const id = list.singleSelectReply?.selectedRowId || list.rowId;
+        const decision = parseButtonId(id);
+        if (decision) return { source: 'button', decision, rawId: id };
+        const title = list.title;
+        if (title) return { source: 'text', text: title };
+    }
+
+    // ── 5. Plain text (conversation / extendedTextMessage) ────────────
+    const text = m.conversation || m.extendedTextMessage?.text;
+    if (typeof text === 'string' && text.trim()) {
+        return { source: 'text', text: text.trim() };
+    }
+
     return null;
 };
 
@@ -245,7 +319,7 @@ exports.handleEvolutionWebhook = async (req, res) => {
             return res.status(200).json({ ok: true, status: cfg.status });
         }
 
-        // ── MESSAGES_UPSERT — look for text YES/NO replies (+ legacy poll votes) ──
+        // ── MESSAGES_UPSERT — button click OR text YES/NO reply (+ legacy poll) ──
         if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
             const messages = Array.isArray(body.data) ? body.data : [body.data].filter(Boolean);
 
@@ -257,17 +331,32 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const phone = phoneFromJid(remoteJid);
                 if (!phone) continue;
 
-                // 1) Prefer plain-text reply (YES/NO etc.)
-                let decision = null; // 'yes' | 'no' | null
-                const replyText = extractReplyText(msg);
-                if (replyText) {
-                    decision = parseConfirmReply(replyText);
+                // 1) Try the rich extractor — recognises button clicks and text
+                //    replies in any of the 5 WhatsApp payload shapes.
+                let decision = null;   // 'yes' | 'no' | null
+                let decisionSource = ''; // 'button' | 'text' | 'poll'
+                let replyTextForHint = '';
+
+                const extracted = extractDecision(msg);
+                if (extracted) {
+                    if (extracted.source === 'button') {
+                        decision = extracted.decision;
+                        decisionSource = 'button';
+                        console.log(`[whatsapp] Button click from ${phone}: ${extracted.rawId} → ${decision}`);
+                    } else if (extracted.source === 'text') {
+                        replyTextForHint = extracted.text;
+                        decision = parseConfirmReply(extracted.text);
+                        if (decision) {
+                            decisionSource = 'text';
+                            console.log(`[whatsapp] Text reply from ${phone}: "${extracted.text}" → ${decision}`);
+                        }
+                    }
                 }
 
-                // 2) Fall back to legacy poll vote if no clear text decision
+                // 2) Legacy poll vote — kept so any old in-flight polls resolve
                 if (!decision) {
                     const pollVote = extractPollVote(msg);
-                    if (pollVote) decision = pollVote;
+                    if (pollVote) { decision = pollVote; decisionSource = 'poll'; }
                 }
 
                 // Match the sent job by phone (new flow) — short-circuits if
@@ -275,13 +364,12 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const job = await markVotedByPhone(phone, decision || 'yes');
                 if (!job) continue;
 
-                // If text reply existed but we couldn't classify it as yes/no,
-                // send a gentle hint so the buyer knows what to type.
-                if (!decision && replyText) {
+                // If the buyer sent *something* but we couldn't decide, nudge them.
+                if (!decision && replyTextForHint) {
                     await sendUnclearReplyHint(phone, job.orderId, job.buyerName);
                     continue;
                 }
-                if (!decision) continue; // no reply text, no poll — ignore
+                if (!decision) continue; // silent message with no useful content
 
                 const isYes = decision === 'yes';
                 const order = await Order.findById(job.order);

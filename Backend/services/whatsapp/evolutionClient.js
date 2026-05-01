@@ -269,6 +269,48 @@ exports.sendPoll = async (number, { name, values, selectableCount = 1 }) => {
     return { messageId, raw: data };
 };
 
+// POST /message/sendButtons/{instance}
+// Evolution v2.3.7 wraps this in a native-flow "viewOnceMessage → interactiveMessage"
+// under the hood, which is the modern WhatsApp format that actually renders
+// tappable reply chips for regular (non-Business-API) linked devices.
+//
+// Payload shape (confirmed against Evolution source, NOT the public OpenAPI docs):
+//   {
+//     number: "923028588506",
+//     title:       "Order #ORD-xxx",
+//     description: "Please confirm...",  // body text shown above buttons
+//     footer:      "Rozare",             // small text below buttons
+//     buttons: [
+//       { type: "reply", displayText: "✅ Yes", id: "confirm_ORD-xxx" },
+//       { type: "reply", displayText: "❌ No",  id: "cancel_ORD-xxx"  }
+//     ]
+//   }
+//
+// Accepts at most 3 reply buttons. When the buyer taps one, WhatsApp delivers
+// it back to us as a plain message (content-type varies by device — see
+// webhookHandler.extractReplyText for the extraction logic).
+exports.sendButtons = async (number, { title, description = '', footer = '', buttons }) => {
+    if (!isConfigured()) throw new Error('Evolution API not configured');
+    if (!Array.isArray(buttons) || buttons.length === 0) {
+        throw new Error('sendButtons: buttons array is required');
+    }
+    const payload = {
+        number,
+        title,
+        description,
+        footer,
+        buttons: buttons.map((b) => ({
+            type: b.type || 'reply',
+            displayText: b.displayText,
+            id: b.id,
+        })),
+        delay: 0,
+    };
+    const { data } = await client().post(`/message/sendButtons/${instanceName()}`, payload);
+    const messageId = data?.key?.id || data?.messageId || data?.id || '';
+    return { messageId, raw: data };
+};
+
 // Register the webhook URL.
 // POST /webhook/set/{instance}
 // Evolution v2.3.7 expects the fields WRAPPED in a `webhook` object —
