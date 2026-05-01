@@ -2,11 +2,25 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
-import { ArrowLeft, Edit, Package, XCircle, Clock, RefreshCw, Truck, CheckCircle } from "lucide-react";
+import { ArrowLeft, Edit, Package, XCircle, Clock, RefreshCw, Truck, CheckCircle, Mail, MessageCircle, AlertCircle } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import Loader from "../common/Loader";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+
+const timeAgo = (dateStr) => {
+    if (!dateStr) return '';
+    const now = new Date();
+    const then = new Date(dateStr);
+    const diffMs = now - then;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+};
 
 const OrderDetail = () => {
     const { currentUser } = useAuth();
@@ -18,18 +32,18 @@ const OrderDetail = () => {
     const { id } = useParams();
 
     const getStatusIcon = (status) => {
-        const icons = { pending: <Clock className="w-4 h-4" />, processing: <RefreshCw className="w-4 h-4" />, shipped: <Truck className="w-4 h-4" />, delivered: <CheckCircle className="w-4 h-4" />, cancelled: <XCircle className="w-4 h-4" /> };
+        const icons = { pending: <Clock className="w-4 h-4" />, confirmed: <CheckCircle className="w-4 h-4" />, processing: <RefreshCw className="w-4 h-4" />, shipped: <Truck className="w-4 h-4" />, delivered: <CheckCircle className="w-4 h-4" />, cancelled: <XCircle className="w-4 h-4" /> };
         return icons[status] || <Package className="w-4 h-4" />;
     };
 
     const getStatusStyle = (status) => {
-        const styles = { pending: { bg: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' }, processing: { bg: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }, shipped: { bg: 'rgba(14, 165, 233, 0.12)', color: 'hsl(200, 80%, 50%)' }, delivered: { bg: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' }, cancelled: { bg: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 55%)' } };
+        const styles = { pending: { bg: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' }, confirmed: { bg: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' }, processing: { bg: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }, shipped: { bg: 'rgba(14, 165, 233, 0.12)', color: 'hsl(200, 80%, 50%)' }, delivered: { bg: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' }, cancelled: { bg: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 55%)' } };
         return styles[status] || { bg: 'rgba(255,255,255,0.08)', color: 'hsl(var(--muted-foreground))' };
     };
 
     const fetchOrderDetail = async () => {
         const token = localStorage.getItem('jwtToken');
-        try { const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/detail/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setOrder(res.data.order); }
+        try { const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/detail/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setOrder(res.data.order); setNewStatus(res.data.order?.orderStatus || 'pending'); }
         catch (error) { toast.error(error.response?.data?.msg || 'Server error'); }
     };
     useEffect(() => { fetchOrderDetail(); }, []);
@@ -101,12 +115,129 @@ const OrderDetail = () => {
                                 {verbPast} by buyer via {viaLabel}
                             </p>
                             <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {new Date(whenIso).toLocaleString()}
+                                {timeAgo(whenIso)} · {new Date(whenIso).toLocaleString()}
                             </p>
                         </div>
                     </div>
                 );
             })()}
+
+            {/* Confirmation Status — channel tracking for seller/admin */}
+            {order?.confirmation && (
+                <div className="mx-4 sm:mx-6 mt-3 glass-inner rounded-xl p-3 sm:p-4">
+                    <h3 className="text-sm font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Confirmation Status</h3>
+                    
+                    {/* Summary line when both channels sent */}
+                    {order.confirmation.emailSentSuccess === true && order.confirmation.whatsappSentSuccess === true && (
+                        <p className="text-xs font-medium mb-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.08)', color: 'hsl(150, 60%, 38%)' }}>
+                            The confirmation message was sent via email and Rozare WhatsApp automation
+                        </p>
+                    )}
+                    {order.confirmation.emailSentSuccess === true && order.confirmation.whatsappSentSuccess === false && (
+                        <p className="text-xs font-medium mb-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(249, 115, 22, 0.08)', color: 'hsl(30, 90%, 45%)' }}>
+                            The confirmation message was sent via email. WhatsApp sending failed.
+                        </p>
+                    )}
+                    {order.confirmation.emailSentSuccess === false && order.confirmation.whatsappSentSuccess === true && (
+                        <p className="text-xs font-medium mb-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(249, 115, 22, 0.08)', color: 'hsl(30, 90%, 45%)' }}>
+                            The confirmation message was sent via Rozare WhatsApp automation. Email sending failed.
+                        </p>
+                    )}
+
+                    <div className="space-y-2">
+                        {/* Email status */}
+                        <div className="flex items-start gap-2">
+                            <Mail className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: order.confirmation.emailSentSuccess === true ? 'hsl(150, 60%, 40%)' : order.confirmation.emailSentSuccess === false ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }} />
+                            <div className="min-w-0 flex-1">
+                                {order.confirmation.emailSentSuccess === true ? (
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(150, 60%, 40%)' }}>
+                                        Email confirmation sent · {timeAgo(order.confirmation.emailSentAt)}
+                                    </p>
+                                ) : order.confirmation.emailSentSuccess === false ? (
+                                    <>
+                                        <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                            Email failed — {order.confirmation.emailError || 'Unknown error'}
+                                        </p>
+                                        <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            The buyer can still confirm via WhatsApp if that channel is active.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Email confirmation: Not sent
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* WhatsApp status */}
+                        <div className="flex items-start gap-2">
+                            <MessageCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: order.confirmation.whatsappSentSuccess === true ? 'hsl(150, 60%, 40%)' : order.confirmation.whatsappSentSuccess === false ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }} />
+                            <div className="min-w-0 flex-1">
+                                {order.confirmation.whatsappSentSuccess === true ? (
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(150, 60%, 40%)' }}>
+                                        WhatsApp confirmation sent · {timeAgo(order.confirmation.whatsappSentAt)}
+                                    </p>
+                                ) : order.confirmation.whatsappSentSuccess === false ? (
+                                    <>
+                                        <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                            WhatsApp failed — {order.confirmation.whatsappError || 'Unknown error'}
+                                        </p>
+                                        <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            You can try sending the confirmation manually via the WhatsApp button on the order list.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        WhatsApp confirmation: Not sent yet (queued or not applicable)
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Buyer response status */}
+                        <div className="flex items-start gap-2 pt-1" style={{ borderTop: '1px solid var(--glass-border-subtle)' }}>
+                            {order.confirmation.confirmedAt ? (
+                                <>
+                                    <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'hsl(150, 60%, 40%)' }} />
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(150, 60%, 40%)' }}>
+                                        Buyer confirmed via {order.confirmation.decidedVia || order.confirmation.confirmedVia || 'unknown'} · {timeAgo(order.confirmation.confirmedAt)}
+                                    </p>
+                                </>
+                            ) : order.confirmation.declinedAt ? (
+                                <>
+                                    <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                        Buyer cancelled via {order.confirmation.decidedVia || order.confirmation.confirmedVia || 'unknown'} · {timeAgo(order.confirmation.declinedAt)}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'hsl(30, 90%, 50%)' }} />
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(30, 90%, 50%)' }}>
+                                        Waiting for buyer response · Confirmation sent {timeAgo(order.confirmation.emailSentAt || order.confirmation.whatsappSentAt || order.createdAt)}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Cancelled from dashboard note */}
+                        {order.confirmation.cancelledFromDashboardAt && (
+                            <div className="flex items-start gap-2 pt-1" style={{ borderTop: '1px solid var(--glass-border-subtle)' }}>
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'hsl(30, 90%, 50%)' }} />
+                                <div>
+                                    <p className="text-xs font-medium" style={{ color: 'hsl(30, 90%, 50%)' }}>
+                                        {order.confirmation.cancelledFromDashboardNote || 'Buyer cancelled from dashboard after confirming via WhatsApp'}
+                                    </p>
+                                    <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Cancelled {timeAgo(order.confirmation.cancelledFromDashboardAt)}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                 {/* Customer Information */}
@@ -237,7 +368,7 @@ const OrderDetail = () => {
                                     <div>
                                         <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Update Order Status</label>
                                         <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="glass-input cursor-pointer font-medium">
-                                            <option value="pending">Pending</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option>
+                                            <option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option>
                                         </select>
                                     </div>
                                     <div className="flex space-x-2">

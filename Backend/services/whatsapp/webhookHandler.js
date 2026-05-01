@@ -23,7 +23,7 @@ const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
-const { findPendingJobByPhone, applyVote } = require('./queue');
+const { findPendingJobByPhone, findPendingJobByOrderId, applyVote } = require('./queue');
 const { parseConfirmReply } = require('./messageBuilder');
 const evolution = require('./evolutionClient');
 
@@ -368,13 +368,21 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     if (pollVote) { decision = pollVote; decisionSource = 'poll'; }
                 }
 
-                // Find the pending job for this buyer WITHOUT changing it.
-                // We'll only persist the vote AFTER confirming the order guard
-                // allows the decision. This prevents the admin dashboard from
-                // showing "declined" when the buyer tapped NO after already
-                // confirming (the old code wrote the flip, then blocked the
-                // order update — leaving the job and order out of sync).
-                const job = await findPendingJobByPhone(phone);
+                // Find the pending job for this buyer.
+                // For button clicks, match by orderId extracted from the button id
+                // for precise matching. Fall back to phone-based matching for text replies.
+                let job;
+                if (decisionSource === 'button' && extracted?.rawId) {
+                    // Extract orderId from button id like "confirm_ORD-1777617105232"
+                    const idParts = extracted.rawId.split('_');
+                    const btnOrderId = idParts.slice(1).join('_'); // everything after first underscore
+                    if (btnOrderId) {
+                        job = await findPendingJobByOrderId(btnOrderId);
+                    }
+                }
+                if (!job) {
+                    job = await findPendingJobByPhone(phone);
+                }
                 if (!job) continue;
 
                 // If the buyer sent *something* but we couldn't decide, nudge them.
@@ -401,12 +409,23 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 // appropriately instead of silently ignoring or (worse)
                 // flipping the order.
 
-                const confirmedViaWA    = !!order.confirmation?.confirmedAt;
-                const declinedViaWA     = !!order.confirmation?.declinedAt;
+                const confirmedViaWA    = !!order.confirmation?.confirmedAt && (order.confirmation?.decidedVia === 'whatsapp' || order.confirmation?.confirmedVia === 'whatsapp');
+                const declinedViaWA     = !!order.confirmation?.declinedAt && (order.confirmation?.decidedVia === 'whatsapp' || order.confirmation?.confirmedVia === 'whatsapp');
                 const decidedViaWA      = confirmedViaWA || declinedViaWA;
-                const cancelledOnSite   = !decidedViaWA && order.orderStatus === 'cancelled';
-                const confirmedOnSite   = !decidedViaWA && ['confirmed', 'processing', 'shipped', 'delivered'].includes(order.orderStatus);
-                const alreadyTerminal   = decidedViaWA || cancelledOnSite || confirmedOnSite;
+                // Order was moved to a late stage by seller/admin — buyer can't override these
+                const inLateStage       = ['processing', 'shipped', 'delivered'].includes(order.orderStatus);
+                // Seller just confirmed it early but buyer hasn't decided yet — buyer CAN still override
+                const sellerConfirmedEarly = order.orderStatus === 'confirmed' && !decidedViaWA && ['manual', 'admin'].includes(order.confirmation?.confirmedVia);
+                // Seller cancelled early but buyer hasn't decided yet — buyer CAN still override
+                const sellerCancelledEarly = order.orderStatus === 'cancelled' && !decidedViaWA && ['manual', 'admin'].includes(order.confirmation?.confirmedVia);
+                const confirmedOnSite   = inLateStage && !decidedViaWA;
+                // Check if buyer already decided via email
+                const decidedViaEmail   = order.confirmation?.confirmedVia === 'email' || order.confirmation?.decidedVia === 'email';
+                const confirmedViaEmail  = decidedViaEmail && !!order.confirmation?.confirmedAt;
+                const declinedViaEmail   = decidedViaEmail && !!order.confirmation?.declinedAt;
+                // NOT terminal if seller just set it early — buyer's decision takes precedence
+                const cancelledOnSite   = order.orderStatus === 'cancelled' && !decidedViaWA && !sellerCancelledEarly && !decidedViaEmail;
+                const alreadyTerminal   = decidedViaWA || cancelledOnSite || confirmedOnSite || decidedViaEmail;
 
                 if (alreadyTerminal) {
                     // ── CASE A: Order was cancelled from the website/app dashboard
@@ -467,6 +486,53 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
+                    // ── CASE: Order was decided via email — inform buyer on WhatsApp ──
+                    if (confirmedViaEmail) {
+                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                        const maskedEmail = order.shippingInfo?.email
+                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
+                            : 'your email';
+                        if (isYes) {
+                            console.log(`[whatsapp] Order ${order.orderId} already confirmed via email; buyer tapped YES on WA`);
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You already confirmed this order via your email (${maskedEmail}). It's being processed! ✅`,
+                                ``,
+                                `No action needed here — we'll keep you updated. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
+                            console.log(`[whatsapp] Order ${order.orderId} already confirmed via email; buyer tapped NO on WA`);
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You already confirmed this order via email. Want to cancel? Visit your dashboard at rozare.com 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        }
+                        continue;
+                    }
+
+                    if (declinedViaEmail) {
+                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                        const maskedEmail = order.shippingInfo?.email
+                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
+                            : 'your email';
+                        if (isYes) {
+                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email; buyer tapped YES on WA`);
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You already cancelled this order via your email (${maskedEmail}). Want to place it again? Visit rozare.com 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
+                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email; buyer also tapped NO on WA — no-op`);
+                        }
+                        continue;
+                    }
+
                     // ── CASE D: Already decided via WhatsApp — same as before ──
                     // Same decision again → silently ignore
                     if ((confirmedViaWA && isYes) || (declinedViaWA && !isYes)) {
@@ -486,25 +552,53 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 }
 
                 // ── First decision — apply it ──
-                if (isYes) {
-                    order.confirmation.confirmedAt = new Date();
-                    order.confirmation.confirmedVia = 'whatsapp';
-                    order.orderStatus = 'confirmed';
-                    await order.save();
-                    // NOW persist the vote on the job (dashboard reads this)
-                    await applyVote(job, 'yes');
-                    await sendResponseMessage(phone, true, order.orderId, order.shippingInfo?.fullName);
-                    notifySellers(order, true);
-                } else {
-                    order.confirmation.declinedAt = new Date();
-                    order.confirmation.confirmedVia = 'whatsapp';
-                    order.orderStatus = 'cancelled';
-                    await order.save();
-                    // NOW persist the vote on the job (dashboard reads this)
-                    await applyVote(job, 'no');
-                    await sendResponseMessage(phone, false, order.orderId, order.shippingInfo?.fullName);
-                    notifySellers(order, false);
+                // Log if this buyer decision overrides a seller's early status change
+                if (sellerConfirmedEarly || sellerCancelledEarly) {
+                    console.log(`[whatsapp] Buyer ${isYes ? 'confirmed' : 'cancelled'} order ${order.orderId} — overriding seller's early ${order.orderStatus} status`);
                 }
+
+                // Use atomic update to prevent race with email confirmation
+                const updateFields = isYes
+                    ? {
+                        'confirmation.confirmedAt': new Date(),
+                        'confirmation.confirmedVia': 'whatsapp',
+                        'confirmation.decidedAt': new Date(),
+                        'confirmation.decidedVia': 'whatsapp',
+                        orderStatus: 'confirmed',
+                    }
+                    : {
+                        'confirmation.declinedAt': new Date(),
+                        'confirmation.confirmedVia': 'whatsapp',
+                        'confirmation.decidedAt': new Date(),
+                        'confirmation.decidedVia': 'whatsapp',
+                        orderStatus: 'cancelled',
+                    };
+
+                const updatedOrder = await Order.findOneAndUpdate(
+                    { 
+                        _id: order._id,
+                        // Guard: only apply if no one else decided yet via a real channel
+                        $or: [
+                            { 'confirmation.decidedVia': null },
+                            { 'confirmation.decidedVia': { $exists: false } },
+                            // Allow override if seller set it early (manual/admin)
+                            { 'confirmation.decidedVia': { $in: ['manual', 'admin'] } },
+                        ]
+                    },
+                    { $set: updateFields },
+                    { new: true }
+                );
+
+                if (!updatedOrder) {
+                    // Race lost — someone decided via email or another WA tap between our read and write
+                    console.log(`[whatsapp] Race condition: order ${order.orderId} was decided by another path between read and atomic write`);
+                    continue;
+                }
+
+                // NOW persist the vote on the job (dashboard reads this)
+                await applyVote(job, isYes ? 'yes' : 'no');
+                await sendResponseMessage(phone, isYes, updatedOrder.orderId, updatedOrder.shippingInfo?.fullName);
+                notifySellers(updatedOrder, isYes);
             }
             return res.status(200).json({ ok: true });
         }

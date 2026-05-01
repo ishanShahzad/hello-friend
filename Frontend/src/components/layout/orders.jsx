@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle } from 'lucide-react';
-import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer, getConfirmationSourceLabel } from '../../utils/whatsapp';
+import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer, isOrderDecidedByBuyer, getConfirmationSourceLabel } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
@@ -42,13 +42,14 @@ const OrderManagement = () => {
     useEffect(() => { fetchOrders(); }, [searchTerm, statusFilter, paymentFilter, dateRange]);
 
     const getStatusIcon = (status) => {
-        const icons = { pending: <Clock className="w-3.5 h-3.5" />, processing: <RefreshCw className="w-3.5 h-3.5" />, shipped: <Truck className="w-3.5 h-3.5" />, delivered: <CheckCircle className="w-3.5 h-3.5" />, cancelled: <XCircle className="w-3.5 h-3.5" /> };
+        const icons = { pending: <Clock className="w-3.5 h-3.5" />, confirmed: <CheckCircle className="w-3.5 h-3.5" />, processing: <RefreshCw className="w-3.5 h-3.5" />, shipped: <Truck className="w-3.5 h-3.5" />, delivered: <CheckCircle className="w-3.5 h-3.5" />, cancelled: <XCircle className="w-3.5 h-3.5" /> };
         return icons[status] || <Package className="w-3.5 h-3.5" />;
     };
 
     const getStatusStyle = (status) => {
         const styles = {
             pending: { bg: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' },
+            confirmed: { bg: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' },
             processing: { bg: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' },
             shipped: { bg: 'rgba(14, 165, 233, 0.12)', color: 'hsl(200, 80%, 50%)' },
             delivered: { bg: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' },
@@ -200,11 +201,20 @@ const OrderManagement = () => {
                                                                 </button>
                                                             );
                                                         })()}
-                                                        {isOrderConfirmedByBuyer(order) && (
-                                                            <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                                                                <CheckCircle size={10} /> Confirmed via email
-                                                            </span>
-                                                        )}
+                                                        {(() => {
+                                                            const label = getConfirmationSourceLabel(order);
+                                                            if (!label) return null;
+                                                            const isCancel = label.toLowerCase().includes('cancel');
+                                                            return (
+                                                                <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap"
+                                                                    style={isCancel
+                                                                        ? { background: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239, 68, 68, 0.25)' }
+                                                                        : { background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }
+                                                                    }>
+                                                                    {isCancel ? <XCircle size={10} /> : <CheckCircle size={10} />} {label}
+                                                                </span>
+                                                            );
+                                                        })()}
                                                         <Link to={`/${currentUser?.role === 'seller' ? 'seller' : 'admin'}-dashboard/order/${order._id}`}>
                                                             <motion.span whileHover={{ x: 3 }} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'hsl(var(--primary))' }}>
                                                                 View <ArrowRight size={12} />
@@ -238,13 +248,22 @@ const OrderManagement = () => {
                                                         {(order.orderStatus || 'unknown').charAt(0).toUpperCase() + (order.orderStatus || 'unknown').slice(1)}
                                                     </span>
                                                 </div>
-                                                {isOrderConfirmedByBuyer(order) && (
-                                                    <div className="mb-2">
-                                                        <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                                                            <CheckCircle size={10} /> Confirmed via email
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                {(() => {
+                                                    const label = getConfirmationSourceLabel(order);
+                                                    if (!label) return null;
+                                                    const isCancel = label.toLowerCase().includes('cancel');
+                                                    return (
+                                                        <div className="mb-2">
+                                                            <span className="text-[10px] font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                                                                style={isCancel
+                                                                    ? { background: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239, 68, 68, 0.25)' }
+                                                                    : { background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 38%)', border: '1px solid rgba(16, 185, 129, 0.3)' }
+                                                                }>
+                                                                {isCancel ? <XCircle size={10} /> : <CheckCircle size={10} />} {label}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(order.createdAt).toLocaleDateString()}</span>

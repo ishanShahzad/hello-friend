@@ -110,7 +110,7 @@ export const isOrderHandledByWhatsAppAutomation = (order) =>
 // Returns '' when nothing should be displayed.
 export const getConfirmationSourceLabel = (order) => {
   if (!order?.confirmation) return '';
-  const via = order.confirmation.confirmedVia;
+  const via = order.confirmation.decidedVia || order.confirmation.confirmedVia;
   const confirmed = !!order.confirmation.confirmedAt;
   const declined = !!order.confirmation.declinedAt;
   const cancelledFromDash = !!order.confirmation.cancelledFromDashboardAt;
@@ -124,6 +124,8 @@ export const getConfirmationSourceLabel = (order) => {
   const action = confirmed ? 'Confirmed' : 'Cancelled';
   if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;
   if (via === 'email')    return `${action} by buyer via email link`;
-  if (via === 'manual')   return `${action} manually`;
+  if (via === 'manual')   return `${action} manually by seller`;
+  if (via === 'admin')    return `${action} by admin`;
+  if (via === 'dashboard') return `${action} by buyer from dashboard`;
   return `${action} by buyer`;
 };

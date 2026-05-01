@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: evolution-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: evolution
+      MONGO_INITDB_ROOT_PASSWORD: evolution_secure_password_2024
+      MONGO_INITDB_DATABASE: evolution
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - evolution-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evolution-api:
+    image: atendai/evolution-api:v2.2.3
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Server Configuration
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      
+      # Authentication
+      AUTHENTICATION_API_KEY: rozareplatform
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+      
+      # Database Configuration (MongoDB)
+      DATABASE_ENABLED: "true"
+      DATABASE_CONNECTION_URI: mongodb://evolution:evolution_secure_password_2024@mongodb:27017/evolution?authSource=admin
+      DATABASE_CONNECTION_DB_PREFIX_NAME: evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      
+      # Cache Configuration
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      
+      # Session Configuration
+      CONFIG_SESSION_PHONE_CLIENT: Rozare
+      CONFIG_SESSION_PHONE_NAME: Chrome
+      
+      # QR Code Configuration
+      QRCODE_LIMIT: 30
+      QRCODE_COLOR: "#000000"
+      
+      # Logging
+      LOG_LEVEL: INFO
+      LOG_COLOR: "true"
+      
+      # Instance Management
+      DEL_INSTANCE: "false"
+      
+      # Webhook Configuration
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      
+      # v2.3.7 Specific Settings
+      LANGUAGE: en
+      
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
+    driver: local
+  evolution_instances:
+    driver: local
+  evolution_store:
+    driver: local
+
+networks:
+  evolution-network:
+    driver: bridge

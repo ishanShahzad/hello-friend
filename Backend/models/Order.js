@@ -107,13 +107,29 @@ const orderSchema = mongoose.Schema(
             token: { type: String, default: null, index: true },
             tokenExpiresAt: { type: Date, default: null },
             confirmedAt: { type: Date, default: null },
-            confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', null], default: null },
+            // NOTE: `confirmedVia` is dual-purpose — it tracks the channel/actor for BOTH confirmations
+            // and declines. When a buyer declines, confirmedVia still records who initiated the decision
+            // (e.g., 'whatsapp' for a WhatsApp decline, 'email' for an email decline). The actual
+            // action (confirm vs decline) is determined by checking confirmedAt vs declinedAt.
+            // The `decidedVia` field below is more semantically clear for new code.
+            confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', 'dashboard', 'admin', null], default: null },
             declinedAt: { type: Date, default: null },
             voteChangeCount: { type: Number, default: 0 },
             lockMessageSent: { type: Boolean, default: false },
             // Populated when buyer confirms on WhatsApp then later cancels from their dashboard
             cancelledFromDashboardAt: { type: Date, default: null },
             cancelledFromDashboardNote: { type: String, default: '' },
+            // Email send tracking
+            emailSentAt: { type: Date, default: null },
+            emailSentSuccess: { type: Boolean, default: null }, // null=not attempted, true/false
+            emailError: { type: String, default: '' },
+            // WhatsApp send tracking
+            whatsappSentAt: { type: Date, default: null },
+            whatsappSentSuccess: { type: Boolean, default: null },
+            whatsappError: { type: String, default: '' },
+            // Who confirmed/declined first and when
+            decidedAt: { type: Date, default: null },
+            decidedVia: { type: String, enum: ['email', 'whatsapp', 'dashboard', 'admin', 'manual', null], default: null },
         }
     },
     { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
@@ -137,9 +153,11 @@ orderSchema.virtual('confirmationSourceLabel').get(function () {
     if (!via) return '';
     const action = confirmed ? 'Confirmed' : declined ? 'Cancelled' : '';
     if (!action) return '';
-    if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;
-    if (via === 'email')    return `${action} by buyer via email confirmation link`;
-    if (via === 'manual')   return `${action} manually`;
+    if (via === 'whatsapp')  return `${action} by buyer via Rozare WhatsApp automation`;
+    if (via === 'email')     return `${action} by buyer via email confirmation link`;
+    if (via === 'manual')    return `${action} manually`;
+    if (via === 'dashboard') return `${action} by buyer from dashboard`;
+    if (via === 'admin')     return `${action} by admin`;
     return `${action} by buyer`;
 });
 

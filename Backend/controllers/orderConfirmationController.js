@@ -26,6 +26,9 @@ const sanitizeOrderForPublic = (order) => ({
         state: order.shippingInfo.state,
         postalCode: order.shippingInfo.postalCode,
         country: order.shippingInfo.country,
+        maskedPhone: order.shippingInfo?.phone
+            ? '••••' + order.shippingInfo.phone.slice(-4)
+            : null,
     },
     orderSummary: order.orderSummary,
     paymentMethod: order.paymentMethod,
@@ -37,6 +40,16 @@ const sanitizeOrderForPublic = (order) => ({
         expired: order.confirmation?.tokenExpiresAt
             ? new Date(order.confirmation.tokenExpiresAt) < new Date()
             : false,
+        emailSentAt: order.confirmation?.emailSentAt || null,
+        emailSentSuccess: order.confirmation?.emailSentSuccess ?? null,
+        emailError: order.confirmation?.emailError || '',
+        whatsappSentAt: order.confirmation?.whatsappSentAt || null,
+        whatsappSentSuccess: order.confirmation?.whatsappSentSuccess ?? null,
+        whatsappError: order.confirmation?.whatsappError || '',
+        cancelledFromDashboardAt: order.confirmation?.cancelledFromDashboardAt || null,
+        cancelledFromDashboardNote: order.confirmation?.cancelledFromDashboardNote || '',
+        decidedAt: order.confirmation?.decidedAt || null,
+        decidedVia: order.confirmation?.decidedVia || null,
     },
     orderStatus: order.orderStatus,
 });
@@ -58,34 +71,62 @@ exports.confirmOrder = async (req, res) => {
     const { token } = req.params;
     if (!token || token.length < 32) return res.status(400).json({ msg: 'Invalid token' });
     try {
+        // First, read the order to check its current state
         const order = await Order.findOne({ 'confirmation.token': token });
         if (!order) return res.status(404).json({ msg: 'Order not found' });
 
+        // Already confirmed — return current state (idempotent)
         if (order.confirmation?.confirmedAt) {
             return res.status(200).json({ msg: 'Already confirmed', order: sanitizeOrderForPublic(order) });
         }
+        // Already declined — return current state for cross-channel awareness
         if (order.confirmation?.declinedAt) {
-            return res.status(409).json({ msg: 'Order was declined' });
+            return res.status(200).json({ msg: 'Already declined', order: sanitizeOrderForPublic(order) });
         }
         if (order.confirmation?.tokenExpiresAt && new Date(order.confirmation.tokenExpiresAt) < new Date()) {
             return res.status(410).json({ msg: 'Confirmation link expired' });
         }
 
-        order.confirmation.confirmedAt = new Date();
-        order.confirmation.confirmedVia = 'email';
-        order.orderStatus = 'confirmed';
-        await order.save();
+        // Atomic update: only succeeds if decidedAt is still null (no one else decided first)
+        const updated = await Order.findOneAndUpdate(
+            { 
+                'confirmation.token': token, 
+                'confirmation.decidedAt': null  // guard: no decision yet
+            },
+            {
+                $set: {
+                    'confirmation.confirmedAt': new Date(),
+                    'confirmation.confirmedVia': 'email',
+                    'confirmation.decidedAt': new Date(),
+                    'confirmation.decidedVia': 'email',
+                    orderStatus: 'confirmed',
+                }
+            },
+            { new: true }
+        );
+
+        if (!updated) {
+            // Someone else decided between our read and write — re-read for fresh state
+            const freshOrder = await Order.findOne({ 'confirmation.token': token });
+            if (freshOrder) {
+                return res.status(200).json({ 
+                    msg: freshOrder.confirmation?.confirmedAt ? 'Already confirmed' : 'Already declined', 
+                    order: sanitizeOrderForPublic(freshOrder) 
+                });
+            }
+            return res.status(404).json({ msg: 'Order not found' });
+        }
 
         // Notify sellers of the products in this order via email + mobile push
         try {
-            const productIds = order.orderItems.map(i => i.productId);
+            const productIds = updated.orderItems.map(i => i.productId);
             const products = await Product.find({ _id: { $in: productIds } });
             const sellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
-            const buyerName = order.shippingInfo?.fullName || 'A buyer';
+            const buyerName = updated.shippingInfo?.fullName || 'A buyer';
             for (const sellerId of sellerIds) {
                 const seller = await User.findById(sellerId);
                 if (seller?.email) {
-                    const data = sellerOrderConfirmedByBuyerEmail(order, seller.username);
+                    const data = sellerOrderConfirmedByBuyerEmail(updated, seller.username);
                     sendEmail({ to: seller.email, ...data }).catch(e =>
                         console.error('seller confirm email failed:', e.message)
                     );
@@ -93,12 +134,12 @@ exports.confirmOrder = async (req, res) => {
                 // Mobile push to seller
                 sendPushToUser(sellerId, {
                     title: 'Buyer confirmed an order',
-                    body: `${buyerName} confirmed order ${order.orderId} via email — ready to process.`,
+                    body: `${buyerName} confirmed order ${updated.orderId} via email — ready to process.`,
                     channelId: 'seller',
                     data: {
                         type: 'order_confirmed_by_buyer',
-                        orderId: order.orderId,
-                        orderObjectId: order._id?.toString(),
+                        orderId: updated.orderId,
+                        orderObjectId: updated._id?.toString(),
                     },
                 }).catch(e => console.error('seller push failed:', e.message));
             }
@@ -106,7 +147,7 @@ exports.confirmOrder = async (req, res) => {
             console.error('Failed to notify seller of buyer confirmation:', notifyErr.message);
         }
 
-        return res.status(200).json({ msg: 'Order confirmed', order: sanitizeOrderForPublic(order) });
+        return res.status(200).json({ msg: 'Order confirmed', order: sanitizeOrderForPublic(updated) });
     } catch (err) {
         console.error('confirmOrder error:', err.message);
         return res.status(500).json({ msg: 'Server error' });
@@ -120,18 +161,73 @@ exports.declineOrder = async (req, res) => {
         const order = await Order.findOne({ 'confirmation.token': token });
         if (!order) return res.status(404).json({ msg: 'Order not found' });
 
-        if (order.confirmation?.confirmedAt) {
-            return res.status(409).json({ msg: 'Order already confirmed' });
-        }
+        // Already declined — idempotent
         if (order.confirmation?.declinedAt) {
             return res.status(200).json({ msg: 'Already declined', order: sanitizeOrderForPublic(order) });
         }
 
-        order.confirmation.declinedAt = new Date();
-        order.orderStatus = 'cancelled';
-        await order.save();
+        // If order was confirmed via WhatsApp and buyer now wants to cancel via email,
+        // allow it — track it as a cross-channel cancellation
+        if (order.confirmation?.confirmedAt && order.confirmation?.confirmedVia === 'whatsapp') {
+            // Use atomic update to prevent race
+            const updated = await Order.findOneAndUpdate(
+                { 
+                    'confirmation.token': token,
+                    'confirmation.confirmedVia': 'whatsapp', // guard
+                    'confirmation.cancelledFromDashboardAt': null, // not already cancelled
+                },
+                {
+                    $set: {
+                        'confirmation.cancelledFromDashboardAt': new Date(),
+                        'confirmation.cancelledFromDashboardNote': 
+                            'Order was confirmed by buyer via WhatsApp, but buyer changed their mind and cancelled from the email confirmation page.',
+                        orderStatus: 'cancelled',
+                    }
+                },
+                { new: true }
+            );
+            if (!updated) {
+                const freshOrder = await Order.findOne({ 'confirmation.token': token });
+                return res.status(200).json({ msg: 'Order already processed', order: sanitizeOrderForPublic(freshOrder || order) });
+            }
+            return res.status(200).json({ msg: 'Order cancelled', order: sanitizeOrderForPublic(updated) });
+        }
 
-        return res.status(200).json({ msg: 'Order declined', order: sanitizeOrderForPublic(order) });
+        // Already confirmed via another channel — return current state
+        if (order.confirmation?.confirmedAt) {
+            return res.status(200).json({ msg: 'Already confirmed', order: sanitizeOrderForPublic(order) });
+        }
+
+        // Atomic decline: only succeeds if decidedAt is still null
+        const updated = await Order.findOneAndUpdate(
+            { 
+                'confirmation.token': token, 
+                'confirmation.decidedAt': null  // guard: no decision yet
+            },
+            {
+                $set: {
+                    'confirmation.declinedAt': new Date(),
+                    'confirmation.confirmedVia': 'email', // tracks decision channel (dual-purpose field)
+                    'confirmation.decidedAt': new Date(),
+                    'confirmation.decidedVia': 'email',
+                    orderStatus: 'cancelled',
+                }
+            },
+            { new: true }
+        );
+
+        if (!updated) {
+            const freshOrder = await Order.findOne({ 'confirmation.token': token });
+            if (freshOrder) {
+                return res.status(200).json({
+                    msg: freshOrder.confirmation?.confirmedAt ? 'Already confirmed' : 'Already declined',
+                    order: sanitizeOrderForPublic(freshOrder)
+                });
+            }
+            return res.status(404).json({ msg: 'Order not found' });
+        }
+
+        return res.status(200).json({ msg: 'Order declined', order: sanitizeOrderForPublic(updated) });
     } catch (err) {
         console.error('declineOrder error:', err.message);
         return res.status(500).json({ msg: 'Server error' });

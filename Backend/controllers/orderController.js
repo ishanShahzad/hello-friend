@@ -183,8 +183,17 @@ exports.placeOrder = async (req, res) => {
                 const emailData = orderConfirmationEmail(newOrder);
                 await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
             }
+            // Track email send success
+            newOrder.confirmation.emailSentAt = new Date();
+            newOrder.confirmation.emailSentSuccess = true;
+            await newOrder.save();
         } catch (emailErr) {
             console.error('Failed to send order confirmation email:', emailErr.message);
+            // Track email send failure
+            newOrder.confirmation.emailSentAt = new Date();
+            newOrder.confirmation.emailSentSuccess = false;
+            newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
+            await newOrder.save();
         }
 
         // Send new order notification to each seller
@@ -476,34 +485,40 @@ exports.updateStatus = async (req, res) => {
                 return res.status(403).json({ msg: 'You can only update orders containing your products' })
             }
             
-            // Sellers cannot cancel orders - only admin and customers can
-            if (newStatus === 'cancelled') {
-                return res.status(403).json({ msg: 'Only customers and admins can cancel orders. You can update the status to other values.' })
+            // Sellers can set confirmed and cancelled, but not if order is already shipped or delivered
+            if (newStatus === 'cancelled' && ['shipped', 'delivered'].includes(existingOrder.orderStatus)) {
+                return res.status(403).json({ msg: 'Cannot cancel an order that is already shipped or delivered.' })
             }
         }
 
-        let order
-        if (newStatus !== 'delivered') {
-            order = await Order.findByIdAndUpdate(_id, { $set: { orderStatus: newStatus } })
-        }
-        else {
-            order = await Order.findByIdAndUpdate(_id,
-                {
-                    $set: {
-                        orderStatus: newStatus,
-                        isPaid: true,
-                    }
-                },
-            )
+        // Track confirmation fields when seller/admin explicitly sets confirmed/cancelled
+        // Only if the BUYER hasn't already made a decision
+        const buyerAlreadyDecided = !!(existingOrder.confirmation?.confirmedAt || existingOrder.confirmation?.declinedAt);
+        
+        if (newStatus === 'confirmed' && !buyerAlreadyDecided) {
+            existingOrder.confirmation = existingOrder.confirmation || {};
+            existingOrder.confirmation.confirmedAt = new Date();
+            existingOrder.confirmation.confirmedVia = role === 'admin' ? 'admin' : 'manual';
+            existingOrder.confirmation.decidedAt = new Date();
+            existingOrder.confirmation.decidedVia = role === 'admin' ? 'admin' : 'manual';
+        } else if (newStatus === 'cancelled' && !buyerAlreadyDecided) {
+            existingOrder.confirmation = existingOrder.confirmation || {};
+            existingOrder.confirmation.declinedAt = new Date();
+            existingOrder.confirmation.confirmedVia = role === 'admin' ? 'admin' : 'manual'; // tracks who initiated the decision
+            existingOrder.confirmation.decidedAt = new Date();
+            existingOrder.confirmation.decidedVia = role === 'admin' ? 'admin' : 'manual';
         }
 
-        await order.save()
+        existingOrder.orderStatus = newStatus;
+        if (newStatus === 'delivered') {
+            existingOrder.isPaid = true;
+        }
+        await existingOrder.save();
 
         // Send status update email
         try {
-            const updatedOrder = await Order.findById(_id);
-            const emailData = orderStatusUpdateEmail(updatedOrder, newStatus);
-            await sendEmail({ to: updatedOrder.shippingInfo.email, ...emailData });
+            const emailData = orderStatusUpdateEmail(existingOrder, newStatus);
+            await sendEmail({ to: existingOrder.shippingInfo.email, ...emailData });
         } catch (emailErr) {
             console.error('Failed to send status update email:', emailErr.message);
         }

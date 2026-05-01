@@ -118,6 +118,11 @@ const processOne = async () => {
             job.lastError = `Phone ${job.phone} is not a WhatsApp account. Verify the number has country code (e.g. 923001234567 for Pakistan) and that WhatsApp is installed.`;
             job.attempts = (job.attempts || 0) + 1;
             await job.save();
+            // Track WhatsApp failure on the Order
+            order.confirmation.whatsappSentAt = new Date();
+            order.confirmation.whatsappSentSuccess = false;
+            order.confirmation.whatsappError = job.lastError;
+            await order.save();
             console.warn(`[whatsapp] skip order ${order.orderId} — ${job.phone} is not on WhatsApp`);
             return;
         }
@@ -175,6 +180,11 @@ const processOne = async () => {
         job.attempts = (job.attempts || 0) + 1;
         await job.save();
 
+        // Track WhatsApp send success on the Order
+        order.confirmation.whatsappSentAt = new Date();
+        order.confirmation.whatsappSentSuccess = true;
+        await order.save();
+
         console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone} (${strategy})`);
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
@@ -201,6 +211,22 @@ const processOne = async () => {
             job.nextAttemptAt = new Date(Date.now() + backoff);
         }
         await job.save();
+
+        // Track WhatsApp send failure on the Order (only on final failure)
+        if (failedFinal) {
+            try {
+                const order = await Order.findById(job.order);
+                if (order) {
+                    order.confirmation.whatsappSentAt = new Date();
+                    order.confirmation.whatsappSentSuccess = false;
+                    order.confirmation.whatsappError = job.lastError || 'WhatsApp send failed';
+                    await order.save();
+                }
+            } catch (trackErr) {
+                console.error('[whatsapp] Failed to track WA send failure on order:', trackErr.message);
+            }
+        }
+
         console.error(`[whatsapp] send failed (attempt ${attempts}, status=${status}):`, job.lastError);
     }
 };
@@ -248,6 +274,14 @@ exports.findPendingJobByPhone = async (phone) => {
         phone,
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     }).sort({ createdAt: -1 });
+};
+
+// Returns the pending/voted job for a specific orderId (button click matching).
+exports.findPendingJobByOrderId = async (orderId) => {
+    return WhatsAppPendingMessage.findOne({
+        orderId,
+        status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
+    });
 };
 
 // Persist the buyer's decision on the job document.
