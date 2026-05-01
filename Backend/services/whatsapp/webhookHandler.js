@@ -61,15 +61,24 @@ const sendResponseMessage = async (phone, isConfirmed, orderId, buyerName) => {
     }
 };
 
-const sendLockedMessage = async (phone, orderId, buyerName) => {
+const sendLockedMessage = async (phone, orderId, buyerName, prevDecision = '') => {
     try {
         const firstName = buyerName?.split(' ')[0] || 'there';
+        // prevDecision is 'confirmed' | 'cancelled' | '' — describe the
+        // locked-in state to the buyer so they know why tapping the other
+        // button seems to do nothing.
+        const prevLine = prevDecision === 'confirmed'
+            ? `You already *confirmed* this order — we're processing it now. ✅`
+            : prevDecision === 'cancelled'
+                ? `You already *cancelled* this order. ❌`
+                : `Your decision for order *#${orderId}* is now locked. 🔒`;
+
         const msg = [
             `Hey ${firstName}! 👋`,
             ``,
-            `Your decision for order *#${orderId}* is now locked. 🔒`,
+            prevLine,
             ``,
-            `Need help? Contact our support team and they'll sort it out for you. 💙`,
+            `Need to change something? Please contact our support team — they'll sort it out for you. 💙`,
         ].join('\n');
         await evolution.sendText(phone, msg);
     } catch (err) {
@@ -375,39 +384,54 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const order = await Order.findById(job.order);
                 if (!order) continue;
 
-                // ── Vote-change & duplicate handling (unchanged from poll flow) ──
+                // ── Once the buyer decides, that decision is FINAL. ──
+                //
+                // WhatsApp's UI greys out the button the buyer just tapped,
+                // but the OTHER button stays active (standard WA client
+                // behavior — we can't change that). So a buyer could still
+                // tap the opposite button after deciding. This guard stops
+                // the second tap from flipping the order.
+                //
+                // The buyer gets a friendly "your decision is already
+                // locked" reply ONCE (we track lockMessageSent so we don't
+                // spam them if they keep tapping).
                 const alreadyConfirmed = !!order.confirmation?.confirmedAt;
-                const alreadyDeclined = !!order.confirmation?.declinedAt;
+                const alreadyDeclined  = !!order.confirmation?.declinedAt;
+                const alreadyDecided   = alreadyConfirmed || alreadyDeclined;
 
-                if (!order.confirmation.voteChangeCount) {
-                    order.confirmation.voteChangeCount = 0;
-                }
-                const MAX_VOTE_CHANGES = 1;
-
-                // User is changing their decision
-                if ((alreadyConfirmed && !isYes) || (alreadyDeclined && isYes)) {
-                    if (order.confirmation.voteChangeCount >= MAX_VOTE_CHANGES) {
-                        console.log(`[whatsapp] Vote-change limit reached for order ${order.orderId}. Blocking.`);
-                        if (!order.confirmation.lockMessageSent) {
-                            await sendLockedMessage(phone, order.orderId, order.shippingInfo?.fullName);
-                            order.confirmation.lockMessageSent = true;
-                            await order.save();
-                        }
+                if (alreadyDecided) {
+                    // Same decision again → silently ignore (happens if WA
+                    // re-delivers the same event, or buyer retypes 'yes').
+                    if ((alreadyConfirmed && isYes) || (alreadyDeclined && !isYes)) {
+                        console.log(`[whatsapp] Duplicate ${isYes ? 'yes' : 'no'} for order ${order.orderId} — ignored`);
                         continue;
                     }
-                    console.log(`[whatsapp] Vote change #${order.confirmation.voteChangeCount + 1} for order ${order.orderId}: ${isYes ? 'confirm' : 'cancel'}`);
-                    order.confirmation.voteChangeCount += 1;
-                    order.confirmation.confirmedAt = null;
-                    order.confirmation.declinedAt = null;
-                }
 
-                // Duplicate (same decision again)
-                if ((alreadyConfirmed && isYes) || (alreadyDeclined && !isYes)) {
-                    console.log(`[whatsapp] Duplicate decision ignored for order ${order.orderId}`);
+                    // Different decision (flip attempt) → BLOCK.
+                    const prevDecision = alreadyConfirmed ? 'confirmed' : 'cancelled';
+                    const newDecision  = isYes ? 'confirm' : 'cancel';
+                    console.log(
+                        `[whatsapp] Order ${order.orderId} already ${prevDecision}; blocking flip to ${newDecision}`
+                    );
+
+                    // Send the "decision locked" reminder once — the
+                    // buyer's WhatsApp won't visually disable the second
+                    // button, but at least they'll understand why tapping
+                    // it does nothing.
+                    if (!order.confirmation.lockMessageSent) {
+                        await sendLockedMessage(
+                            phone,
+                            order.orderId,
+                            order.shippingInfo?.fullName,
+                            prevDecision,
+                        );
+                        order.confirmation.lockMessageSent = true;
+                        await order.save();
+                    }
                     continue;
                 }
 
-                // ── Apply decision ──
+                // ── First decision — apply it ──
                 if (isYes) {
                     order.confirmation.confirmedAt = new Date();
                     order.confirmation.confirmedVia = 'whatsapp';
