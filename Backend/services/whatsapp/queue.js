@@ -121,38 +121,34 @@ const processOne = async () => {
             return;
         }
 
-        // ── Button-first flow ──
-        // Send an interactive two-button message ("Confirm" / "Cancel").
-        // If the button API fails for any reason (rare — Evolution/WhatsApp
-        // outage, exotic region, etc.), fall back to a plain text YES/NO
-        // message so the buyer is never stuck.
-        const buttons = buildOrderButtonsPayload(order);
-        let sendRes;
-        let usedFallback = false;
-        try {
-            sendRes = await evolution.sendButtons(job.phone, buttons);
-        } catch (btnErr) {
-            console.warn(
-                `[whatsapp] sendButtons failed for order ${order.orderId}, falling back to text:`,
-                btnErr.response?.data || btnErr.message
-            );
-            usedFallback = true;
-            const text = buildOrderConfirmationMessage(order);
-            sendRes = await evolution.sendText(job.phone, text);
-        }
+        // ── Plain-text YES/NO flow (reliable on all WhatsApp clients) ──
+        //
+        // We tried Evolution's native-flow buttons (viewOnceMessage →
+        // interactiveMessage → nativeFlowMessage). API returns 200 and the
+        // Evolution DB row gets created, but the messages stay PENDING
+        // forever and WhatsApp never actually delivers them to the buyer's
+        // device. This matches upstream bugs #2390 and #2404 and is Meta's
+        // current policy: native-flow interactive messages are gated to
+        // WhatsApp Cloud API / Business Solutions Provider accounts. Regular
+        // Baileys-linked devices can POST them to Evolution but they die
+        // silently in the relay.
+        //
+        // Plain text is the ONLY message type that reliably delivers today.
+        // Buyers reply "yes" / "no" / "confirm" / "cancel" (or Roman-Urdu
+        // equivalents, digits "1"/"2", etc.) and parseConfirmReply maps
+        // them to a decision. Unclear replies get a polite nudge.
+        const text = buildOrderConfirmationMessage(order);
+        const sendRes = await evolution.sendText(job.phone, text);
         await incrementSentCounter();
 
         job.summaryMessageId = sendRes.messageId || '';
-        job.pollMessageId = ''; // not used in the button flow — match by phone instead
+        job.pollMessageId = ''; // not used — match by phone in the webhook
         job.status = 'sent';
         job.sentAt = new Date();
         job.attempts = (job.attempts || 0) + 1;
         await job.save();
 
-        console.log(
-            `[whatsapp] sent order ${order.orderId} → ${job.phone}` +
-            (usedFallback ? ' (text fallback)' : ' (buttons)')
-        );
+        console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone}`);
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
         const status = err.response?.status;
