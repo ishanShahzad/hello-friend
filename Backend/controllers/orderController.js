@@ -635,19 +635,38 @@ exports.cancelOrder = async (req, res) => {
             return res.status(403).json({ msg: 'Sellers cannot cancel orders. Only customers and admins can cancel orders.' })
         }
         
-        const order = await Order.findByIdAndUpdate(_id, { $set: { orderStatus: 'cancelled' } })
+        const order = await Order.findById(_id);
         if (!order) return res.status(404).json({ msg: 'Order not found' })
+
+        // Track whether the buyer is overriding a prior WhatsApp confirmation.
+        // This helps the seller see a clear note:
+        //   "Order was confirmed via WhatsApp but buyer changed their mind
+        //    and cancelled from their dashboard."
+        const wasConfirmedViaWhatsApp = !!(
+            order.confirmation?.confirmedAt &&
+            order.confirmation?.confirmedVia === 'whatsapp'
+        );
+
+        order.orderStatus = 'cancelled';
+
+        if (wasConfirmedViaWhatsApp) {
+            // Mark that the buyer retracted their WhatsApp confirmation
+            order.confirmation.cancelledFromDashboardAt = new Date();
+            order.confirmation.cancelledFromDashboardNote =
+                'Order was confirmed by buyer via Rozare WhatsApp automation, but buyer changed their mind and cancelled from their account dashboard.';
+        }
+
+        await order.save();
         
         // Send cancellation email
         try {
-            const cancelledOrder = await Order.findById(_id);
-            const emailData = orderStatusUpdateEmail(cancelledOrder, 'cancelled');
-            await sendEmail({ to: cancelledOrder.shippingInfo.email, ...emailData });
+            const emailData = orderStatusUpdateEmail(order, 'cancelled');
+            await sendEmail({ to: order.shippingInfo.email, ...emailData });
         } catch (emailErr) {
             console.error('Failed to send cancellation email:', emailErr.message);
         }
         
-        res.status(200).json({ msg: 'Order cancelled successfully.', order: order })
+        res.status(200).json({ msg: 'Order cancelled successfully.', order })
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server error while cancelling order' })

@@ -113,6 +113,13 @@ export const getConfirmationSourceLabel = (order) => {
   const via = order.confirmation.confirmedVia;
   const confirmed = !!order.confirmation.confirmedAt;
   const declined = !!order.confirmation.declinedAt;
+  const cancelledFromDash = !!order.confirmation.cancelledFromDashboardAt;
+
+  // Special: WhatsApp confirmed → then buyer cancelled from their account
+  if (cancelledFromDash && confirmed && via === 'whatsapp') {
+    return 'Confirmed via Rozare WhatsApp, then buyer cancelled from dashboard';
+  }
+
   if (!via || (!confirmed && !declined)) return '';
   const action = confirmed ? 'Confirmed' : 'Cancelled';
   if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;

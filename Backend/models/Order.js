@@ -110,7 +110,10 @@ const orderSchema = mongoose.Schema(
             confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', null], default: null },
             declinedAt: { type: Date, default: null },
             voteChangeCount: { type: Number, default: 0 },
-            lockMessageSent: { type: Boolean, default: false }
+            lockMessageSent: { type: Boolean, default: false },
+            // Populated when buyer confirms on WhatsApp then later cancels from their dashboard
+            cancelledFromDashboardAt: { type: Date, default: null },
+            cancelledFromDashboardNote: { type: String, default: '' },
         }
     },
     { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
@@ -122,9 +125,16 @@ const orderSchema = mongoose.Schema(
 //   "Confirmed by buyer via email link"
 orderSchema.virtual('confirmationSourceLabel').get(function () {
     const via = this.confirmation?.confirmedVia;
-    if (!via) return '';
     const confirmed = !!this.confirmation?.confirmedAt;
     const declined = !!this.confirmation?.declinedAt;
+    const cancelledFromDash = !!this.confirmation?.cancelledFromDashboardAt;
+
+    // Special case: confirmed via WhatsApp but then cancelled from dashboard
+    if (cancelledFromDash && confirmed && via === 'whatsapp') {
+        return 'Confirmed via Rozare WhatsApp, then buyer cancelled from dashboard';
+    }
+
+    if (!via) return '';
     const action = confirmed ? 'Confirmed' : declined ? 'Cancelled' : '';
     if (!action) return '';
     if (via === 'whatsapp') return `${action} by buyer via Rozare WhatsApp automation`;

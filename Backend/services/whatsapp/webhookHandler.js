@@ -388,47 +388,97 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const order = await Order.findById(job.order);
                 if (!order) continue;
 
-                // ── Once the buyer decides, that decision is FINAL. ──
+                // ── Guard: is the order already in a terminal state? ──
                 //
-                // WhatsApp's UI greys out the button the buyer just tapped,
-                // but the OTHER button stays active (standard WA client
-                // behavior — we can't change that). So a buyer could still
-                // tap the opposite button after deciding. This guard stops
-                // the second tap from flipping the order.
+                // Multiple paths can finalise an order:
+                //   A. Buyer tapped YES/NO on WhatsApp earlier (first tap)
+                //   B. Buyer cancelled from their website/app dashboard
+                //   C. Admin changed the status
+                //   D. Order moved to processing/shipped/delivered
                 //
-                // The buyer gets a friendly "your decision is already
-                // locked" reply ONCE (we track lockMessageSent so we don't
-                // spam them if they keep tapping).
-                const alreadyConfirmed = !!order.confirmation?.confirmedAt;
-                const alreadyDeclined  = !!order.confirmation?.declinedAt;
-                const alreadyDecided   = alreadyConfirmed || alreadyDeclined;
+                // We detect ALL of these by checking both the confirmation
+                // sub-document AND the top-level orderStatus. Then we respond
+                // appropriately instead of silently ignoring or (worse)
+                // flipping the order.
 
-                if (alreadyDecided) {
-                    // Same decision again → silently ignore (happens if WA
-                    // re-delivers the same event, or buyer retypes 'yes').
-                    if ((alreadyConfirmed && isYes) || (alreadyDeclined && !isYes)) {
+                const confirmedViaWA    = !!order.confirmation?.confirmedAt;
+                const declinedViaWA     = !!order.confirmation?.declinedAt;
+                const decidedViaWA      = confirmedViaWA || declinedViaWA;
+                const cancelledOnSite   = !decidedViaWA && order.orderStatus === 'cancelled';
+                const confirmedOnSite   = !decidedViaWA && ['confirmed', 'processing', 'shipped', 'delivered'].includes(order.orderStatus);
+                const alreadyTerminal   = decidedViaWA || cancelledOnSite || confirmedOnSite;
+
+                if (alreadyTerminal) {
+                    // ── CASE A: Order was cancelled from the website/app dashboard
+                    //    and buyer now taps CONFIRM on WhatsApp. ──
+                    //    They changed their mind — we can't auto-reverse a website
+                    //    cancellation (stock may have been released, refund may have
+                    //    been processed). Instead, send a friendly message explaining
+                    //    what happened and suggest they re-order if they want it.
+                    if (cancelledOnSite && isYes) {
+                        console.log(`[whatsapp] Order ${order.orderId} was cancelled on website; buyer tapped confirm on WA`);
+                        if (!order.confirmation.lockMessageSent) {
+                            const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                            const itemCount = order.orderItems?.length || 0;
+                            const total = order.orderSummary?.totalAmount ? `USD ${Number(order.orderSummary.totalAmount).toFixed(2)}` : '';
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `We noticed you already cancelled order *#${order.orderId}* from your account.`,
+                                ``,
+                                total ? `📦 ${itemCount} item${itemCount !== 1 ? 's' : ''} · ${total}` : '',
+                                `📍 Shipping to ${order.shippingInfo?.city || 'your location'}`,
+                                ``,
+                                `Changed your mind? No problem — just visit Rozare and place a new order. We'd love to have you back! 💙`,
+                                ``,
+                                `_If you didn't cancel this yourself, please contact our support team._`,
+                            ].filter(Boolean).join('\n');
+                            await evolution.sendText(phone, msg);
+                            order.confirmation.lockMessageSent = true;
+                            await order.save();
+                        }
+                        continue;
+                    }
+
+                    // ── CASE B: Buyer tapped NO on WhatsApp but order was
+                    //    already cancelled on website — redundant, just ack. ──
+                    if (cancelledOnSite && !isYes) {
+                        console.log(`[whatsapp] Order ${order.orderId} already cancelled on website; buyer also tapped cancel on WA — no-op`);
+                        continue;
+                    }
+
+                    // ── CASE C: Order is already confirmed/processing/shipped
+                    //    (via website or admin) and buyer taps on WhatsApp. ──
+                    if (confirmedOnSite) {
+                        console.log(`[whatsapp] Order ${order.orderId} already ${order.orderStatus} on website; WA tap ${isYes ? 'yes' : 'no'} ignored`);
+                        if (!isYes && !order.confirmation.lockMessageSent) {
+                            const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `Your order *#${order.orderId}* is already being processed (status: *${order.orderStatus}*).`,
+                                ``,
+                                `If you need to cancel, please contact our support team — they'll help you out. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                            order.confirmation.lockMessageSent = true;
+                            await order.save();
+                        }
+                        continue;
+                    }
+
+                    // ── CASE D: Already decided via WhatsApp — same as before ──
+                    // Same decision again → silently ignore
+                    if ((confirmedViaWA && isYes) || (declinedViaWA && !isYes)) {
                         console.log(`[whatsapp] Duplicate ${isYes ? 'yes' : 'no'} for order ${order.orderId} — ignored`);
                         continue;
                     }
 
-                    // Different decision (flip attempt) → BLOCK.
-                    const prevDecision = alreadyConfirmed ? 'confirmed' : 'cancelled';
-                    const newDecision  = isYes ? 'confirm' : 'cancel';
-                    console.log(
-                        `[whatsapp] Order ${order.orderId} already ${prevDecision}; blocking flip to ${newDecision}`
-                    );
-
-                    // Send the "decision locked" reminder once — the
-                    // buyer's WhatsApp won't visually disable the second
-                    // button, but at least they'll understand why tapping
-                    // it does nothing.
+                    // Different decision (flip attempt) → BLOCK
+                    const prevDecision = confirmedViaWA ? 'confirmed' : 'cancelled';
+                    console.log(`[whatsapp] Order ${order.orderId} already ${prevDecision}; blocking flip`);
                     if (!order.confirmation.lockMessageSent) {
-                        await sendLockedMessage(
-                            phone,
-                            order.orderId,
-                            order.shippingInfo?.fullName,
-                            prevDecision,
-                        );
+                        await sendLockedMessage(phone, order.orderId, order.shippingInfo?.fullName, prevDecision);
                         order.confirmation.lockMessageSent = true;
                         await order.save();
                     }
