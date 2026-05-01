@@ -269,6 +269,51 @@ exports.sendPoll = async (number, { name, values, selectableCount = 1 }) => {
     return { messageId, raw: data };
 };
 
+// POST /message/sendList/{instance}
+//
+// List message — renders as one "[buttonText]" tap-to-open button that
+// expands into a menu of tappable rows. Unlike sendButtons (which goes
+// through native-flow and is Meta-gated), list messages use the LEGACY
+// SINGLE_SELECT format that renders on WhatsApp Web, iOS, and Android
+// for regular linked devices. Verified against Evolution's develop
+// branch (homolog image) which ships the fixed SINGLE_SELECT listType.
+//
+// Payload shape:
+//   {
+//     number:      "923028588506",
+//     title:       "Your order #ORD-xxx",
+//     description: "Please tap to confirm or cancel",
+//     buttonText:  "Confirm or Cancel",   // the tap-to-open button label
+//     footerText:  "Rozare",
+//     sections: [{
+//       title: "Your decision",
+//       rows: [
+//         { title: "✅ Confirm order", description: "Start processing", rowId: "confirm_ORD-xxx" },
+//         { title: "❌ Cancel order",  description: "Nothing charged",  rowId: "cancel_ORD-xxx"  }
+//       ]
+//     }]
+//   }
+//
+// When the buyer taps a row, WhatsApp delivers a `listResponseMessage`
+// with selectedRowId — parsed in webhookHandler.extractDecision.
+exports.sendList = async (number, { title, description = '', buttonText, footerText = '', sections }) => {
+    if (!isConfigured()) throw new Error('Evolution API not configured');
+    if (!Array.isArray(sections) || sections.length === 0) {
+        throw new Error('sendList: sections array is required');
+    }
+    const { data } = await client().post(`/message/sendList/${instanceName()}`, {
+        number,
+        title,
+        description,
+        buttonText,
+        footerText,
+        sections,
+        delay: 0,
+    });
+    const messageId = data?.key?.id || data?.messageId || data?.id || '';
+    return { messageId, raw: data };
+};
+
 // POST /message/sendButtons/{instance}
 // Evolution v2.3.7 wraps this in a native-flow "viewOnceMessage → interactiveMessage"
 // under the hood, which is the modern WhatsApp format that actually renders

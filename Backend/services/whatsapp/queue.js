@@ -5,7 +5,7 @@ const WhatsAppPendingMessage = require('../../models/WhatsAppPendingMessage');
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const evolution = require('./evolutionClient');
 const {
-    buildOrderButtonsPayload,
+    buildOrderListPayload,
     buildOrderConfirmationMessage,
     normalizePhone,
 } = require('./messageBuilder');
@@ -121,24 +121,36 @@ const processOne = async () => {
             return;
         }
 
-        // ── Plain-text YES/NO flow (reliable on all WhatsApp clients) ──
+        // ── List-first flow with text fallback ──
         //
-        // We tried Evolution's native-flow buttons (viewOnceMessage →
-        // interactiveMessage → nativeFlowMessage). API returns 200 and the
-        // Evolution DB row gets created, but the messages stay PENDING
-        // forever and WhatsApp never actually delivers them to the buyer's
-        // device. This matches upstream bugs #2390 and #2404 and is Meta's
-        // current policy: native-flow interactive messages are gated to
-        // WhatsApp Cloud API / Business Solutions Provider accounts. Regular
-        // Baileys-linked devices can POST them to Evolution but they die
-        // silently in the relay.
+        // sendList uses WhatsApp's LEGACY listType=SINGLE_SELECT format,
+        // which actually renders tappable buttons on regular
+        // linked-device WhatsApp (unlike sendButtons → native-flow, which
+        // Meta silently drops for non-Cloud-API senders).
         //
-        // Plain text is the ONLY message type that reliably delivers today.
-        // Buyers reply "yes" / "no" / "confirm" / "cancel" (or Roman-Urdu
-        // equivalents, digits "1"/"2", etc.) and parseConfirmReply maps
-        // them to a decision. Unclear replies get a polite nudge.
-        const text = buildOrderConfirmationMessage(order);
-        const sendRes = await evolution.sendText(job.phone, text);
+        // The buyer sees one "Confirm or Cancel" tap-to-open button.
+        // Opening it shows "✅ Confirm order" and "❌ Cancel order" rows.
+        // Tapping a row produces a listResponseMessage webhook event that
+        // carries the rowId (confirm_ORD-xxx / cancel_ORD-xxx) — parsed in
+        // webhookHandler.extractDecision.
+        //
+        // If sendList throws (network error, instance disconnected, etc.),
+        // we fall back to a plain text YES/NO message so the buyer is
+        // never stuck.
+        const listPayload = buildOrderListPayload(order);
+        let sendRes;
+        let usedFallback = false;
+        try {
+            sendRes = await evolution.sendList(job.phone, listPayload);
+        } catch (listErr) {
+            console.warn(
+                `[whatsapp] sendList failed for order ${order.orderId}, falling back to text:`,
+                listErr.response?.data || listErr.message
+            );
+            usedFallback = true;
+            const text = buildOrderConfirmationMessage(order);
+            sendRes = await evolution.sendText(job.phone, text);
+        }
         await incrementSentCounter();
 
         job.summaryMessageId = sendRes.messageId || '';
@@ -148,7 +160,10 @@ const processOne = async () => {
         job.attempts = (job.attempts || 0) + 1;
         await job.save();
 
-        console.log(`[whatsapp] sent order ${order.orderId} → ${job.phone}`);
+        console.log(
+            `[whatsapp] sent order ${order.orderId} → ${job.phone}` +
+            (usedFallback ? ' (text fallback)' : ' (list)')
+        );
     } catch (err) {
         const attempts = (job.attempts || 0) + 1;
         const status = err.response?.status;

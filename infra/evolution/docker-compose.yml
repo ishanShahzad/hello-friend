@@ -11,7 +11,13 @@
 services:
   evolution-api:
     container_name: evolution_api
-    image: evoapicloud/evolution-api:v2.3.7
+    # Use 'homolog' (Evolution's pre-release branch) — it contains the fixed
+    # listMessage with legacy SINGLE_SELECT format that actually renders
+    # tappable list buttons on regular WhatsApp (Web/iOS/Android). The
+    # tagged v2.3.7 release has a broken sendList (isZero error) and
+    # sendButtons goes through the native-flow path which Meta gates for
+    # non-Cloud-API accounts (messages stay PENDING forever).
+    image: evoapicloud/evolution-api:homolog
     restart: always
     depends_on:
       postgres:

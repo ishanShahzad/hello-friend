@@ -83,6 +83,50 @@ exports.buildOrderButtonsPayload = (order) => {
     };
 };
 
+// ──────────────────────────────────────────────────────────────────────────
+// Build a LIST-message payload for the buyer. This is the reliable path
+// that actually renders on WhatsApp today — uses the legacy SINGLE_SELECT
+// listType (Evolution's `sendList`, fixed in the homolog/develop build).
+// ──────────────────────────────────────────────────────────────────────────
+exports.buildOrderListPayload = (order) => {
+    const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+    const itemCount = order.orderItems?.length || 0;
+    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
+    const total = formatMoney(order.orderSummary?.totalAmount);
+    const city = order.shippingInfo?.city || 'your location';
+
+    return {
+        title: `Rozare — Order #${order.orderId}`,
+        description: [
+            `Hey ${buyerName}! 👋`,
+            ``,
+            `Thanks for your order with Rozare! 🎉`,
+            ``,
+            `💰 Total: *${total}* (${itemText})`,
+            `📍 Shipping to ${city}`,
+            ``,
+            `Tap the button below to confirm or cancel your order.`,
+        ].join('\n'),
+        buttonText: 'Confirm or Cancel',
+        footerText: 'Rozare order confirmation · or reply YES / NO',
+        sections: [{
+            title: 'Your decision',
+            rows: [
+                {
+                    title: '✅ Confirm order',
+                    description: 'Start processing right away',
+                    rowId: exports.buildConfirmButtonId(order.orderId),
+                },
+                {
+                    title: '❌ Cancel order',
+                    description: 'Nothing will be charged',
+                    rowId: exports.buildCancelButtonId(order.orderId),
+                },
+            ],
+        }],
+    };
+};
+
 // A plain-text fallback used only if sendButtons fails entirely (network
 // error etc.) — we still want the buyer to be able to decide.
 exports.buildOrderConfirmationMessage = (order) => {
