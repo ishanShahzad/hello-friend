@@ -541,8 +541,22 @@ exports.handleEvolutionWebhook = async (req, res) => {
                             ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
                             : 'your email';
                         if (!isYes) {
-                            // Buyer tapped cancel — redundant, already cancelled
-                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email after WA confirm; buyer tapped NO on WA — no-op`);
+                            // Buyer tapped cancel — already cancelled, acknowledge it
+                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email after WA confirm; buyer tapped NO on WA`);
+                            if (!order.confirmation.lockMessageSent) {
+                                const msg = [
+                                    `Hey ${firstName}! 👋`,
+                                    ``,
+                                    `Your order *#${order.orderId}* is already cancelled. ❌`,
+                                    ``,
+                                    `You cancelled it from your email (${maskedEmail}).`,
+                                    ``,
+                                    `No action needed here. Want to order again? Visit rozare.com 💙`,
+                                ].join('\n');
+                                await evolution.sendText(phone, msg);
+                                order.confirmation.lockMessageSent = true;
+                                await order.save();
+                            }
                         } else {
                             // Buyer tapped confirm — but they already cancelled from email
                             console.log(`[whatsapp] Order ${order.orderId} was cancelled via email after WA confirm; buyer tapped YES on WA`);
