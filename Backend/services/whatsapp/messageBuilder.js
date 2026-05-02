@@ -49,12 +49,17 @@ exports.CANCEL_BTN_PREFIX  = CANCEL_BTN_PREFIX;
 exports.buildOrderButtonsPayload = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
     const total = formatMoney(order.orderSummary?.totalAmount);
     const city = order.shippingInfo?.city || 'your location';
 
-    // Evolution supports: title (bold header), description (body), footer (small).
-    // We put the order summary in description so the buttons appear right below it.
+    // Build product list
+    const productLines = (order.orderItems || []).map(it => {
+        const qty = it.quantity || 1;
+        const price = formatMoney(it.price * qty);
+        return `• ${it.name} x${qty} — ${price}`;
+    }).slice(0, 5); // Max 5 items to keep message short
+    if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more item${itemCount - 5 > 1 ? 's' : ''}_`);
+
     return {
         title: `Rozare — Order #${order.orderId}`,
         description: [
@@ -62,7 +67,9 @@ exports.buildOrderButtonsPayload = (order) => {
             ``,
             `Thanks for your order with Rozare! 🎉`,
             ``,
-            `💰 Total: *${total}* (${itemText})`,
+            ...productLines,
+            ``,
+            `💰 Total: *${total}*`,
             `📍 Shipping to ${city}`,
             ``,
             `Please tap a button below to confirm or cancel.`,
@@ -91,9 +98,15 @@ exports.buildOrderButtonsPayload = (order) => {
 exports.buildOrderListPayload = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
     const total = formatMoney(order.orderSummary?.totalAmount);
     const city = order.shippingInfo?.city || 'your location';
+
+    const productLines = (order.orderItems || []).map(it => {
+        const qty = it.quantity || 1;
+        const price = formatMoney(it.price * qty);
+        return `• ${it.name} x${qty} — ${price}`;
+    }).slice(0, 5);
+    if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
 
     return {
         title: `Rozare — Order #${order.orderId}`,
@@ -102,7 +115,9 @@ exports.buildOrderListPayload = (order) => {
             ``,
             `Thanks for your order with Rozare! 🎉`,
             ``,
-            `💰 Total: *${total}* (${itemText})`,
+            ...productLines,
+            ``,
+            `💰 Total: *${total}*`,
             `📍 Shipping to ${city}`,
             ``,
             `Tap the button below to confirm or cancel your order.`,
@@ -132,9 +147,15 @@ exports.buildOrderListPayload = (order) => {
 exports.buildOrderConfirmationMessage = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
     const total = formatMoney(order.orderSummary?.totalAmount);
     const city = order.shippingInfo?.city || 'your location';
+
+    const productLines = (order.orderItems || []).map(it => {
+        const qty = it.quantity || 1;
+        const price = formatMoney(it.price * qty);
+        return `• ${it.name} x${qty} — ${price}`;
+    }).slice(0, 5);
+    if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
 
     return [
         `Hey ${buyerName}! 👋`,
@@ -142,7 +163,10 @@ exports.buildOrderConfirmationMessage = (order) => {
         `Thanks for your order with Rozare! 🎉`,
         ``,
         `📦 *Order #${order.orderId}*`,
-        `💰 Total: *${total}* (${itemText})`,
+        ``,
+        ...productLines,
+        ``,
+        `💰 Total: *${total}*`,
         `📍 Shipping to ${city}`,
         ``,
         `Please confirm your order by replying:`,

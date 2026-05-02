@@ -428,171 +428,254 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const alreadyTerminal   = decidedViaWA || cancelledOnSite || confirmedOnSite || decidedViaEmail;
 
                 if (alreadyTerminal) {
-                    // ── CASE A: Order was cancelled from the website/app dashboard
-                    //    and buyer now taps CONFIRM on WhatsApp. ──
-                    //    They changed their mind — we can't auto-reverse a website
-                    //    cancellation (stock may have been released, refund may have
-                    //    been processed). Instead, send a friendly message explaining
-                    //    what happened and suggest they re-order if they want it.
-                    if (cancelledOnSite && isYes) {
-                        console.log(`[whatsapp] Order ${order.orderId} was cancelled on website; buyer tapped confirm on WA`);
-                        if (!order.confirmation.lockMessageSent) {
-                            const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                            const itemCount = order.orderItems?.length || 0;
-                            const total = order.orderSummary?.totalAmount ? `USD ${Number(order.orderSummary.totalAmount).toFixed(2)}` : '';
+                    const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                    const maskedEmail = order.shippingInfo?.email
+                        ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
+                        : 'your email';
+
+                    // ── Confirmed via email → buyer taps on WhatsApp ──
+                    if (confirmedViaEmail) {
+                        if (isYes) {
+                            // Tap confirm — already confirmed
                             const msg = [
                                 `Hey ${firstName}! 👋`,
                                 ``,
-                                `We noticed you already cancelled order *#${order.orderId}* from your account.`,
+                                `You have already confirmed this order via your email (${maskedEmail}). ✅`,
                                 ``,
-                                total ? `📦 ${itemCount} item${itemCount !== 1 ? 's' : ''} · ${total}` : '',
-                                `📍 Shipping to ${order.shippingInfo?.city || 'your location'}`,
-                                ``,
-                                `Changed your mind? No problem — just visit Rozare and place a new order. We'd love to have you back! 💙`,
-                                ``,
-                                `_If you didn't cancel this yourself, please contact our support team._`,
-                            ].filter(Boolean).join('\n');
+                                `No action needed — we'll keep you updated. 💙`,
+                            ].join('\n');
                             await evolution.sendText(phone, msg);
-                            order.confirmation.lockMessageSent = true;
-                            await order.save();
+                        } else {
+                            // Tap cancel — already confirmed via email, tell them to visit account
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You have already confirmed this order via your email (${maskedEmail}). ✅`,
+                                ``,
+                                `Want to cancel? Visit your Rozare account to cancel this order. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
                         }
                         continue;
                     }
 
-                    // ── CASE B: Buyer tapped NO on WhatsApp but order was
-                    //    already cancelled on website — redundant, just ack. ──
-                    if (cancelledOnSite && !isYes) {
-                        console.log(`[whatsapp] Order ${order.orderId} already cancelled on website; buyer also tapped cancel on WA — no-op`);
+                    // ── Cancelled via email → buyer taps on WhatsApp ──
+                    if (declinedViaEmail) {
+                        if (!isYes) {
+                            // Tap cancel — already cancelled
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You have already cancelled this order via your email (${maskedEmail}). ❌`,
+                                ``,
+                                `No action needed. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
+                            // Tap confirm — wants to re-order! Re-confirm the order directly
+                            console.log(`[whatsapp] Order ${order.orderId} was cancelled via email; buyer tapped YES on WA — re-confirming`);
+                            const updated = await Order.findOneAndUpdate(
+                                { _id: order._id, orderStatus: 'cancelled' },
+                                {
+                                    $set: {
+                                        orderStatus: 'confirmed',
+                                        'confirmation.confirmedAt': new Date(),
+                                        'confirmation.confirmedVia': 'whatsapp',
+                                        'confirmation.decidedAt': new Date(),
+                                        'confirmation.decidedVia': 'whatsapp',
+                                        'confirmation.declinedAt': null,
+                                        'confirmation.cancelledFromDashboardAt': null,
+                                        'confirmation.cancelledFromDashboardNote': '',
+                                    }
+                                },
+                                { new: true }
+                            );
+                            if (updated) {
+                                await applyVote(job, 'yes');
+                                await sendResponseMessage(phone, true, order.orderId, firstName);
+                                notifySellers(updated, true);
+                            } else {
+                                const msg = [
+                                    `Hey ${firstName}! 👋`,
+                                    ``,
+                                    `Something changed with this order. Please visit rozare.com to check. 💙`,
+                                ].join('\n');
+                                await evolution.sendText(phone, msg);
+                            }
+                        }
                         continue;
                     }
 
-                    // ── CASE C: Order is already confirmed/processing/shipped
-                    //    (via website or admin) and buyer taps on WhatsApp. ──
+                    // ── Cancelled from account (user dashboard cancel) → buyer taps on WhatsApp ──
+                    if (cancelledOnSite) {
+                        if (!isYes) {
+                            // Tap cancel — already cancelled from account
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You have already cancelled this order from your Rozare account. ❌`,
+                                ``,
+                                `No action needed. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
+                            // Tap confirm — wants to re-order from account cancel! Re-confirm
+                            console.log(`[whatsapp] Order ${order.orderId} was cancelled from account; buyer tapped YES on WA — re-confirming`);
+                            const updated = await Order.findOneAndUpdate(
+                                { _id: order._id, orderStatus: 'cancelled' },
+                                {
+                                    $set: {
+                                        orderStatus: 'confirmed',
+                                        'confirmation.confirmedAt': new Date(),
+                                        'confirmation.confirmedVia': 'whatsapp',
+                                        'confirmation.decidedAt': new Date(),
+                                        'confirmation.decidedVia': 'whatsapp',
+                                        'confirmation.declinedAt': null,
+                                        'confirmation.cancelledFromDashboardAt': null,
+                                        'confirmation.cancelledFromDashboardNote': '',
+                                    }
+                                },
+                                { new: true }
+                            );
+                            if (updated) {
+                                await applyVote(job, 'yes');
+                                await sendResponseMessage(phone, true, order.orderId, firstName);
+                                notifySellers(updated, true);
+                            } else {
+                                const msg = [
+                                    `Hey ${firstName}! 👋`,
+                                    ``,
+                                    `Something changed with this order. Please visit rozare.com to check. 💙`,
+                                ].join('\n');
+                                await evolution.sendText(phone, msg);
+                            }
+                        }
+                        continue;
+                    }
+
+                    // ── Confirmed via WA but then cancelled from email ──
+                    if (order.confirmation?.cancelledFromDashboardAt && confirmedViaWA) {
+                        if (!isYes) {
+                            // Tap cancel — already cancelled
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `Your order *#${order.orderId}* is already cancelled. ❌`,
+                                ``,
+                                `You cancelled it from your email (${maskedEmail}).`,
+                                ``,
+                                `No action needed. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
+                            // Tap confirm — wants to re-order! Re-confirm
+                            console.log(`[whatsapp] Order ${order.orderId} cancelled from email after WA confirm; buyer tapped YES — re-confirming`);
+                            const updated = await Order.findOneAndUpdate(
+                                { _id: order._id, orderStatus: 'cancelled' },
+                                {
+                                    $set: {
+                                        orderStatus: 'confirmed',
+                                        'confirmation.confirmedAt': new Date(),
+                                        'confirmation.confirmedVia': 'whatsapp',
+                                        'confirmation.decidedAt': new Date(),
+                                        'confirmation.decidedVia': 'whatsapp',
+                                        'confirmation.declinedAt': null,
+                                        'confirmation.cancelledFromDashboardAt': null,
+                                        'confirmation.cancelledFromDashboardNote': '',
+                                    }
+                                },
+                                { new: true }
+                            );
+                            if (updated) {
+                                await applyVote(job, 'yes');
+                                await sendResponseMessage(phone, true, order.orderId, firstName);
+                                notifySellers(updated, true);
+                            } else {
+                                const msg = `Hey ${firstName}! Something changed. Please visit rozare.com 💙`;
+                                await evolution.sendText(phone, msg);
+                            }
+                        }
+                        continue;
+                    }
+
+                    // ── Order in late stage (processing/shipped/delivered) ──
                     if (confirmedOnSite) {
-                        console.log(`[whatsapp] Order ${order.orderId} already ${order.orderStatus} on website; WA tap ${isYes ? 'yes' : 'no'} ignored`);
-                        if (!isYes && !order.confirmation.lockMessageSent) {
-                            const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                        if (isYes) {
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `Your order *#${order.orderId}* is already being processed (status: *${order.orderStatus}*). ✅`,
+                                ``,
+                                `No action needed — we'll keep you updated. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        } else {
                             const msg = [
                                 `Hey ${firstName}! 👋`,
                                 ``,
                                 `Your order *#${order.orderId}* is already being processed (status: *${order.orderStatus}*).`,
                                 ``,
-                                `If you need to cancel, please contact our support team — they'll help you out. 💙`,
-                            ].join('\n');
-                            await evolution.sendText(phone, msg);
-                            order.confirmation.lockMessageSent = true;
-                            await order.save();
-                        }
-                        continue;
-                    }
-
-                    // ── CASE: Order was decided via email — inform buyer on WhatsApp ──
-                    if (confirmedViaEmail) {
-                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                        const maskedEmail = order.shippingInfo?.email
-                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
-                            : 'your email';
-                        if (isYes) {
-                            console.log(`[whatsapp] Order ${order.orderId} already confirmed via email; buyer tapped YES on WA`);
-                            const msg = [
-                                `Hey ${firstName}! 👋`,
-                                ``,
-                                `You already confirmed this order via your email (${maskedEmail}). It's being processed! ✅`,
-                                ``,
-                                `No action needed here — we'll keep you updated. 💙`,
-                            ].join('\n');
-                            await evolution.sendText(phone, msg);
-                        } else {
-                            console.log(`[whatsapp] Order ${order.orderId} already confirmed via email; buyer tapped NO on WA`);
-                            const msg = [
-                                `Hey ${firstName}! 👋`,
-                                ``,
-                                `You already confirmed this order via email. Want to cancel? Visit your dashboard at rozare.com 💙`,
+                                `Want to cancel? Visit your Rozare account. 💙`,
                             ].join('\n');
                             await evolution.sendText(phone, msg);
                         }
                         continue;
                     }
 
-                    if (declinedViaEmail) {
-                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                        const maskedEmail = order.shippingInfo?.email
-                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
-                            : 'your email';
-                        if (isYes) {
-                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email; buyer tapped YES on WA`);
-                            const msg = [
-                                `Hey ${firstName}! 👋`,
-                                ``,
-                                `You already cancelled this order via your email (${maskedEmail}). Want to place it again? Visit rozare.com 💙`,
-                            ].join('\n');
-                            await evolution.sendText(phone, msg);
-                        } else {
-                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email; buyer also tapped NO on WA — no-op`);
-                        }
-                        continue;
-                    }
-
-                    // ── CASE: Order was confirmed via WhatsApp but then cancelled from email ──
-                    // cancelledFromDashboardAt is set when buyer cancels from email page after WA confirm
-                    if (order.confirmation?.cancelledFromDashboardAt && confirmedViaWA) {
-                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                        const maskedEmail = order.shippingInfo?.email
-                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
-                            : 'your email';
-                        if (!isYes) {
-                            // Buyer tapped cancel — already cancelled, acknowledge it
-                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email after WA confirm; buyer tapped NO on WA`);
-                            if (!order.confirmation.lockMessageSent) {
-                                const msg = [
-                                    `Hey ${firstName}! 👋`,
-                                    ``,
-                                    `Your order *#${order.orderId}* is already cancelled. ❌`,
-                                    ``,
-                                    `You cancelled it from your email (${maskedEmail}).`,
-                                    ``,
-                                    `No action needed here. Want to order again? Visit rozare.com 💙`,
-                                ].join('\n');
-                                await evolution.sendText(phone, msg);
-                                order.confirmation.lockMessageSent = true;
-                                await order.save();
-                            }
-                        } else {
-                            // Buyer tapped confirm — but they already cancelled from email
-                            console.log(`[whatsapp] Order ${order.orderId} was cancelled via email after WA confirm; buyer tapped YES on WA`);
-                            if (!order.confirmation.lockMessageSent) {
-                                const msg = [
-                                    `Hey ${firstName}! 👋`,
-                                    ``,
-                                    `Your order *#${order.orderId}* is already cancelled.`,
-                                    ``,
-                                    `You cancelled it from your email (${maskedEmail}) after confirming here on WhatsApp.`,
-                                    ``,
-                                    `Want to order again? Visit rozare.com 💙`,
-                                ].join('\n');
-                                await evolution.sendText(phone, msg);
-                                order.confirmation.lockMessageSent = true;
-                                await order.save();
-                            }
-                        }
-                        continue;
-                    }
-
-                    // ── CASE D: Already decided via WhatsApp — same as before ──
-                    // Same decision again → silently ignore
+                    // ── Already decided via WhatsApp ──
                     if ((confirmedViaWA && isYes) || (declinedViaWA && !isYes)) {
+                        // Same decision again → silently ignore
                         console.log(`[whatsapp] Duplicate ${isYes ? 'yes' : 'no'} for order ${order.orderId} — ignored`);
                         continue;
                     }
 
-                    // Different decision (flip attempt) → BLOCK
-                    const prevDecision = confirmedViaWA ? 'confirmed' : 'cancelled';
-                    console.log(`[whatsapp] Order ${order.orderId} already ${prevDecision}; blocking flip`);
-                    if (!order.confirmation.lockMessageSent) {
-                        await sendLockedMessage(phone, order.orderId, order.shippingInfo?.fullName, prevDecision);
-                        order.confirmation.lockMessageSent = true;
-                        await order.save();
+                    // Confirmed via WA, now taps cancel → tell them to visit account
+                    if (confirmedViaWA && !isYes) {
+                        const msg = [
+                            `Hey ${firstName}! 👋`,
+                            ``,
+                            `You have already confirmed this order via WhatsApp. ✅`,
+                            ``,
+                            `Want to cancel? Visit your Rozare account. 💙`,
+                        ].join('\n');
+                        await evolution.sendText(phone, msg);
+                        continue;
                     }
+
+                    // Cancelled via WA, now taps confirm → re-confirm!
+                    if (declinedViaWA && isYes) {
+                        console.log(`[whatsapp] Order ${order.orderId} was cancelled via WA; buyer tapped YES — re-confirming`);
+                        const updated = await Order.findOneAndUpdate(
+                            { _id: order._id, orderStatus: 'cancelled' },
+                            {
+                                $set: {
+                                    orderStatus: 'confirmed',
+                                    'confirmation.confirmedAt': new Date(),
+                                    'confirmation.confirmedVia': 'whatsapp',
+                                    'confirmation.decidedAt': new Date(),
+                                    'confirmation.decidedVia': 'whatsapp',
+                                    'confirmation.declinedAt': null,
+                                }
+                            },
+                            { new: true }
+                        );
+                        if (updated) {
+                            await applyVote(job, 'yes');
+                            await sendResponseMessage(phone, true, order.orderId, firstName);
+                            notifySellers(updated, true);
+                        } else {
+                            const msg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `Got it! Your order *#${order.orderId}* is kept as cancelled. 💙`,
+                            ].join('\n');
+                            await evolution.sendText(phone, msg);
+                        }
+                        continue;
+                    }
+
+                    // Fallback — shouldn't reach here but just in case
+                    console.log(`[whatsapp] Unhandled terminal state for order ${order.orderId}, status=${order.orderStatus}`);
                     continue;
                 }
 

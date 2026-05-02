@@ -111,8 +111,9 @@ export default function OrderConfirmationPage() {
   // Simple states
   const confirmedViaWhatsApp = confirmedVia === 'whatsapp' && conf?.confirmedAt && !conf?.cancelledFromDashboardAt;
   const cancelledViaWhatsApp = confirmedVia === 'whatsapp' && (conf?.declinedAt || conf?.cancelledFromDashboardAt);
-  const confirmedViaEmail = confirmedVia === 'email' && conf?.confirmedAt && !conf?.declinedAt;
-  const cancelledViaEmail = confirmedVia === 'email' && conf?.declinedAt;
+  const confirmedViaEmail = confirmedVia === 'email' && conf?.confirmedAt && !conf?.declinedAt && !conf?.cancelledFromDashboardAt;
+  const cancelledViaEmail = confirmedVia === 'email' && conf?.declinedAt && !conf?.cancelledFromDashboardAt;
+  const cancelledFromAccount = confirmedVia === 'dashboard' && order?.orderStatus === 'cancelled';
   const orderCancelled = order?.orderStatus === 'cancelled';
   const notYetDecided = !actionDone && !expired;
 
@@ -206,11 +207,40 @@ export default function OrderConfirmationPage() {
             {cancelledViaEmail && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <Mail size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order via email</p>
                   <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     Cancelled {timeAgo(conf.declinedAt)} · No charges applied.
                   </p>
+                  <p className="text-sm mt-2" style={{ color: 'hsl(var(--foreground))' }}>Want to place this order again?</p>
+                  <button
+                    onClick={() => setShowReorderDialog(true)}
+                    className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))', color: '#fff' }}
+                  >
+                    <ShoppingCart size={14} /> Yes, place order again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Cancelled from user account */}
+            {cancelledFromAccount && !cancelledViaWhatsApp && !cancelledViaEmail && (
+              <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
+                <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order from your account</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    No charges applied.
+                  </p>
+                  <p className="text-sm mt-2" style={{ color: 'hsl(var(--foreground))' }}>Want to place this order again?</p>
+                  <button
+                    onClick={() => setShowReorderDialog(true)}
+                    className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))', color: '#fff' }}
+                  >
+                    <ShoppingCart size={14} /> Yes, place order again
+                  </button>
                 </div>
               </div>
             )}
@@ -288,7 +318,7 @@ export default function OrderConfirmationPage() {
             </div>
 
             {/* Action buttons — only for undecided, non-expired */}
-            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && (
+            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && !cancelledFromAccount && (
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={handleConfirm} disabled={submitting}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all"
