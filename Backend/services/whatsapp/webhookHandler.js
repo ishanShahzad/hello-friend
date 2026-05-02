@@ -24,7 +24,7 @@ const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
 const { findPendingJobByPhone, findPendingJobByOrderId, applyVote } = require('./queue');
-const { parseConfirmReply } = require('./messageBuilder');
+const { parseConfirmReply, buildReconfirmButtonsPayload } = require('./messageBuilder');
 const evolution = require('./evolutionClient');
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -101,6 +101,22 @@ const sendUnclearReplyHint = async (phone, orderId, buyerName) => {
         await evolution.sendText(phone, msg);
     } catch (err) {
         console.error('[whatsapp] Failed to send unclear-reply hint:', err.message);
+    }
+};
+
+const sendReconfirmPrompt = async (phone, order, contextMessage) => {
+    try {
+        const payload = buildReconfirmButtonsPayload(order, contextMessage);
+        await evolution.sendButtons(phone, payload);
+    } catch (btnErr) {
+        // Fallback to text if buttons fail
+        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+        const msg = [
+            contextMessage || `Hey ${firstName}! This order was cancelled.`,
+            ``,
+            `Want to confirm it again? Reply *YES* to re-confirm or *NO* to keep it cancelled.`,
+        ].join('\n');
+        await evolution.sendText(phone, msg);
     }
 };
 
@@ -396,6 +412,64 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const order = await Order.findById(job.order);
                 if (!order) continue;
 
+                // ── Handle re-confirm / keep-cancel button responses ──
+                // These are from the "Are you sure?" dialog sent after buyer tapped confirm on a cancelled order
+                if (decision === 'reconfirm') {
+                    console.log(`[whatsapp] Buyer confirmed re-order for ${order.orderId}`);
+                    const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                    if (order.orderStatus !== 'cancelled') {
+                        // Already re-confirmed (maybe from another tap) — show current status
+                        const msg = [
+                            `Hey ${firstName}! 👋`,
+                            ``,
+                            `Your order *#${order.orderId}* is already confirmed! ✅`,
+                            ``,
+                            `Status: *${order.orderStatus}* — we'll keep you updated. 💙`,
+                        ].join('\n');
+                        await evolution.sendText(phone, msg);
+                        continue;
+                    }
+                    const updated = await Order.findOneAndUpdate(
+                        { _id: order._id, orderStatus: 'cancelled' },
+                        {
+                            $set: {
+                                orderStatus: 'confirmed',
+                                'confirmation.confirmedAt': new Date(),
+                                'confirmation.confirmedVia': 'whatsapp',
+                                'confirmation.decidedAt': new Date(),
+                                'confirmation.decidedVia': 'whatsapp',
+                                'confirmation.declinedAt': null,
+                                'confirmation.cancelledFromDashboardAt': null,
+                                'confirmation.cancelledFromDashboardNote': '',
+                            }
+                        },
+                        { new: true }
+                    );
+                    if (updated) {
+                        await applyVote(job, 'yes');
+                        await sendResponseMessage(phone, true, order.orderId, firstName);
+                        notifySellers(updated, true);
+                    } else {
+                        const msg = `Hey ${firstName}! Something changed. Please visit rozare.com 💙`;
+                        await evolution.sendText(phone, msg);
+                    }
+                    continue;
+                }
+
+                if (decision === 'keepcancel') {
+                    console.log(`[whatsapp] Buyer chose to keep order ${order.orderId} cancelled`);
+                    const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                    const msg = [
+                        `Got it, ${firstName}! 👍`,
+                        ``,
+                        `Your order *#${order.orderId}* will stay cancelled. No worries! 💙`,
+                        ``,
+                        `If you change your mind, you can always place a new order at rozare.com`,
+                    ].join('\n');
+                    await evolution.sendText(phone, msg);
+                    continue;
+                }
+
                 // ── Guard: is the order already in a terminal state? ──
                 //
                 // Multiple paths can finalise an order:
@@ -472,36 +546,14 @@ exports.handleEvolutionWebhook = async (req, res) => {
                             ].join('\n');
                             await evolution.sendText(phone, msg);
                         } else {
-                            // Tap confirm — wants to re-order! Re-confirm the order directly
-                            console.log(`[whatsapp] Order ${order.orderId} was cancelled via email; buyer tapped YES on WA — re-confirming`);
-                            const updated = await Order.findOneAndUpdate(
-                                { _id: order._id, orderStatus: 'cancelled' },
-                                {
-                                    $set: {
-                                        orderStatus: 'confirmed',
-                                        'confirmation.confirmedAt': new Date(),
-                                        'confirmation.confirmedVia': 'whatsapp',
-                                        'confirmation.decidedAt': new Date(),
-                                        'confirmation.decidedVia': 'whatsapp',
-                                        'confirmation.declinedAt': null,
-                                        'confirmation.cancelledFromDashboardAt': null,
-                                        'confirmation.cancelledFromDashboardNote': '',
-                                    }
-                                },
-                                { new: true }
-                            );
-                            if (updated) {
-                                await applyVote(job, 'yes');
-                                await sendResponseMessage(phone, true, order.orderId, firstName);
-                                notifySellers(updated, true);
-                            } else {
-                                const msg = [
-                                    `Hey ${firstName}! 👋`,
-                                    ``,
-                                    `Something changed with this order. Please visit rozare.com to check. 💙`,
-                                ].join('\n');
-                                await evolution.sendText(phone, msg);
-                            }
+                            // Tap confirm — wants to re-order! Send "Are you sure?" prompt
+                            console.log(`[whatsapp] Order ${order.orderId} was cancelled via email; buyer tapped YES on WA — sending reconfirm prompt`);
+                            const contextMsg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You cancelled this order via your email (${maskedEmail}).`,
+                            ].join('\n');
+                            await sendReconfirmPrompt(phone, order, contextMsg);
                         }
                         continue;
                     }
@@ -519,36 +571,14 @@ exports.handleEvolutionWebhook = async (req, res) => {
                             ].join('\n');
                             await evolution.sendText(phone, msg);
                         } else {
-                            // Tap confirm — wants to re-order from account cancel! Re-confirm
-                            console.log(`[whatsapp] Order ${order.orderId} was cancelled from account; buyer tapped YES on WA — re-confirming`);
-                            const updated = await Order.findOneAndUpdate(
-                                { _id: order._id, orderStatus: 'cancelled' },
-                                {
-                                    $set: {
-                                        orderStatus: 'confirmed',
-                                        'confirmation.confirmedAt': new Date(),
-                                        'confirmation.confirmedVia': 'whatsapp',
-                                        'confirmation.decidedAt': new Date(),
-                                        'confirmation.decidedVia': 'whatsapp',
-                                        'confirmation.declinedAt': null,
-                                        'confirmation.cancelledFromDashboardAt': null,
-                                        'confirmation.cancelledFromDashboardNote': '',
-                                    }
-                                },
-                                { new: true }
-                            );
-                            if (updated) {
-                                await applyVote(job, 'yes');
-                                await sendResponseMessage(phone, true, order.orderId, firstName);
-                                notifySellers(updated, true);
-                            } else {
-                                const msg = [
-                                    `Hey ${firstName}! 👋`,
-                                    ``,
-                                    `Something changed with this order. Please visit rozare.com to check. 💙`,
-                                ].join('\n');
-                                await evolution.sendText(phone, msg);
-                            }
+                            // Tap confirm — wants to re-order from account cancel! Send prompt
+                            console.log(`[whatsapp] Order ${order.orderId} was cancelled from account; buyer tapped YES on WA — sending reconfirm prompt`);
+                            const contextMsg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You cancelled this order from your Rozare account.`,
+                            ].join('\n');
+                            await sendReconfirmPrompt(phone, order, contextMsg);
                         }
                         continue;
                     }
@@ -568,32 +598,14 @@ exports.handleEvolutionWebhook = async (req, res) => {
                             ].join('\n');
                             await evolution.sendText(phone, msg);
                         } else {
-                            // Tap confirm — wants to re-order! Re-confirm
-                            console.log(`[whatsapp] Order ${order.orderId} cancelled from email after WA confirm; buyer tapped YES — re-confirming`);
-                            const updated = await Order.findOneAndUpdate(
-                                { _id: order._id, orderStatus: 'cancelled' },
-                                {
-                                    $set: {
-                                        orderStatus: 'confirmed',
-                                        'confirmation.confirmedAt': new Date(),
-                                        'confirmation.confirmedVia': 'whatsapp',
-                                        'confirmation.decidedAt': new Date(),
-                                        'confirmation.decidedVia': 'whatsapp',
-                                        'confirmation.declinedAt': null,
-                                        'confirmation.cancelledFromDashboardAt': null,
-                                        'confirmation.cancelledFromDashboardNote': '',
-                                    }
-                                },
-                                { new: true }
-                            );
-                            if (updated) {
-                                await applyVote(job, 'yes');
-                                await sendResponseMessage(phone, true, order.orderId, firstName);
-                                notifySellers(updated, true);
-                            } else {
-                                const msg = `Hey ${firstName}! Something changed. Please visit rozare.com 💙`;
-                                await evolution.sendText(phone, msg);
-                            }
+                            // Tap confirm — wants to re-order! Send prompt
+                            console.log(`[whatsapp] Order ${order.orderId} cancelled from email after WA confirm; buyer tapped YES — sending reconfirm prompt`);
+                            const contextMsg = [
+                                `Hey ${firstName}! 👋`,
+                                ``,
+                                `You cancelled this order from your email (${maskedEmail}) after confirming on WhatsApp.`,
+                            ].join('\n');
+                            await sendReconfirmPrompt(phone, order, contextMsg);
                         }
                         continue;
                     }
@@ -629,12 +641,14 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
-                    // Confirmed via WA, now taps cancel → tell them to visit account
+                    // Confirmed via WA, now taps cancel → tell them to visit account with live status
                     if (confirmedViaWA && !isYes) {
                         const msg = [
                             `Hey ${firstName}! 👋`,
                             ``,
                             `You have already confirmed this order via WhatsApp. ✅`,
+                            ``,
+                            `Current status: *${order.orderStatus}*`,
                             ``,
                             `Want to cancel? Visit your Rozare account. 💙`,
                         ].join('\n');
@@ -642,35 +656,15 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
-                    // Cancelled via WA, now taps confirm → re-confirm!
+                    // Cancelled via WA, now taps confirm → send "Are you sure?" prompt
                     if (declinedViaWA && isYes) {
-                        console.log(`[whatsapp] Order ${order.orderId} was cancelled via WA; buyer tapped YES — re-confirming`);
-                        const updated = await Order.findOneAndUpdate(
-                            { _id: order._id, orderStatus: 'cancelled' },
-                            {
-                                $set: {
-                                    orderStatus: 'confirmed',
-                                    'confirmation.confirmedAt': new Date(),
-                                    'confirmation.confirmedVia': 'whatsapp',
-                                    'confirmation.decidedAt': new Date(),
-                                    'confirmation.decidedVia': 'whatsapp',
-                                    'confirmation.declinedAt': null,
-                                }
-                            },
-                            { new: true }
-                        );
-                        if (updated) {
-                            await applyVote(job, 'yes');
-                            await sendResponseMessage(phone, true, order.orderId, firstName);
-                            notifySellers(updated, true);
-                        } else {
-                            const msg = [
-                                `Hey ${firstName}! 👋`,
-                                ``,
-                                `Got it! Your order *#${order.orderId}* is kept as cancelled. 💙`,
-                            ].join('\n');
-                            await evolution.sendText(phone, msg);
-                        }
+                        console.log(`[whatsapp] Order ${order.orderId} was cancelled via WA; buyer tapped YES — sending reconfirm prompt`);
+                        const contextMsg = [
+                            `Hey ${firstName}! 👋`,
+                            ``,
+                            `You previously cancelled this order on WhatsApp.`,
+                        ].join('\n');
+                        await sendReconfirmPrompt(phone, order, contextMsg);
                         continue;
                     }
 

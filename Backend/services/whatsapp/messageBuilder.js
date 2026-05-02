@@ -34,12 +34,18 @@ const formatMoney = (n) => {
 // ──────────────────────────────────────────────────────────────────────────
 const CONFIRM_BTN_PREFIX = 'confirm_';
 const CANCEL_BTN_PREFIX  = 'cancel_';
+const RECONFIRM_BTN_PREFIX = 'reconfirm_';
+const KEEPCANCEL_BTN_PREFIX = 'keepcancel_';
 
 exports.buildConfirmButtonId = (orderId) => `${CONFIRM_BTN_PREFIX}${orderId}`;
 exports.buildCancelButtonId  = (orderId) => `${CANCEL_BTN_PREFIX}${orderId}`;
+exports.buildReconfirmButtonId = (orderId) => `${RECONFIRM_BTN_PREFIX}${orderId}`;
+exports.buildKeepCancelButtonId = (orderId) => `${KEEPCANCEL_BTN_PREFIX}${orderId}`;
 
 exports.CONFIRM_BTN_PREFIX = CONFIRM_BTN_PREFIX;
 exports.CANCEL_BTN_PREFIX  = CANCEL_BTN_PREFIX;
+exports.RECONFIRM_BTN_PREFIX = RECONFIRM_BTN_PREFIX;
+exports.KEEPCANCEL_BTN_PREFIX = KEEPCANCEL_BTN_PREFIX;
 
 // ──────────────────────────────────────────────────────────────────────────
 // Outgoing — interactive buttons payload (primary) + plain text body that
@@ -248,10 +254,12 @@ exports.parseConfirmReply = (text) => {
     return null;
 };
 
-// Decide yes/no purely from a button id string (e.g. "confirm_ORD-123").
-// Returns 'yes' | 'no' | null.
+// Decide action from a button id string (e.g. "confirm_ORD-123", "reconfirm_ORD-123").
+// Returns 'yes' | 'no' | 'reconfirm' | 'keepcancel' | null.
 exports.parseButtonId = (id) => {
     if (!id || typeof id !== 'string') return null;
+    if (id.startsWith(RECONFIRM_BTN_PREFIX)) return 'reconfirm';
+    if (id.startsWith(KEEPCANCEL_BTN_PREFIX))  return 'keepcancel';
     if (id.startsWith(CONFIRM_BTN_PREFIX)) return 'yes';
     if (id.startsWith(CANCEL_BTN_PREFIX))  return 'no';
     return null;
@@ -291,3 +299,46 @@ exports.buildPollPayload = (order) => ({
     selectableCount: 1,
     values: ['✅ Yes, confirm my order!', '❌ No, cancel it'],
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// Re-confirm buttons payload — sent when buyer taps confirm on a cancelled order
+// ──────────────────────────────────────────────────────────────────────────
+exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
+    const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+    const total = formatMoney(order.orderSummary?.totalAmount);
+    const itemCount = order.orderItems?.length || 0;
+
+    const productLines = (order.orderItems || []).map(it => {
+        const qty = it.quantity || 1;
+        const price = formatMoney(it.price * qty);
+        return `• ${it.name} x${qty} — ${price}`;
+    }).slice(0, 5);
+    if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+
+    return {
+        title: `Re-confirm Order #${order.orderId}?`,
+        description: [
+            contextMessage || `Hey ${buyerName}! This order was cancelled.`,
+            ``,
+            `Here's what was in your order:`,
+            ...productLines,
+            ``,
+            `💰 Total: *${total}*`,
+            ``,
+            `Are you sure you want to confirm this order again?`,
+        ].join('\n'),
+        footer: `Rozare · Tap a button to decide`,
+        buttons: [
+            {
+                type: 'reply',
+                displayText: '✅ Yes, confirm again',
+                id: exports.buildReconfirmButtonId(order.orderId),
+            },
+            {
+                type: 'reply',
+                displayText: '❌ No, keep cancelled',
+                id: exports.buildKeepCancelButtonId(order.orderId),
+            },
+        ],
+    };
+};
