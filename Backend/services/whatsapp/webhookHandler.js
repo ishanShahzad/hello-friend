@@ -457,16 +457,46 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 }
 
                 if (decision === 'keepcancel') {
-                    console.log(`[whatsapp] Buyer chose to keep order ${order.orderId} cancelled`);
+                    console.log(`[whatsapp] Buyer chose to keep/set order ${order.orderId} as cancelled`);
                     const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                    const msg = [
-                        `Got it, ${firstName}! 👍`,
-                        ``,
-                        `Your order *#${order.orderId}* will stay cancelled. No worries! 💙`,
-                        ``,
-                        `If you change your mind, you can always place a new order at rozare.com`,
-                    ].join('\n');
-                    await evolution.sendText(phone, msg);
+                    
+                    // If order is currently confirmed (buyer re-confirmed then changed mind), cancel it
+                    if (order.orderStatus !== 'cancelled') {
+                        const updated = await Order.findOneAndUpdate(
+                            { _id: order._id },
+                            {
+                                $set: {
+                                    orderStatus: 'cancelled',
+                                    'confirmation.declinedAt': new Date(),
+                                    'confirmation.confirmedVia': 'whatsapp',
+                                    'confirmation.decidedAt': new Date(),
+                                    'confirmation.decidedVia': 'whatsapp',
+                                    'confirmation.confirmedAt': null,
+                                    'confirmation.cancelledFromDashboardAt': null,
+                                    'confirmation.cancelledFromDashboardNote': '',
+                                }
+                            },
+                            { new: true }
+                        );
+                        if (updated) {
+                            await applyVote(job, 'no');
+                            await sendResponseMessage(phone, false, order.orderId, firstName);
+                            notifySellers(updated, false);
+                        } else {
+                            const msg = `Hey ${firstName}! Something changed. Please visit rozare.com 💙`;
+                            await evolution.sendText(phone, msg);
+                        }
+                    } else {
+                        // Order is already cancelled, just acknowledge
+                        const msg = [
+                            `Got it, ${firstName}! 👍`,
+                            ``,
+                            `Your order *#${order.orderId}* will stay cancelled. No worries! 💙`,
+                            ``,
+                            `If you change your mind, you can always place a new order at rozare.com`,
+                        ].join('\n');
+                        await evolution.sendText(phone, msg);
+                    }
                     continue;
                 }
 
