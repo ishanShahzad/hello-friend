@@ -145,9 +145,13 @@ orderSchema.virtual('confirmationSourceLabel').get(function () {
     const declined = !!this.confirmation?.declinedAt;
     const cancelledFromDash = !!this.confirmation?.cancelledFromDashboardAt;
 
-    // Special case: confirmed via WhatsApp but then cancelled from email page
-    if (cancelledFromDash && confirmed && via === 'whatsapp') {
-        return 'Cancelled by buyer via email (was confirmed on WhatsApp)';
+    // Special case: confirmed then cancelled from email page or account
+    if (cancelledFromDash && confirmed) {
+        const note = this.confirmation?.cancelledFromDashboardNote || '';
+        const cancelledFrom = note.includes('account') || note.includes('dashboard')
+            ? 'account' : 'email';
+        const confirmedChannel = via === 'whatsapp' ? 'WhatsApp' : (via === 'email' ? 'email' : via);
+        return `Cancelled by buyer from ${cancelledFrom} (was confirmed via ${confirmedChannel})`;
     }
 
     if (!via) return '';

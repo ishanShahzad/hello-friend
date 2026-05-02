@@ -96,8 +96,14 @@ const OrderDetail = () => {
                     const confirmed = !!order.confirmation.confirmedAt;
                     const via = order.confirmation.decidedVia || order.confirmation.confirmedVia;
 
-                    // Cancelled after previously confirming on WhatsApp
-                    if (cancelledFromDash && confirmed && (via === 'whatsapp' || order.confirmation.confirmedVia === 'whatsapp')) {
+                    // Cancelled after previously confirming (from account or email page)
+                    if (cancelledFromDash && confirmed) {
+                        const confirmedChannel = order.confirmation.confirmedVia === 'whatsapp' ? 'WhatsApp' : 'email';
+                        // Determine WHERE they cancelled from using the note
+                        const note = order.confirmation.cancelledFromDashboardNote || '';
+                        const cancelledFrom = note.includes('account') || note.includes('dashboard')
+                            ? 'your Rozare account'
+                            : 'email';
                         return (
                             <div className="mt-4 p-3 rounded-xl flex items-start gap-3"
                                 style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
@@ -107,7 +113,7 @@ const OrderDetail = () => {
                                         Order cancelled
                                     </p>
                                     <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        You confirmed via WhatsApp, then cancelled from email — nothing has been charged.
+                                        You confirmed via {confirmedChannel}, then cancelled from {cancelledFrom} — nothing has been charged.
                                     </p>
                                 </div>
                             </div>
@@ -127,7 +133,9 @@ const OrderDetail = () => {
                                 ? 'the seller/admin'
                                 : via === 'manual'
                                     ? 'the seller'
-                                    : 'the order confirmation flow';
+                                    : via === 'dashboard'
+                                        ? 'your Rozare account'
+                                        : 'the order confirmation flow';
                     const isGood = verbPast === 'confirmed';
                     const palette = isGood
                         ? { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', title: 'hsl(150, 60%, 35%)' }

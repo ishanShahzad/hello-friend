@@ -96,15 +96,19 @@ const OrderDetail = () => {
                 const confirmed = !!order.confirmation.confirmedAt;
                 const via = order.confirmation.confirmedVia;
                 
-                // If confirmed via WhatsApp but then cancelled from email — show the cancellation as primary
-                if (cancelledFromDash && confirmed && via === 'whatsapp') {
+                // If confirmed then cancelled — show the cancellation as primary
+                if (cancelledFromDash && confirmed) {
+                    const note = order.confirmation.cancelledFromDashboardNote || '';
+                    const cancelledFrom = note.includes('account') || note.includes('dashboard')
+                        ? 'account' : 'email';
+                    const confirmedChannel = via === 'whatsapp' ? 'WhatsApp' : (via === 'email' ? 'email' : via);
                     return (
                         <div className="mx-4 sm:mx-6 p-3 rounded-xl flex items-start gap-3"
                             style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
                             <span className="text-base" style={{ color: 'hsl(0, 70%, 45%)' }}>❌</span>
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold" style={{ color: 'hsl(0, 70%, 45%)' }}>
-                                    Cancelled by buyer via email (was confirmed on WhatsApp)
+                                    Cancelled by buyer from {cancelledFrom} (was confirmed via {confirmedChannel})
                                 </p>
                                 <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                     Cancelled {timeAgo(order.confirmation.cancelledFromDashboardAt)} · {new Date(order.confirmation.cancelledFromDashboardAt).toLocaleString()}

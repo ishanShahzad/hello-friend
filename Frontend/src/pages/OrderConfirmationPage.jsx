@@ -109,11 +109,15 @@ export default function OrderConfirmationPage() {
   const maskedPhone = order?.shippingInfo?.maskedPhone;
 
   // Simple states
-  const confirmedViaWhatsApp = confirmedVia === 'whatsapp' && conf?.confirmedAt && !conf?.cancelledFromDashboardAt;
-  const cancelledViaWhatsApp = confirmedVia === 'whatsapp' && (conf?.declinedAt || conf?.cancelledFromDashboardAt);
+  // cancelledViaWhatsApp = buyer pressed cancel button on WA (declinedAt set, decidedVia=whatsapp, NOT cancelledFromDashboard)
+  const confirmedViaWhatsApp = confirmedVia === 'whatsapp' && conf?.confirmedAt && !conf?.cancelledFromDashboardAt && !conf?.declinedAt;
+  const cancelledViaWhatsApp = conf?.declinedAt && (conf?.decidedVia === 'whatsapp' || conf?.confirmedVia === 'whatsapp') && !conf?.cancelledFromDashboardAt && !conf?.confirmedAt;
   const confirmedViaEmail = confirmedVia === 'email' && conf?.confirmedAt && !conf?.declinedAt && !conf?.cancelledFromDashboardAt;
   const cancelledViaEmail = confirmedVia === 'email' && conf?.declinedAt && !conf?.cancelledFromDashboardAt;
-  const cancelledFromAccount = confirmedVia === 'dashboard' && order?.orderStatus === 'cancelled';
+  // Cancelled from account (user dashboard) — with or without prior confirmation
+  const cancelledFromAccount = (conf?.decidedVia === 'dashboard' || (conf?.cancelledFromDashboardAt && conf?.cancelledFromDashboardNote?.includes('account'))) && order?.orderStatus === 'cancelled';
+  // Cancelled from email page after WA/email confirm
+  const cancelledFromEmailPage = conf?.cancelledFromDashboardAt && !conf?.cancelledFromDashboardNote?.includes('account') && order?.orderStatus === 'cancelled';
   const orderCancelled = order?.orderStatus === 'cancelled';
   const notYetDecided = !actionDone && !expired;
 
@@ -229,7 +233,28 @@ export default function OrderConfirmationPage() {
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1">
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order from your account</p>
+                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order from your Rozare account</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    No charges applied.
+                  </p>
+                  <p className="text-sm mt-2" style={{ color: 'hsl(var(--foreground))' }}>Want to place this order again?</p>
+                  <button
+                    onClick={() => setShowReorderDialog(true)}
+                    className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))', color: '#fff' }}
+                  >
+                    <ShoppingCart size={14} /> Yes, place order again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Cancelled from email page (after prior WA/email confirm) */}
+            {cancelledFromEmailPage && !cancelledFromAccount && !cancelledViaWhatsApp && !cancelledViaEmail && (
+              <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
+                <Mail size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order from email</p>
                   <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     No charges applied.
                   </p>
@@ -246,7 +271,7 @@ export default function OrderConfirmationPage() {
             )}
 
             {/* Generic confirmed (just confirmed fresh) */}
-            {actionDone === 'confirmed' && !confirmedViaWhatsApp && !confirmedViaEmail && (
+            {actionDone === 'confirmed' && !confirmedViaWhatsApp && !confirmedViaEmail && !cancelledFromAccount && !cancelledFromEmailPage && !cancelledViaWhatsApp && !cancelledViaEmail && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
                 <CheckCircle2 size={20} style={{ color: 'hsl(150, 60%, 40%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
@@ -255,7 +280,7 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
             )}
-            {actionDone === 'declined' && !cancelledViaWhatsApp && !cancelledViaEmail && (
+            {actionDone === 'declined' && !cancelledViaWhatsApp && !cancelledViaEmail && !cancelledFromAccount && !cancelledFromEmailPage && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
@@ -318,7 +343,7 @@ export default function OrderConfirmationPage() {
             </div>
 
             {/* Action buttons — only for undecided, non-expired */}
-            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && !cancelledFromAccount && (
+            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && !cancelledFromAccount && !cancelledFromEmailPage && (
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={handleConfirm} disabled={submitting}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all"

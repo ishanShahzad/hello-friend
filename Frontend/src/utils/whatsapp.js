@@ -115,9 +115,13 @@ export const getConfirmationSourceLabel = (order) => {
   const declined = !!order.confirmation.declinedAt;
   const cancelledFromDash = !!order.confirmation.cancelledFromDashboardAt;
 
-  // Special: WhatsApp confirmed → then buyer cancelled from email confirmation page
-  if (cancelledFromDash && confirmed && via === 'whatsapp') {
-    return 'Cancelled by buyer via email (was confirmed on WhatsApp)';
+  // Special: confirmed then cancelled from email page or account
+  if (cancelledFromDash && confirmed) {
+    const note = order.confirmation.cancelledFromDashboardNote || '';
+    const cancelledFrom = note.includes('account') || note.includes('dashboard')
+        ? 'account' : 'email';
+    const confirmedChannel = via === 'whatsapp' ? 'WhatsApp' : (via === 'email' ? 'email' : via);
+    return `Cancelled by buyer from ${cancelledFrom} (was confirmed via ${confirmedChannel})`;
   }
 
   if (!via || (!confirmed && !declined)) return '';
@@ -126,6 +130,6 @@ export const getConfirmationSourceLabel = (order) => {
   if (via === 'email')    return `${action} by buyer via email link`;
   if (via === 'manual')   return `${action} manually by seller`;
   if (via === 'admin')    return `${action} by admin`;
-  if (via === 'dashboard') return `${action} by buyer from dashboard`;
+  if (via === 'dashboard') return `${action} by buyer from account`;
   return `${action} by buyer`;
 };
