@@ -92,15 +92,39 @@ const OrderDetail = () => {
 
                 {/* Buyer-side confirmation / cancellation status */}
                 {(order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt) && (() => {
+                    const cancelledFromDash = !!order.confirmation.cancelledFromDashboardAt;
                     const confirmed = !!order.confirmation.confirmedAt;
                     const via = order.confirmation.confirmedVia;
+
+                    // If confirmed via WhatsApp but then cancelled from email — show the cancellation
+                    if (cancelledFromDash && confirmed && via === 'whatsapp') {
+                        return (
+                            <div className="mt-4 p-3 rounded-xl flex items-start gap-3"
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                                <XCircle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'hsl(0, 70%, 45%)' }} />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold" style={{ color: 'hsl(0, 70%, 45%)' }}>
+                                        You cancelled this order from email
+                                    </p>
+                                    <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Originally confirmed via WhatsApp, then cancelled on {new Date(order.confirmation.cancelledFromDashboardAt).toLocaleString()} — nothing has been charged.
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    }
+
                     const whenIso = confirmed ? order.confirmation.confirmedAt : order.confirmation.declinedAt;
                     const verbPast = confirmed ? 'confirmed' : 'cancelled';
                     const viaLabel = via === 'whatsapp'
                         ? 'Rozare WhatsApp'
                         : via === 'email'
                             ? 'the email confirmation link'
-                            : via || 'the order confirmation flow';
+                            : via === 'admin'
+                                ? 'the seller/admin'
+                                : via === 'manual'
+                                    ? 'the seller'
+                                    : via || 'the order confirmation flow';
                     const palette = confirmed
                         ? { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', title: 'hsl(150, 60%, 35%)' }
                         : { bg: 'rgba(239, 68, 68, 0.08)',  border: 'rgba(239, 68, 68, 0.25)',  title: 'hsl(0, 70%, 45%)' };
@@ -117,7 +141,7 @@ const OrderDetail = () => {
                                     {verbPast.charAt(0).toUpperCase() + verbPast.slice(1)} on {new Date(whenIso).toLocaleString()}
                                     {confirmed
                                         ? ' — the seller has been notified and will process your order shortly.'
-                                        : ' — nothing has been charged, and your cart is still saved.'}
+                                        : ' — nothing has been charged.'}
                                 </p>
                             </div>
                         </div>
