@@ -489,13 +489,24 @@ exports.getQueue = async (req, res) => {
         const items = await WhatsAppPendingMessage.find()
             .sort({ updatedAt: -1 })
             .limit(20)
-            .select('orderId phone status attempts lastError sentAt repliedAt createdAt updatedAt');
+            .select('orderId phone status attempts lastError sentAt repliedAt createdAt updatedAt order');
 
-        // Mask middle digits of phone
+        // Mask middle digits of phone and include current order status
+        const Order = require('../models/Order');
+        const orderIds = items.map(it => it.order).filter(Boolean);
+        const orders = await Order.find({ _id: { $in: orderIds } }).select('orderStatus confirmation.cancelledFromDashboardAt').lean();
+        const orderMap = {};
+        orders.forEach(o => { orderMap[o._id.toString()] = o; });
+
         const masked = items.map(it => {
             const obj = it.toObject();
             const p = obj.phone || '';
             obj.phone = p.length > 6 ? `${p.slice(0, 3)}••••${p.slice(-3)}` : p;
+            // Attach current order status for the frontend to display accurately
+            const linkedOrder = obj.order ? orderMap[obj.order.toString()] : null;
+            obj.currentOrderStatus = linkedOrder?.orderStatus || null;
+            obj.cancelledAfterConfirm = !!(linkedOrder?.confirmation?.cancelledFromDashboardAt);
+            delete obj.order; // Don't expose raw ObjectId
             return obj;
         });
         res.json({ items: masked });

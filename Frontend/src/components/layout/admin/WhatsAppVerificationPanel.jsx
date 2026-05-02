@@ -28,6 +28,7 @@ const QUEUE_STATUS_META = {
     voted_yes: { label: 'Confirmed ✓',color: 'hsl(150,70%,40%)',  icon: CheckCircle2 },
     voted_no:  { label: 'Declined',   color: 'hsl(0,72%,55%)',    icon: X },
     failed:    { label: 'Failed',     color: 'hsl(0,72%,55%)',    icon: AlertTriangle },
+    failed_invalid_number: { label: 'Invalid Number', color: 'hsl(0,72%,55%)', icon: AlertTriangle },
     expired:   { label: 'Expired',    color: 'hsl(0,0%,55%)',     icon: Clock },
 };
 
@@ -439,7 +440,16 @@ const WhatsAppVerificationPanel = () => {
                     ) : (
                         <div className="space-y-2">
                             {queue.map(item => {
-                                const qm = QUEUE_STATUS_META[item.status] || QUEUE_STATUS_META.queued;
+                                // Override display when order was confirmed on WA but then cancelled from email
+                                let qm = QUEUE_STATUS_META[item.status] || QUEUE_STATUS_META.queued;
+                                let overrideLabel = null;
+                                if (item.status === 'voted_yes' && item.cancelledAfterConfirm) {
+                                    qm = { label: 'Cancelled', color: 'hsl(0,72%,55%)', icon: X };
+                                    overrideLabel = 'Confirmed → then cancelled from email';
+                                } else if (item.status === 'voted_yes' && item.currentOrderStatus === 'cancelled') {
+                                    qm = { label: 'Cancelled', color: 'hsl(0,72%,55%)', icon: X };
+                                    overrideLabel = 'Confirmed → then cancelled';
+                                }
                                 const Icon = qm.icon;
                                 return (
                                     <div key={item._id} className="glass-inner rounded-2xl p-3 flex items-center gap-3">
@@ -460,6 +470,11 @@ const WhatsAppVerificationPanel = () => {
                                                 {formatTime(item.repliedAt || item.sentAt || item.updatedAt)}
                                                 {item.attempts > 0 && ` · ${item.attempts} attempt${item.attempts > 1 ? 's' : ''}`}
                                             </div>
+                                            {overrideLabel && (
+                                                <div className="text-[10px] mt-0.5 font-medium" style={{ color: 'hsl(0,72%,55%)' }}>
+                                                    {overrideLabel}
+                                                </div>
+                                            )}
                                         </div>
                                         <span className="text-[11px] font-bold px-2 py-1 rounded-full"
                                             style={{ background: `${qm.color}1A`, color: qm.color }}>
