@@ -55,9 +55,14 @@ const OrderDetail = () => {
     const handleCancelOrder = async () => {
         try {
             const token = localStorage.getItem("jwtToken");
-            await axios.patch(`${import.meta.env.VITE_API_URL}api/order/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-            fetchOrderDetail();
-        } catch (error) { toast.error(error.response?.msg || "Server error while cancelling order"); }
+            const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/order/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            // Use the response order directly for immediate UI update
+            if (res.data?.order) {
+                setOrder(res.data.order);
+            } else {
+                fetchOrderDetail();
+            }
+        } catch (error) { toast.error(error.response?.data?.msg || "Server error while cancelling order"); }
         finally { setShowCancelConfirm(false); }
     };
 
