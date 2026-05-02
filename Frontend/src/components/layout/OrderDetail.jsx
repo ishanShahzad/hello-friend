@@ -104,7 +104,7 @@ const OrderDetail = () => {
                             <span className="text-base" style={{ color: 'hsl(0, 70%, 45%)' }}>❌</span>
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold" style={{ color: 'hsl(0, 70%, 45%)' }}>
-                                    {order.confirmation.cancelledFromDashboardNote || 'Order was confirmed via WhatsApp, then buyer cancelled from email'}
+                                    Cancelled by buyer via email (was confirmed on WhatsApp)
                                 </p>
                                 <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                     Cancelled {timeAgo(order.confirmation.cancelledFromDashboardAt)} · {new Date(order.confirmation.cancelledFromDashboardAt).toLocaleString()}

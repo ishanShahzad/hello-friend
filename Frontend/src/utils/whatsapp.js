@@ -117,7 +117,7 @@ export const getConfirmationSourceLabel = (order) => {
 
   // Special: WhatsApp confirmed → then buyer cancelled from email confirmation page
   if (cancelledFromDash && confirmed && via === 'whatsapp') {
-    return 'Confirmed via WhatsApp, then cancelled by buyer from email';
+    return 'Cancelled by buyer via email (was confirmed on WhatsApp)';
   }
 
   if (!via || (!confirmed && !declined)) return '';

@@ -28,7 +28,6 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState(null); // 'confirmed' | 'declined'
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showReorderDialog, setShowReorderDialog] = useState(false);
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export default function OrderConfirmationPage() {
         const res = await axios.get(`${API}api/order-confirm/${token}`);
         if (cancelled) return;
         setOrder(res.data.order);
-        if (res.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
+        if (res.data.order?.confirmation?.confirmedAt && !res.data.order?.confirmation?.declinedAt) setActionDone('confirmed');
         else if (res.data.order?.confirmation?.declinedAt) setActionDone('declined');
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.msg || 'Confirmation link is invalid or expired');
@@ -54,16 +53,9 @@ export default function OrderConfirmationPage() {
     try {
       const res = await axios.post(`${API}api/order-confirm/${token}/confirm`);
       setOrder(res.data.order);
-      // Handle cross-channel: API may return 'Already declined' or 'Already confirmed'
-      if (res.data.msg === 'Already declined') {
-        setActionDone('declined');
-      } else if (res.data.msg === 'Already confirmed') {
-        setActionDone('confirmed');
-      } else {
-        setActionDone('confirmed');
-      }
+      if (res.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
+      else if (res.data.order?.confirmation?.declinedAt) setActionDone('declined');
     } catch (err) {
-      // If API returns order data in error response, use it for cross-channel display
       if (err.response?.data?.order) {
         setOrder(err.response.data.order);
         if (err.response.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
@@ -77,50 +69,18 @@ export default function OrderConfirmationPage() {
   };
 
   const handleDecline = async () => {
-    if (!window.confirm('Are you sure you want to decline this order?')) return;
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
     setSubmitting(true);
     try {
       const res = await axios.post(`${API}api/order-confirm/${token}/decline`);
       setOrder(res.data.order);
-      // Handle cross-channel: API may return 'Already confirmed' or 'Already declined'
-      if (res.data.msg === 'Already confirmed') {
-        setActionDone('confirmed');
-      } else if (res.data.msg === 'Already declined') {
-        setActionDone('declined');
-      } else {
-        setActionDone('declined');
-      }
+      if (res.data.order?.confirmation?.declinedAt || res.data.order?.orderStatus === 'cancelled') setActionDone('declined');
+      else if (res.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
     } catch (err) {
       if (err.response?.data?.order) {
         setOrder(err.response.data.order);
         if (err.response.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
         else if (err.response.data.order?.confirmation?.declinedAt) setActionDone('declined');
-      } else {
-        setError(err.response?.data?.msg || 'Could not decline order');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCancelAfterWhatsApp = async () => {
-    setSubmitting(true);
-    try {
-      const res = await axios.post(`${API}api/order-confirm/${token}/decline`);
-      setOrder(res.data.order);
-      // Handle cross-channel: backend may return 'Already confirmed' if state changed
-      if (res.data.msg === 'Already confirmed') {
-        setActionDone('confirmed');
-      } else {
-        setActionDone('declined');
-      }
-      setShowCancelDialog(false);
-    } catch (err) {
-      if (err.response?.data?.order) {
-        setOrder(err.response.data.order);
-        if (err.response.data.order?.confirmation?.confirmedAt) setActionDone('confirmed');
-        else if (err.response.data.order?.confirmation?.declinedAt) setActionDone('declined');
-        setShowCancelDialog(false);
       } else {
         setError(err.response?.data?.msg || 'Could not cancel order');
       }
@@ -129,21 +89,31 @@ export default function OrderConfirmationPage() {
     }
   };
 
+  const handleReconfirm = async () => {
+    setSubmitting(true);
+    try {
+      const res = await axios.post(`${API}api/order-confirm/${token}/reconfirm`);
+      setOrder(res.data.order);
+      setActionDone('confirmed');
+      setShowReorderDialog(false);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Could not re-confirm order');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const expired = order?.confirmation?.expired;
   const conf = order?.confirmation;
-  const confirmedVia = conf?.confirmedVia;
-  const decidedVia = conf?.decidedVia;
+  const confirmedVia = conf?.decidedVia || conf?.confirmedVia;
   const maskedPhone = order?.shippingInfo?.maskedPhone;
 
-  // Determine which state to show — use decidedVia for more accuracy when available
-  const effectiveVia = decidedVia || confirmedVia;
-  const confirmedViaWhatsApp = effectiveVia === 'whatsapp' && conf?.confirmedAt && !conf?.declinedAt;
-  const cancelledViaWhatsApp = effectiveVia === 'whatsapp' && conf?.declinedAt;
-  const confirmedViaEmail = effectiveVia === 'email' && conf?.confirmedAt && !conf?.declinedAt;
-  const cancelledViaEmail = effectiveVia === 'email' && conf?.declinedAt;
-  const confirmedByAdmin = (effectiveVia === 'admin' || effectiveVia === 'manual') && conf?.confirmedAt;
-  const cancelledByAdmin = (effectiveVia === 'admin' || effectiveVia === 'manual') && conf?.declinedAt;
-  const cancelledFromDashboard = conf?.cancelledFromDashboardAt;
+  // Simple states
+  const confirmedViaWhatsApp = confirmedVia === 'whatsapp' && conf?.confirmedAt && !conf?.cancelledFromDashboardAt;
+  const cancelledViaWhatsApp = confirmedVia === 'whatsapp' && (conf?.declinedAt || conf?.cancelledFromDashboardAt);
+  const confirmedViaEmail = confirmedVia === 'email' && conf?.confirmedAt && !conf?.declinedAt;
+  const cancelledViaEmail = confirmedVia === 'email' && conf?.declinedAt;
+  const orderCancelled = order?.orderStatus === 'cancelled';
   const notYetDecided = !actionDone && !expired;
 
   return (
@@ -176,8 +146,8 @@ export default function OrderConfirmationPage() {
 
         {!loading && order && (
           <>
-            {/* Already confirmed via WhatsApp — show with cancel option */}
-            {confirmedViaWhatsApp && !cancelledFromDashboard && (
+            {/* Already confirmed via WhatsApp — no cancel button, just text */}
+            {confirmedViaWhatsApp && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
                 <MessageCircle size={20} style={{ color: 'hsl(150, 60%, 40%)', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1">
@@ -185,55 +155,48 @@ export default function OrderConfirmationPage() {
                     You have already confirmed this order via your WhatsApp {maskedPhone ? `(+${maskedPhone})` : ''}
                   </p>
                   <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Status: <span className="font-medium capitalize">{order.orderStatus}</span> · Confirmed {timeAgo(conf.confirmedAt)}
+                    Confirmed {timeAgo(conf.confirmedAt)} · Status: <span className="font-medium capitalize">{order.orderStatus}</span>
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <button
-                      onClick={() => setShowCancelDialog(true)}
-                      disabled={submitting}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ background: 'rgba(239, 68, 68, 0.10)', color: 'hsl(0, 72%, 55%)', border: '1px solid rgba(239,68,68,0.25)' }}
-                    >
-                      Want to cancel this order?
-                    </button>
-                  </div>
-                  <p className="text-[11px] mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    You can also visit your Rozare account to cancel this order.
+                  <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    If you want to cancel, visit your Rozare account.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Already cancelled via WhatsApp — show with re-order option */}
+            {/* Already cancelled via WhatsApp — show re-order button */}
             {cancelledViaWhatsApp && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <MessageCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1">
                   <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>
-                    You have already cancelled this order via your WhatsApp {maskedPhone ? `(+${maskedPhone})` : ''}
+                    You have cancelled this order via your WhatsApp {maskedPhone ? `(+${maskedPhone})` : ''}
                   </p>
                   <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Cancelled {timeAgo(conf.declinedAt)}
+                    Cancelled {timeAgo(conf.declinedAt || conf.cancelledFromDashboardAt)}
+                  </p>
+                  <p className="text-sm mt-2" style={{ color: 'hsl(var(--foreground))' }}>
+                    Want to place this order again?
                   </p>
                   <button
                     onClick={() => setShowReorderDialog(true)}
-                    className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5"
-                    style={{ background: 'rgba(99, 102, 241, 0.10)', color: 'hsl(var(--primary))', border: '1px solid rgba(99,102,241,0.25)' }}
+                    className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))', color: '#fff' }}
                   >
-                    <ShoppingCart size={12} /> Want to place this order again?
+                    <ShoppingCart size={14} /> Yes, place order again
                   </button>
                 </div>
               </div>
             )}
 
             {/* Already confirmed via email (returning visitor) */}
-            {confirmedViaEmail && !cancelledFromDashboard && (
+            {confirmedViaEmail && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
                 <Mail size={20} style={{ color: 'hsl(150, 60%, 40%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <p className="font-semibold text-sm" style={{ color: 'hsl(150, 60%, 35%)' }}>You confirmed this order via email</p>
                   <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Confirmed {timeAgo(conf.confirmedAt)} · The seller has been notified and will begin processing your order.
+                    Confirmed {timeAgo(conf.confirmedAt)} · The seller has been notified.
                   </p>
                 </div>
               </div>
@@ -244,7 +207,7 @@ export default function OrderConfirmationPage() {
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <Mail size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>Order cancelled via email</p>
+                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>You cancelled this order via email</p>
                   <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     Cancelled {timeAgo(conf.declinedAt)} · No charges applied.
                   </p>
@@ -252,47 +215,8 @@ export default function OrderConfirmationPage() {
               </div>
             )}
 
-            {/* Confirmed by admin/seller */}
-            {confirmedByAdmin && !cancelledFromDashboard && (
-              <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <CheckCircle2 size={20} style={{ color: 'hsl(150, 60%, 40%)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(150, 60%, 35%)' }}>This order has been confirmed by the seller</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Confirmed {timeAgo(conf.confirmedAt)} · Your order is being processed.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Cancelled by admin/seller */}
-            {cancelledByAdmin && (
-              <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
-                <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>This order has been cancelled by the seller</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Cancelled {timeAgo(conf.declinedAt)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Cancelled from dashboard after WhatsApp confirm */}
-            {cancelledFromDashboard && (
-              <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
-                <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>Order cancelled</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    This order was cancelled · {timeAgo(conf.cancelledFromDashboardAt)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Generic confirmed/declined (fallback for when confirmedVia is null or other) */}
-            {actionDone === 'confirmed' && !confirmedViaWhatsApp && !confirmedViaEmail && !confirmedByAdmin && !cancelledFromDashboard && (
+            {/* Generic confirmed (just confirmed fresh) */}
+            {actionDone === 'confirmed' && !confirmedViaWhatsApp && !confirmedViaEmail && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
                 <CheckCircle2 size={20} style={{ color: 'hsl(150, 60%, 40%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
@@ -301,12 +225,12 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
             )}
-            {actionDone === 'declined' && !cancelledViaWhatsApp && !cancelledViaEmail && !cancelledByAdmin && !cancelledFromDashboard && (
+            {actionDone === 'declined' && !cancelledViaWhatsApp && !cancelledViaEmail && (
               <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
                 <XCircle size={20} style={{ color: 'hsl(0, 72%, 55%)', flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>Order declined</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>This order has been cancelled. No charges applied.</p>
+                  <p className="font-semibold text-sm" style={{ color: 'hsl(0, 72%, 50%)' }}>Order cancelled</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No charges applied.</p>
                 </div>
               </div>
             )}
@@ -363,8 +287,8 @@ export default function OrderConfirmationPage() {
               </p>
             </div>
 
-            {/* Action buttons — only show for undecided, non-expired orders */}
-            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && !confirmedByAdmin && !cancelledByAdmin && !cancelledFromDashboard && (
+            {/* Action buttons — only for undecided, non-expired */}
+            {notYetDecided && !confirmedViaWhatsApp && !cancelledViaWhatsApp && !confirmedViaEmail && !cancelledViaEmail && (
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={handleConfirm} disabled={submitting}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all"
@@ -375,7 +299,7 @@ export default function OrderConfirmationPage() {
                 <button onClick={handleDecline} disabled={submitting}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all"
                   style={{ background: 'rgba(239, 68, 68, 0.10)', color: 'hsl(0, 72%, 55%)', border: '1px solid rgba(239,68,68,0.25)', opacity: submitting ? 0.6 : 1 }}>
-                  <XCircle size={16} /> Decline
+                  <XCircle size={16} /> Cancel Order
                 </button>
               </div>
             )}
@@ -386,33 +310,11 @@ export default function OrderConfirmationPage() {
               </div>
             )}
 
-            {/* Cancel after WhatsApp confirm dialog */}
-            {showCancelDialog && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowCancelDialog(false)}>
-                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-lg font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Cancel this order?</h3>
-                  <p className="text-sm mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    You confirmed this order via WhatsApp {maskedPhone ? `(+${maskedPhone})` : ''} {timeAgo(conf.confirmedAt)}.
-                  </p>
-                  <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Are you sure you want to cancel it now?
-                  </p>
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowCancelDialog(false)} className="px-4 py-2 rounded-xl glass-inner font-medium text-sm" style={{ color: 'hsl(var(--foreground))' }}>Keep Order</button>
-                    <button onClick={handleCancelAfterWhatsApp} disabled={submitting} className="px-4 py-2 rounded-xl text-white font-medium text-sm" style={{ background: 'hsl(0, 72%, 55%)', opacity: submitting ? 0.6 : 1 }}>
-                      {submitting ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
-                      Yes, Cancel Order
-                    </button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-
-            {/* Re-order dialog after WhatsApp cancel */}
+            {/* Re-order confirmation dialog */}
             {showReorderDialog && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowReorderDialog(false)}>
                 <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-lg font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Place this order again?</h3>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Confirm this order again?</h3>
                   <div className="glass-inner rounded-xl p-3 mb-4 space-y-2">
                     {order.orderItems.map((it, i) => (
                       <div key={i} className="flex items-center gap-2">
@@ -427,15 +329,16 @@ export default function OrderConfirmationPage() {
                       <span style={{ color: 'hsl(var(--foreground))' }}>Total</span>
                       <span style={{ color: 'hsl(var(--primary))' }}>${order.orderSummary.totalAmount.toFixed(2)}</span>
                     </div>
-                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                      Shipping to {order.shippingInfo.city}, {order.shippingInfo.country}
-                    </p>
                   </div>
+                  <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Are you sure you want to confirm this order? The seller will be notified.
+                  </p>
                   <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowReorderDialog(false)} className="px-4 py-2 rounded-xl glass-inner font-medium text-sm" style={{ color: 'hsl(var(--foreground))' }}>Close</button>
-                    <Link to="/" className="px-4 py-2 rounded-xl text-white font-medium text-sm inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))' }}>
-                      <ShoppingCart size={14} /> Browse & Re-order
-                    </Link>
+                    <button onClick={() => setShowReorderDialog(false)} className="px-4 py-2 rounded-xl glass-inner font-medium text-sm" style={{ color: 'hsl(var(--foreground))' }}>Cancel</button>
+                    <button onClick={handleReconfirm} disabled={submitting} className="px-4 py-2 rounded-xl text-white font-medium text-sm inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(263, 70%, 60%))', opacity: submitting ? 0.6 : 1 }}>
+                      {submitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                      Yes, confirm order
+                    </button>
                   </div>
                 </motion.div>
               </motion.div>

@@ -233,3 +233,71 @@ exports.declineOrder = async (req, res) => {
         return res.status(500).json({ msg: 'Server error' });
     }
 };
+
+// Re-confirm a cancelled order (buyer changed their mind from email page)
+exports.reconfirmOrder = async (req, res) => {
+    const { token } = req.params;
+    if (!token || token.length < 32) return res.status(400).json({ msg: 'Invalid token' });
+    try {
+        const order = await Order.findOne({ 'confirmation.token': token });
+        if (!order) return res.status(404).json({ msg: 'Order not found' });
+
+        // Only allow re-confirm if order is currently cancelled
+        if (order.orderStatus !== 'cancelled') {
+            return res.status(200).json({ msg: 'Order is not cancelled', order: sanitizeOrderForPublic(order) });
+        }
+
+        // Atomic update
+        const updated = await Order.findOneAndUpdate(
+            { 'confirmation.token': token, orderStatus: 'cancelled' },
+            {
+                $set: {
+                    orderStatus: 'confirmed',
+                    'confirmation.confirmedAt': new Date(),
+                    'confirmation.confirmedVia': 'email',
+                    'confirmation.decidedAt': new Date(),
+                    'confirmation.decidedVia': 'email',
+                    'confirmation.declinedAt': null,
+                    'confirmation.cancelledFromDashboardAt': null,
+                    'confirmation.cancelledFromDashboardNote': '',
+                }
+            },
+            { new: true }
+        );
+
+        if (!updated) {
+            const freshOrder = await Order.findOne({ 'confirmation.token': token });
+            return res.status(200).json({ msg: 'Order already processed', order: sanitizeOrderForPublic(freshOrder || order) });
+        }
+
+        // Notify sellers
+        try {
+            const productIds = updated.orderItems.map(i => i.productId);
+            const products = await Product.find({ _id: { $in: productIds } });
+            const sellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+            const buyerName = updated.shippingInfo?.fullName || 'A buyer';
+            for (const sellerId of sellerIds) {
+                const seller = await User.findById(sellerId);
+                if (seller?.email) {
+                    const data = sellerOrderConfirmedByBuyerEmail(updated, seller.username);
+                    sendEmail({ to: seller.email, ...data }).catch(e =>
+                        console.error('seller reconfirm email failed:', e.message)
+                    );
+                }
+                sendPushToUser(sellerId, {
+                    title: 'Buyer re-confirmed an order',
+                    body: `${buyerName} re-confirmed order ${updated.orderId} via email after previously cancelling.`,
+                    channelId: 'seller',
+                    data: { type: 'order_confirmed_by_buyer', orderId: updated.orderId, orderObjectId: updated._id?.toString() },
+                }).catch(e => console.error('seller push failed:', e.message));
+            }
+        } catch (notifyErr) {
+            console.error('Failed to notify seller of reconfirm:', notifyErr.message);
+        }
+
+        return res.status(200).json({ msg: 'Order re-confirmed', order: sanitizeOrderForPublic(updated) });
+    } catch (err) {
+        console.error('reconfirmOrder error:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
