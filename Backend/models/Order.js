@@ -145,9 +145,9 @@ orderSchema.virtual('confirmationSourceLabel').get(function () {
     const declined = !!this.confirmation?.declinedAt;
     const cancelledFromDash = !!this.confirmation?.cancelledFromDashboardAt;
 
-    // Special case: confirmed via WhatsApp but then cancelled from dashboard
+    // Special case: confirmed via WhatsApp but then cancelled from email page
     if (cancelledFromDash && confirmed && via === 'whatsapp') {
-        return 'Confirmed via Rozare WhatsApp, then buyer cancelled from dashboard';
+        return 'Confirmed via WhatsApp, then cancelled by buyer from email';
     }
 
     if (!via) return '';

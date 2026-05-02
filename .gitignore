@@ -16,3 +16,5 @@ id_ed25519
 
 # Infra env files (template is .env.example)
 infra/evolution/.env
+ROZARE_MIGRATION_COMPLETE.md
+Backend/test-email.js

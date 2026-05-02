@@ -196,10 +196,10 @@ export default function OrderConfirmationPage() {
                     >
                       Want to cancel this order?
                     </button>
-                    <Link to="/user-dashboard/orders" className="px-3 py-1.5 rounded-lg text-xs font-medium glass-inner" style={{ color: 'hsl(var(--primary))' }}>
-                      Visit your dashboard
-                    </Link>
                   </div>
+                  <p className="text-[11px] mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    You can also visit your Rozare account to cancel this order.
+                  </p>
                 </div>
               </div>
             )}

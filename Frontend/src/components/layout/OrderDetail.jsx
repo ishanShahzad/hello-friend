@@ -92,8 +92,28 @@ const OrderDetail = () => {
 
             {/* Buyer decision banner — shows how the order was confirmed or cancelled */}
             {(order?.confirmation?.confirmedAt || order?.confirmation?.declinedAt) && (() => {
+                const cancelledFromDash = !!order.confirmation.cancelledFromDashboardAt;
                 const confirmed = !!order.confirmation.confirmedAt;
                 const via = order.confirmation.confirmedVia;
+                
+                // If confirmed via WhatsApp but then cancelled from email — show the cancellation as primary
+                if (cancelledFromDash && confirmed && via === 'whatsapp') {
+                    return (
+                        <div className="mx-4 sm:mx-6 p-3 rounded-xl flex items-start gap-3"
+                            style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                            <span className="text-base" style={{ color: 'hsl(0, 70%, 45%)' }}>❌</span>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold" style={{ color: 'hsl(0, 70%, 45%)' }}>
+                                    {order.confirmation.cancelledFromDashboardNote || 'Order was confirmed via WhatsApp, then buyer cancelled from email'}
+                                </p>
+                                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Cancelled {timeAgo(order.confirmation.cancelledFromDashboardAt)} · {new Date(order.confirmation.cancelledFromDashboardAt).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                }
+
                 const whenIso = confirmed ? order.confirmation.confirmedAt : order.confirmation.declinedAt;
                 const verbPast = confirmed ? 'Confirmed' : 'Cancelled';
                 const viaLabel = via === 'whatsapp'

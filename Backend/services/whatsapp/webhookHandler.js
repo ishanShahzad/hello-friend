@@ -533,6 +533,37 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
+                    // ── CASE: Order was confirmed via WhatsApp but then cancelled from email ──
+                    // cancelledFromDashboardAt is set when buyer cancels from email page after WA confirm
+                    if (order.confirmation?.cancelledFromDashboardAt && confirmedViaWA) {
+                        const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+                        const maskedEmail = order.shippingInfo?.email
+                            ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
+                            : 'your email';
+                        if (!isYes) {
+                            // Buyer tapped cancel — redundant, already cancelled
+                            console.log(`[whatsapp] Order ${order.orderId} already cancelled via email after WA confirm; buyer tapped NO on WA — no-op`);
+                        } else {
+                            // Buyer tapped confirm — but they already cancelled from email
+                            console.log(`[whatsapp] Order ${order.orderId} was cancelled via email after WA confirm; buyer tapped YES on WA`);
+                            if (!order.confirmation.lockMessageSent) {
+                                const msg = [
+                                    `Hey ${firstName}! 👋`,
+                                    ``,
+                                    `Your order *#${order.orderId}* is already cancelled.`,
+                                    ``,
+                                    `You cancelled it from your email (${maskedEmail}) after confirming here on WhatsApp.`,
+                                    ``,
+                                    `Want to order again? Visit rozare.com 💙`,
+                                ].join('\n');
+                                await evolution.sendText(phone, msg);
+                                order.confirmation.lockMessageSent = true;
+                                await order.save();
+                            }
+                        }
+                        continue;
+                    }
+
                     // ── CASE D: Already decided via WhatsApp — same as before ──
                     // Same decision again → silently ignore
                     if ((confirmedViaWA && isYes) || (declinedViaWA && !isYes)) {
