@@ -238,6 +238,57 @@ const SellerSubscription = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Blocked — show what they lost */}
+                {isBlocked && (
+                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                        <div className="p-3 rounded-xl mb-3" style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                            <p className="text-xs font-semibold" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                {subscription?.plan === 'free_trial' || subscription?.blockedReason?.includes('Trial')
+                                    ? 'Your 15-day free trial has ended'
+                                    : 'Your subscription has expired'}
+                            </p>
+                            <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Subscribe to get all these features back:
+                            </p>
+                        </div>
+
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(150, 60%, 45%)' }}>Features from Starter</p>
+                        <div className="space-y-1.5 mb-3">
+                            {[
+                                'Store & products visible to all customers',
+                                'Unlimited product listings',
+                                'Secure payment processing',
+                                'Custom subdomain for your store',
+                                '100 AI messages/day',
+                                'Order management & customer insights',
+                                'Rozare WhatsApp order confirmation automation',
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <X size={12} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    <span className="text-[11px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(270, 60%, 55%)' }}>Features from Elite</p>
+                        <div className="space-y-1.5">
+                            {[
+                                'Advanced analytics & growth insights',
+                                'Smart tag AI generator for products',
+                                'Featured product highlighting on the homepage',
+                                'Priority support & early access to new features',
+                                'Coupon & discount management system',
+                                'Bulk discount & promotional tools',
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <X size={12} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    <span className="text-[11px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Pricing Card */}
