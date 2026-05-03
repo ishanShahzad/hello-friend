@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Crown, Check, Zap, Shield, Bot, Clock, AlertTriangle,
     CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package,
-    Users, Award, Star, MessageCircle
+    Users, Award, Star, MessageCircle, Gem
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -12,7 +12,7 @@ import { useSearchParams } from 'react-router-dom';
 const SellerSubscription = () => {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [checkoutLoading, setCheckoutLoading] = useState(null); // 'starter' | 'elite' | null
     const [cancelLoading, setCancelLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [searchParams] = useSearchParams();
@@ -20,7 +20,7 @@ const SellerSubscription = () => {
     useEffect(() => {
         fetchSubscription();
         if (searchParams.get('success') === 'true') {
-            toast.success('🎉 Subscription activated! Your store is now live.');
+            toast.success('Subscription activated! Your store is now live.');
         }
         if (searchParams.get('cancelled') === 'true') {
             toast.info('Checkout was cancelled. You can subscribe anytime.');
@@ -41,17 +41,17 @@ const SellerSubscription = () => {
         }
     };
 
-    const handleSubscribe = async () => {
-        setCheckoutLoading(true);
+    const handleSubscribe = async (plan = 'starter') => {
+        setCheckoutLoading(plan);
         try {
             const token = localStorage.getItem('jwtToken');
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/create-checkout`, {}, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/create-checkout`, { plan }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             window.location.href = res.data.url;
         } catch (err) {
             toast.error(err.response?.data?.msg || 'Failed to create checkout');
-            setCheckoutLoading(false);
+            setCheckoutLoading(null);
         }
     };
 
@@ -76,7 +76,7 @@ const SellerSubscription = () => {
         if (!subscription) return null;
         const map = {
             trial: { label: 'Free Trial', color: 'hsl(220, 70%, 55%)', bg: 'rgba(99,102,241,0.12)', icon: <Clock size={12} /> },
-            free_period: { label: '30-Day Free', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Sparkles size={12} /> },
+            free_period: { label: subscription?.plan === 'elite' ? '45-Day Free' : '30-Day Free', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Sparkles size={12} /> },
             active: { label: 'Active', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Check size={12} /> },
             past_due: { label: 'Past Due', color: 'hsl(30, 90%, 50%)', bg: 'rgba(249,115,22,0.12)', icon: <AlertTriangle size={12} /> },
             blocked: { label: 'Blocked', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239,68,68,0.12)', icon: <Lock size={12} /> },
@@ -102,7 +102,28 @@ const SellerSubscription = () => {
     const isBlocked = subscription?.status === 'blocked';
     const isTrial = subscription?.status === 'trial';
     const isSubscribed = ['active', 'free_period'].includes(subscription?.status);
+    const isElite = subscription?.plan === 'elite';
     const showSubscribeButton = !isSubscribed;
+    const bonusExpiredPermanently = subscription?.bonusFeaturesExpiredPermanently && !isElite;
+
+    const starterFeatures = [
+        'Store & products visible to all customers',
+        '15 product listings',
+        'Secure payment processing',
+        'Custom subdomain for your store',
+        '25 AI messages/day',
+        'Order management & customer insights',
+        'Rozare WhatsApp order confirmation automation',
+    ];
+
+    const bonusFeatures = [
+        'Advanced analytics & growth insights',
+        'Smart tag AI generator for products',
+        'Featured product highlighting on the homepage',
+        'Priority support & early access to new features',
+        'Coupon & discount management system',
+        'Bulk discount & promotional tools',
+    ];
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 max-w-4xl mx-auto">
@@ -137,10 +158,43 @@ const SellerSubscription = () => {
                 </motion.div>
             )}
 
+            {/* Bonus Features Expired Banner */}
+            {bonusExpiredPermanently && isSubscribed && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-5 rounded-2xl border"
+                    style={{ background: 'rgba(139, 92, 246, 0.06)', borderColor: 'rgba(139, 92, 246, 0.2)' }}
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.12)' }}>
+                            <Award size={20} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold" style={{ color: 'hsl(270, 60%, 55%)' }}>Bonus Features Expired</h3>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Your 6-month bonus features have expired. Upgrade to Rozare Elite to get them permanently.
+                            </p>
+                            <button onClick={() => handleSubscribe('elite')} disabled={checkoutLoading === 'elite'}
+                                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
+                                {checkoutLoading === 'elite' ? (
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <><Gem size={13} /> Upgrade to Elite — 45 Days Free</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Rozare Starter</h1>
+                    <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                        {isElite ? 'Rozare Elite' : 'Rozare Starter'}
+                    </h1>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Manage your seller plan</p>
                 </div>
                 {getStatusBadge()}
@@ -150,26 +204,32 @@ const SellerSubscription = () => {
             <div className="glass-panel-strong p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: isSubscribed ? 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' : 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}>
-                            <Crown size={22} className="text-white" />
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: isElite ? 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' : isSubscribed ? 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' : 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}>
+                            {isElite ? <Gem size={22} className="text-white" /> : <Crown size={22} className="text-white" />}
                         </div>
                          <div>
                             <h2 className="text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                {isSubscribed ? 'Rozare Starter' : isTrial ? 'Free Trial' : 'No Active Plan'}
+                                {isSubscribed ? (isElite ? 'Rozare Elite' : 'Rozare Starter') : isTrial ? 'Free Trial' : 'No Active Plan'}
                             </h2>
                             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 {isSubscribed
                                     ? subscription?.status === 'free_period'
-                                        ? `Free until ${new Date(subscription.freePeriodEndDate).toLocaleDateString()}, then $5.99/mo`
-                                        : '$5.99/month • Cancel anytime'
+                                        ? `Free until ${new Date(subscription.freePeriodEndDate).toLocaleDateString()}, then ${isElite ? '$12.99' : '$5.99'}/mo`
+                                        : `${isElite ? '$12.99' : '$5.99'}/month • Cancel anytime`
                                     : isTrial
                                         ? `${subscription?.trialDaysRemaining} day${subscription?.trialDaysRemaining !== 1 ? 's' : ''} remaining`
                                         : 'Subscribe to activate your store'
                                 }
                             </p>
-                            {isSubscribed && subscription?.bonusFeaturesActive && subscription?.bonusExpiryDate && (
+                            {isSubscribed && subscription?.bonusFeaturesActive && (
                                 <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                                    <Award size={11} /> Bonus features active until {new Date(subscription.bonusExpiryDate).toLocaleDateString()}
+                                    <Award size={11} />
+                                    {isElite
+                                        ? 'Bonus features permanently included'
+                                        : subscription?.bonusExpiryDate
+                                            ? `Bonus features active until ${new Date(subscription.bonusExpiryDate).toLocaleDateString()}`
+                                            : 'Bonus features active'
+                                    }
                                 </p>
                             )}
                         </div>
@@ -204,15 +264,7 @@ const SellerSubscription = () => {
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(150, 60%, 45%)' }}>Features from Starter</p>
                         <div className="space-y-1.5 mb-3">
-                            {[
-                                'Store & products visible to all customers',
-                                '15 product listings',
-                                'Secure payment processing',
-                                'Custom subdomain for your store',
-                                '25 AI messages/day',
-                                'Order management & customer insights',
-                                'Rozare WhatsApp order confirmation automation',
-                            ].map((f, i) => (
+                            {starterFeatures.map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <Check size={12} style={{ color: 'hsl(150, 60%, 45%)' }} />
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
@@ -222,14 +274,7 @@ const SellerSubscription = () => {
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(270, 60%, 55%)' }}>Features from Elite</p>
                         <div className="space-y-1.5">
-                            {[
-                                'Advanced analytics & growth insights',
-                                'Smart tag AI generator for products',
-                                'Featured product highlighting on the homepage',
-                                'Priority support & early access to new features',
-                                'Coupon & discount management system',
-                                'Bulk discount & promotional tools',
-                            ].map((f, i) => (
+                            {bonusFeatures.map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
@@ -255,15 +300,7 @@ const SellerSubscription = () => {
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(150, 60%, 45%)' }}>Features from Starter</p>
                         <div className="space-y-1.5 mb-3">
-                            {[
-                                'Store & products visible to all customers',
-                                'Unlimited product listings',
-                                'Secure payment processing',
-                                'Custom subdomain for your store',
-                                '100 AI messages/day',
-                                'Order management & customer insights',
-                                'Rozare WhatsApp order confirmation automation',
-                            ].map((f, i) => (
+                            {starterFeatures.map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <X size={12} style={{ color: 'hsl(0, 72%, 55%)' }} />
                                     <span className="text-[11px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{f}</span>
@@ -273,14 +310,7 @@ const SellerSubscription = () => {
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(270, 60%, 55%)' }}>Features from Elite</p>
                         <div className="space-y-1.5">
-                            {[
-                                'Advanced analytics & growth insights',
-                                'Smart tag AI generator for products',
-                                'Featured product highlighting on the homepage',
-                                'Priority support & early access to new features',
-                                'Coupon & discount management system',
-                                'Bulk discount & promotional tools',
-                            ].map((f, i) => (
+                            {bonusFeatures.map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <X size={12} style={{ color: 'hsl(0, 72%, 55%)' }} />
                                     <span className="text-[11px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{f}</span>
@@ -291,100 +321,179 @@ const SellerSubscription = () => {
                 )}
             </div>
 
-            {/* Pricing Card */}
+            {/* Pricing Cards */}
             {showSubscribeButton && (
-            <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="glass-panel-strong p-6 mb-6 border-2"
-                    style={{ borderColor: 'rgba(99, 102, 241, 0.3)' }}
-                >
-                    <div className="text-center mb-6">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-                            style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
-                            <Sparkles size={12} /> 30 DAYS FREE
-                        </div>
-                        <h3 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                            Rozare Starter
-                        </h3>
-                        <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
-                            <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5.99/mo</span>
-                            {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 30 days</span>
-                        </p>
-                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Then $5.99/month • Cancel anytime
-                        </p>
-                    </div>
-
-                    <div className="space-y-2.5 mb-6">
-                        <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Core Features</p>
-                        {[
-                            { icon: <Store size={14} />, text: 'Store & products visible to all customers' },
-                            { icon: <Package size={14} />, text: 'Unlimited product listings' },
-                            { icon: <CreditCard size={14} />, text: 'Secure payment processing' },
-                            { icon: <Shield size={14} />, text: 'Custom subdomain for your store' },
-                            { icon: <Bot size={14} />, text: '100 AI messages/day (4x more than trial)' },
-                            { icon: <Users size={14} />, text: 'Order management & customer insights' },
-                            { icon: <MessageCircle size={14} />, text: 'Rozare WhatsApp order confirmation automation' },
-                        ].map((f, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
-                                    {f.icon}
-                                </div>
-                                <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
-                            </div>
-                        ))}
-
-                        <div className="border-t my-3" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
-                        <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                            <Award size={13} /> Bonus Features
-                            <span className="text-[10px] font-normal px-2 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                Available for 6 months
-                            </span>
-                        </p>
-                        {[
-                            { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
-                            { icon: <Sparkles size={14} />, text: 'Smart tag AI generator for products' },
-                            { icon: <Star size={14} />, text: 'Featured product highlighting on the homepage' },
-                            { icon: <Shield size={14} />, text: 'Priority support & early access to new features' },
-                            { icon: <Crown size={14} />, text: 'Coupon & discount management system' },
-                            { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
-                        ].map((f, i) => (
-                            <div key={`bonus-${i}`} className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    {f.icon}
-                                </div>
-                                <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>
-                                    {f.text}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleSubscribe}
-                        disabled={checkoutLoading}
-                        className="w-full py-3.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
-                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    {/* Rozare Starter Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="glass-panel-strong p-6 border-2"
+                        style={{ borderColor: 'rgba(99, 102, 241, 0.3)' }}
                     >
-                        {checkoutLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <CreditCard size={16} />
-                                Subscribe Now — 30 Days Free
-                                <ArrowRight size={16} />
-                            </>
-                        )}
-                    </motion.button>
+                        <div className="text-center mb-5">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+                                style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
+                                <Sparkles size={12} /> 30 DAYS FREE
+                            </div>
+                            <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                Rozare Starter
+                            </h3>
+                            <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
+                                <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5.99/mo</span>
+                                {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 30 days</span>
+                            </p>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Then $5.99/month • Cancel anytime
+                            </p>
+                        </div>
 
-                    <p className="text-center text-[10px] mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        Secure checkout powered by Stripe. Cancel anytime with one click.
-                    </p>
-                </motion.div>
+                        <div className="space-y-2 mb-5">
+                            <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Core Features</p>
+                            {[
+                                { icon: <Store size={13} />, text: 'Store & products visible to all customers' },
+                                { icon: <Package size={13} />, text: 'Unlimited product listings' },
+                                { icon: <CreditCard size={13} />, text: 'Secure payment processing' },
+                                { icon: <Shield size={13} />, text: 'Custom subdomain for your store' },
+                                { icon: <Bot size={13} />, text: '100 AI messages/day' },
+                                { icon: <Users size={13} />, text: 'Order management & insights' },
+                                { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
+                                        {f.icon}
+                                    </div>
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
+                                </div>
+                            ))}
+
+                            <div className="border-t my-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
+                            <p className="text-[10px] font-bold flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                <Award size={11} /> Bonus Features
+                                <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    6 months only
+                                </span>
+                            </p>
+                            {bonusFeatures.map((f, i) => (
+                                <div key={`bonus-${i}`} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                        <Check size={11} />
+                                    </div>
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSubscribe('starter')}
+                            disabled={checkoutLoading === 'starter'}
+                            className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
+                            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}
+                        >
+                            {checkoutLoading === 'starter' ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <CreditCard size={15} />
+                                    Subscribe — 30 Days Free
+                                    <ArrowRight size={15} />
+                                </>
+                            )}
+                        </motion.button>
+                    </motion.div>
+
+                    {/* Rozare Elite Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="glass-panel-strong p-6 border-2 relative overflow-hidden"
+                        style={{ borderColor: 'rgba(139, 92, 246, 0.4)' }}
+                    >
+                        {/* Recommended badge */}
+                        <div className="absolute top-0 right-0 px-3 py-1 text-[10px] font-bold text-white rounded-bl-xl"
+                            style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
+                            RECOMMENDED
+                        </div>
+
+                        <div className="text-center mb-5">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+                                style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                <Gem size={12} /> 45 DAYS FREE
+                            </div>
+                            <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                Rozare Elite
+                            </h3>
+                            <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
+                                <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$12.99/mo</span>
+                                {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 45 days</span>
+                            </p>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Then $12.99/month • Cancel anytime
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 mb-5">
+                            <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(150, 60%, 45%)' }}>
+                                <Check size={13} /> All Starter Features
+                            </p>
+                            {[
+                                { icon: <Store size={13} />, text: 'Store & products visible to all customers' },
+                                { icon: <Package size={13} />, text: 'Unlimited product listings' },
+                                { icon: <CreditCard size={13} />, text: 'Secure payment processing' },
+                                { icon: <Shield size={13} />, text: 'Custom subdomain for your store' },
+                                { icon: <Bot size={13} />, text: '100 AI messages/day' },
+                                { icon: <Users size={13} />, text: 'Order management & insights' },
+                                { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
+                                        {f.icon}
+                                    </div>
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
+                                </div>
+                            ))}
+
+                            <div className="border-t my-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
+                            <p className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                <Award size={13} /> Bonus Features
+                                <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    PERMANENT
+                                </span>
+                            </p>
+                            {bonusFeatures.map((f, i) => (
+                                <div key={`elite-bonus-${i}`} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                        <Check size={11} />
+                                    </div>
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSubscribe('elite')}
+                            disabled={checkoutLoading === 'elite'}
+                            className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
+                            style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}
+                        >
+                            {checkoutLoading === 'elite' ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <Gem size={15} />
+                                    Subscribe Elite — 45 Days Free
+                                    <ArrowRight size={15} />
+                                </>
+                            )}
+                        </motion.button>
+                    </motion.div>
+                </div>
             )}
 
             {/* Timeline */}
@@ -393,10 +502,10 @@ const SellerSubscription = () => {
                 <div className="space-y-4">
                     {[
                         { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter — $0 for the first 30 days', active: false },
-                        { step: '3', title: 'Free Period', desc: '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
-                        { step: '4', title: 'Monthly Billing', desc: 'Only $5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
-                        { step: '5', title: 'Bonus Expiry', desc: 'After 6 months, bonus features transition to premium plans.', active: false },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter ($5.99/mo) or Rozare Elite ($12.99/mo)', active: false },
+                        { step: '3', title: 'Free Period', desc: isElite ? '45 days of full access at no cost' : '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
+                        { step: '4', title: 'Monthly Billing', desc: isElite ? '$12.99/month. Cancel anytime.' : '$5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
+                        { step: '5', title: 'Bonus Features', desc: isElite ? 'Permanently included with your Elite plan.' : 'After 6 months, bonus features expire. Upgrade to Elite to keep them.', active: false },
                     ].map((s, i) => (
                         <div key={i} className="flex items-start gap-3">
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active ? 'text-white' : ''}`}
@@ -414,6 +523,11 @@ const SellerSubscription = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Subscription comparison note */}
+            <p className="text-center text-[10px] mt-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Secure checkout powered by Stripe. Cancel anytime with one click.
+            </p>
 
             {/* Cancel Confirm Modal */}
             <AnimatePresence>

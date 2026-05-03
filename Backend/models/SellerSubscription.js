@@ -23,7 +23,7 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     },
     plan: {
         type: String,
-        enum: ['free_trial', 'starter'],
+        enum: ['free_trial', 'starter', 'elite'],
         default: 'free_trial',
     },
     // After subscription: 30 days free, then $5/month
@@ -35,6 +35,8 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     // Bonus features (available for 6 months from subscription date)
     bonusExpiryDate: { type: Date }, // subscribedAt + 6 months
     bonusFeaturesActive: { type: Boolean, default: false },
+    bonusFeaturesExpiredPermanently: { type: Boolean, default: false }, // After 6 months, can only get back via Elite plan
+    bonusExpiryWarningEmailSent: { type: Boolean, default: false }, // Track if we sent the "about to expire" notification
 
     // Stripe
     stripeCustomerId: { type: String },

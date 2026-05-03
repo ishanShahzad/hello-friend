@@ -129,6 +129,27 @@ const storeSchema = new mongoose.Schema({
       default: ''
     }
   },
+  // Subdomain purchase / ownership
+  subdomainPurchase: {
+    isPurchased: {
+      type: Boolean,
+      default: false
+    },
+    purchasedAt: {
+      type: Date
+    },
+    expiresAt: {
+      type: Date  // purchasedAt + 3 years
+    },
+    stripePaymentId: {
+      type: String,
+      default: ''
+    },
+    // Track removal schedule for blocked (non-purchased) accounts
+    removalScheduledAt: {
+      type: Date  // blockedAt + 7 days; null if purchased or not blocked
+    }
+  },
   verification: {
     isVerified: {
       type: Boolean,

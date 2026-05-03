@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Globe, ExternalLink, Eye, ShoppingBag, DollarSign, TrendingUp, Users, CheckCircle, Lock, AlertTriangle, Loader2, Copy, BarChart3, ArrowUpRight, Info, Edit3, Save, X } from 'lucide-react';
+import { Globe, ExternalLink, Eye, ShoppingBag, DollarSign, TrendingUp, Users, CheckCircle, Lock, AlertTriangle, Loader2, Copy, BarChart3, ArrowUpRight, Info, Edit3, Save, X, Shield, CreditCard, Clock } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -18,16 +18,27 @@ const SellerSubdomainManagement = () => {
     const [slugAvailable, setSlugAvailable] = useState(null);
     const [slugMessage, setSlugMessage] = useState('');
     const [saving, setSaving] = useState(false);
+    const [ownership, setOwnership] = useState(null);
+    const [purchaseLoading, setPurchaseLoading] = useState(false);
+    const [searchParams] = useSearchParams();
 
     const fetchData = async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('jwtToken');
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/analytics/seller`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setData(res.data);
-            setNewSlug(res.data.subdomain?.slug || '');
+            const [analyticsRes, ownershipRes] = await Promise.all([
+                axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/analytics/seller`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_URL}api/subscription/subdomain/ownership`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => null),
+            ]);
+            setData(analyticsRes.data);
+            setNewSlug(analyticsRes.data.subdomain?.slug || '');
+            if (ownershipRes?.data) {
+                setOwnership(ownershipRes.data);
+            }
         } catch (error) {
             toast.error('Failed to load subdomain data');
         } finally {
@@ -35,7 +46,15 @@ const SellerSubdomainManagement = () => {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        fetchData();
+        if (searchParams.get('purchase') === 'success') {
+            toast.success('Subdomain purchased successfully! Your subdomain is now protected.');
+        }
+        if (searchParams.get('purchase') === 'cancelled') {
+            toast.info('Subdomain purchase was cancelled.');
+        }
+    }, []);
 
     const sanitize = (val) => val.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');
 
@@ -77,6 +96,20 @@ const SellerSubdomainManagement = () => {
         } finally { setSaving(false); }
     };
 
+    const handlePurchaseSubdomain = async () => {
+        setPurchaseLoading(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/subdomain/purchase`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            window.location.href = res.data.url;
+        } catch (err) {
+            toast.error(err.response?.data?.msg || 'Failed to create purchase checkout');
+            setPurchaseLoading(false);
+        }
+    };
+
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
         toast.success('Copied to clipboard!');
@@ -87,6 +120,8 @@ const SellerSubdomainManagement = () => {
 
     const { subdomain, analytics } = data;
     const isActive = subdomain.isActive;
+    const isOwned = ownership?.ownership?.isOwned;
+    const isPurchased = ownership?.ownership?.isPurchased;
 
     const stats = [
         { label: 'Total Views', value: analytics.totalViews, icon: <Eye size={18} />, color: 'hsl(220, 70%, 55%)' },
@@ -170,6 +205,125 @@ const SellerSubdomainManagement = () => {
                                 </Link>
                             </div>
                         </div>
+                    </div>
+                )}
+            </motion.div>
+
+            {/* Subdomain Ownership / Purchase Card */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }} className="glass-panel p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                        <Shield size={18} /> Subdomain Ownership
+                    </h3>
+                    {isOwned && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                            style={{ background: 'rgba(34, 197, 94, 0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                            <Shield size={13} /> Owned
+                        </span>
+                    )}
+                </div>
+
+                {isOwned ? (
+                    <div className="space-y-3">
+                        <div className="glass-inner rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                        {subdomain.url}
+                                    </p>
+                                    <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Purchased on {new Date(ownership.ownership.purchasedAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>
+                                        {ownership.ownership.daysRemaining} days remaining
+                                    </p>
+                                    <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Expires {new Date(ownership.ownership.expiresAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'rgba(34, 197, 94, 0.06)' }}>
+                            <CheckCircle size={14} className="shrink-0 mt-0.5" style={{ color: 'hsl(150, 60%, 45%)' }} />
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Your subdomain is protected. Even if your account is blocked, no one else can claim this subdomain for the duration of your ownership.
+                            </p>
+                        </div>
+                        {ownership.ownership.daysRemaining < 90 && (
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handlePurchaseSubdomain}
+                                disabled={purchaseLoading}
+                                className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60"
+                                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}
+                            >
+                                {purchaseLoading ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <><CreditCard size={15} /> Renew Ownership — ${ownership?.price || 15}</>
+                                )}
+                            </motion.button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="glass-inner rounded-xl p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                                    <Globe size={18} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                        Secure your subdomain for 3 years
+                                    </p>
+                                    <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Purchase your subdomain <strong>{subdomain.url}</strong> for a one-time payment of <strong>${ownership?.price || 15}</strong>.
+                                        Your subdomain will be protected for {ownership?.ownershipYears || 3} years, even if your account is blocked.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            {[
+                                { icon: <Shield size={13} />, text: 'Protected even if your account is blocked' },
+                                { icon: <Clock size={13} />, text: '3-year ownership — renewable after expiry' },
+                                { icon: <Globe size={13} />, text: 'No one else can claim your subdomain' },
+                                { icon: <CreditCard size={13} />, text: 'One-time payment of $15 (separate from subscription)' },
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }}>
+                                        {f.icon}
+                                    </div>
+                                    <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'rgba(234, 179, 8, 0.07)', border: '1px solid rgba(234, 179, 8, 0.15)' }}>
+                            <AlertTriangle size={13} className="shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 45%)' }} />
+                            <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Without purchasing, if your account is blocked and remains blocked for 7 days, your subdomain will be released and anyone can claim it.
+                            </p>
+                        </div>
+
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handlePurchaseSubdomain}
+                            disabled={purchaseLoading}
+                            className="w-full py-3.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60"
+                            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}
+                        >
+                            {purchaseLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                                <><CreditCard size={16} /> Buy Subdomain — ${ownership?.price || 15} (One-time)</>
+                            )}
+                        </motion.button>
                     </div>
                 )}
             </motion.div>
@@ -279,7 +433,10 @@ const SellerSubdomainManagement = () => {
                         { q: 'What is a subdomain?', a: 'A custom URL like yourstore.rozare.com that customers can use to access your store directly.' },
                         { q: 'When does it become active?', a: 'Your subdomain becomes active once your store is verified. Apply for verification in Store Settings.' },
                         { q: 'Can I change it later?', a: 'Yes! You can change your subdomain at any time. The old URL will stop working immediately.' },
-                        { q: 'Is my subdomain reserved?', a: isActive ? 'Yes, your subdomain is reserved and active.' : 'Not until you are verified. Others could claim your preferred subdomain before you.' },
+                        { q: 'What happens if my account is blocked?', a: isOwned
+                            ? 'Your subdomain is protected for 3 years from purchase. No one else can claim it even if your account is blocked.'
+                            : 'Without purchasing your subdomain, it will be removed after 7 days of your account being blocked. Purchase it to protect it for 3 years.' },
+                        { q: 'What does buying a subdomain mean?', a: 'For a one-time $15 payment, you own your subdomain for 3 years. Even if your account is blocked, no one else can claim it. After 3 years, you can renew the ownership.' },
                     ].map((item, i) => (
                         <div key={i} className="glass-inner rounded-xl p-4">
                             <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>{item.q}</p>

@@ -46,6 +46,11 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       return res.sendStatus(200);
     }
 
+    // Skip subdomain purchases (handled above in handleSubscriptionWebhook)
+    if (session.metadata?.type === 'subdomain_purchase') {
+      return res.sendStatus(200);
+    }
+
     console.log("✅ Payment succeeded!");
     console.log("Session ID:", session.id);
     console.log("Order ID (metadata):", session.metadata?.orderId);
@@ -265,6 +270,11 @@ app.use('/api/notifications', notificationRoutes);
 const { processTrialExpirations } = require('./controllers/subscriptionController');
 setInterval(processTrialExpirations, 60 * 60 * 1000); // every hour
 setTimeout(processTrialExpirations, 30000); // 30s after boot
+
+// ── Subdomain removal processor (runs every 6 hours) ──
+const { processSubdomainRemovals } = require('./controllers/subdomainPurchaseController');
+setInterval(processSubdomainRemovals, 6 * 60 * 60 * 1000); // every 6 hours
+setTimeout(processSubdomainRemovals, 60000); // 60s after boot
 
 // ── WhatsApp queue processor (Evolution API) ──
 const { startQueueProcessor } = require('./services/whatsapp/queue');

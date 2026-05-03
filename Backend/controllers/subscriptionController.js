@@ -78,9 +78,10 @@ exports.getSubscriptionStatus = async (req, res) => {
         // Check and update status if trial expired
         await checkAndUpdateStatus(sub);
 
-        // Check bonus features expiry
-        if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
+        // Check bonus features expiry (only for starter plan, not elite)
+        if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate && sub.plan !== 'elite') {
             sub.bonusFeaturesActive = false;
+            sub.bonusFeaturesExpiredPermanently = true;
             await sub.save();
         }
 
@@ -102,6 +103,7 @@ exports.getSubscriptionStatus = async (req, res) => {
                 blockedReason: sub.blockedReason,
                 bonusFeaturesActive: sub.bonusFeaturesActive,
                 bonusExpiryDate: sub.bonusExpiryDate,
+                bonusFeaturesExpiredPermanently: sub.bonusFeaturesExpiredPermanently || false,
             },
         });
     } catch (error) {
@@ -143,6 +145,7 @@ async function checkAndUpdateStatus(sub) {
 exports.createCheckout = async (req, res) => {
     try {
         const sellerId = req.user.id;
+        const { plan } = req.body; // 'starter' or 'elite'
         const user = await User.findById(sellerId);
         let sub = await SellerSubscription.findOne({ seller: sellerId });
 
@@ -168,7 +171,16 @@ exports.createCheckout = async (req, res) => {
             await sub.save();
         }
 
-        // Create a subscription with 30-day free trial
+        // Determine plan details
+        const isElite = plan === 'elite';
+        const planName = isElite ? 'Rozare Elite' : 'Rozare Starter';
+        const priceAmount = isElite ? 1299 : 599; // $12.99 or $5.99
+        const trialDays = isElite ? 45 : 30;
+        const description = isElite
+            ? 'Rozare Elite - First 45 days free, then $12.99/month. Includes all Starter + Bonus features. Cancel anytime.'
+            : 'Rozare Starter - First 30 days free, then $5.99/month. Cancel anytime.';
+
+        // Create a subscription with free trial period
         const session = await stripe.checkout.sessions.create({
             customer: customerId,
             mode: 'subscription',
@@ -177,21 +189,21 @@ exports.createCheckout = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Rozare Starter',
-                        description: 'Rozare Starter - First 30 days free, then $5.99/month. Cancel anytime.',
+                        name: planName,
+                        description,
                     },
-                    unit_amount: 599, // $5.99
+                    unit_amount: priceAmount,
                     recurring: { interval: 'month' },
                 },
                 quantity: 1,
             }],
             subscription_data: {
-                trial_period_days: 30,
-                metadata: { sellerId: sellerId.toString() },
+                trial_period_days: trialDays,
+                metadata: { sellerId: sellerId.toString(), plan: isElite ? 'elite' : 'starter' },
             },
             success_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?success=true`,
             cancel_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?cancelled=true`,
-            metadata: { sellerId: sellerId.toString() },
+            metadata: { sellerId: sellerId.toString(), plan: isElite ? 'elite' : 'starter' },
         });
 
         res.json({ url: session.url, sessionId: session.id });
@@ -207,6 +219,14 @@ exports.handleWebhook = async (event) => {
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object;
+
+                // Handle subdomain purchase (one-time payment)
+                if (session.mode === 'payment' && session.metadata?.type === 'subdomain_purchase') {
+                    const { handleSubdomainPurchaseWebhook } = require('./subdomainPurchaseController');
+                    await handleSubdomainPurchaseWebhook(session);
+                    break;
+                }
+
                 if (session.mode !== 'subscription') break;
 
                 const sellerId = session.metadata?.sellerId;
@@ -215,21 +235,34 @@ exports.handleWebhook = async (event) => {
                 const sub = await SellerSubscription.findOne({ seller: sellerId });
                 if (!sub) break;
 
+                const selectedPlan = session.metadata?.plan || 'starter';
+                const isElite = selectedPlan === 'elite';
                 const now = new Date();
-                const freePeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-                const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // 6 months
+                const freePeriodDays = isElite ? 45 : 30;
+                const freePeriodEnd = new Date(now.getTime() + freePeriodDays * 24 * 60 * 60 * 1000);
 
                 sub.status = 'free_period';
-                sub.plan = 'starter';
-                sub.planName = 'Rozare Starter';
+                sub.plan = isElite ? 'elite' : 'starter';
+                sub.planName = isElite ? 'Rozare Elite' : 'Rozare Starter';
                 sub.subscribedAt = now;
                 sub.freePeriodEndDate = freePeriodEnd;
                 sub.stripeSubscriptionId = session.subscription;
                 sub.aiMessageLimit = 100;
                 sub.blockedAt = null;
                 sub.blockedReason = '';
-                sub.bonusFeaturesActive = true;
-                sub.bonusExpiryDate = bonusExpiry;
+
+                if (isElite) {
+                    // Elite plan: bonus features are always active (never expire)
+                    sub.bonusFeaturesActive = true;
+                    sub.bonusExpiryDate = null; // No expiry for Elite
+                    sub.bonusFeaturesExpiredPermanently = false;
+                } else {
+                    // Starter plan: bonus features for 6 months
+                    const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+                    sub.bonusFeaturesActive = true;
+                    sub.bonusExpiryDate = bonusExpiry;
+                }
+
                 await sub.save();
 
                 // Reactivate store
@@ -241,20 +274,25 @@ exports.handleWebhook = async (event) => {
                 // Send confirmation email
                 const user = await User.findById(sellerId);
                 if (user?.email) {
+                    const priceStr = isElite ? '$12.99/month' : '$5.99/month';
+                    const bonusStr = isElite
+                        ? '<strong>Bonus Features:</strong> Permanently included with your Elite plan'
+                        : `<strong>Bonus Features:</strong> Active for 6 months (until ${new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toLocaleDateString()})`;
+
                     const html = subscriptionEmailTemplate(
-                        '🎉 Rozare Starter Activated!',
+                        `${sub.planName} Activated!`,
                         `<p>Hello ${user.username || 'Seller'},</p>
-                        <p>Your <strong>Rozare Starter</strong> plan is now active!</p>
+                        <p>Your <strong>${sub.planName}</strong> plan is now active!</p>
                         <div class="highlight">
-                            <strong>Plan:</strong> Rozare Starter ($5/month)<br/>
-                            <strong>Free Period:</strong> 30 days (until ${freePeriodEnd.toLocaleDateString()})<br/>
+                            <strong>Plan:</strong> ${sub.planName} (${priceStr})<br/>
+                            <strong>Free Period:</strong> ${freePeriodDays} days (until ${freePeriodEnd.toLocaleDateString()})<br/>
                             <strong>AI Messages:</strong> 100/day (upgraded from 25)<br/>
-                            <strong>Bonus Features:</strong> Active for 6 months (until ${bonusExpiry.toLocaleDateString()})
+                            ${bonusStr}
                         </div>
                         <p>Your store has been reactivated and is now visible to customers.</p>
                         <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard" class="button">Go to Dashboard</a></p>`
                     );
-                    await sendEmail({ to: user.email, subject: 'Rozare Starter Activated! 🎉', html });
+                    await sendEmail({ to: user.email, subject: `${sub.planName} Activated!`, html });
                 }
                 break;
             }
@@ -314,15 +352,15 @@ exports.handleWebhook = async (event) => {
                 const user = await User.findById(sub.seller);
                 if (user?.email) {
                     const html = subscriptionEmailTemplate(
-                        '⚠️ Payment Failed',
+                        'Payment Failed',
                         `<p>Hello ${user.username || 'Seller'},</p>
-                        <p>We were unable to process your payment for the Rozare Seller Plan.</p>
+                        <p>We were unable to process your payment for the ${sub.planName || 'Rozare'} Plan.</p>
                         <div class="highlight danger">
                             <strong>Action Required:</strong> Please update your payment method to avoid store suspension.
                         </div>
                         <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Update Payment</a></p>`
                     );
-                    await sendEmail({ to: user.email, subject: '⚠️ Payment Failed - Action Required', html });
+                    await sendEmail({ to: user.email, subject: 'Payment Failed - Action Required', html });
                 }
                 break;
             }
@@ -512,6 +550,108 @@ exports.processTrialExpirations = async () => {
         }
 
         console.log(`Trial check: ${expiringSoon.length} warnings, ${expired.length} blocked, ${subsExpiringSoon.length} sub-expiry warnings`);
+
+        // ── Bonus features expiry warning (7 days before bonus expires) ──
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const bonusExpiringSoon = await SellerSubscription.find({
+            status: { $in: ['active', 'free_period'] },
+            plan: { $ne: 'elite' }, // Elite plan doesn't have bonus expiry
+            bonusFeaturesActive: true,
+            bonusExpiryDate: { $lte: sevenDaysFromNow, $gt: now },
+            bonusExpiryWarningEmailSent: { $ne: true },
+        });
+
+        for (const sub of bonusExpiringSoon) {
+            const user = await User.findById(sub.seller);
+            const store = await Store.findOne({ seller: sub.seller });
+            const daysLeft = Math.ceil((sub.bonusExpiryDate - now) / (1000 * 60 * 60 * 24));
+
+            if (user?.email) {
+                const html = subscriptionEmailTemplate(
+                    `Bonus Features Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`,
+                    `<p>Hello ${user.username || 'Seller'},</p>
+                    <p>Your <strong>bonus features</strong> for "${store?.storeName || 'your store'}" will expire in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong>.</p>
+                    <div class="highlight">
+                        <strong>What you'll lose:</strong><br/>
+                        - Advanced analytics & growth insights<br/>
+                        - Smart tag AI generator for products<br/>
+                        - Featured product highlighting on the homepage<br/>
+                        - Priority support & early access to new features<br/>
+                        - Coupon & discount management system<br/>
+                        - Bulk discount & promotional tools
+                    </div>
+                    <p><strong>Want to keep these features?</strong> Upgrade to the <strong>Rozare Elite</strong> plan ($12.99/month) and get all bonus features permanently!</p>
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Upgrade to Elite</a></p>`
+                );
+                await sendEmail({ to: user.email, subject: `Bonus Features Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`, html });
+            }
+
+            // In-app notification
+            await Notification.create({
+                user: sub.seller,
+                title: `Bonus features expire in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
+                body: `Your bonus features will expire soon. Upgrade to Rozare Elite to keep them permanently.`,
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Bonus expiry warning notification failed:', e.message));
+
+            sub.bonusExpiryWarningEmailSent = true;
+            await sub.save();
+        }
+
+        // ── Permanently expire bonus features after 6 months for non-Elite subscribers ──
+        const bonusExpired = await SellerSubscription.find({
+            plan: { $ne: 'elite' },
+            bonusFeaturesActive: true,
+            bonusExpiryDate: { $lte: now },
+        });
+
+        for (const sub of bonusExpired) {
+            sub.bonusFeaturesActive = false;
+            sub.bonusFeaturesExpiredPermanently = true;
+            await sub.save();
+
+            const user = await User.findById(sub.seller);
+            const store = await Store.findOne({ seller: sub.seller });
+
+            // In-app notification
+            await Notification.create({
+                user: sub.seller,
+                title: 'Bonus features have expired',
+                body: 'Your 6-month bonus features have expired. Your Starter plan features remain active. Upgrade to Rozare Elite to get bonus features permanently.',
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Bonus expired notification failed:', e.message));
+
+            if (user?.email) {
+                const html = subscriptionEmailTemplate(
+                    'Bonus Features Expired',
+                    `<p>Hello ${user.username || 'Seller'},</p>
+                    <p>Your <strong>bonus features</strong> for "${store?.storeName || 'your store'}" have now expired.</p>
+                    <div class="highlight">
+                        <strong>Your Starter plan is still active.</strong> You still have all core features like store visibility, payment processing, subdomain, and order management.
+                    </div>
+                    <p>To get bonus features back permanently, upgrade to <strong>Rozare Elite</strong> ($12.99/month with 45 days free):</p>
+                    <ul>
+                        <li>All Starter features included</li>
+                        <li>Advanced analytics & growth insights</li>
+                        <li>Smart tag AI generator for products</li>
+                        <li>Featured product highlighting</li>
+                        <li>Priority support & early access</li>
+                        <li>Coupon & discount management</li>
+                        <li>Bulk discount & promotional tools</li>
+                    </ul>
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Upgrade to Elite — 45 Days Free</a></p>`
+                );
+                await sendEmail({ to: user.email, subject: 'Bonus Features Expired — Upgrade to Keep Them', html });
+            }
+        }
+
+        if (bonusExpiringSoon.length > 0 || bonusExpired.length > 0) {
+            console.log(`Bonus check: ${bonusExpiringSoon.length} warnings, ${bonusExpired.length} expired`);
+        }
     } catch (error) {
         console.error('Process trial expirations error:', error);
     }
@@ -549,12 +689,20 @@ exports.getAllSubscriptionsForAdmin = async (req, res) => {
     }
 };
 
-// Returns true if a seller is entitled to bonus features (Trial OR active bonusFeaturesActive).
+// Returns true if a seller is entitled to bonus features (Trial OR active bonusFeaturesActive OR Elite plan).
 // Used by feature-gating helpers like sellerHasFeaturedProducts (bonus-only features).
 const isEntitledToBonus = (sub) => {
     if (!sub) return false;
     if (sub.status === 'trial') {
         return sub.trialEndDate ? new Date() < sub.trialEndDate : true;
+    }
+    // Elite plan always has bonus features
+    if (sub.plan === 'elite' && ['active', 'free_period'].includes(sub.status)) {
+        return true;
+    }
+    // Check permanent expiry for non-elite
+    if (sub.bonusFeaturesExpiredPermanently) {
+        return false;
     }
     if (sub.bonusFeaturesActive) {
         return sub.bonusExpiryDate ? new Date() < sub.bonusExpiryDate : true;

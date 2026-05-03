@@ -14,18 +14,35 @@ const bonusFeatureCheck = (featureName) => async (req, res, next) => {
         // Trial users get all features during trial
         if (sub.status === 'trial') return next();
 
+        // Elite plan subscribers always have bonus features
+        if (sub.plan === 'elite' && ['active', 'free_period'].includes(sub.status)) return next();
+
+        // Check if bonus features have expired permanently
+        if (sub.bonusFeaturesExpiredPermanently) {
+            return res.status(403).json({
+                msg: `${featureName} is a premium feature. Your bonus period has expired permanently. Subscribe to the Rozare Elite plan ($12.99/month) to access this feature.`,
+                bonusExpired: true,
+                bonusExpiredPermanently: true,
+                featureName,
+                upgradePlan: 'elite',
+            });
+        }
+
         // Check if bonus features have expired
         if (sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
             // Auto-deactivate if still marked active
             if (sub.bonusFeaturesActive) {
                 sub.bonusFeaturesActive = false;
+                sub.bonusFeaturesExpiredPermanently = true;
                 await sub.save();
             }
 
             return res.status(403).json({
-                msg: `${featureName} is a premium feature. Your bonus period has expired. This feature will be available in upcoming premium plans.`,
+                msg: `${featureName} is a premium feature. Your bonus period has expired. Subscribe to the Rozare Elite plan ($12.99/month) to access this feature.`,
                 bonusExpired: true,
+                bonusExpiredPermanently: true,
                 featureName,
+                upgradePlan: 'elite',
             });
         }
 
