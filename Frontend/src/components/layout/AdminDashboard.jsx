@@ -256,7 +256,7 @@ const AdminDashboard = () => {
                     <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 60px)' }}>
                         {notificationsLoading ? (
                                 <div className="flex items-center justify-center py-8">
-                                <Loader size={20} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                <Loader2 size={20} className="animate-spin" style={{ color: 'hsl(var(--muted-foreground))' }} />
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="text-center py-8 px-4">
