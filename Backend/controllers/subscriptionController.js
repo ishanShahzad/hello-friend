@@ -364,7 +364,29 @@ exports.handleWebhook = async (event) => {
                 if (sub.pendingDowngrade?.toPlan === 'starter') {
                     // Auto-create a new Starter subscription via Stripe
                     try {
-                        const newSubscription = await stripe.subscriptions.create({
+                        // Ensure customer has a default payment method
+                        // Get the payment method from the cancelled Elite subscription
+                        let defaultPaymentMethod = null;
+                        try {
+                            const customer = await stripe.customers.retrieve(sub.stripeCustomerId);
+                            defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+
+                            // If no default payment method, try to get one from the ended subscription
+                            if (!defaultPaymentMethod) {
+                                const endedSub = await stripe.subscriptions.retrieve(subscription.id).catch(() => null);
+                                if (endedSub?.default_payment_method) {
+                                    defaultPaymentMethod = endedSub.default_payment_method;
+                                    // Set it as customer's default
+                                    await stripe.customers.update(sub.stripeCustomerId, {
+                                        invoice_settings: { default_payment_method: defaultPaymentMethod },
+                                    });
+                                }
+                            }
+                        } catch (pmErr) {
+                            console.error('Error retrieving payment method for downgrade:', pmErr.message);
+                        }
+
+                        const subCreateParams = {
                             customer: sub.stripeCustomerId,
                             items: [{
                                 price_data: {
@@ -378,7 +400,14 @@ exports.handleWebhook = async (event) => {
                                 },
                             }],
                             metadata: { sellerId: sub.seller.toString(), plan: 'starter' },
-                        });
+                            payment_behavior: 'default_incomplete', // Don't block if charge fails
+                        };
+
+                        if (defaultPaymentMethod) {
+                            subCreateParams.default_payment_method = defaultPaymentMethod;
+                        }
+
+                        const newSubscription = await stripe.subscriptions.create(subCreateParams);
 
                         // Update local subscription to Starter
                         sub.status = 'active';
@@ -1199,6 +1228,27 @@ exports.sellerHasWhatsAppVerify = async (sellerId) => {
     } catch (err) {
         console.error('sellerHasWhatsAppVerify:', err.message);
         return false;
+    }
+};
+
+// One-time migration: mark existing paid/previously-paid sellers as having used their free period
+// This prevents them from getting another free period on re-subscription
+exports.migrateHasUsedFreePeriod = async () => {
+    try {
+        // Any seller whose subscribedAt is set (means they subscribed at some point)
+        // should be marked as having used their free period
+        const result = await SellerSubscription.updateMany(
+            {
+                subscribedAt: { $exists: true, $ne: null },
+                hasUsedFreePeriod: { $ne: true },
+            },
+            { $set: { hasUsedFreePeriod: true } }
+        );
+        if (result.modifiedCount > 0) {
+            console.log(`[migration] Marked ${result.modifiedCount} existing sellers as hasUsedFreePeriod=true`);
+        }
+    } catch (error) {
+        console.error('Migration hasUsedFreePeriod error:', error);
     }
 };
 

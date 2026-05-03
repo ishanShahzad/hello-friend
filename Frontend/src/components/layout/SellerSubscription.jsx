@@ -156,9 +156,10 @@ const SellerSubscription = () => {
 
     const isBlocked = subscription?.status === 'blocked';
     const isTrial = subscription?.status === 'trial';
+    const isPastDue = subscription?.status === 'past_due';
     const isSubscribed = ['active', 'free_period'].includes(subscription?.status);
     const isElite = subscription?.plan === 'elite';
-    const showSubscribeButton = !isSubscribed;
+    const showSubscribeButton = !isSubscribed && !isPastDue;
     const bonusExpiredPermanently = subscription?.bonusFeaturesExpiredPermanently && !isElite;
     const hasGracePeriod = isBlocked && subscription?.bonusGraceDeadline && subscription?.bonusGraceDaysRemaining > 0 && !bonusExpiredPermanently;
     const bonusAboutToExpire = isSubscribed && subscription?.plan === 'starter' && subscription?.bonusFeaturesActive && subscription?.bonusExpiryDate && (() => {
@@ -214,6 +215,31 @@ const SellerSubscription = () => {
                                     <Package size={11} /> Products hidden
                                 </span>
                             </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Past Due Banner */}
+            {isPastDue && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-5 rounded-2xl border"
+                    style={{ background: 'rgba(249, 115, 22, 0.08)', borderColor: 'rgba(249, 115, 22, 0.25)' }}
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl" style={{ background: 'rgba(249, 115, 22, 0.15)' }}>
+                            <AlertTriangle size={20} style={{ color: 'hsl(25, 90%, 50%)' }} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-bold" style={{ color: 'hsl(25, 90%, 45%)' }}>Payment Failed — Update Payment Method</h3>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Your last payment could not be processed. Update your payment method to avoid store suspension.
+                            </p>
+                            <p className="text-[11px] mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Stripe will retry the payment automatically. If it continues to fail, your store will be blocked.
+                            </p>
                         </div>
                     </div>
                 </motion.div>

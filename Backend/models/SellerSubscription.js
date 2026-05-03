@@ -61,9 +61,17 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     hasUsedFreePeriod: { type: Boolean, default: false },
 
     // Downgrade scheduling: Elite → Starter at period end
+    // When no downgrade is pending, toPlan is null/undefined
     pendingDowngrade: {
-        toPlan: { type: String, enum: ['starter', null], default: null },
-        scheduledAt: { type: Date }, // When the downgrade was requested
+        toPlan: {
+            type: String,
+            enum: {
+                values: ['starter', null],
+                message: 'pendingDowngrade.toPlan must be "starter" or null',
+            },
+            default: null,
+        },
+        scheduledAt: { type: Date, default: null },
     },
 }, { timestamps: true });
 

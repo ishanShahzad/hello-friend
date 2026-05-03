@@ -198,17 +198,22 @@ exports.processSubdomainRemovals = async () => {
         const SellerSubscription = require('../models/SellerSubscription');
 
         // 1. Schedule removal for newly blocked accounts that haven't purchased subdomain
+        //    Only process subs where blockedAt is recent enough to still matter
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const blockedSubs = await SellerSubscription.find({
             status: 'blocked',
-            blockedAt: { $exists: true },
+            blockedAt: { $gte: sevenDaysAgo }, // only recent blocks
         });
 
         for (const sub of blockedSubs) {
             const store = await Store.findOne({ seller: sub.seller });
             if (!store) continue;
 
+            // Skip if subdomain was already removed (slug starts with "removed-")
+            if (store.storeSlug && store.storeSlug.startsWith('removed-')) continue;
+
             // Skip if subdomain is purchased and still valid
-            if (store.subdomainPurchase?.isPurchased && store.subdomainPurchase?.expiresAt > now) {
+            if (store.subdomainPurchase?.isPurchased && store.subdomainPurchase?.expiresAt && new Date(store.subdomainPurchase.expiresAt) > now) {
                 // Clear any removal schedule
                 if (store.subdomainPurchase.removalScheduledAt) {
                     store.subdomainPurchase.removalScheduledAt = null;
@@ -229,16 +234,31 @@ exports.processSubdomainRemovals = async () => {
         }
 
         // 2. Remove subdomains that have been scheduled and the 7-day period has passed
+        //    Exclude stores that already have "removed-" prefix (already processed)
         const storesToRemoveSubdomain = await Store.find({
-            'subdomainPurchase.removalScheduledAt': { $lte: now },
+            'subdomainPurchase.removalScheduledAt': { $lte: now, $ne: null },
             'subdomainPurchase.isPurchased': { $ne: true },
+            storeSlug: { $not: /^removed-/ }, // prevent double-processing
         });
 
         for (const store of storesToRemoveSubdomain) {
             const oldSlug = store.storeSlug;
-            // Generate a random unavailable slug so the original becomes free
-            store.storeSlug = `removed-${store._id.toString().slice(-8)}-${Date.now().toString(36)}`;
-            store.subdomainPurchase.removalScheduledAt = null;
+
+            // Generate a unique removed slug with random suffix to prevent collisions
+            const randomSuffix = Math.random().toString(36).substring(2, 8);
+            const newSlug = `removed-${store._id.toString().slice(-8)}-${Date.now().toString(36)}-${randomSuffix}`;
+
+            // Double-check no collision (extremely unlikely but safe)
+            const existing = await Store.findOne({ storeSlug: newSlug });
+            if (existing && existing._id.toString() !== store._id.toString()) {
+                console.warn(`[subdomain] Slug collision detected for ${newSlug}, skipping this run`);
+                continue;
+            }
+
+            store.storeSlug = newSlug;
+            if (store.subdomainPurchase) {
+                store.subdomainPurchase.removalScheduledAt = null;
+            }
             await store.save();
 
             console.log(`[subdomain] Removed subdomain "${oldSlug}" from blocked store ${store._id} (7-day grace period expired)`);
@@ -257,7 +277,7 @@ exports.processSubdomainRemovals = async () => {
         // 3. Expire purchased subdomains that have passed 3-year ownership
         const expiredPurchases = await Store.find({
             'subdomainPurchase.isPurchased': true,
-            'subdomainPurchase.expiresAt': { $lte: now },
+            'subdomainPurchase.expiresAt': { $lte: now, $ne: null },
         });
 
         for (const store of expiredPurchases) {

@@ -267,9 +267,12 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // ── Trial expiration (runs on persistent Heroku dyno) ──
-const { processTrialExpirations } = require('./controllers/subscriptionController');
+const { processTrialExpirations, migrateHasUsedFreePeriod } = require('./controllers/subscriptionController');
 setInterval(processTrialExpirations, 60 * 60 * 1000); // every hour
 setTimeout(processTrialExpirations, 30000); // 30s after boot
+
+// ── One-time migration (runs on boot): mark existing paid sellers as hasUsedFreePeriod ──
+setTimeout(migrateHasUsedFreePeriod, 15000); // 15s after boot
 
 // ── Subdomain removal processor (runs every 6 hours) ──
 const { processSubdomainRemovals } = require('./controllers/subdomainPurchaseController');
