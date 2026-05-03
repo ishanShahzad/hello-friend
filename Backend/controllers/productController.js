@@ -18,6 +18,16 @@ exports.getProducts = async (req, res) => {
             query.price = { $gte: Number(min), $lte: Number(max) }
         }
 
+        // Only show products from active stores (hides blocked/expired seller products)
+        const Store = require('../models/Store');
+        const activeStores = await Store.find({ isActive: true }).select('seller').lean();
+        const activeSellerIds = activeStores.map(s => s.seller).filter(Boolean);
+        // Include products with no seller (admin products) + products from active sellers
+        query.$or = [
+            { seller: null },
+            { seller: { $in: activeSellerIds } },
+        ];
+
         let products = await Product.find(query)
 
         // Apply fuzzy search with Fuse.js if search term is present
@@ -53,17 +63,29 @@ exports.getProducts = async (req, res) => {
 
 exports.getSingleProduct = async (req, res) => {
     const { id } = req.params
-    // console.log('id:', id)
     try {
         const singleProduct = await Product.findById(id)
+        if (!singleProduct) {
+            return res.status(404).json({ msg: 'Product not found' });
+        }
+
+        // Check if seller's store is active (hide products from blocked sellers)
+        if (singleProduct.seller) {
+            const Store = require('../models/Store');
+            const store = await Store.findOne({ seller: singleProduct.seller, isActive: true });
+            if (!store) {
+                return res.status(404).json({ msg: 'Product not available' });
+            }
+        }
+
         await singleProduct.populate({
             path: 'reviews.user',
             select: 'avatar username email'
         })
-        // console.log('singleProduct:', singleProduct);
         res.status(200).json({ msg: 'fetched single product', product: singleProduct })
     } catch (err) {
         console.error(err)
+        res.status(500).json({ msg: 'Server error' })
     }
 }
 
