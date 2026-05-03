@@ -613,8 +613,12 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
-                    // ── Confirmed via WA but then cancelled from email ──
+                    // ── Confirmed via WA but then cancelled (from email or account) ──
                     if (order.confirmation?.cancelledFromDashboardAt && confirmedViaWA) {
+                        const note = order.confirmation?.cancelledFromDashboardNote || '';
+                        const cancelledFrom = note.includes('account') || note.includes('dashboard')
+                            ? 'your Rozare account'
+                            : `your email (${maskedEmail})`;
                         if (!isYes) {
                             // Tap cancel — already cancelled
                             const msg = [
@@ -622,18 +626,18 @@ exports.handleEvolutionWebhook = async (req, res) => {
                                 ``,
                                 `Your order *#${order.orderId}* is already cancelled. ❌`,
                                 ``,
-                                `You cancelled it from your email (${maskedEmail}).`,
+                                `You cancelled it from ${cancelledFrom}.`,
                                 ``,
                                 `No action needed. 💙`,
                             ].join('\n');
                             await evolution.sendText(phone, msg);
                         } else {
                             // Tap confirm — wants to re-order! Send prompt
-                            console.log(`[whatsapp] Order ${order.orderId} cancelled from email after WA confirm; buyer tapped YES — sending reconfirm prompt`);
+                            console.log(`[whatsapp] Order ${order.orderId} cancelled after WA confirm; buyer tapped YES — sending reconfirm prompt`);
                             const contextMsg = [
                                 `Hey ${firstName}! 👋`,
                                 ``,
-                                `You cancelled this order from your email (${maskedEmail}) after confirming on WhatsApp.`,
+                                `You cancelled this order from ${cancelledFrom} after confirming on WhatsApp.`,
                             ].join('\n');
                             await sendReconfirmPrompt(phone, order, contextMsg);
                         }
