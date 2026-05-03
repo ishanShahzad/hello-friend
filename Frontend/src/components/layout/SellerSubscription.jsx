@@ -526,43 +526,35 @@ const SellerSubscription = () => {
                             ))}
                         </div>
 
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: bonusExpiredPermanently ? 'hsl(0, 72%, 55%)' : 'hsl(270, 60%, 55%)' }}>
-                            Bonus Features
-                            {bonusExpiredPermanently && (
-                                <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'hsl(0, 72%, 55%)' }}>
-                                    EXPIRED
-                                </span>
-                            )}
-                            {subscription?.bonusFeaturesActive && !bonusExpiredPermanently && bonusDaysUntilExpiry <= 30 && (
-                                <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' }}>
-                                    {bonusDaysUntilExpiry} DAYS LEFT
-                                </span>
-                            )}
-                        </p>
-                        <div className="space-y-1.5">
-                            {bonusFeatures.map((f, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    {bonusExpiredPermanently ? (
-                                        <>
-                                            <X size={12} style={{ color: 'hsl(0, 72%, 55%)' }} />
-                                            <span className="text-[11px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{f}</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
-                                            <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        {bonusExpiredPermanently && (
-                            <div className="mt-3 p-3 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
-                                <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Bonus features have been permanently removed from your Starter plan. Upgrade to <strong>Rozare Elite</strong> ($12.99/month) to get them back permanently.
+                        {/* Bonus features: only show list if still active, otherwise just show expired text */}
+                        {bonusExpiredPermanently ? (
+                            <div className="p-3 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                                <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                    <Award size={13} /> Bonus Features Expired
+                                </p>
+                                <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Upgrade to <strong>Rozare Elite</strong> ($12.99/month) to get bonus features permanently.
                                 </p>
                             </div>
+                        ) : subscription?.bonusFeaturesActive && (
+                            <>
+                                <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                    Bonus Features
+                                    {bonusDaysUntilExpiry <= 30 && (
+                                        <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' }}>
+                                            {bonusDaysUntilExpiry} DAYS LEFT
+                                        </span>
+                                    )}
+                                </p>
+                                <div className="space-y-1.5">
+                                    {bonusFeatures.map((f, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                                            <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </div>
                 )}
