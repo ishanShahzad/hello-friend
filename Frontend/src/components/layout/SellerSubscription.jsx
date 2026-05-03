@@ -194,6 +194,50 @@ const SellerSubscription = () => {
                         </p>
                     </div>
                 </div>
+
+                {/* Trial Feature List */}
+                {isTrial && (
+                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                        <p className="text-xs font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>
+                            All features from every Rozare plan are available in your 15-day free trial
+                        </p>
+
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(150, 60%, 45%)' }}>Features from Starter</p>
+                        <div className="space-y-1.5 mb-3">
+                            {[
+                                'Store & products visible to all customers',
+                                '15 product listings',
+                                'Secure payment processing',
+                                'Custom subdomain for your store',
+                                '25 AI messages/day',
+                                'Order management & customer insights',
+                                'Rozare WhatsApp order confirmation automation',
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <Check size={12} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(270, 60%, 55%)' }}>Features from Elite</p>
+                        <div className="space-y-1.5">
+                            {[
+                                'Advanced analytics & growth insights',
+                                'Smart tag AI generator for products',
+                                'Featured product highlighting on the homepage',
+                                'Priority support & early access to new features',
+                                'Coupon & discount management system',
+                                'Bulk discount & promotional tools',
+                            ].map((f, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Pricing Card */}
