@@ -43,6 +43,16 @@ const SellerDashboard = () => {
 
     const isSubBlocked = subscriptionData?.status === 'blocked';
     const isTrialExpiring = subscriptionData?.isTrialExpiringSoon;
+    // Subscription cancelled and approaching end
+    const isSubEndingSoon = (() => {
+        if (!subscriptionData?.cancelledAt || !subscriptionData?.currentPeriodEnd) return false;
+        if (['blocked', 'trial'].includes(subscriptionData.status)) return false;
+        const daysLeft = Math.ceil((new Date(subscriptionData.currentPeriodEnd) - new Date()) / (1000 * 60 * 60 * 24));
+        return daysLeft > 0 && daysLeft <= 3;
+    })();
+    const subDaysRemaining = subscriptionData?.currentPeriodEnd
+        ? Math.max(0, Math.ceil((new Date(subscriptionData.currentPeriodEnd) - new Date()) / (1000 * 60 * 60 * 24)))
+        : 0;
     const [activeTab, setActiveTab] = useState('overview');
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -506,6 +516,26 @@ const SellerDashboard = () => {
                                         <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Subscribe to keep your store active. First 30 days free, then $5.99/mo.</p>
                                     </div>
                                     <Crown size={16} style={{ color: 'hsl(45, 80%, 40%)' }} />
+                                </div>
+                            </motion.div>
+                        </Link>
+                    </div>
+                )}
+                {isSubEndingSoon && !isSubBlocked && !isTrialExpiring && (
+                    <div className="mx-4 mt-3">
+                        <Link to="/seller-dashboard/subscription">
+                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                                className="p-4 rounded-2xl border cursor-pointer hover:scale-[1.01] transition-transform"
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                                <div className="flex items-center gap-3">
+                                    <AlertTriangle size={18} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                            Your store will be blocked in {subDaysRemaining} day{subDaysRemaining !== 1 ? 's' : ''}
+                                        </p>
+                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Your store and products will not be available to anyone on the platform. Re-subscribe to keep your store active.</p>
+                                    </div>
+                                    <Crown size={16} style={{ color: 'hsl(0, 72%, 55%)' }} />
                                 </div>
                             </motion.div>
                         </Link>
