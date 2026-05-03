@@ -105,6 +105,12 @@ const SellerSubscription = () => {
     const isElite = subscription?.plan === 'elite';
     const showSubscribeButton = !isSubscribed;
     const bonusExpiredPermanently = subscription?.bonusFeaturesExpiredPermanently && !isElite;
+    const hasGracePeriod = isBlocked && subscription?.bonusGraceDeadline && subscription?.bonusGraceDaysRemaining > 0 && !bonusExpiredPermanently;
+    const bonusAboutToExpire = isSubscribed && subscription?.plan === 'starter' && subscription?.bonusFeaturesActive && subscription?.bonusExpiryDate && (() => {
+        const daysLeft = Math.ceil((new Date(subscription.bonusExpiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+        return daysLeft <= 7 && daysLeft > 0;
+    })();
+    const bonusDaysUntilExpiry = subscription?.bonusExpiryDate ? Math.max(0, Math.ceil((new Date(subscription.bonusExpiryDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
 
     const starterFeatures = [
         'Store & products visible to all customers',
@@ -153,6 +159,93 @@ const SellerSubscription = () => {
                                     <Package size={11} /> Products hidden
                                 </span>
                             </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* 3-Day Grace Period Banner — bonus features at risk */}
+            {hasGracePeriod && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-5 rounded-2xl border"
+                    style={{ background: 'rgba(249, 115, 22, 0.08)', borderColor: 'rgba(249, 115, 22, 0.25)' }}
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl" style={{ background: 'rgba(249, 115, 22, 0.15)' }}>
+                            <Clock size={20} style={{ color: 'hsl(25, 90%, 50%)' }} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-bold" style={{ color: 'hsl(25, 90%, 45%)' }}>
+                                {subscription.bonusGraceDaysRemaining} Day{subscription.bonusGraceDaysRemaining !== 1 ? 's' : ''} Left to Keep Bonus Features!
+                            </h3>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Re-subscribe now to keep your bonus features for the remaining time. After {subscription.bonusGraceDaysRemaining} day{subscription.bonusGraceDaysRemaining !== 1 ? 's' : ''}, bonus features will be <strong>permanently removed</strong> from the Starter plan.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => handleSubscribe('starter')}
+                                    disabled={checkoutLoading === 'starter'}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}
+                                >
+                                    {checkoutLoading === 'starter' ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <><CreditCard size={13} /> Re-subscribe Now</>
+                                    )}
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => handleSubscribe('elite')}
+                                    disabled={checkoutLoading === 'elite'}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                    style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}
+                                >
+                                    {checkoutLoading === 'elite' ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <><Gem size={13} /> Upgrade to Elite</>
+                                    )}
+                                </motion.button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Bonus Features About to Expire Banner (within 7 days) */}
+            {bonusAboutToExpire && !isElite && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-5 rounded-2xl border"
+                    style={{ background: 'rgba(249, 115, 22, 0.06)', borderColor: 'rgba(249, 115, 22, 0.2)' }}
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl" style={{ background: 'rgba(249, 115, 22, 0.12)' }}>
+                            <AlertTriangle size={20} style={{ color: 'hsl(30, 90%, 50%)' }} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold" style={{ color: 'hsl(30, 85%, 45%)' }}>
+                                Bonus Features Expiring in {bonusDaysUntilExpiry} Day{bonusDaysUntilExpiry !== 1 ? 's' : ''}
+                            </h3>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Your bonus features (analytics, smart tags, featured products, coupons, etc.) will expire on {new Date(subscription.bonusExpiryDate).toLocaleDateString()}. Upgrade to Rozare Elite to keep them permanently.
+                            </p>
+                            <button onClick={() => handleSubscribe('elite')} disabled={checkoutLoading === 'elite'}
+                                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
+                                {checkoutLoading === 'elite' ? (
+                                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <><Gem size={13} /> Upgrade to Elite — Keep Bonus Forever</>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </motion.div>
@@ -222,14 +315,22 @@ const SellerSubscription = () => {
                                 }
                             </p>
                             {isSubscribed && subscription?.bonusFeaturesActive && (
-                                <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
+                                <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: bonusAboutToExpire ? 'hsl(30, 90%, 50%)' : 'hsl(270, 60%, 55%)' }}>
                                     <Award size={11} />
                                     {isElite
                                         ? 'Bonus features permanently included'
-                                        : subscription?.bonusExpiryDate
-                                            ? `Bonus features active until ${new Date(subscription.bonusExpiryDate).toLocaleDateString()}`
-                                            : 'Bonus features active'
+                                        : bonusAboutToExpire
+                                            ? `Bonus features expire in ${bonusDaysUntilExpiry} day${bonusDaysUntilExpiry !== 1 ? 's' : ''}!`
+                                            : subscription?.bonusExpiryDate
+                                                ? `Bonus features active until ${new Date(subscription.bonusExpiryDate).toLocaleDateString()}`
+                                                : 'Bonus features active'
                                     }
+                                    {bonusAboutToExpire && (
+                                        <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                                            style={{ background: 'rgba(249, 115, 22, 0.15)', color: 'hsl(30, 90%, 50%)' }}>
+                                            EXPIRING SOON
+                                        </span>
+                                    )}
                                 </p>
                             )}
                         </div>
@@ -544,7 +645,7 @@ const SellerSubscription = () => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             onClick={e => e.stopPropagation()}
-                            className="glass-panel-strong p-6 max-w-sm w-full"
+                            className="glass-panel-strong p-6 max-w-md w-full"
                         >
                             <div className="text-center mb-4">
                                 <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: 'rgba(239, 68, 68, 0.12)' }}>
@@ -555,6 +656,22 @@ const SellerSubscription = () => {
                                     Your store and products will be hidden from customers after the current period ends. You can re-subscribe anytime.
                                 </p>
                             </div>
+
+                            {/* Bonus features grace period warning */}
+                            {subscription?.plan === 'starter' && subscription?.bonusFeaturesActive && !subscription?.bonusFeaturesExpiredPermanently && subscription?.bonusExpiryDate && new Date(subscription.bonusExpiryDate) > new Date() && (
+                                <div className="mb-4 p-3.5 rounded-xl" style={{ background: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
+                                    <div className="flex items-start gap-2">
+                                        <Clock size={14} className="shrink-0 mt-0.5" style={{ color: 'hsl(30, 90%, 50%)' }} />
+                                        <div>
+                                            <p className="text-xs font-bold" style={{ color: 'hsl(30, 85%, 45%)' }}>Bonus Features Warning</p>
+                                            <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                Once your subscription period ends, you will have <strong>3 days</strong> to re-subscribe and keep your bonus features for the remaining {bonusDaysUntilExpiry} days. After 3 days, bonus features will be <strong>permanently removed</strong> from the Starter plan and you would need to upgrade to Elite to get them back.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex gap-3">
                                 <button onClick={() => setShowCancelConfirm(false)}
                                     className="flex-1 py-2.5 rounded-xl text-xs font-semibold glass-inner"

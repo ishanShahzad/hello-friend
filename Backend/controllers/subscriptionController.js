@@ -85,6 +85,11 @@ exports.getSubscriptionStatus = async (req, res) => {
             await sub.save();
         }
 
+        // Calculate grace period info
+        const now = new Date();
+        const hasGracePeriod = sub.status === 'blocked' && sub.bonusGraceDeadline && now < sub.bonusGraceDeadline && !sub.bonusFeaturesExpiredPermanently;
+        const graceDaysRemaining = hasGracePeriod ? Math.ceil((sub.bonusGraceDeadline - now) / (1000 * 60 * 60 * 24)) : 0;
+
         res.json({
             subscription: {
                 status: sub.status,
@@ -104,6 +109,8 @@ exports.getSubscriptionStatus = async (req, res) => {
                 bonusFeaturesActive: sub.bonusFeaturesActive,
                 bonusExpiryDate: sub.bonusExpiryDate,
                 bonusFeaturesExpiredPermanently: sub.bonusFeaturesExpiredPermanently || false,
+                bonusGraceDeadline: sub.bonusGraceDeadline || null,
+                bonusGraceDaysRemaining: graceDaysRemaining,
             },
         });
     } catch (error) {
@@ -256,11 +263,29 @@ exports.handleWebhook = async (event) => {
                     sub.bonusFeaturesActive = true;
                     sub.bonusExpiryDate = null; // No expiry for Elite
                     sub.bonusFeaturesExpiredPermanently = false;
+                    sub.bonusGraceDeadline = null;
                 } else {
-                    // Starter plan: bonus features for 6 months
-                    const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
-                    sub.bonusFeaturesActive = true;
-                    sub.bonusExpiryDate = bonusExpiry;
+                    // Starter plan: check grace period and permanent expiry
+                    if (sub.bonusFeaturesExpiredPermanently) {
+                        // Permanently expired — Starter re-subscription does NOT restore bonus
+                        sub.bonusFeaturesActive = false;
+                    } else if (sub.bonusGraceDeadline && now <= sub.bonusGraceDeadline && sub.bonusExpiryDate) {
+                        // Re-subscribed within 3-day grace period — keep remaining bonus time
+                        sub.bonusFeaturesActive = true;
+                        // bonusExpiryDate stays the same (the original 6-month deadline)
+                        sub.bonusGraceDeadline = null;
+                    } else if (sub.bonusGraceDeadline && now > sub.bonusGraceDeadline) {
+                        // Grace period passed — bonus permanently gone for Starter
+                        sub.bonusFeaturesActive = false;
+                        sub.bonusFeaturesExpiredPermanently = true;
+                        sub.bonusGraceDeadline = null;
+                    } else {
+                        // Fresh subscription (first time) — give 6 months bonus
+                        const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+                        sub.bonusFeaturesActive = true;
+                        sub.bonusExpiryDate = bonusExpiry;
+                        sub.bonusGraceDeadline = null;
+                    }
                 }
 
                 await sub.save();
@@ -302,11 +327,19 @@ exports.handleWebhook = async (event) => {
                 const sub = await SellerSubscription.findOne({ stripeSubscriptionId: subscription.id });
                 if (!sub) break;
 
+                const now = new Date();
                 sub.status = 'blocked';
-                sub.cancelledAt = new Date();
-                sub.blockedAt = new Date();
+                sub.cancelledAt = now;
+                sub.blockedAt = now;
                 sub.blockedReason = 'Subscription cancelled. Subscribe again to reactivate your store.';
                 sub.aiMessageLimit = 25;
+
+                // Set 3-day bonus grace period if bonus is still active and not permanently expired
+                if (sub.plan === 'starter' && sub.bonusFeaturesActive && !sub.bonusFeaturesExpiredPermanently && sub.bonusExpiryDate && now < sub.bonusExpiryDate) {
+                    sub.bonusGraceDeadline = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+                    sub.bonusGraceNotificationSent = false;
+                }
+
                 await sub.save();
 
                 // Block store
@@ -327,16 +360,53 @@ exports.handleWebhook = async (event) => {
                 );
             }
 
-            // Send block notification
+            // Send block notification with grace period info
             const Notification = require('../models/Notification');
+            const hasGrace = sub.bonusGraceDeadline && now < sub.bonusGraceDeadline;
+            const graceMsg = hasGrace
+                ? ` You have 3 days to re-subscribe and keep your remaining bonus features.`
+                : '';
+
             await Notification.create({
                 user: sub.seller,
                 title: 'Store blocked — subscription ended',
-                body: 'Your subscription has ended. Your store and products are hidden from the marketplace. Subscribe again to reactivate.',
+                body: `Your subscription has ended. Your store and products are hidden from the marketplace.${graceMsg} Subscribe again to reactivate.`,
                 category: 'subscription',
                 linkTo: '/seller-dashboard/subscription',
                 source: 'system',
             }).catch(e => console.error('Subscription end notification failed:', e.message));
+
+            // Send grace period email if applicable
+            if (hasGrace) {
+                const user = await User.findById(sub.seller);
+                const store = await Store.findOne({ seller: sub.seller });
+                const bonusDaysRemaining = Math.ceil((sub.bonusExpiryDate - now) / (1000 * 60 * 60 * 24));
+
+                if (user?.email) {
+                    const html = subscriptionEmailTemplate(
+                        'You Have 3 Days to Keep Your Bonus Features!',
+                        `<p>Hello ${user.username || 'Seller'},</p>
+                        <p>Your subscription for <strong>"${store?.storeName || 'your store'}"</strong> has ended and your store is now blocked.</p>
+                        <div class="highlight danger">
+                            <strong>Important:</strong> You have <strong>3 days</strong> to re-subscribe and keep your bonus features for the remaining <strong>${bonusDaysRemaining} days</strong>.
+                        </div>
+                        <p>After 3 days, your bonus features will be <strong>permanently removed</strong> from the Starter plan. You would need to upgrade to Rozare Elite ($12.99/month) to get them back.</p>
+                        <p><strong>Bonus features at risk:</strong></p>
+                        <ul>
+                            <li>Advanced analytics & growth insights</li>
+                            <li>Smart tag AI generator for products</li>
+                            <li>Featured product highlighting on the homepage</li>
+                            <li>Priority support & early access to new features</li>
+                            <li>Coupon & discount management system</li>
+                            <li>Bulk discount & promotional tools</li>
+                        </ul>
+                        <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Re-subscribe Now — Keep Bonus Features</a></p>`
+                    );
+                    await sendEmail({ to: user.email, subject: '3 Days Left to Keep Your Bonus Features!', html });
+                }
+                sub.bonusGraceNotificationSent = true;
+                await sub.save();
+            }
 
                 break;
             }
@@ -388,7 +458,18 @@ exports.cancelSubscription = async (req, res) => {
         sub.cancelledAt = new Date();
         await sub.save();
 
-        res.json({ msg: 'Subscription will be cancelled at the end of the current period.' });
+        // Determine if bonus features are still active (for the warning message)
+        const now = new Date();
+        const hasBonusAtRisk = sub.plan === 'starter' && sub.bonusFeaturesActive && !sub.bonusFeaturesExpiredPermanently && sub.bonusExpiryDate && now < sub.bonusExpiryDate;
+        const bonusDaysRemaining = hasBonusAtRisk ? Math.ceil((sub.bonusExpiryDate - now) / (1000 * 60 * 60 * 24)) : 0;
+
+        res.json({
+            msg: 'Subscription will be cancelled at the end of the current period.',
+            bonusWarning: hasBonusAtRisk ? {
+                message: 'Once your subscription period ends, you will have 3 days to re-subscribe and keep your bonus features. After 3 days, bonus features will be permanently removed from the Starter plan.',
+                bonusDaysRemaining,
+            } : null,
+        });
     } catch (error) {
         console.error('Cancel subscription error:', error);
         res.status(500).json({ msg: 'Failed to cancel subscription' });
@@ -651,6 +732,52 @@ exports.processTrialExpirations = async () => {
 
         if (bonusExpiringSoon.length > 0 || bonusExpired.length > 0) {
             console.log(`Bonus check: ${bonusExpiringSoon.length} warnings, ${bonusExpired.length} expired`);
+        }
+
+        // ── Process 3-day bonus grace period expirations ──
+        const graceExpired = await SellerSubscription.find({
+            status: 'blocked',
+            plan: 'starter',
+            bonusGraceDeadline: { $lte: now },
+            bonusFeaturesExpiredPermanently: { $ne: true },
+        });
+
+        for (const sub of graceExpired) {
+            sub.bonusFeaturesActive = false;
+            sub.bonusFeaturesExpiredPermanently = true;
+            sub.bonusGraceDeadline = null;
+            await sub.save();
+
+            const user = await User.findById(sub.seller);
+            const store = await Store.findOne({ seller: sub.seller });
+
+            // In-app notification
+            await Notification.create({
+                user: sub.seller,
+                title: 'Bonus features permanently removed',
+                body: 'The 3-day grace period has passed. Bonus features are no longer available with the Starter plan. Upgrade to Rozare Elite to get them back.',
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Grace expiry notification failed:', e.message));
+
+            if (user?.email) {
+                const html = subscriptionEmailTemplate(
+                    'Bonus Features Permanently Removed',
+                    `<p>Hello ${user.username || 'Seller'},</p>
+                    <p>The 3-day grace period for <strong>"${store?.storeName || 'your store'}"</strong> has ended.</p>
+                    <div class="highlight danger">
+                        <strong>Bonus features are now permanently removed</strong> from the Starter plan for your account.
+                    </div>
+                    <p>If you re-subscribe to the Starter plan, you will only get the core Starter features. To get bonus features back, upgrade to <strong>Rozare Elite</strong> ($12.99/month with 45 days free).</p>
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Upgrade to Elite — 45 Days Free</a></p>`
+                );
+                await sendEmail({ to: user.email, subject: 'Bonus Features Permanently Removed — Upgrade to Elite', html });
+            }
+        }
+
+        if (graceExpired.length > 0) {
+            console.log(`Grace period check: ${graceExpired.length} permanently expired`);
         }
     } catch (error) {
         console.error('Process trial expirations error:', error);
