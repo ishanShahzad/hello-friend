@@ -320,18 +320,6 @@ const SellerSubscription = () => {
                         </div>
                         <div>
                             <h3 className="text-sm font-bold" style={{ color: 'hsl(270, 60%, 55%)' }}>Bonus Features Expired</h3>
-                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Your 6-month bonus features have expired. Upgrade to Rozare Elite to get them permanently.
-                            </p>
-                            <button onClick={() => handleSubscribe('elite')} disabled={checkoutLoading === 'elite'}
-                                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white"
-                                style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
-                                {checkoutLoading === 'elite' ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <><Gem size={13} /> Upgrade to Elite — 45 Days Free</>
-                                )}
-                            </button>
                         </div>
                     </div>
                 </motion.div>
@@ -531,9 +519,6 @@ const SellerSubscription = () => {
                             <div className="p-3 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
                                 <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
                                     <Award size={13} /> Bonus Features Expired
-                                </p>
-                                <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Upgrade to <strong>Rozare Elite</strong> ($12.99/month) to get bonus features permanently.
                                 </p>
                             </div>
                         ) : subscription?.bonusFeaturesActive && (
