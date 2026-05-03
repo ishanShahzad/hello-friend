@@ -476,6 +476,113 @@ exports.cancelSubscription = async (req, res) => {
     }
 };
 
+// Upgrade from Starter to Elite (swap Stripe subscription)
+exports.upgradeToElite = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+        const sub = await SellerSubscription.findOne({ seller: sellerId });
+
+        if (!sub) {
+            return res.status(400).json({ msg: 'No subscription found' });
+        }
+
+        // Must be on an active Starter plan
+        if (!['active', 'free_period'].includes(sub.status) || sub.plan !== 'starter') {
+            return res.status(400).json({ msg: 'You can only upgrade from an active Starter plan.' });
+        }
+
+        if (!sub.stripeSubscriptionId) {
+            return res.status(400).json({ msg: 'No active Stripe subscription found.' });
+        }
+
+        if (!stripe) {
+            return res.status(500).json({ msg: 'Payment system not configured' });
+        }
+
+        // Get the current Stripe subscription to find the item
+        const stripeSubscription = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+        const subscriptionItemId = stripeSubscription.items.data[0]?.id;
+
+        if (!subscriptionItemId) {
+            return res.status(500).json({ msg: 'Could not find subscription item to upgrade.' });
+        }
+
+        // Create a new price for Elite ($12.99/month)
+        // Update the subscription item to the new price (immediate proration)
+        const updatedSubscription = await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+            items: [{
+                id: subscriptionItemId,
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'Rozare Elite',
+                        description: 'Rozare Elite - $12.99/month. All Starter + Bonus features permanently. Cancel anytime.',
+                    },
+                    unit_amount: 1299, // $12.99
+                    recurring: { interval: 'month' },
+                },
+            }],
+            proration_behavior: 'create_prorations', // Charge difference immediately
+            metadata: { sellerId: sellerId.toString(), plan: 'elite' },
+            cancel_at_period_end: false, // Remove any pending cancellation
+        });
+
+        // Update local subscription record
+        const now = new Date();
+        sub.plan = 'elite';
+        sub.planName = 'Rozare Elite';
+        sub.bonusFeaturesActive = true;
+        sub.bonusExpiryDate = null; // No expiry for Elite
+        sub.bonusFeaturesExpiredPermanently = false;
+        sub.bonusGraceDeadline = null;
+        sub.cancelledAt = null; // Clear any pending cancellation
+        sub.warningEmailSent = false;
+        await sub.save();
+
+        // Send confirmation email
+        const user = await User.findById(sellerId);
+        if (user?.email) {
+            const html = subscriptionEmailTemplate(
+                'Upgraded to Rozare Elite!',
+                `<p>Hello ${user.username || 'Seller'},</p>
+                <p>You have successfully upgraded to <strong>Rozare Elite</strong>!</p>
+                <div class="highlight">
+                    <strong>Plan:</strong> Rozare Elite ($12.99/month)<br/>
+                    <strong>Bonus Features:</strong> Now permanently included — they will never expire!<br/>
+                    <strong>AI Messages:</strong> 100/day
+                </div>
+                <p>All your bonus features are now permanently active. No more expiry timers!</p>
+                <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard" class="button">Go to Dashboard</a></p>`
+            );
+            await sendEmail({ to: user.email, subject: 'Upgraded to Rozare Elite!', html });
+        }
+
+        // In-app notification
+        const Notification = require('../models/Notification');
+        await Notification.create({
+            user: sellerId,
+            title: 'Upgraded to Rozare Elite!',
+            body: 'Your plan has been upgraded to Rozare Elite. Bonus features are now permanently included.',
+            category: 'subscription',
+            linkTo: '/seller-dashboard/subscription',
+            source: 'system',
+        }).catch(e => console.error('Upgrade notification failed:', e.message));
+
+        res.json({
+            msg: 'Successfully upgraded to Rozare Elite! Bonus features are now permanently included.',
+            subscription: {
+                plan: sub.plan,
+                planName: sub.planName,
+                bonusFeaturesActive: sub.bonusFeaturesActive,
+                bonusExpiryDate: sub.bonusExpiryDate,
+            },
+        });
+    } catch (error) {
+        console.error('Upgrade to Elite error:', error);
+        res.status(500).json({ msg: 'Failed to upgrade. Please try again.' });
+    }
+};
+
 // CRON job: Send warning emails 3 days before trial ends & block expired trials
 exports.processTrialExpirations = async () => {
     try {

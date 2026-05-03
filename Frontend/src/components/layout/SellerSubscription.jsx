@@ -14,7 +14,9 @@ const SellerSubscription = () => {
     const [loading, setLoading] = useState(true);
     const [checkoutLoading, setCheckoutLoading] = useState(null); // 'starter' | 'elite' | null
     const [cancelLoading, setCancelLoading] = useState(false);
+    const [upgradeLoading, setUpgradeLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
     const [searchParams] = useSearchParams();
 
     useEffect(() => {
@@ -69,6 +71,23 @@ const SellerSubscription = () => {
             toast.error(err.response?.data?.msg || 'Failed to cancel subscription');
         } finally {
             setCancelLoading(false);
+        }
+    };
+
+    const handleUpgrade = async () => {
+        setUpgradeLoading(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/upgrade-to-elite`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.msg || 'Upgraded to Rozare Elite!');
+            setShowUpgradeConfirm(false);
+            fetchSubscription();
+        } catch (err) {
+            toast.error(err.response?.data?.msg || 'Failed to upgrade');
+        } finally {
+            setUpgradeLoading(false);
         }
     };
 
@@ -336,11 +355,20 @@ const SellerSubscription = () => {
                         </div>
                     </div>
                     {isSubscribed && !subscription?.cancelledAt && (
-                        <button onClick={() => setShowCancelConfirm(true)}
-                            className="text-xs px-3 py-1.5 rounded-lg transition-colors"
-                            style={{ color: 'hsl(0, 72%, 55%)', background: 'rgba(239, 68, 68, 0.08)' }}>
-                            Cancel
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {!isElite && (
+                                <button onClick={() => setShowUpgradeConfirm(true)}
+                                    className="text-xs px-3 py-1.5 rounded-lg transition-colors font-semibold"
+                                    style={{ color: 'hsl(270, 60%, 55%)', background: 'rgba(139, 92, 246, 0.08)' }}>
+                                    Upgrade
+                                </button>
+                            )}
+                            <button onClick={() => setShowCancelConfirm(true)}
+                                className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: 'hsl(0, 72%, 55%)', background: 'rgba(239, 68, 68, 0.08)' }}>
+                                Cancel
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -682,6 +710,69 @@ const SellerSubscription = () => {
                                     className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
                                     style={{ background: 'hsl(0, 72%, 55%)' }}>
                                     {cancelLoading ? 'Cancelling...' : 'Cancel Plan'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Upgrade Confirm Modal */}
+            <AnimatePresence>
+                {showUpgradeConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowUpgradeConfirm(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="glass-panel-strong p-6 max-w-md w-full"
+                        >
+                            <div className="text-center mb-4">
+                                <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: 'rgba(139, 92, 246, 0.12)' }}>
+                                    <Gem size={22} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                                </div>
+                                <h3 className="text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>Upgrade to Rozare Elite?</h3>
+                                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Your billing will change from $5.99/month to $12.99/month. The price difference will be prorated for the current period.
+                                </p>
+                            </div>
+
+                            <div className="mb-4 p-3.5 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                                <p className="text-xs font-bold mb-2" style={{ color: 'hsl(270, 60%, 55%)' }}>What you get with Elite:</p>
+                                <div className="space-y-1.5">
+                                    {[
+                                        'All Starter features included',
+                                        'Bonus features permanently (no more 6-month timer)',
+                                        'Advanced analytics & growth insights',
+                                        'Smart tag AI generator for products',
+                                        'Featured product highlighting',
+                                        'Coupon & discount management',
+                                    ].map((f, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <Check size={11} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                                            <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowUpgradeConfirm(false)}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold glass-inner"
+                                    style={{ color: 'hsl(var(--foreground))' }}>
+                                    Keep Starter
+                                </button>
+                                <button onClick={handleUpgrade} disabled={upgradeLoading}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
+                                    style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
+                                    {upgradeLoading ? 'Upgrading...' : 'Upgrade to Elite'}
                                 </button>
                             </div>
                         </motion.div>
