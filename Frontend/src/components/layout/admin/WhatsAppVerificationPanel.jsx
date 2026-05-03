@@ -402,7 +402,7 @@ const WhatsAppVerificationPanel = () => {
                         {/* Secondary KPIs */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                             <StatCard icon={Clock} label="In Queue" value={stats.queued} color="hsl(220,15%,55%)" />
-                            <StatCard icon={AlertTriangle} label="Failed" value={stats.failed} color="hsl(0,72%,55%)" />
+                            <StatCard icon={AlertTriangle} label="Failed" value={stats.failed} color="hsl(0,72%,55%)" sub={stats.neverQueued > 0 ? `${stats.neverQueued} never queued` : undefined} />
                             <StatCard icon={Timer} label="Avg Reply Time" value={stats.avgResponseMinutes != null ? `${stats.avgResponseMinutes}m` : '—'} color="hsl(260,60%,60%)" />
                             <StatCard icon={MessageCircle} label="Total All Time" value={stats.total} color="hsl(180,60%,40%)" />
                         </div>

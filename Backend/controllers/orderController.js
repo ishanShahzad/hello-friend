@@ -17,22 +17,69 @@ const User = require('../models/User');
 // Enqueue WhatsApp confirmation if admin connected AND any seller in the order has the bonus
 const maybeEnqueueWhatsAppConfirmation = async (order, productItems) => {
     try {
-        if (!order?.confirmation?.token) return;
+        if (!order?.confirmation?.token) {
+            console.warn(`[order] WhatsApp skip for ${order?.orderId}: no confirmation token`);
+            return;
+        }
         const cfg = await WhatsAppConfig.findOne({ singletonKey: 'main' });
-        if (!cfg || cfg.status !== 'connected') return;
+        if (!cfg || cfg.status !== 'connected') {
+            // WhatsApp not connected — track it on the order
+            await Order.updateOne({ _id: order._id }, {
+                $set: {
+                    'confirmation.whatsappSentAt': new Date(),
+                    'confirmation.whatsappSentSuccess': false,
+                    'confirmation.whatsappError': cfg ? `WhatsApp status: ${cfg.status} (not connected)` : 'WhatsApp not configured',
+                }
+            });
+            console.warn(`[order] WhatsApp skip for ${order.orderId}: not connected (status: ${cfg?.status || 'no config'})`);
+            return;
+        }
 
         const sellerIds = [...new Set((productItems || []).map(p => p.seller?.toString()).filter(Boolean))];
         let entitled = false;
         for (const sid of sellerIds) {
-            // eslint-disable-next-line no-await-in-loop
             if (await sellerHasWhatsAppVerify(sid)) { entitled = true; break; }
         }
-        if (!entitled) return;
+        if (!entitled) {
+            // No seller has the WhatsApp bonus — track it
+            await Order.updateOne({ _id: order._id }, {
+                $set: {
+                    'confirmation.whatsappSentAt': new Date(),
+                    'confirmation.whatsappSentSuccess': false,
+                    'confirmation.whatsappError': 'No seller in this order has the WhatsApp verification bonus enabled',
+                }
+            });
+            console.warn(`[order] WhatsApp skip for ${order.orderId}: no seller has WhatsApp bonus`);
+            return;
+        }
 
-        await enqueueOrderConfirmation(order);
+        const result = await enqueueOrderConfirmation(order);
+        if (!result) {
+            await Order.updateOne({ _id: order._id }, {
+                $set: {
+                    'confirmation.whatsappSentAt': new Date(),
+                    'confirmation.whatsappSentSuccess': false,
+                    'confirmation.whatsappError': 'Failed to enqueue — possibly invalid phone number',
+                }
+            });
+            console.warn(`[order] WhatsApp enqueue returned null for ${order.orderId}`);
+            return;
+        }
         console.log(`[order] WhatsApp confirmation enqueued for ${order.orderId}`);
     } catch (err) {
         console.error('maybeEnqueueWhatsAppConfirmation:', err.message);
+        // Track the error on the order
+        try {
+            await Order.updateOne({ _id: order._id }, {
+                $set: {
+                    'confirmation.whatsappSentAt': new Date(),
+                    'confirmation.whatsappSentSuccess': false,
+                    'confirmation.whatsappError': `Enqueue error: ${err.message}`,
+                }
+            });
+        } catch (trackErr) {
+            console.error('Failed to track WA enqueue error:', trackErr.message);
+        }
     }
 };
 
@@ -210,8 +257,8 @@ exports.placeOrder = async (req, res) => {
             console.error('Failed to send seller notification email:', emailErr.message);
         }
 
-        // 🟢 Enqueue WhatsApp poll-based confirmation (gated by subscription bonus + admin link)
-        maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
+        // 🟢 Enqueue WhatsApp confirmation (gated by subscription bonus + admin link)
+        await maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
 
         // Record coupon usage
         if (userId && order.appliedCoupons && order.appliedCoupons.length > 0) {

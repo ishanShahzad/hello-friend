@@ -561,8 +561,9 @@ exports.getStats = async (req, res) => {
         const now = new Date();
         const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const Order = require('../models/Order');
 
-        const [byStatus, last24h, last7d, total, recentSeries, avgResponse] = await Promise.all([
+        const [byStatus, last24h, last7d, total, recentSeries, avgResponse, neverQueued] = await Promise.all([
             WhatsAppPendingMessage.aggregate([
                 { $group: { _id: '$status', count: { $sum: 1 } } },
             ]),
@@ -590,6 +591,12 @@ exports.getStats = async (req, res) => {
                 },
                 { $group: { _id: null, avg: { $avg: '$responseMs' } } },
             ]),
+            // Count orders where WhatsApp failed at enqueue stage (never queued)
+            Order.countDocuments({
+                'confirmation.whatsappSentSuccess': false,
+                'confirmation.whatsappError': { $ne: '' },
+                createdAt: { $gte: weekAgo },
+            }),
         ]);
 
         const counts = byStatus.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
@@ -616,6 +623,7 @@ exports.getStats = async (req, res) => {
             failed,
             failedSend,
             invalidNumber,
+            neverQueued,
             queued,
             expired,
             responseRate,
