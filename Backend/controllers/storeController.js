@@ -314,6 +314,28 @@ exports.updateStore = async (req, res) => {
                 return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
             }
 
+            // Warn: changing slug will forfeit the purchased subdomain ownership
+            // If seller has purchased the subdomain, require explicit confirmation
+            if (store.subdomainPurchase?.isPurchased && store.subdomainPurchase?.expiresAt && new Date(store.subdomainPurchase.expiresAt) > new Date()) {
+                if (!req.body.confirmSubdomainChange) {
+                    return res.status(400).json({
+                        msg: `You have purchased the subdomain "${store.storeSlug}.rozare.com". Changing it will forfeit your ownership of the old subdomain — anyone else can claim it. To proceed, resend with confirmSubdomainChange: true.`,
+                        requiresConfirmation: true,
+                        currentSubdomain: store.storeSlug,
+                        newSubdomain: storeSlug.toLowerCase(),
+                    });
+                }
+
+                // Seller confirmed — clear the purchase since they're abandoning it
+                store.subdomainPurchase = {
+                    isPurchased: false,
+                    purchasedAt: null,
+                    expiresAt: null,
+                    stripePaymentId: '',
+                    removalScheduledAt: null,
+                };
+            }
+
             // Check if available
             const duplicateSlug = await Store.findOne({ 
                 storeSlug: storeSlug.toLowerCase(),
@@ -326,7 +348,10 @@ exports.updateStore = async (req, res) => {
             store.storeSlug = storeSlug.toLowerCase();
         } else if (storeName && !storeSlug && storeName !== store.storeName) {
             // Generate new slug if store name changed and no custom slug provided
-            store.storeSlug = await generateUniqueSlug(storeName);
+            // But only if subdomain isn't purchased (don't lose purchased subdomain on store rename)
+            if (!store.subdomainPurchase?.isPurchased || !store.subdomainPurchase?.expiresAt || new Date(store.subdomainPurchase.expiresAt) <= new Date()) {
+                store.storeSlug = await generateUniqueSlug(storeName);
+            }
         }
 
         // Update other fields

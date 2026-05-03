@@ -34,7 +34,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
   // Handle subscription webhook events
   const { handleWebhook: handleSubscriptionWebhook } = require('./controllers/subscriptionController');
-  if (['checkout.session.completed', 'customer.subscription.deleted', 'invoice.payment_failed'].includes(event.type)) {
+  if (['checkout.session.completed', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.payment_succeeded'].includes(event.type)) {
     await handleSubscriptionWebhook(event);
   }
 

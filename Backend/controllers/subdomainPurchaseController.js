@@ -76,6 +76,7 @@ exports.getSubdomainOwnership = async (req, res) => {
 };
 
 // Create Stripe checkout for subdomain purchase ($15 one-time)
+// Also supports renewal when ownership is still valid (extends the expiry by 3 more years)
 exports.purchaseSubdomain = async (req, res) => {
     try {
         const sellerId = req.user.id;
@@ -86,11 +87,8 @@ exports.purchaseSubdomain = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found. Create a store first.' });
         }
 
-        // Check if already purchased and still valid
         const purchase = store.subdomainPurchase || {};
-        if (purchase.isPurchased && purchase.expiresAt && new Date(purchase.expiresAt) > new Date()) {
-            return res.status(400).json({ msg: 'Subdomain already purchased and ownership is still valid.' });
-        }
+        const isRenewal = purchase.isPurchased && purchase.expiresAt && new Date(purchase.expiresAt) > new Date();
 
         if (!stripe) {
             return res.status(500).json({ msg: 'Payment system not configured' });
@@ -104,8 +102,10 @@ exports.purchaseSubdomain = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: `Subdomain: ${store.storeSlug}.rozare.com`,
-                        description: `Secure your subdomain "${store.storeSlug}.rozare.com" for ${SUBDOMAIN_OWNERSHIP_YEARS} years. Your subdomain is protected even if your account is blocked.`,
+                        name: isRenewal ? `Renew Subdomain: ${store.storeSlug}.rozare.com` : `Subdomain: ${store.storeSlug}.rozare.com`,
+                        description: isRenewal
+                            ? `Extend your subdomain "${store.storeSlug}.rozare.com" ownership by ${SUBDOMAIN_OWNERSHIP_YEARS} more years.`
+                            : `Secure your subdomain "${store.storeSlug}.rozare.com" for ${SUBDOMAIN_OWNERSHIP_YEARS} years. Your subdomain is protected even if your account is blocked.`,
                     },
                     unit_amount: SUBDOMAIN_PRICE_CENTS,
                 },
@@ -117,11 +117,12 @@ exports.purchaseSubdomain = async (req, res) => {
                 sellerId: sellerId.toString(),
                 storeId: store._id.toString(),
                 type: 'subdomain_purchase',
+                isRenewal: isRenewal ? 'true' : 'false',
             },
             customer_email: user.email,
         });
 
-        res.json({ url: session.url, sessionId: session.id });
+        res.json({ url: session.url, sessionId: session.id, isRenewal });
     } catch (error) {
         console.error('Purchase subdomain error:', error);
         res.status(500).json({ msg: 'Failed to create checkout session' });
@@ -135,6 +136,7 @@ exports.handleSubdomainPurchaseWebhook = async (session) => {
 
         const storeId = session.metadata.storeId;
         const sellerId = session.metadata.sellerId;
+        const isRenewal = session.metadata.isRenewal === 'true';
 
         const store = await Store.findById(storeId);
         if (!store) {
@@ -143,11 +145,16 @@ exports.handleSubdomainPurchaseWebhook = async (session) => {
         }
 
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + SUBDOMAIN_OWNERSHIP_YEARS * 365 * 24 * 60 * 60 * 1000);
+        // On renewal, extend from current expiry; on new purchase, extend from now
+        const currentPurchase = store.subdomainPurchase || {};
+        const baseDate = (isRenewal && currentPurchase.expiresAt && new Date(currentPurchase.expiresAt) > now)
+            ? new Date(currentPurchase.expiresAt)
+            : now;
+        const expiresAt = new Date(baseDate.getTime() + SUBDOMAIN_OWNERSHIP_YEARS * 365 * 24 * 60 * 60 * 1000);
 
         store.subdomainPurchase = {
             isPurchased: true,
-            purchasedAt: now,
+            purchasedAt: isRenewal && currentPurchase.purchasedAt ? currentPurchase.purchasedAt : now,
             expiresAt,
             stripePaymentId: session.payment_intent || session.id,
             removalScheduledAt: null, // Clear any scheduled removal
@@ -157,27 +164,27 @@ exports.handleSubdomainPurchaseWebhook = async (session) => {
         // Send confirmation email
         const user = await User.findById(sellerId);
         if (user?.email) {
+            const emailTitle = isRenewal ? 'Subdomain Renewed!' : 'Subdomain Purchased!';
             const html = subdomainEmailTemplate(
-                'Subdomain Purchased!',
+                emailTitle,
                 `<p>Hello ${user.username || 'Seller'},</p>
-                <p>Your subdomain <strong>${store.storeSlug}.rozare.com</strong> is now secured!</p>
+                <p>Your subdomain <strong>${store.storeSlug}.rozare.com</strong> is ${isRenewal ? 'now extended' : 'now secured'}!</p>
                 <div class="highlight">
                     <strong>Subdomain:</strong> ${store.storeSlug}.rozare.com<br/>
-                    <strong>Ownership Period:</strong> ${SUBDOMAIN_OWNERSHIP_YEARS} years<br/>
-                    <strong>Expires:</strong> ${expiresAt.toLocaleDateString()}<br/>
+                    <strong>${isRenewal ? 'New Expiry:' : 'Ownership Period:'}</strong> ${isRenewal ? expiresAt.toLocaleDateString() : `${SUBDOMAIN_OWNERSHIP_YEARS} years (until ${expiresAt.toLocaleDateString()})`}<br/>
                     <strong>Protection:</strong> Your subdomain is protected even if your account is blocked.
                 </div>
-                <p>Your subdomain cannot be claimed by anyone else for the next ${SUBDOMAIN_OWNERSHIP_YEARS} years, even if your store is temporarily blocked.</p>
+                <p>Your subdomain cannot be claimed by anyone else until ${expiresAt.toLocaleDateString()}.</p>
                 <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subdomain" class="button">View Subdomain</a></p>`
             );
-            await sendEmail({ to: user.email, subject: 'Subdomain Purchased Successfully!', html });
+            await sendEmail({ to: user.email, subject: emailTitle, html });
         }
 
         // In-app notification
         await Notification.create({
             user: sellerId,
-            title: 'Subdomain purchased!',
-            body: `Your subdomain ${store.storeSlug}.rozare.com is now secured for ${SUBDOMAIN_OWNERSHIP_YEARS} years.`,
+            title: isRenewal ? 'Subdomain renewed!' : 'Subdomain purchased!',
+            body: `Your subdomain ${store.storeSlug}.rozare.com is now secured until ${expiresAt.toLocaleDateString()}.`,
             category: 'system',
             linkTo: '/seller-dashboard/subdomain',
             source: 'system',

@@ -38,6 +38,10 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     bonusFeaturesExpiredPermanently: { type: Boolean, default: false }, // After grace period, can only get back via Elite plan
     bonusExpiryWarningEmailSent: { type: Boolean, default: false }, // Track if we sent the "about to expire" notification
 
+    // PERMANENT FLAG: once seller has started their Starter bonus period, this is set to true forever.
+    // Never resets, even on Elite upgrade/downgrade. Prevents exploit: Starter→expire→Elite→downgrade→fresh bonus.
+    starterBonusPeriodUsed: { type: Boolean, default: false },
+
     // 3-day grace period: after account blocked, seller has 3 days to re-subscribe and keep remaining bonus time
     bonusGraceDeadline: { type: Date }, // blockedAt + 3 days; if seller re-subscribes before this, bonus continues
     bonusGraceNotificationSent: { type: Boolean, default: false }, // Track if grace period notification was sent

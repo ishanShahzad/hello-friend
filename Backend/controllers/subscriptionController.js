@@ -180,6 +180,39 @@ exports.createCheckout = async (req, res) => {
             await sub.save();
         }
 
+        // Prevent parallel subscription exploit: cancel any existing ACTIVE Stripe subscriptions
+        // for this customer before creating a new one
+        try {
+            const existingSubs = await stripe.subscriptions.list({
+                customer: customerId,
+                status: 'active',
+                limit: 10,
+            });
+            for (const existing of existingSubs.data) {
+                if (existing.id !== sub.stripeSubscriptionId) {
+                    await stripe.subscriptions.cancel(existing.id).catch(e =>
+                        console.error(`Failed to cancel stale sub ${existing.id}:`, e.message)
+                    );
+                }
+            }
+            // Also cancel any trialing subscriptions
+            const trialingSubs = await stripe.subscriptions.list({
+                customer: customerId,
+                status: 'trialing',
+                limit: 10,
+            });
+            for (const existing of trialingSubs.data) {
+                if (existing.id !== sub.stripeSubscriptionId) {
+                    await stripe.subscriptions.cancel(existing.id).catch(e =>
+                        console.error(`Failed to cancel stale trial sub ${existing.id}:`, e.message)
+                    );
+                }
+            }
+        } catch (listErr) {
+            console.error('Failed to list existing Stripe subscriptions:', listErr.message);
+            // Continue anyway — worst case user has a duplicate; webhook will handle the latest
+        }
+
         // Determine plan details
         const isElite = plan === 'elite';
         const planName = isElite ? 'Rozare Elite' : 'Rozare Starter';
@@ -259,6 +292,17 @@ exports.handleWebhook = async (event) => {
                 const isElite = selectedPlan === 'elite';
                 const now = new Date();
 
+                // Safety check: if there's already an active stripe subscription, cancel the older one
+                // This prevents the parallel-checkout exploit where user completes multiple checkouts
+                if (sub.stripeSubscriptionId && sub.stripeSubscriptionId !== session.subscription && ['active', 'free_period'].includes(sub.status)) {
+                    try {
+                        await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+                        console.log(`[subscription] Cancelled old stripe sub ${sub.stripeSubscriptionId} in favor of new ${session.subscription}`);
+                    } catch (cancelErr) {
+                        console.error('Failed to cancel old subscription:', cancelErr.message);
+                    }
+                }
+
                 // Determine if seller gets a free period (only first time ever)
                 const getsFreePeriod = !sub.hasUsedFreePeriod;
                 const freePeriodDays = getsFreePeriod ? (isElite ? 45 : 30) : 0;
@@ -290,26 +334,33 @@ exports.handleWebhook = async (event) => {
                     sub.bonusFeaturesExpiredPermanently = false;
                     sub.bonusGraceDeadline = null;
                 } else {
-                    // Starter plan: check grace period and permanent expiry
-                    if (sub.bonusFeaturesExpiredPermanently) {
-                        // Permanently expired — Starter re-subscription does NOT restore bonus
+                    // Starter plan: check permanent starter bonus usage, grace period, and temp expiry
+                    if (sub.starterBonusPeriodUsed) {
+                        // This seller has already had their Starter bonus period before — no more bonus on Starter
+                        sub.bonusFeaturesActive = false;
+                        sub.bonusFeaturesExpiredPermanently = true;
+                        sub.bonusGraceDeadline = null;
+                    } else if (sub.bonusFeaturesExpiredPermanently) {
+                        // Permanently expired (safety check) — Starter re-subscription does NOT restore bonus
                         sub.bonusFeaturesActive = false;
                     } else if (sub.bonusGraceDeadline && now <= sub.bonusGraceDeadline && sub.bonusExpiryDate) {
                         // Re-subscribed within 3-day grace period — keep remaining bonus time
                         sub.bonusFeaturesActive = true;
                         // bonusExpiryDate stays the same (the original 6-month deadline)
                         sub.bonusGraceDeadline = null;
+                        // starterBonusPeriodUsed already true from initial subscribe
                     } else if (sub.bonusGraceDeadline && now > sub.bonusGraceDeadline) {
                         // Grace period passed — bonus permanently gone for Starter
                         sub.bonusFeaturesActive = false;
                         sub.bonusFeaturesExpiredPermanently = true;
                         sub.bonusGraceDeadline = null;
                     } else {
-                        // Fresh subscription (first time) — give 6 months bonus
+                        // Fresh subscription (first time on Starter) — give 6 months bonus
                         const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
                         sub.bonusFeaturesActive = true;
                         sub.bonusExpiryDate = bonusExpiry;
                         sub.bonusGraceDeadline = null;
+                        sub.starterBonusPeriodUsed = true; // Mark permanently — can never get fresh Starter bonus again
                     }
                 }
 
@@ -420,14 +471,20 @@ exports.handleWebhook = async (event) => {
                         sub.pendingDowngrade = { toPlan: null, scheduledAt: null };
                         sub.warningEmailSent = false;
 
-                        // Bonus features: give 6 months if never had Starter bonus expire permanently
-                        if (!sub.bonusFeaturesExpiredPermanently) {
+                        // Bonus features on downgrade: only give 6 months if seller has NEVER used Starter bonus before
+                        // starterBonusPeriodUsed is permanent and never resets — prevents Starter→Elite→Starter exploit
+                        if (!sub.starterBonusPeriodUsed) {
                             const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
                             sub.bonusFeaturesActive = true;
                             sub.bonusExpiryDate = bonusExpiry;
+                            sub.bonusFeaturesExpiredPermanently = false;
                             sub.bonusExpiryWarningEmailSent = false;
+                            sub.starterBonusPeriodUsed = true; // Mark permanently
                         } else {
+                            // Already used Starter bonus period before — no fresh bonus on downgrade
                             sub.bonusFeaturesActive = false;
+                            sub.bonusFeaturesExpiredPermanently = true;
+                            sub.bonusExpiryDate = null;
                         }
 
                         await sub.save();
@@ -576,6 +633,53 @@ exports.handleWebhook = async (event) => {
                         <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Update Payment</a></p>`
                     );
                     await sendEmail({ to: user.email, subject: 'Payment Failed - Action Required', html });
+                }
+                break;
+            }
+
+            case 'invoice.payment_succeeded': {
+                const invoice = event.data.object;
+                const sub = await SellerSubscription.findOne({ stripeCustomerId: invoice.customer });
+                if (!sub) break;
+
+                // Only handle subscription invoices (skip one-time payments)
+                if (!invoice.subscription) break;
+
+                const now = new Date();
+
+                // Recover from past_due back to active
+                if (sub.status === 'past_due') {
+                    sub.status = 'active';
+                    sub.currentPeriodStart = now;
+                    sub.currentPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                    await sub.save();
+
+                    const user = await User.findById(sub.seller);
+                    if (user?.email) {
+                        const html = subscriptionEmailTemplate(
+                            'Payment Received — Subscription Active',
+                            `<p>Hello ${user.username || 'Seller'},</p>
+                            <p>Your payment has been processed successfully and your ${sub.planName || 'Rozare'} subscription is active again.</p>
+                            <p>Thank you for continuing with Rozare!</p>`
+                        );
+                        await sendEmail({ to: user.email, subject: 'Payment Received — Subscription Active', html });
+                    }
+
+                    const Notification = require('../models/Notification');
+                    await Notification.create({
+                        user: sub.seller,
+                        title: 'Subscription active again',
+                        body: 'Your payment was successful. Your subscription is now active.',
+                        category: 'subscription',
+                        linkTo: '/seller-dashboard/subscription',
+                        source: 'system',
+                    }).catch(e => console.error('Payment success notification failed:', e.message));
+                } else if (sub.status === 'active' && invoice.billing_reason === 'subscription_cycle') {
+                    // Regular monthly renewal — update period
+                    sub.currentPeriodStart = now;
+                    sub.currentPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                    sub.warningEmailSent = false; // reset for next cycle
+                    await sub.save();
                 }
                 break;
             }
@@ -768,11 +872,12 @@ exports.downgradeToStarter = async (req, res) => {
         sub.cancelledAt = new Date();
         await sub.save();
 
-        // Determine bonus eligibility info
-        const neverHadStarter = !sub.bonusFeaturesExpiredPermanently;
-        const bonusMsg = neverHadStarter
+        // Determine bonus eligibility info for the downgrade
+        // Using starterBonusPeriodUsed (permanent flag that doesn't reset on Elite upgrade)
+        const willGetBonusOnDowngrade = !sub.starterBonusPeriodUsed;
+        const bonusMsg = willGetBonusOnDowngrade
             ? 'You will get bonus features for 6 months with the Starter plan.'
-            : 'Bonus features are no longer available with the Starter plan for your account.';
+            : 'Bonus features are no longer available with the Starter plan for your account (you already used your 6-month Starter bonus period).';
 
         // Send email
         const user = await User.findById(sellerId);
@@ -1004,7 +1109,7 @@ exports.processTrialExpirations = async () => {
         // ── Bonus features expiry warning (7 days before bonus expires) ──
         const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         const bonusExpiringSoon = await SellerSubscription.find({
-            status: { $in: ['active', 'free_period'] },
+            status: { $in: ['active', 'free_period', 'past_due'] }, // Include past_due so they don't miss it
             plan: { $ne: 'elite' }, // Elite plan doesn't have bonus expiry
             bonusFeaturesActive: true,
             bonusExpiryDate: { $lte: sevenDaysFromNow, $gt: now },
@@ -1246,6 +1351,23 @@ exports.migrateHasUsedFreePeriod = async () => {
         );
         if (result.modifiedCount > 0) {
             console.log(`[migration] Marked ${result.modifiedCount} existing sellers as hasUsedFreePeriod=true`);
+        }
+
+        // Also migrate: any seller who ever had Starter bonus (active or expired) gets starterBonusPeriodUsed=true
+        // A seller qualifies if: they were ever on starter plan AND bonusExpiryDate was set
+        const starterBonusResult = await SellerSubscription.updateMany(
+            {
+                $or: [
+                    { plan: 'starter', bonusExpiryDate: { $exists: true, $ne: null } },
+                    { bonusFeaturesExpiredPermanently: true },
+                    { bonusGraceDeadline: { $exists: true, $ne: null } },
+                ],
+                starterBonusPeriodUsed: { $ne: true },
+            },
+            { $set: { starterBonusPeriodUsed: true } }
+        );
+        if (starterBonusResult.modifiedCount > 0) {
+            console.log(`[migration] Marked ${starterBonusResult.modifiedCount} existing sellers as starterBonusPeriodUsed=true`);
         }
     } catch (error) {
         console.error('Migration hasUsedFreePeriod error:', error);
