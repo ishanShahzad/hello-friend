@@ -180,9 +180,24 @@ exports.createCheckout = async (req, res) => {
             await sub.save();
         }
 
-        // Prevent parallel subscription exploit: cancel any existing ACTIVE Stripe subscriptions
-        // for this customer before creating a new one
+        // Prevent parallel subscription exploit:
+        // (1) Expire any OPEN checkout sessions for this customer so they can't be completed later
+        // (2) Cancel any existing ACTIVE/TRIALING Stripe subscriptions before creating a new one
         try {
+            // Layer 1: Expire open checkout sessions (prevents "two tabs, pay both" exploit)
+            const openSessions = await stripe.checkout.sessions.list({
+                customer: customerId,
+                limit: 20,
+            });
+            for (const s of openSessions.data) {
+                if (s.status === 'open' && s.mode === 'subscription') {
+                    await stripe.checkout.sessions.expire(s.id).catch(e =>
+                        console.error(`Failed to expire open checkout session ${s.id}:`, e.message)
+                    );
+                }
+            }
+
+            // Layer 2: Cancel any active subscriptions
             const existingSubs = await stripe.subscriptions.list({
                 customer: customerId,
                 status: 'active',
@@ -209,7 +224,7 @@ exports.createCheckout = async (req, res) => {
                 }
             }
         } catch (listErr) {
-            console.error('Failed to list existing Stripe subscriptions:', listErr.message);
+            console.error('Failed to list/expire existing Stripe sessions/subscriptions:', listErr.message);
             // Continue anyway — worst case user has a duplicate; webhook will handle the latest
         }
 
@@ -285,21 +300,60 @@ exports.handleWebhook = async (event) => {
                 const sellerId = session.metadata?.sellerId;
                 if (!sellerId) break;
 
-                const sub = await SellerSubscription.findOne({ seller: sellerId });
+                let sub = await SellerSubscription.findOne({ seller: sellerId });
                 if (!sub) break;
 
                 const selectedPlan = session.metadata?.plan || 'starter';
                 const isElite = selectedPlan === 'elite';
                 const now = new Date();
 
-                // Safety check: if there's already an active stripe subscription, cancel the older one
-                // This prevents the parallel-checkout exploit where user completes multiple checkouts
-                if (sub.stripeSubscriptionId && sub.stripeSubscriptionId !== session.subscription && ['active', 'free_period'].includes(sub.status)) {
+                // Atomic race guard: try to "claim" this subscription slot. If another parallel
+                // webhook already claimed a DIFFERENT stripeSubscriptionId for this seller in an
+                // active billing state, this update will match zero documents and we know the
+                // incoming checkout is a duplicate from a parallel-checkout exploit.
+                const previousStripeSubId = sub.stripeSubscriptionId;
+                const claimed = await SellerSubscription.findOneAndUpdate(
+                    {
+                        seller: sellerId,
+                        $or: [
+                            { stripeSubscriptionId: null },
+                            { stripeSubscriptionId: { $exists: false } },
+                            { stripeSubscriptionId: session.subscription },
+                            // Allow overwriting if the existing sub is in a non-billing state
+                            { status: { $in: ['trial', 'cancelled', 'blocked'] } },
+                        ],
+                    },
+                    { $set: { stripeSubscriptionId: session.subscription } },
+                    { new: false } // we only need to know if a doc matched; we'll reload below
+                );
+
+                if (!claimed) {
+                    // Another webhook already claimed an active sub — this is a duplicate from
+                    // a parallel checkout. Cancel the incoming Stripe sub and bail out.
                     try {
-                        await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
-                        console.log(`[subscription] Cancelled old stripe sub ${sub.stripeSubscriptionId} in favor of new ${session.subscription}`);
+                        await stripe.subscriptions.cancel(session.subscription);
+                        console.log(`[subscription] Race lost for seller ${sellerId}. Cancelled duplicate incoming sub ${session.subscription}`);
                     } catch (cancelErr) {
-                        console.error('Failed to cancel old subscription:', cancelErr.message);
+                        console.error('Failed to cancel duplicate incoming subscription:', cancelErr.message);
+                    }
+                    break;
+                }
+
+                // Reload the freshly-claimed document so `sub.save()` works on the latest state
+                sub = await SellerSubscription.findOne({ seller: sellerId });
+                if (!sub) break;
+
+                // If we claimed over a stale stripeSubscriptionId (different from incoming),
+                // cancel the stale one on Stripe's side.
+                if (
+                    previousStripeSubId &&
+                    previousStripeSubId !== session.subscription
+                ) {
+                    try {
+                        await stripe.subscriptions.cancel(previousStripeSubId);
+                        console.log(`[subscription] Cancelled stale stripe sub ${previousStripeSubId} in favor of new ${session.subscription}`);
+                    } catch (cancelErr) {
+                        console.error('Failed to cancel stale subscription:', cancelErr.message);
                     }
                 }
 
