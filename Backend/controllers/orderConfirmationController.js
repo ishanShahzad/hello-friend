@@ -5,6 +5,8 @@ const User = require('../models/User');
 const { sendEmail } = require('./mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../utils/emailTemplates');
 const { sendPushToUser } = require('../utils/expoPush');
+const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
+const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
@@ -142,6 +144,10 @@ exports.confirmOrder = async (req, res) => {
                         orderObjectId: updated._id?.toString(),
                     },
                 }).catch(e => console.error('seller push failed:', e.message));
+                // WhatsApp notification to seller (fire-and-forget)
+                notifySeller(sellerId, 'order_update', sellerTemplates.order_confirmed(updated)).catch(e =>
+                    console.error('[whatsapp] seller order confirmed notification failed:', e.message)
+                );
             }
         } catch (notifyErr) {
             console.error('Failed to notify seller of buyer confirmation:', notifyErr.message);
@@ -190,6 +196,19 @@ exports.declineOrder = async (req, res) => {
                 const freshOrder = await Order.findOne({ 'confirmation.token': token });
                 return res.status(200).json({ msg: 'Order already processed', order: sanitizeOrderForPublic(freshOrder || order) });
             }
+            // WhatsApp notification to sellers about cancellation (fire-and-forget)
+            try {
+                const productIds = updated.orderItems.map(i => i.productId);
+                const products = await Product.find({ _id: { $in: productIds } });
+                const sellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+                for (const sellerId of sellerIds) {
+                    notifySeller(sellerId, 'order_update', sellerTemplates.order_cancelled(updated)).catch(e =>
+                        console.error('[whatsapp] seller cross-channel cancel notification failed:', e.message)
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('Failed to notify seller of cross-channel cancel via WhatsApp:', notifyErr.message);
+            }
             return res.status(200).json({ msg: 'Order cancelled', order: sanitizeOrderForPublic(updated) });
         }
 
@@ -225,6 +244,20 @@ exports.declineOrder = async (req, res) => {
                 });
             }
             return res.status(404).json({ msg: 'Order not found' });
+        }
+
+        // Notify sellers of cancellation via WhatsApp (fire-and-forget)
+        try {
+            const productIds = updated.orderItems.map(i => i.productId);
+            const products = await Product.find({ _id: { $in: productIds } });
+            const sellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+            for (const sellerId of sellerIds) {
+                notifySeller(sellerId, 'order_update', sellerTemplates.order_cancelled(updated)).catch(e =>
+                    console.error('[whatsapp] seller order cancelled notification failed:', e.message)
+                );
+            }
+        } catch (notifyErr) {
+            console.error('Failed to notify seller of decline via WhatsApp:', notifyErr.message);
         }
 
         return res.status(200).json({ msg: 'Order declined', order: sanitizeOrderForPublic(updated) });
@@ -290,6 +323,10 @@ exports.reconfirmOrder = async (req, res) => {
                     channelId: 'seller',
                     data: { type: 'order_confirmed_by_buyer', orderId: updated.orderId, orderObjectId: updated._id?.toString() },
                 }).catch(e => console.error('seller push failed:', e.message));
+                // WhatsApp notification to seller (fire-and-forget)
+                notifySeller(sellerId, 'order_update', sellerTemplates.order_confirmed(updated)).catch(e =>
+                    console.error('[whatsapp] seller order reconfirmed notification failed:', e.message)
+                );
             }
         } catch (notifyErr) {
             console.error('Failed to notify seller of reconfirm:', notifyErr.message);

@@ -639,3 +639,338 @@ exports.getStats = async (req, res) => {
 
 // Public webhook receiver (signed via header)
 exports.webhook = require('../services/whatsapp/webhookHandler').handleEvolutionWebhook;
+
+// ── Seller-instance management (admin only) ──────────────────────────────────
+// These mirror the main instance endpoints but target the seller-notification instance.
+
+const sellerEvolution = require('../services/whatsapp/sellerEvolutionClient');
+
+const ensureSellerSingleton = async () => {
+    let cfg = await WhatsAppConfig.findOne({ singletonKey: 'seller' });
+    if (!cfg) cfg = await WhatsAppConfig.create({ singletonKey: 'seller' });
+    return cfg;
+};
+
+// Best-effort seller webhook registration — so we get CONNECTION_UPDATE events.
+const registerSellerWebhookIfPossible = async (req = null) => {
+    try {
+        if (!sellerEvolution.isConfigured()) return;
+        const url = resolveWebhookUrl(req);
+        if (!url) {
+            console.warn('[whatsapp:seller] webhook URL could not be resolved (set BACKEND_PUBLIC_URL)');
+            return;
+        }
+        const secret = process.env.EVOLUTION_WEBHOOK_SECRET || '';
+        await sellerEvolution.setWebhook(url, secret);
+        console.log('[whatsapp:seller] webhook registered with Evolution:', url);
+    } catch (err) {
+        console.warn('[whatsapp:seller] setWebhook failed (non-fatal):', err.response?.data || err.message);
+    }
+};
+
+// GET /api/whatsapp/seller/status — admin
+exports.getSellerStatus = async (req, res) => {
+    try {
+        const cfg = await ensureSellerSingleton();
+
+        let liveState = null;
+        if (sellerEvolution.isConfigured()) {
+            try { liveState = await sellerEvolution.getStatus(); } catch { liveState = null; }
+        }
+
+        // Reconcile DB with live Evolution status
+        if (liveState?.state === 'open' && cfg.status !== 'connected') {
+            cfg.status = 'connected';
+            cfg.linkedAt = cfg.linkedAt || new Date();
+            cfg.lastSeen = new Date();
+            cfg.lastError = '';
+            await cfg.save();
+        } else if (liveState?.state === 'close' && cfg.status === 'connected') {
+            cfg.status = 'disconnected';
+            await cfg.save();
+        }
+
+        res.json({
+            configured: sellerEvolution.isConfigured(),
+            status: cfg.status,
+            linkedNumber: cfg.linkedNumber,
+            linkedAt: cfg.linkedAt,
+            lastSeen: cfg.lastSeen,
+            instanceName: cfg.instanceName || sellerEvolution.instanceName(),
+            sentInLastHour: cfg.sentInLastHour,
+            lastError: cfg.lastError,
+            qrBase64: cfg.lastQrBase64 || '',
+            liveState: liveState?.state || null,
+        });
+    } catch (err) {
+        console.error('whatsapp.getSellerStatus:', err.message);
+        res.status(500).json({ msg: 'Failed to fetch seller WhatsApp status' });
+    }
+};
+
+// POST /api/whatsapp/seller/connect — admin: ensure seller instance + return QR
+exports.sellerConnect = async (req, res) => {
+    let cfg = null;
+    try {
+        if (!sellerEvolution.isConfigured()) {
+            return res.status(400).json({
+                msg: 'WhatsApp gateway is not configured. Add EVOLUTION_API_URL and EVOLUTION_API_KEY in backend secrets, then redeploy.',
+            });
+        }
+        cfg = await ensureSellerSingleton();
+        cfg.instanceName = sellerEvolution.instanceName();
+
+        let liveState = '';
+        try {
+            liveState = normalizeGatewayState(await sellerEvolution.getStatus());
+        } catch {
+            liveState = '';
+        }
+
+        if (liveState === 'open') {
+            cfg.status = 'connected';
+            cfg.linkedAt = cfg.linkedAt || new Date();
+            cfg.lastSeen = new Date();
+            cfg.lastError = '';
+            await cfg.save();
+            return res.json({
+                status: cfg.status,
+                qrBase64: '',
+                code: '',
+                msg: 'Seller WhatsApp is already linked.',
+                alreadyLinked: true,
+            });
+        }
+
+        // Create instance + get QR
+        const created = await sellerEvolution.createInstance().catch((e) => {
+            console.warn('whatsapp.seller.createInstance warn:', e.response?.data || e.message);
+            return { __error: getGatewayErrorMessage(e), __status: e.response?.status || 0 };
+        });
+
+        await registerSellerWebhookIfPossible(req);
+        await new Promise(r => setTimeout(r, 2000));
+
+        const createdQr = extractInlineQr(created);
+        let dataUrl = createdQr.dataUrl;
+        let code = createdQr.code;
+        let qrState = normalizeGatewayState(pickQrPayload(created) || created) || liveState;
+        let gatewayDiagnostic = describeGatewayQrState(created);
+
+        // Fetch QR code
+        const qr = await sellerEvolution.getQRCode().catch((e) => ({
+            base64: '',
+            code: '',
+            state: '',
+            raw: e.response?.data || null,
+            __error: getGatewayErrorMessage(e),
+            __status: e.response?.status || 0,
+        }));
+
+        dataUrl = toDataUrl(qr.base64) || dataUrl;
+        code = qr.code || code;
+        qrState = normalizeGatewayState(qr.raw) || normalizeGatewayState({ state: qr.state }) || qrState;
+        gatewayDiagnostic = describeGatewayQrState(qr.raw) || gatewayDiagnostic;
+
+        if (!dataUrl && !code) {
+            console.warn('whatsapp.seller.connect: empty QR raw =', JSON.stringify(qr.raw)?.slice(0, 500));
+        }
+
+        cfg.status = qrState === 'open' ? 'connected' : (qrState === 'connecting' ? 'connecting' : 'pending_qr');
+        cfg.lastQrBase64 = dataUrl || cfg.lastQrBase64 || '';
+        cfg.lastQrFetchedAt = new Date();
+        cfg.lastSeen = new Date();
+        cfg.lastError = (!dataUrl && !code && gatewayDiagnostic) ? gatewayDiagnostic.slice(0, 500) : '';
+        await cfg.save();
+
+        if (cfg.status === 'connected') {
+            return res.json({
+                status: cfg.status,
+                qrBase64: '',
+                code: '',
+                msg: 'Seller WhatsApp linked successfully.',
+                alreadyLinked: true,
+            });
+        }
+
+        if (!dataUrl && !code && cfg.lastQrBase64) {
+            return res.json({
+                status: cfg.status,
+                qrBase64: cfg.lastQrBase64,
+                code: '',
+                cached: true,
+                fallback: true,
+                retryable: true,
+                msg: 'Showing the last available QR while the gateway refreshes a new one.',
+            });
+        }
+
+        if (!dataUrl && !code) {
+            return res.json({
+                status: cfg.status,
+                qrBase64: '',
+                code: '',
+                fallback: true,
+                retryable: true,
+                gatewayState: qrState || 'unknown',
+                gatewayDiagnostic,
+                msg: 'QR is not ready yet. Keep this window open and retry in a few seconds.',
+            });
+        }
+
+        res.json({ status: cfg.status, qrBase64: dataUrl, code, fallback: false });
+    } catch (err) {
+        const msg = getGatewayErrorMessage(err);
+        const gatewayStatus = Number(err?.response?.status || 0);
+        const fallback = gatewayStatus >= 500;
+
+        if (cfg) {
+            cfg.status = fallback ? 'pending_qr' : 'error';
+            cfg.lastError = fallback ? '' : String(msg).slice(0, 500);
+            cfg.lastSeen = new Date();
+            await cfg.save().catch(() => null);
+        } else {
+            await WhatsAppConfig.updateOne(
+                { singletonKey: 'seller' },
+                { $set: { status: fallback ? 'pending_qr' : 'error', lastError: fallback ? '' : String(msg).slice(0, 500) } }
+            ).catch(() => null);
+        }
+
+        console.error('whatsapp.sellerConnect:', msg);
+
+        if (fallback) {
+            return res.json({
+                status: 'pending_qr',
+                qrBase64: '',
+                code: '',
+                fallback: true,
+                retryable: true,
+                msg: 'WhatsApp gateway is temporarily unavailable. Retry in a few seconds.',
+            });
+        }
+
+        res.status(500).json({ msg: 'Failed to start seller WhatsApp connection: ' + msg });
+    }
+};
+
+// POST /api/whatsapp/seller/disconnect — admin
+exports.sellerDisconnect = async (req, res) => {
+    try {
+        await sellerEvolution.logout().catch(() => null);
+        await WhatsAppConfig.updateOne(
+            { singletonKey: 'seller' },
+            {
+                $set: {
+                    status: 'disconnected',
+                    linkedNumber: '',
+                    linkedAt: null,
+                    lastQrBase64: '',
+                },
+            }
+        );
+        res.json({ msg: 'Seller WhatsApp disconnected' });
+    } catch (err) {
+        console.error('whatsapp.sellerDisconnect:', err.message);
+        res.status(500).json({ msg: 'Failed to disconnect seller WhatsApp' });
+    }
+};
+
+// POST /api/whatsapp/seller/reset — admin: hard-reset the seller gateway instance.
+exports.sellerReset = async (req, res) => {
+    try {
+        if (!sellerEvolution.isConfigured()) {
+            return res.status(400).json({ msg: 'WhatsApp gateway is not configured.' });
+        }
+
+        const cfg = await ensureSellerSingleton();
+
+        // Refuse if currently connected
+        let liveState = '';
+        try { liveState = normalizeGatewayState(await sellerEvolution.getStatus()); } catch { liveState = ''; }
+        if (liveState === 'open' || cfg.status === 'connected') {
+            return res.status(409).json({
+                msg: 'Seller WhatsApp is currently linked. Disconnect first before resetting the instance.',
+            });
+        }
+
+        // Log out + delete
+        await sellerEvolution.logout().catch(() => null);
+        const deleted = await sellerEvolution.deleteInstance().catch((e) => ({ error: e.message }));
+
+        // Reset DB config
+        cfg.status = 'disconnected';
+        cfg.linkedNumber = '';
+        cfg.linkedAt = null;
+        cfg.lastQrBase64 = '';
+        cfg.lastQrFetchedAt = null;
+        cfg.lastError = '';
+        cfg.lastSeen = new Date();
+        await cfg.save();
+
+        // Recreate immediately
+        const created = await sellerEvolution.createInstance().catch((e) => ({ error: e.message }));
+        await registerSellerWebhookIfPossible(req);
+
+        return res.json({
+            msg: 'Seller WhatsApp instance reset. Click "Link WhatsApp" to scan a new QR.',
+            deleted,
+            created,
+        });
+    } catch (err) {
+        console.error('whatsapp.sellerReset:', err.message);
+        return res.status(500).json({ msg: 'Failed to reset seller WhatsApp instance: ' + err.message });
+    }
+};
+
+// POST /api/whatsapp/seller/pairing-code — admin: request pairing code for seller instance
+exports.sellerRequestPairingCode = async (req, res) => {
+    try {
+        if (!sellerEvolution.isConfigured()) {
+            return res.status(400).json({ msg: 'WhatsApp gateway is not configured.' });
+        }
+
+        const { phoneNumber } = req.body;
+        if (!phoneNumber) {
+            return res.status(400).json({ msg: 'Phone number is required' });
+        }
+
+        const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+        if (cleanNumber.length < 10) {
+            return res.status(400).json({ msg: 'Invalid phone number format. Use country code + number (e.g., 923001234567)' });
+        }
+
+        const cfg = await ensureSellerSingleton();
+
+        // Create instance if not exists
+        await sellerEvolution.createInstance().catch(() => null);
+        await registerSellerWebhookIfPossible(req);
+
+        // Request pairing code
+        const result = await sellerEvolution.requestPairingCode(cleanNumber).catch((e) => {
+            console.error('Seller pairing code request failed:', e.response?.data || e.message);
+            return { error: e.response?.data || e.message };
+        });
+
+        if (result.error) {
+            return res.status(500).json({
+                msg: 'Failed to request seller pairing code',
+                error: result.error,
+            });
+        }
+
+        const code = result.code || result.pairingCode || result.data?.code || result.data?.pairingCode || '';
+
+        cfg.status = 'connecting';
+        cfg.lastSeen = new Date();
+        await cfg.save();
+
+        res.json({
+            code,
+            msg: code ? 'Seller pairing code generated' : 'Pairing code requested - check instance status',
+            raw: result,
+        });
+    } catch (err) {
+        console.error('whatsapp.sellerRequestPairingCode:', err.message);
+        res.status(500).json({ msg: 'Failed to request seller pairing code: ' + err.message });
+    }
+};

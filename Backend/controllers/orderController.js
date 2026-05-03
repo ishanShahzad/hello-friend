@@ -13,6 +13,8 @@ const { sellerHasWhatsAppVerify } = require('./subscriptionController');
 const { enqueueOrderConfirmation } = require('../services/whatsapp/queue');
 const WhatsAppConfig = require('../models/WhatsAppConfig');
 const User = require('../models/User');
+const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
+const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
 // Enqueue WhatsApp confirmation if admin connected AND any seller in the order has the bonus
 const maybeEnqueueWhatsAppConfirmation = async (order, productItems) => {
@@ -252,6 +254,10 @@ exports.placeOrder = async (req, res) => {
                     const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
                     await sendEmail({ to: seller.email, ...sellerEmailData });
                 }
+                // WhatsApp notification to seller (fire-and-forget)
+                notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
+                    console.error('[whatsapp] seller new order notification failed:', e.message)
+                );
             }
         } catch (emailErr) {
             console.error('Failed to send seller notification email:', emailErr.message);

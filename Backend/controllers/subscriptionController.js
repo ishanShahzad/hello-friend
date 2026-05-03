@@ -3,6 +3,8 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
 const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
+const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
 // Email template
 const subscriptionEmailTemplate = (title, bodyHtml) => `
@@ -455,6 +457,10 @@ exports.handleWebhook = async (event) => {
                     );
                     await sendEmail({ to: user.email, subject: `${sub.planName} Activated!`, html });
                 }
+                // WhatsApp notification to seller (fire-and-forget)
+                notifySeller(sellerId, 'subscription_activated', sellerTemplates.subscription_activated(sub.planName, freePeriodDays)).catch(e =>
+                    console.error('[whatsapp] seller subscription activated notification failed:', e.message)
+                );
                 break;
             }
 
@@ -575,6 +581,11 @@ exports.handleWebhook = async (event) => {
                             await sendEmail({ to: user.email, subject: 'Switched to Rozare Starter', html });
                         }
 
+                        // WhatsApp notification to seller (fire-and-forget)
+                        notifySeller(sub.seller.toString(), 'downgrade_scheduled', sellerTemplates.downgrade_scheduled()).catch(e =>
+                            console.error('[whatsapp] seller downgrade notification failed:', e.message)
+                        );
+
                         break;
                     } catch (downgradeErr) {
                         console.error('Auto-downgrade to Starter failed:', downgradeErr);
@@ -688,6 +699,10 @@ exports.handleWebhook = async (event) => {
                     );
                     await sendEmail({ to: user.email, subject: 'Payment Failed - Action Required', html });
                 }
+                // WhatsApp notification to seller (fire-and-forget)
+                notifySeller(sub.seller.toString(), 'payment_failed', sellerTemplates.payment_failed()).catch(e =>
+                    console.error('[whatsapp] seller payment failed notification failed:', e.message)
+                );
                 break;
             }
 
@@ -728,6 +743,11 @@ exports.handleWebhook = async (event) => {
                         linkTo: '/seller-dashboard/subscription',
                         source: 'system',
                     }).catch(e => console.error('Payment success notification failed:', e.message));
+
+                    // WhatsApp notification to seller (fire-and-forget)
+                    notifySeller(sub.seller.toString(), 'payment_recovered', sellerTemplates.payment_recovered()).catch(e =>
+                        console.error('[whatsapp] seller payment recovered notification failed:', e.message)
+                    );
                 } else if (sub.status === 'active' && invoice.billing_reason === 'subscription_cycle') {
                     // Regular monthly renewal — update period
                     sub.currentPeriodStart = now;
@@ -860,6 +880,11 @@ exports.upgradeToElite = async (req, res) => {
             await sendEmail({ to: user.email, subject: 'Upgraded to Rozare Elite!', html });
         }
 
+        // WhatsApp notification to seller (fire-and-forget)
+        notifySeller(sellerId, 'upgrade_completed', sellerTemplates.upgrade_completed()).catch(e =>
+            console.error('[whatsapp] seller upgrade completed notification failed:', e.message)
+        );
+
         // In-app notification
         const Notification = require('../models/Notification');
         await Notification.create({
@@ -952,6 +977,11 @@ exports.downgradeToStarter = async (req, res) => {
             );
             await sendEmail({ to: user.email, subject: 'Downgrade to Starter Scheduled', html });
         }
+
+        // WhatsApp notification to seller (fire-and-forget)
+        notifySeller(sellerId, 'downgrade_scheduled', sellerTemplates.downgrade_scheduled()).catch(e =>
+            console.error('[whatsapp] seller downgrade scheduled notification failed:', e.message)
+        );
 
         // In-app notification
         const Notification = require('../models/Notification');
@@ -1047,6 +1077,11 @@ exports.processTrialExpirations = async () => {
                 await sendEmail({ to: user.email, subject: `⏰ Trial Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}!`, html });
             }
 
+            // WhatsApp notification to seller (fire-and-forget)
+            notifySeller(sub.seller.toString(), 'trial_expiring', sellerTemplates.trial_expiring(daysLeft)).catch(e =>
+                console.error('[whatsapp] seller trial expiring notification failed:', e.message)
+            );
+
             // Create in-app notification
             await Notification.create({
                 user: sub.seller,
@@ -1094,6 +1129,11 @@ exports.processTrialExpirations = async () => {
                 );
                 await sendEmail({ to: user.email, subject: '🚫 Your Rozare Store Has Been Blocked — Subscribe to Reactivate', html });
             }
+
+            // WhatsApp notification to seller (fire-and-forget)
+            notifySeller(sub.seller.toString(), 'account_blocked', sellerTemplates.account_blocked(sub.blockedReason || '')).catch(e =>
+                console.error('[whatsapp] seller account blocked notification failed:', e.message)
+            );
 
             // Create in-app notification
             await Notification.create({
@@ -1145,6 +1185,11 @@ exports.processTrialExpirations = async () => {
                 await sendEmail({ to: user.email, subject: `⏰ Subscription Ending in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`, html });
             }
 
+            // WhatsApp notification to seller (fire-and-forget)
+            notifySeller(sub.seller.toString(), 'subscription_ending', sellerTemplates.subscription_ending_soon(daysLeft)).catch(e =>
+                console.error('[whatsapp] seller subscription ending notification failed:', e.message)
+            );
+
             await Notification.create({
                 user: sub.seller,
                 title: `Subscription ending in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
@@ -1194,6 +1239,11 @@ exports.processTrialExpirations = async () => {
                 );
                 await sendEmail({ to: user.email, subject: `Bonus Features Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`, html });
             }
+
+            // WhatsApp notification to seller (fire-and-forget)
+            notifySeller(sub.seller.toString(), 'bonus_expiring', sellerTemplates.bonus_expiring(daysLeft)).catch(e =>
+                console.error('[whatsapp] seller bonus expiring notification failed:', e.message)
+            );
 
             // In-app notification
             await Notification.create({
@@ -1256,6 +1306,11 @@ exports.processTrialExpirations = async () => {
                 );
                 await sendEmail({ to: user.email, subject: 'Bonus Features Expired — Upgrade to Keep Them', html });
             }
+
+            // WhatsApp notification to seller (fire-and-forget)
+            notifySeller(sub.seller.toString(), 'bonus_expired', sellerTemplates.bonus_expired()).catch(e =>
+                console.error('[whatsapp] seller bonus expired notification failed:', e.message)
+            );
         }
 
         if (bonusExpiringSoon.length > 0 || bonusExpired.length > 0) {

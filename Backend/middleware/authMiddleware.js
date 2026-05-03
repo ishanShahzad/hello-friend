@@ -96,7 +96,24 @@ const seller = async (req, res, next) => {
     }
 }
 
+// Optional auth: sets req.user if a valid token is present, otherwise lets the
+// request continue anonymously. Used for endpoints that behave differently for
+// logged-in vs anonymous callers (e.g. seller WhatsApp OTP verify during signup
+// vs settings change).
+const optionalAuth = (req, res, next) => {
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.split(' ')[1];
+    if (!token) return next();
+    try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+        // Invalid/expired token — proceed without req.user rather than rejecting.
+    }
+    next();
+};
+
 module.exports = verifyToken
 module.exports.protect = protect
 module.exports.admin = admin
-module.exports.seller = seller  
+module.exports.seller = seller
+module.exports.optionalAuth = optionalAuth

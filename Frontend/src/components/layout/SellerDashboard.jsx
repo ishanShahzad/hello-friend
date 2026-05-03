@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -217,6 +217,7 @@ const SellerDashboard = () => {
         if (path.includes('shipping-configuration')) return 'Shipping';
         if (path.includes('store-settings')) return 'Store Settings';
         if (path.includes('notification-settings')) return 'Notification Settings';
+        if (path.includes('whatsapp-settings')) return 'WhatsApp Settings';
         if (path.includes('notifications')) return 'Notifications';
         if (path.includes('analytics')) return 'Analytics';
         if (path.includes('subdomain')) return 'Subdomain';
@@ -630,6 +631,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
         { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
+        { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle size={18} />, link: '/seller-dashboard/whatsapp-settings' },
         { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
     ];
 

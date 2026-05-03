@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
     MessageCircle, QrCode, Power, RefreshCw, X, AlertTriangle, CheckCircle2,
     Loader2, Phone, Clock, ShieldAlert, Activity, Inbox, Send, ThumbsUp, ThumbsDown,
-    TrendingUp, BarChart3, Timer, RotateCcw,
+    TrendingUp, BarChart3, Timer, RotateCcw, Bell,
 } from 'lucide-react';
 import PhoneField, { isValidPhone } from '../../common/PhoneField';
 
@@ -75,6 +75,7 @@ const Timeline = ({ data }) => {
 };
 
 const WhatsAppVerificationPanel = () => {
+    const [activeTab, setActiveTab] = useState('orders');
     const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
     const [stats, setStats] = useState(null);
@@ -286,20 +287,41 @@ const WhatsAppVerificationPanel = () => {
                 <div className="glass-panel-strong rounded-3xl p-6 mb-6">
                     <div className="flex items-start gap-4">
                         <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                            style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))', color: '#fff' }}>
-                            <MessageCircle size={26} />
+                            style={{ background: activeTab === 'orders'
+                                ? 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))'
+                                : 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(240, 60%, 50%))', color: '#fff' }}>
+                            {activeTab === 'orders' ? <MessageCircle size={26} /> : <Bell size={26} />}
                         </div>
                         <div className="flex-1">
                             <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
-                                WhatsApp Order Verification
+                                {activeTab === 'orders' ? 'WhatsApp Order Verification' : 'WhatsApp Seller Notifications'}
                             </h1>
                             <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Link your WhatsApp once. Buyers automatically receive a poll to confirm their order — one tap, no typing.
+                                {activeTab === 'orders'
+                                    ? 'Link your WhatsApp once. Buyers automatically receive a poll to confirm their order — one tap, no typing.'
+                                    : 'Link a second WhatsApp number to send notifications to sellers — new orders, subscription alerts, and critical warnings.'}
                             </p>
                         </div>
                     </div>
                 </div>
 
+                {/* Tab Switcher */}
+                <div className="glass-panel-strong rounded-2xl p-1.5 mb-6 flex gap-1">
+                    {[
+                        { key: 'orders', label: 'Order Verification', Icon: MessageCircle, color: 'hsl(150,70%,40%)' },
+                        { key: 'seller', label: 'Seller Notifications', Icon: Bell, color: 'hsl(220,70%,55%)' },
+                    ].map(tab => (
+                        <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all ${activeTab === tab.key ? 'text-white' : ''}`}
+                            style={activeTab === tab.key ? { background: tab.color } : { color: 'hsl(var(--muted-foreground))' }}>
+                            <tab.Icon size={16} /> {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Order Verification Tab */}
+                {activeTab === 'orders' && (
+                <>
                 {/* Status card */}
                 <div className="glass-panel-strong rounded-3xl p-6 mb-6">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -486,6 +508,13 @@ const WhatsAppVerificationPanel = () => {
                         </div>
                     )}
                 </div>
+                </>
+                )}
+
+                {/* Seller Notifications Tab */}
+                {activeTab === 'seller' && (
+                    <SellerNotificationTab />
+                )}
             </div>
 
             {/* QR Modal */}
@@ -722,6 +751,491 @@ const WhatsAppVerificationPanel = () => {
                                 style={{ background: 'hsl(38,92%,45%)' }}>
                                 {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
                                 {resetting ? 'Resetting…' : 'Reset instance'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>,
+                document.body
+            )}
+        </>
+    );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Seller Notifications Tab
+   ───────────────────────────────────────────────────────────────────────────── */
+
+const SellerNotificationTab = () => {
+    const [sellerStatus, setSellerStatus] = useState(null);
+    const [sellerLoading, setSellerLoading] = useState(true);
+    const [showSellerQrModal, setShowSellerQrModal] = useState(false);
+    const [sellerQrLoading, setSellerQrLoading] = useState(false);
+    const [sellerQrBase64, setSellerQrBase64] = useState('');
+    const [sellerQrError, setSellerQrError] = useState('');
+    const [sellerQrHint, setSellerQrHint] = useState('');
+    const [sellerPairingCode, setSellerPairingCode] = useState('');
+    const [sellerPhoneNumber, setSellerPhoneNumber] = useState('');
+    const [showSellerPairingInput, setShowSellerPairingInput] = useState(false);
+    const [sellerPairingLoading, setSellerPairingLoading] = useState(false);
+    const [confirmSellerDisconnect, setConfirmSellerDisconnect] = useState(false);
+    const [confirmSellerReset, setConfirmSellerReset] = useState(false);
+    const [sellerResetting, setSellerResetting] = useState(false);
+    const [sellerResetMsg, setSellerResetMsg] = useState('');
+    const sellerPollRef = useRef(null);
+
+    const fetchSellerStatus = useCallback(async () => {
+        try {
+            const { data } = await axios.get(`${API}api/whatsapp/seller/status`, { headers: authHeaders() });
+            setSellerStatus(data);
+            if (data?.qrBase64) {
+                setSellerQrBase64(data.qrBase64);
+                setSellerQrError('');
+            }
+            if (data?.status === 'connected') {
+                setSellerQrHint('');
+                setSellerPairingCode('');
+            }
+        } catch (err) {
+            console.error('seller whatsapp fetch error:', err);
+        } finally {
+            setSellerLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSellerStatus();
+    }, [fetchSellerStatus]);
+
+    const requestSellerQr = useCallback(async () => {
+        setSellerQrLoading(true);
+        setSellerQrError('');
+        try {
+            const { data } = await axios.post(
+                `${API}api/whatsapp/seller/connect`,
+                {},
+                { headers: authHeaders(), timeout: 25000 }
+            );
+            setSellerQrBase64(data.qrBase64 || '');
+            setSellerPairingCode(data.code || '');
+            setSellerQrHint(data.fallback || data.msg ? (data.msg || 'Waiting for QR…') : '');
+            if (data.alreadyLinked) {
+                setSellerQrError('');
+                setSellerQrHint('');
+                setSellerPairingCode('');
+            }
+            await fetchSellerStatus();
+        } catch (err) {
+            setSellerQrHint('');
+            setSellerPairingCode('');
+            const offline =
+                err.code === 'ECONNABORTED' ||
+                err.message === 'Network Error' ||
+                err.response?.status === 503 ||
+                err.response?.status === 502;
+            setSellerQrError(
+                err.response?.data?.msg ||
+                (offline
+                    ? 'WhatsApp gateway is temporarily unavailable. Try again or reset the instance below.'
+                    : 'Failed to fetch QR code')
+            );
+        } finally {
+            setSellerQrLoading(false);
+        }
+    }, [fetchSellerStatus]);
+
+    // Refresh QR every 25s while modal is open and not yet connected
+    useEffect(() => {
+        if (showSellerQrModal && sellerStatus?.status !== 'connected') {
+            const id = setInterval(() => requestSellerQr(), 25000);
+            return () => clearInterval(id);
+        }
+    }, [showSellerQrModal, sellerStatus?.status, requestSellerQr]);
+
+    // Poll status every 5s while QR modal is open, every 30s otherwise
+    useEffect(() => {
+        if (sellerPollRef.current) clearInterval(sellerPollRef.current);
+        const interval = showSellerQrModal ? 5000 : 30000;
+        sellerPollRef.current = setInterval(fetchSellerStatus, interval);
+        return () => { if (sellerPollRef.current) clearInterval(sellerPollRef.current); };
+    }, [showSellerQrModal, fetchSellerStatus]);
+
+    const requestSellerPairingCode = async () => {
+        if (!isValidPhone(sellerPhoneNumber)) {
+            setSellerQrError('Please enter a valid phone number (pick your country and type the number).');
+            return;
+        }
+        const digitsOnly = String(sellerPhoneNumber).replace(/\D/g, '');
+        setSellerPairingLoading(true);
+        setSellerQrError('');
+        try {
+            const { data } = await axios.post(
+                `${API}api/whatsapp/seller/pairing-code`,
+                { phoneNumber: digitsOnly },
+                { headers: authHeaders(), timeout: 15000 }
+            );
+            if (data.code) {
+                setSellerPairingCode(data.code);
+                setSellerQrHint('Enter this code in WhatsApp when prompted');
+                setShowSellerPairingInput(false);
+            } else {
+                setSellerQrHint(data.msg || 'Pairing code requested. Check status in a moment.');
+            }
+            await fetchSellerStatus();
+        } catch (err) {
+            setSellerQrError(err.response?.data?.msg || 'Failed to request pairing code');
+        } finally {
+            setSellerPairingLoading(false);
+        }
+    };
+
+    const openSellerQrModal = async () => {
+        setShowSellerQrModal(true);
+        setSellerQrBase64(sellerStatus?.qrBase64 || '');
+        setSellerQrError('');
+        setSellerQrHint(sellerStatus?.status === 'connected' ? '' : 'Starting WhatsApp link session…');
+        setSellerPairingCode('');
+        await requestSellerQr();
+    };
+
+    const handleSellerDisconnect = async () => {
+        try {
+            await axios.post(`${API}api/whatsapp/seller/disconnect`, {}, { headers: authHeaders() });
+            setConfirmSellerDisconnect(false);
+            await fetchSellerStatus();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSellerReset = async () => {
+        setSellerResetting(true);
+        setSellerResetMsg('');
+        try {
+            const { data } = await axios.post(
+                `${API}api/whatsapp/seller/reset`,
+                {},
+                { headers: authHeaders(), timeout: 30000 }
+            );
+            setSellerQrBase64('');
+            setSellerPairingCode('');
+            setSellerQrError('');
+            setSellerQrHint('Instance reset. Click "Link WhatsApp" to scan a new QR.');
+            setSellerResetMsg(data?.msg || 'Instance reset.');
+            setConfirmSellerReset(false);
+            setShowSellerQrModal(false);
+            await fetchSellerStatus();
+        } catch (err) {
+            setSellerResetMsg(err.response?.data?.msg || 'Failed to reset WhatsApp instance.');
+        } finally {
+            setSellerResetting(false);
+        }
+    };
+
+    const isSellerStuckLinking =
+        ['pending_qr', 'connecting', 'error'].includes(sellerStatus?.status) &&
+        !sellerQrBase64 &&
+        !sellerPairingCode &&
+        !sellerQrLoading &&
+        sellerStatus?.status !== 'connected';
+
+    // Auto-close QR modal on connected
+    useEffect(() => {
+        if (showSellerQrModal && sellerStatus?.status === 'connected') {
+            setTimeout(() => setShowSellerQrModal(false), 1200);
+        }
+    }, [sellerStatus?.status, showSellerQrModal]);
+
+    const meta = STATUS_META[sellerStatus?.status] || STATUS_META.disconnected;
+
+    return (
+        <>
+            {/* Status card */}
+            <div className="glass-panel-strong rounded-3xl p-6 mb-6">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-4">
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5"
+                            style={{ background: meta.bg, color: meta.color }}>
+                            <Activity size={12} /> {meta.label}
+                        </span>
+                        {sellerStatus?.linkedNumber && (
+                            <span className="text-sm font-medium inline-flex items-center gap-1.5"
+                                style={{ color: 'hsl(var(--foreground))' }}>
+                                <Phone size={14} /> {sellerStatus.linkedNumber}
+                            </span>
+                        )}
+                        {sellerStatus?.lastSeen && (
+                            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Last seen {formatTime(sellerStatus.lastSeen)}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={fetchSellerStatus} disabled={sellerLoading}
+                            className="px-3 py-2 rounded-xl text-sm font-medium glass-inner inline-flex items-center gap-1.5 disabled:opacity-50"
+                            style={{ color: 'hsl(var(--foreground))' }}>
+                            <RefreshCw size={14} className={sellerLoading ? 'animate-spin' : ''} /> Refresh
+                        </button>
+                        {isSellerStuckLinking && (
+                            <button onClick={() => { setSellerResetMsg(''); setConfirmSellerReset(true); }}
+                                className="px-3 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-1.5"
+                                style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}
+                                title="Reset the WhatsApp instance — only when stuck waiting for QR">
+                                <RotateCcw size={14} /> Reset instance
+                            </button>
+                        )}
+                        {sellerStatus?.status === 'connected' ? (
+                            <button onClick={() => setConfirmSellerDisconnect(true)}
+                                className="px-3 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-1.5"
+                                style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0,72%,55%)' }}>
+                                <Power size={14} /> Disconnect
+                            </button>
+                        ) : (
+                            <button onClick={openSellerQrModal}
+                                className="px-4 py-2 rounded-xl text-sm font-bold text-white inline-flex items-center gap-1.5"
+                                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(240, 60%, 50%))' }}>
+                                <QrCode size={14} /> Link WhatsApp
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {sellerStatus?.lastError && (
+                    <div className="mt-4 p-4 rounded-2xl text-xs"
+                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'hsl(0,72%,55%)' }}>
+                        <strong>Last error:</strong> {sellerStatus.lastError}
+                    </div>
+                )}
+
+                {sellerResetMsg && !confirmSellerReset && (
+                    <div className="mt-4 p-4 rounded-2xl text-xs"
+                        style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: 'hsl(var(--foreground))' }}>
+                        {sellerResetMsg}
+                    </div>
+                )}
+            </div>
+
+            {/* Disclaimer */}
+            <div className="glass-panel rounded-3xl p-5 mb-6 flex items-start gap-3">
+                <ShieldAlert size={20} style={{ color: 'hsl(220, 70%, 55%)' }} className="shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <strong style={{ color: 'hsl(var(--foreground))' }}>Seller notification number:</strong> This WhatsApp number is used to send notifications to verified sellers (new orders, subscription alerts, and critical warnings). Use a <strong>dedicated number</strong> separate from your buyer verification number.
+                </div>
+            </div>
+
+            {/* Seller QR Modal */}
+            {showSellerQrModal && createPortal(
+                <AnimatePresence>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                        onClick={() => setShowSellerQrModal(false)}>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="glass-panel-strong rounded-3xl p-6 max-w-md w-full">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
+                                    Link Seller WhatsApp
+                                </h3>
+                                <button onClick={() => setShowSellerQrModal(false)}
+                                    className="p-1.5 rounded-lg glass-inner"><X size={16} /></button>
+                            </div>
+
+                            <ol className="text-xs mb-4 space-y-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                <li>1. Open <strong>WhatsApp</strong> on your seller notification phone</li>
+                                <li>2. Tap <strong>Settings</strong> → <strong>Linked Devices</strong></li>
+                                <li>3. Tap <strong>Link a Device</strong></li>
+                                <li>4. {sellerPairingCode ? 'Enter the pairing code below' : 'Scan the QR code below'}</li>
+                            </ol>
+
+                            <div className="aspect-square rounded-2xl glass-inner flex items-center justify-center overflow-hidden p-4">
+                                {sellerQrLoading && !sellerQrBase64 && !sellerPairingCode ? (
+                                    <div className="text-center">
+                                        <Loader2 size={32} className="animate-spin mx-auto mb-2" style={{ color: 'hsl(220,70%,55%)' }} />
+                                        <div className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            Starting WhatsApp connection...
+                                        </div>
+                                    </div>
+                                ) : sellerQrError ? (
+                                    <div className="text-center text-xs px-4" style={{ color: 'hsl(0,72%,55%)' }}>
+                                        {sellerQrError}
+                                    </div>
+                                ) : sellerPairingCode ? (
+                                    <div className="text-center w-full">
+                                        <div className="mb-3">
+                                            <div className="text-xs uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                Pairing Code
+                                            </div>
+                                            <div className="text-4xl font-extrabold tracking-[0.3em] py-4 px-6 rounded-xl glass-panel-strong"
+                                                style={{ color: 'hsl(220,70%,55%)', fontFamily: 'monospace' }}>
+                                                {sellerPairingCode}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] leading-relaxed px-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            Enter this code in WhatsApp when prompted. The code expires in a few minutes.
+                                        </div>
+                                        {sellerQrBase64 && (
+                                            <div className="mt-4 pt-4 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+                                                <div className="text-[10px] mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                    Or scan QR code:
+                                                </div>
+                                                <img src={sellerQrBase64} alt="WhatsApp QR" className="w-48 h-48 mx-auto object-contain" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : sellerQrBase64 ? (
+                                    <img src={sellerQrBase64} alt="WhatsApp QR" className="w-full h-full object-contain" />
+                                ) : sellerStatus?.status === 'connected' ? (
+                                    <div className="text-center" style={{ color: 'hsl(220,70%,55%)' }}>
+                                        <CheckCircle2 size={48} className="mx-auto mb-2" />
+                                        <div className="text-sm font-bold">Connected!</div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center px-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        <div className="text-xs">{sellerQrHint || 'Waiting for QR or pairing code...'}</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button onClick={requestSellerQr} disabled={sellerQrLoading}
+                                className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium glass-inner inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                style={{ color: 'hsl(var(--foreground))' }}>
+                                <RefreshCw size={14} className={sellerQrLoading ? 'animate-spin' : ''} /> Refresh QR
+                            </button>
+
+                            {!showSellerPairingInput && !sellerPairingCode && sellerStatus?.status !== 'connected' && (
+                                <button
+                                    onClick={() => setShowSellerPairingInput(true)}
+                                    className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium glass-inner inline-flex items-center justify-center gap-1.5"
+                                    style={{ color: 'hsl(var(--foreground))' }}
+                                >
+                                    <Phone size={14} /> Get Pairing Code Instead
+                                </button>
+                            )}
+
+                            {showSellerPairingInput && (
+                                <div className="mt-4 p-4 rounded-2xl glass-inner">
+                                    <div className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                                        Request Pairing Code
+                                    </div>
+                                    <div className="text-[10px] mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Pick your country, then enter your WhatsApp number.
+                                    </div>
+                                    <PhoneField
+                                        value={sellerPhoneNumber}
+                                        onChange={(v) => setSellerPhoneNumber(v || '')}
+                                        placeholder="Phone number"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowSellerPairingInput(false)}
+                                            className="flex-1 py-2 rounded-lg text-xs font-medium glass-inner"
+                                            style={{ color: 'hsl(var(--foreground))' }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={requestSellerPairingCode}
+                                            disabled={sellerPairingLoading || !sellerPhoneNumber}
+                                            className="flex-1 py-2 rounded-lg text-xs font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(240, 60%, 50%))' }}
+                                        >
+                                            {sellerPairingLoading ? <Loader2 size={12} className="animate-spin" /> : <Phone size={12} />}
+                                            {sellerPairingLoading ? 'Requesting...' : 'Get Code'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <p className="text-[10px] text-center mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                QR refreshes automatically every 25s. Keep this window open until you see "Connected".
+                            </p>
+
+                            {isSellerStuckLinking && (
+                                <button
+                                    onClick={() => { setSellerResetMsg(''); setConfirmSellerReset(true); }}
+                                    className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1.5"
+                                    style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}
+                                >
+                                    <RotateCcw size={14} /> Reset stuck instance
+                                </button>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* Seller Disconnect confirm */}
+            {confirmSellerDisconnect && createPortal(
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                    onClick={() => setConfirmSellerDisconnect(false)}>
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="glass-panel-strong rounded-3xl p-6 max-w-sm w-full">
+                        <h3 className="text-lg font-extrabold mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                            Disconnect Seller WhatsApp?
+                        </h3>
+                        <p className="text-xs mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Seller notifications will stop sending until you re-link this number.
+                        </p>
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmSellerDisconnect(false)}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-medium glass-inner"
+                                style={{ color: 'hsl(var(--foreground))' }}>Cancel</button>
+                            <button onClick={handleSellerDisconnect}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
+                                style={{ background: 'hsl(0,72%,55%)' }}>Disconnect</button>
+                        </div>
+                    </motion.div>
+                </motion.div>,
+                document.body
+            )}
+
+            {/* Seller Reset instance confirm */}
+            {confirmSellerReset && createPortal(
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                    onClick={() => !sellerResetting && setConfirmSellerReset(false)}>
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="glass-panel-strong rounded-3xl p-6 max-w-sm w-full">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: 'rgba(245,158,11,0.14)', color: 'hsl(38,92%,45%)' }}>
+                                <RotateCcw size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
+                                    Reset Seller WhatsApp instance?
+                                </h3>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Use this only when the link flow is stuck without a QR.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="text-xs mb-4 p-3 rounded-2xl"
+                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: 'hsl(var(--foreground))' }}>
+                            This will <strong>log out, delete and recreate</strong> the seller gateway instance. You'll need to scan a fresh QR afterwards.
+                        </div>
+
+                        {sellerResetMsg && (
+                            <div className="text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {sellerResetMsg}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmSellerReset(false)}
+                                disabled={sellerResetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-medium glass-inner disabled:opacity-50"
+                                style={{ color: 'hsl(var(--foreground))' }}>Cancel</button>
+                            <button onClick={handleSellerReset}
+                                disabled={sellerResetting}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                                style={{ background: 'hsl(38,92%,45%)' }}>
+                                {sellerResetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                {sellerResetting ? 'Resetting…' : 'Reset instance'}
                             </button>
                         </div>
                     </motion.div>

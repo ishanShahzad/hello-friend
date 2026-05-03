@@ -375,7 +375,7 @@ exports.sendSellerOTP = async (req, res) => {
 
 // Verify OTP and create seller
 exports.verifySellerOTPAndRegister = async (req, res) => {
-    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, sellerType } = req.body;
+    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, sellerType, whatsappNumber } = req.body;
 
     try {
         const otpDoc = await OTP.findOne({ email, otp });
@@ -387,10 +387,21 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
             return res.status(409).json({ msg: 'E-mail is already taken.' });
         }
 
+        // Verify WhatsApp against server-side OTP record (if a number was provided).
+        // We DO NOT trust a client-sent `whatsappVerified` flag — the client could
+        // simply set it to true without ever going through OTP.
+        let whatsappVerifiedServerSide = false;
+        if (whatsappNumber) {
+            const { consumeVerifiedWhatsAppNumber } = require('./sellerWhatsappController');
+            whatsappVerifiedServerSide = await consumeVerifiedWhatsAppNumber(whatsappNumber);
+        }
+
         const userData = { ...otpDoc.userData, isVerified: true };
         const newUser = new User(userData);
         newUser.sellerInfo = {
             phoneNumber: phoneNumber?.trim() || '',
+            whatsappNumber: whatsappVerifiedServerSide ? whatsappNumber.trim() : '',
+            whatsappVerified: whatsappVerifiedServerSide,
             address: address?.trim() || '',
             city: city?.trim() || '',
             country: country?.trim() || '',

@@ -22,10 +22,24 @@ const userSchema = mongoose.Schema({
     // Seller information
     sellerInfo: {
         phoneNumber: { type: String },
+        whatsappNumber: { type: String },           // separate WhatsApp number, E.164 format
+        whatsappVerified: { type: Boolean, default: false }, // verified via OTP
         address: { type: String },
         city: { type: String },
         country: { type: String },
         businessName: { type: String }
+    },
+
+    // Seller WhatsApp notification preferences
+    // Controls which notification categories get sent via WhatsApp
+    // Critical notifications (account blocked, subscription warnings) are ALWAYS sent regardless
+    whatsappNotificationPrefs: {
+        enabled: { type: Boolean, default: true },            // master toggle
+        newOrders: { type: Boolean, default: true },          // new order placed
+        orderUpdates: { type: Boolean, default: true },       // order confirmed/cancelled by buyer
+        subscriptionAlerts: { type: Boolean, default: true }, // subscription activated, ending, payment failed
+        bonusAlerts: { type: Boolean, default: true },        // bonus expiring, expired
+        storeAlerts: { type: Boolean, default: true },        // store verification status changes
     },
     
     // Currency preference

@@ -26,6 +26,8 @@ const { sendPushToUser } = require('../../utils/expoPush');
 const { findPendingJobByPhone, findPendingJobByOrderId, applyVote } = require('./queue');
 const { parseConfirmReply, buildReconfirmButtonsPayload } = require('./messageBuilder');
 const evolution = require('./evolutionClient');
+const { notifySeller } = require('./sellerNotificationService');
+const sellerTemplates = require('./sellerMessageTemplates');
 
 // ──────────────────────────────────────────────────────────────────────────
 // Outgoing friendly replies
@@ -171,6 +173,14 @@ const notifySellers = async (order, isConfirmed) => {
                 linkTo: `/seller/orders/${order._id}`,
                 source: 'system',
             }).catch(e => console.error('[whatsapp] seller in-app notification failed:', e.message));
+
+            // 4. WhatsApp notification to seller (fire-and-forget)
+            const waMsg = isConfirmed
+                ? sellerTemplates.order_confirmed(order)
+                : sellerTemplates.order_cancelled(order);
+            notifySeller(sellerId, 'order_update', waMsg).catch(e =>
+                console.error('[whatsapp] seller order update notification failed:', e.message)
+            );
         }
     } catch (err) {
         console.error('[whatsapp] notifySellers failed:', err.message);
@@ -322,11 +332,23 @@ exports.handleEvolutionWebhook = async (req, res) => {
         const body = req.body || {};
         const event = body.event || body.eventName || '';
 
-        // ── CONNECTION_UPDATE — keep WhatsAppConfig in sync ──
+        // ── Identify which Evolution instance this event belongs to ──
+        // Both the buyer-order-verification (main) and seller-notification (seller)
+        // instances POST to the same webhook URL. We MUST disambiguate, otherwise:
+        //   - CONNECTION_UPDATE for seller instance would corrupt main's WhatsAppConfig
+        //   - MESSAGES_UPSERT from seller's own WhatsApp (e.g. admin replying YES in chat)
+        //     would incorrectly auto-confirm unrelated buyer orders.
+        const incomingInstance = body.instance || body.instanceName || body.data?.instance || '';
+        const mainInstanceName = process.env.EVOLUTION_INSTANCE_NAME || 'rozare-main';
+        const sellerInstanceName = process.env.EVOLUTION_SELLER_INSTANCE_NAME || 'rozare-seller';
+        const isSellerInstance = incomingInstance && incomingInstance === sellerInstanceName;
+        const singletonKey = isSellerInstance ? 'seller' : 'main';
+
+        // ── CONNECTION_UPDATE — keep WhatsAppConfig in sync for the CORRECT instance ──
         if (event === 'connection.update' || event === 'CONNECTION_UPDATE') {
             const state = body.data?.state || body.state;
             const cfg = await WhatsAppConfig.findOneAndUpdate(
-                { singletonKey: 'main' },
+                { singletonKey },
                 {
                     $set: {
                         status: state === 'open' ? 'connected'
@@ -341,10 +363,19 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 },
                 { upsert: true, new: true }
             );
-            return res.status(200).json({ ok: true, status: cfg.status });
+            return res.status(200).json({ ok: true, status: cfg.status, instance: singletonKey });
+        }
+
+        // ── If this is from the seller instance, do NOT run buyer-order logic ──
+        // The seller instance is one-way (we send notifications TO sellers).
+        // Any inbound messages (sellers replying to notifications, random chat, OTP replies)
+        // must NOT be interpreted as buyer order confirmations.
+        if (isSellerInstance) {
+            return res.status(200).json({ ok: true, skipped: 'seller_instance_inbound' });
         }
 
         // ── MESSAGES_UPSERT — button click OR text YES/NO reply (+ legacy poll) ──
+        // From here on, we ONLY process events from the main (buyer-verification) instance.
         if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
             const messages = Array.isArray(body.data) ? body.data : [body.data].filter(Boolean);
 

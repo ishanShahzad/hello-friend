@@ -151,7 +151,7 @@ exports.updateUser = async (req, res) => {
 // Become a seller - update user role and save seller information
 exports.becomeSeller = async (req, res) => {
     const { id: _id } = req.user
-    const { phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks } = req.body
+    const { phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, whatsappNumber, whatsappVerified } = req.body
 
     try {
         // Check if user exists
@@ -177,10 +177,21 @@ exports.becomeSeller = async (req, res) => {
             return res.status(400).json({ message: 'Please provide your country' })
         }
 
+        // Verify WhatsApp against server-side OTP record (if a number was provided).
+        // We DO NOT trust a client-sent `whatsappVerified` flag — the client could
+        // simply set it to true without ever going through OTP.
+        let whatsappVerifiedServerSide = false;
+        if (whatsappNumber) {
+            const { consumeVerifiedWhatsAppNumber } = require('./sellerWhatsappController');
+            whatsappVerifiedServerSide = await consumeVerifiedWhatsAppNumber(whatsappNumber);
+        }
+
         // Update user role to seller and save seller information
         user.role = 'seller'
         user.sellerInfo = {
             phoneNumber: phoneNumber.trim(),
+            whatsappNumber: whatsappVerifiedServerSide ? whatsappNumber.trim() : '',
+            whatsappVerified: whatsappVerifiedServerSide,
             address: address.trim(),
             city: city.trim(),
             country: country.trim(),
