@@ -56,6 +56,15 @@ const sellerSubscriptionSchema = new mongoose.Schema({
     aiMessageLimit: { type: Number, default: 25 }, // 25 for free, 100 for subscribed
 
     cancelledAt: { type: Date },
+
+    // Track if seller ever used a free period (to prevent giving free period again on re-subscribe)
+    hasUsedFreePeriod: { type: Boolean, default: false },
+
+    // Downgrade scheduling: Elite → Starter at period end
+    pendingDowngrade: {
+        toPlan: { type: String, enum: ['starter', null], default: null },
+        scheduledAt: { type: Date }, // When the downgrade was requested
+    },
 }, { timestamps: true });
 
 // Virtual: days remaining in trial

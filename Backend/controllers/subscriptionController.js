@@ -111,6 +111,8 @@ exports.getSubscriptionStatus = async (req, res) => {
                 bonusFeaturesExpiredPermanently: sub.bonusFeaturesExpiredPermanently || false,
                 bonusGraceDeadline: sub.bonusGraceDeadline || null,
                 bonusGraceDaysRemaining: graceDaysRemaining,
+                pendingDowngrade: sub.pendingDowngrade?.toPlan || null,
+                hasUsedFreePeriod: sub.hasUsedFreePeriod || false,
             },
         });
     } catch (error) {
@@ -182,13 +184,18 @@ exports.createCheckout = async (req, res) => {
         const isElite = plan === 'elite';
         const planName = isElite ? 'Rozare Elite' : 'Rozare Starter';
         const priceAmount = isElite ? 1299 : 599; // $12.99 or $5.99
-        const trialDays = isElite ? 45 : 30;
+        const getsFreePeriod = !sub.hasUsedFreePeriod;
+        const trialDays = getsFreePeriod ? (isElite ? 45 : 30) : 0;
         const description = isElite
-            ? 'Rozare Elite - First 45 days free, then $12.99/month. Includes all Starter + Bonus features. Cancel anytime.'
-            : 'Rozare Starter - First 30 days free, then $5.99/month. Cancel anytime.';
+            ? getsFreePeriod
+                ? 'Rozare Elite - First 45 days free, then $12.99/month. Includes all Starter + Bonus features. Cancel anytime.'
+                : 'Rozare Elite - $12.99/month. Includes all Starter + Bonus features. Cancel anytime.'
+            : getsFreePeriod
+                ? 'Rozare Starter - First 30 days free, then $5.99/month. Cancel anytime.'
+                : 'Rozare Starter - $5.99/month. Cancel anytime.';
 
-        // Create a subscription with free trial period
-        const session = await stripe.checkout.sessions.create({
+        // Create a subscription (with or without free trial period)
+        const sessionConfig = {
             customer: customerId,
             mode: 'subscription',
             payment_method_types: ['card'],
@@ -205,13 +212,19 @@ exports.createCheckout = async (req, res) => {
                 quantity: 1,
             }],
             subscription_data: {
-                trial_period_days: trialDays,
                 metadata: { sellerId: sellerId.toString(), plan: isElite ? 'elite' : 'starter' },
             },
             success_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?success=true`,
             cancel_url: `${process.env.FRONTEND_URL}/seller-dashboard/subscription?cancelled=true`,
             metadata: { sellerId: sellerId.toString(), plan: isElite ? 'elite' : 'starter' },
-        });
+        };
+
+        // Only add trial days if seller hasn't used free period before
+        if (trialDays > 0) {
+            sessionConfig.subscription_data.trial_period_days = trialDays;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
 
         res.json({ url: session.url, sessionId: session.id });
     } catch (error) {
@@ -245,18 +258,30 @@ exports.handleWebhook = async (event) => {
                 const selectedPlan = session.metadata?.plan || 'starter';
                 const isElite = selectedPlan === 'elite';
                 const now = new Date();
-                const freePeriodDays = isElite ? 45 : 30;
-                const freePeriodEnd = new Date(now.getTime() + freePeriodDays * 24 * 60 * 60 * 1000);
 
-                sub.status = 'free_period';
+                // Determine if seller gets a free period (only first time ever)
+                const getsFreePeriod = !sub.hasUsedFreePeriod;
+                const freePeriodDays = getsFreePeriod ? (isElite ? 45 : 30) : 0;
+
                 sub.plan = isElite ? 'elite' : 'starter';
                 sub.planName = isElite ? 'Rozare Elite' : 'Rozare Starter';
                 sub.subscribedAt = now;
-                sub.freePeriodEndDate = freePeriodEnd;
                 sub.stripeSubscriptionId = session.subscription;
                 sub.aiMessageLimit = 100;
                 sub.blockedAt = null;
                 sub.blockedReason = '';
+                sub.pendingDowngrade = { toPlan: null, scheduledAt: null };
+
+                if (getsFreePeriod) {
+                    sub.status = 'free_period';
+                    sub.freePeriodEndDate = new Date(now.getTime() + freePeriodDays * 24 * 60 * 60 * 1000);
+                    sub.hasUsedFreePeriod = true;
+                } else {
+                    // No free period — go straight to active
+                    sub.status = 'active';
+                    sub.currentPeriodStart = now;
+                    sub.currentPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                }
 
                 if (isElite) {
                     // Elite plan: bonus features are always active (never expire)
@@ -302,7 +327,13 @@ exports.handleWebhook = async (event) => {
                     const priceStr = isElite ? '$12.99/month' : '$5.99/month';
                     const bonusStr = isElite
                         ? '<strong>Bonus Features:</strong> Permanently included with your Elite plan'
-                        : `<strong>Bonus Features:</strong> Active for 6 months (until ${new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toLocaleDateString()})`;
+                        : sub.bonusFeaturesActive && sub.bonusExpiryDate
+                            ? `<strong>Bonus Features:</strong> Active for 6 months (until ${new Date(sub.bonusExpiryDate).toLocaleDateString()})`
+                            : '<strong>Bonus Features:</strong> Not available (previously expired)';
+
+                    const freePeriodStr = getsFreePeriod
+                        ? `<strong>Free Period:</strong> ${freePeriodDays} days (until ${sub.freePeriodEndDate.toLocaleDateString()})<br/>`
+                        : '<strong>Billing:</strong> Active immediately<br/>';
 
                     const html = subscriptionEmailTemplate(
                         `${sub.planName} Activated!`,
@@ -310,7 +341,7 @@ exports.handleWebhook = async (event) => {
                         <p>Your <strong>${sub.planName}</strong> plan is now active!</p>
                         <div class="highlight">
                             <strong>Plan:</strong> ${sub.planName} (${priceStr})<br/>
-                            <strong>Free Period:</strong> ${freePeriodDays} days (until ${freePeriodEnd.toLocaleDateString()})<br/>
+                            ${freePeriodStr}
                             <strong>AI Messages:</strong> 100/day (upgraded from 25)<br/>
                             ${bonusStr}
                         </div>
@@ -328,11 +359,96 @@ exports.handleWebhook = async (event) => {
                 if (!sub) break;
 
                 const now = new Date();
+
+                // Check if this is a downgrade to Starter (not a real cancellation)
+                if (sub.pendingDowngrade?.toPlan === 'starter') {
+                    // Auto-create a new Starter subscription via Stripe
+                    try {
+                        const newSubscription = await stripe.subscriptions.create({
+                            customer: sub.stripeCustomerId,
+                            items: [{
+                                price_data: {
+                                    currency: 'usd',
+                                    product_data: {
+                                        name: 'Rozare Starter',
+                                        description: 'Rozare Starter - $5.99/month. Cancel anytime.',
+                                    },
+                                    unit_amount: 599,
+                                    recurring: { interval: 'month' },
+                                },
+                            }],
+                            metadata: { sellerId: sub.seller.toString(), plan: 'starter' },
+                        });
+
+                        // Update local subscription to Starter
+                        sub.status = 'active';
+                        sub.plan = 'starter';
+                        sub.planName = 'Rozare Starter';
+                        sub.stripeSubscriptionId = newSubscription.id;
+                        sub.currentPeriodStart = now;
+                        sub.currentPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        sub.cancelledAt = null;
+                        sub.pendingDowngrade = { toPlan: null, scheduledAt: null };
+                        sub.warningEmailSent = false;
+
+                        // Bonus features: give 6 months if never had Starter bonus expire permanently
+                        if (!sub.bonusFeaturesExpiredPermanently) {
+                            const bonusExpiry = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+                            sub.bonusFeaturesActive = true;
+                            sub.bonusExpiryDate = bonusExpiry;
+                            sub.bonusExpiryWarningEmailSent = false;
+                        } else {
+                            sub.bonusFeaturesActive = false;
+                        }
+
+                        await sub.save();
+
+                        // Send notification
+                        const Notification = require('../models/Notification');
+                        await Notification.create({
+                            user: sub.seller,
+                            title: 'Switched to Rozare Starter',
+                            body: 'Your plan has been switched from Elite to Starter ($5.99/month). Your store remains active.',
+                            category: 'subscription',
+                            linkTo: '/seller-dashboard/subscription',
+                            source: 'system',
+                        }).catch(e => console.error('Downgrade complete notification failed:', e.message));
+
+                        const user = await User.findById(sub.seller);
+                        if (user?.email) {
+                            const bonusInfo = sub.bonusFeaturesActive
+                                ? `<strong>Bonus Features:</strong> Active for 6 months (until ${sub.bonusExpiryDate.toLocaleDateString()})`
+                                : '<strong>Bonus Features:</strong> Not available (previously expired)';
+
+                            const html = subscriptionEmailTemplate(
+                                'Switched to Rozare Starter',
+                                `<p>Hello ${user.username || 'Seller'},</p>
+                                <p>Your plan has been switched from <strong>Rozare Elite</strong> to <strong>Rozare Starter</strong>.</p>
+                                <div class="highlight">
+                                    <strong>Plan:</strong> Rozare Starter ($5.99/month)<br/>
+                                    <strong>AI Messages:</strong> 100/day<br/>
+                                    ${bonusInfo}
+                                </div>
+                                <p>Your store remains active. You can upgrade back to Elite anytime.</p>
+                                <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">View Subscription</a></p>`
+                            );
+                            await sendEmail({ to: user.email, subject: 'Switched to Rozare Starter', html });
+                        }
+
+                        break;
+                    } catch (downgradeErr) {
+                        console.error('Auto-downgrade to Starter failed:', downgradeErr);
+                        // Fall through to regular block behavior if Stripe fails
+                    }
+                }
+
+                // Regular cancellation — block the store
                 sub.status = 'blocked';
                 sub.cancelledAt = now;
                 sub.blockedAt = now;
                 sub.blockedReason = 'Subscription cancelled. Subscribe again to reactivate your store.';
                 sub.aiMessageLimit = 25;
+                sub.pendingDowngrade = { toPlan: null, scheduledAt: null };
 
                 // Set 3-day bonus grace period if bonus is still active and not permanently expired
                 if (sub.plan === 'starter' && sub.bonusFeaturesActive && !sub.bonusFeaturesExpiredPermanently && sub.bonusExpiryDate && now < sub.bonusExpiryDate) {
@@ -580,6 +696,123 @@ exports.upgradeToElite = async (req, res) => {
     } catch (error) {
         console.error('Upgrade to Elite error:', error);
         res.status(500).json({ msg: 'Failed to upgrade. Please try again.' });
+    }
+};
+
+// Downgrade from Elite to Starter (Starter starts after Elite period ends)
+exports.downgradeToStarter = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+        const sub = await SellerSubscription.findOne({ seller: sellerId });
+
+        if (!sub) {
+            return res.status(400).json({ msg: 'No subscription found' });
+        }
+
+        // Must be on an active Elite plan
+        if (!['active', 'free_period'].includes(sub.status) || sub.plan !== 'elite') {
+            return res.status(400).json({ msg: 'You can only downgrade from an active Elite plan.' });
+        }
+
+        if (!sub.stripeSubscriptionId) {
+            return res.status(400).json({ msg: 'No active Stripe subscription found.' });
+        }
+
+        if (sub.pendingDowngrade?.toPlan === 'starter') {
+            return res.status(400).json({ msg: 'Downgrade to Starter is already scheduled.' });
+        }
+
+        if (!stripe) {
+            return res.status(500).json({ msg: 'Payment system not configured' });
+        }
+
+        // Cancel Elite at period end (Stripe will fire customer.subscription.deleted)
+        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+            cancel_at_period_end: true,
+        });
+
+        // Schedule the downgrade
+        sub.pendingDowngrade = {
+            toPlan: 'starter',
+            scheduledAt: new Date(),
+        };
+        sub.cancelledAt = new Date();
+        await sub.save();
+
+        // Determine bonus eligibility info
+        const neverHadStarter = !sub.bonusFeaturesExpiredPermanently;
+        const bonusMsg = neverHadStarter
+            ? 'You will get bonus features for 6 months with the Starter plan.'
+            : 'Bonus features are no longer available with the Starter plan for your account.';
+
+        // Send email
+        const user = await User.findById(sellerId);
+        if (user?.email) {
+            const html = subscriptionEmailTemplate(
+                'Downgrade to Starter Scheduled',
+                `<p>Hello ${user.username || 'Seller'},</p>
+                <p>Your downgrade from <strong>Rozare Elite</strong> to <strong>Rozare Starter</strong> has been scheduled.</p>
+                <div class="highlight">
+                    <strong>What happens:</strong><br/>
+                    - You keep Elite features until the current period ends<br/>
+                    - After that, your plan will automatically switch to Starter ($5.99/month)<br/>
+                    - No free period (you already used yours)<br/>
+                    - ${bonusMsg}
+                </div>
+                <p>Changed your mind? You can cancel the downgrade from your dashboard anytime before the period ends.</p>
+                <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">View Subscription</a></p>`
+            );
+            await sendEmail({ to: user.email, subject: 'Downgrade to Starter Scheduled', html });
+        }
+
+        // In-app notification
+        const Notification = require('../models/Notification');
+        await Notification.create({
+            user: sellerId,
+            title: 'Downgrade to Starter scheduled',
+            body: 'Your plan will switch to Rozare Starter after the current Elite period ends.',
+            category: 'subscription',
+            linkTo: '/seller-dashboard/subscription',
+            source: 'system',
+        }).catch(e => console.error('Downgrade notification failed:', e.message));
+
+        res.json({
+            msg: 'Downgrade scheduled. Your plan will switch to Starter after the current Elite period ends.',
+            bonusInfo: bonusMsg,
+        });
+    } catch (error) {
+        console.error('Downgrade to Starter error:', error);
+        res.status(500).json({ msg: 'Failed to schedule downgrade.' });
+    }
+};
+
+// Cancel a pending downgrade (keep Elite)
+exports.cancelDowngrade = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+        const sub = await SellerSubscription.findOne({ seller: sellerId });
+
+        if (!sub || !sub.pendingDowngrade?.toPlan) {
+            return res.status(400).json({ msg: 'No pending downgrade to cancel.' });
+        }
+
+        if (!stripe || !sub.stripeSubscriptionId) {
+            return res.status(500).json({ msg: 'Payment system error.' });
+        }
+
+        // Undo the Stripe cancellation
+        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+            cancel_at_period_end: false,
+        });
+
+        sub.pendingDowngrade = { toPlan: null, scheduledAt: null };
+        sub.cancelledAt = null;
+        await sub.save();
+
+        res.json({ msg: 'Downgrade cancelled. You will remain on Rozare Elite.' });
+    } catch (error) {
+        console.error('Cancel downgrade error:', error);
+        res.status(500).json({ msg: 'Failed to cancel downgrade.' });
     }
 };
 

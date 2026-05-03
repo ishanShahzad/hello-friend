@@ -15,8 +15,11 @@ const SellerSubscription = () => {
     const [checkoutLoading, setCheckoutLoading] = useState(null); // 'starter' | 'elite' | null
     const [cancelLoading, setCancelLoading] = useState(false);
     const [upgradeLoading, setUpgradeLoading] = useState(false);
+    const [downgradeLoading, setDowngradeLoading] = useState(false);
+    const [cancelDowngradeLoading, setCancelDowngradeLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
+    const [showDowngradeConfirm, setShowDowngradeConfirm] = useState(false);
     const [searchParams] = useSearchParams();
 
     useEffect(() => {
@@ -88,6 +91,39 @@ const SellerSubscription = () => {
             toast.error(err.response?.data?.msg || 'Failed to upgrade');
         } finally {
             setUpgradeLoading(false);
+        }
+    };
+
+    const handleDowngrade = async () => {
+        setDowngradeLoading(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/downgrade-to-starter`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.msg || 'Downgrade scheduled.');
+            setShowDowngradeConfirm(false);
+            fetchSubscription();
+        } catch (err) {
+            toast.error(err.response?.data?.msg || 'Failed to downgrade');
+        } finally {
+            setDowngradeLoading(false);
+        }
+    };
+
+    const handleCancelDowngrade = async () => {
+        setCancelDowngradeLoading(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/cancel-downgrade`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.msg || 'Downgrade cancelled.');
+            fetchSubscription();
+        } catch (err) {
+            toast.error(err.response?.data?.msg || 'Failed to cancel downgrade');
+        } finally {
+            setCancelDowngradeLoading(false);
         }
     };
 
@@ -363,10 +399,30 @@ const SellerSubscription = () => {
                                     Upgrade
                                 </button>
                             )}
+                            {isElite && (
+                                <button onClick={() => setShowDowngradeConfirm(true)}
+                                    className="text-xs px-3 py-1.5 rounded-lg transition-colors font-semibold"
+                                    style={{ color: 'hsl(var(--muted-foreground))', background: 'rgba(0, 0, 0, 0.04)' }}>
+                                    Downgrade
+                                </button>
+                            )}
                             <button onClick={() => setShowCancelConfirm(true)}
                                 className="text-xs px-3 py-1.5 rounded-lg transition-colors"
                                 style={{ color: 'hsl(0, 72%, 55%)', background: 'rgba(239, 68, 68, 0.08)' }}>
                                 Cancel
+                            </button>
+                        </div>
+                    )}
+                    {/* Pending downgrade banner */}
+                    {isSubscribed && subscription?.pendingDowngrade === 'starter' && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ background: 'rgba(249, 115, 22, 0.1)', color: 'hsl(30, 80%, 45%)' }}>
+                                Switching to Starter
+                            </span>
+                            <button onClick={handleCancelDowngrade} disabled={cancelDowngradeLoading}
+                                className="text-[10px] px-2 py-1 rounded-lg font-semibold"
+                                style={{ color: 'hsl(270, 60%, 55%)', background: 'rgba(139, 92, 246, 0.08)' }}>
+                                {cancelDowngradeLoading ? '...' : 'Keep Elite'}
                             </button>
                         </div>
                     )}
@@ -773,6 +829,71 @@ const SellerSubscription = () => {
                                     className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
                                     style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}>
                                     {upgradeLoading ? 'Upgrading...' : 'Upgrade to Elite'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Downgrade Confirm Modal */}
+            <AnimatePresence>
+                {showDowngradeConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowDowngradeConfirm(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="glass-panel-strong p-6 max-w-md w-full"
+                        >
+                            <div className="text-center mb-4">
+                                <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: 'rgba(249, 115, 22, 0.12)' }}>
+                                    <AlertTriangle size={22} style={{ color: 'hsl(30, 90%, 50%)' }} />
+                                </div>
+                                <h3 className="text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>Downgrade to Starter?</h3>
+                                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Your Elite plan will remain active until the current period ends. After that, you'll be switched to Starter ($5.99/month).
+                                </p>
+                            </div>
+
+                            <div className="mb-4 p-3.5 rounded-xl" style={{ background: 'rgba(249, 115, 22, 0.06)', border: '1px solid rgba(249, 115, 22, 0.15)' }}>
+                                <p className="text-xs font-bold mb-2" style={{ color: 'hsl(30, 85%, 45%)' }}>What changes with Starter:</p>
+                                <div className="space-y-1.5">
+                                    {[
+                                        { text: 'Billing drops to $5.99/month', good: true },
+                                        { text: 'No free period (already used)', good: false },
+                                        { text: 'Bonus features available for 6 months only (then expire)', good: false },
+                                        { text: 'All core features remain (store, products, payments, AI)', good: true },
+                                    ].map((f, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            {f.good ? <Check size={11} style={{ color: 'hsl(150, 60%, 45%)' }} /> : <AlertTriangle size={11} style={{ color: 'hsl(30, 90%, 50%)' }} />}
+                                            <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] mb-4 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                You can cancel this downgrade anytime before the period ends.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowDowngradeConfirm(false)}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold glass-inner"
+                                    style={{ color: 'hsl(var(--foreground))' }}>
+                                    Keep Elite
+                                </button>
+                                <button onClick={handleDowngrade} disabled={downgradeLoading}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
+                                    style={{ background: 'hsl(30, 80%, 50%)' }}>
+                                    {downgradeLoading ? 'Processing...' : 'Downgrade'}
                                 </button>
                             </div>
                         </motion.div>

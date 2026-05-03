@@ -6,6 +6,8 @@ const {
     createCheckout,
     cancelSubscription,
     upgradeToElite,
+    downgradeToStarter,
+    cancelDowngrade,
     getAllSubscriptionsForAdmin,
 } = require('../controllers/subscriptionController');
 const {
@@ -17,6 +19,8 @@ router.get('/status', verifyToken, getSubscriptionStatus);
 router.post('/create-checkout', verifyToken, createCheckout);
 router.post('/cancel', verifyToken, cancelSubscription);
 router.post('/upgrade-to-elite', verifyToken, upgradeToElite);
+router.post('/downgrade-to-starter', verifyToken, downgradeToStarter);
+router.post('/cancel-downgrade', verifyToken, cancelDowngrade);
 
 // Subdomain purchase routes
 router.get('/subdomain/ownership', verifyToken, getSubdomainOwnership);
