@@ -7,7 +7,6 @@ const subdomainDetector = async (req, res, next) => {
         const parts = host.split('.');
         
         // Check if it's a subdomain (e.g., storename.rozare.com)
-        // Assuming main domain is rozare.com (2 parts)
         if (parts.length > 2) {
             const subdomain = parts[0];
             
@@ -16,7 +15,7 @@ const subdomainDetector = async (req, res, next) => {
                 return next();
             }
             
-            // Find store by slug matching subdomain - ONLY verified stores get subdomain routing
+            // First try to find an active, verified store
             const store = await Store.findOne({ 
                 storeSlug: subdomain.toLowerCase(),
                 isActive: true,
@@ -24,8 +23,16 @@ const subdomainDetector = async (req, res, next) => {
             });
             
             if (store) {
-                // Attach store info to request
                 req.subdomainStore = store;
+            } else {
+                // Check if the store exists but is blocked/inactive
+                const blockedStore = await Store.findOne({
+                    storeSlug: subdomain.toLowerCase(),
+                });
+                if (blockedStore && !blockedStore.isActive) {
+                    req.subdomainStoreBlocked = true;
+                    req.subdomainStoreName = blockedStore.storeName;
+                }
             }
         }
         

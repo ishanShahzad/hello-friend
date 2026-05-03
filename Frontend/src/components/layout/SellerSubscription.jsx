@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Crown, Check, Zap, Shield, Bot, Clock, AlertTriangle,
     CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package,
-    Users, Award, Star
+    Users, Award, Star, MessageCircle
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -223,46 +223,26 @@ const SellerSubscription = () => {
                     </div>
 
                     <div className="space-y-2.5 mb-6">
-                        <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Core Features</p>
+                        <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Everything included in Starter</p>
                         {[
                             { icon: <Store size={14} />, text: 'Store & products visible to all customers' },
-                            { icon: <Package size={14} />, text: 'Unlimited product listings' },
+                            { icon: <Package size={14} />, text: '15 product listings (trial) / Unlimited (subscribed)' },
                             { icon: <CreditCard size={14} />, text: 'Secure payment processing' },
                             { icon: <Shield size={14} />, text: 'Custom subdomain for your store' },
-                            { icon: <Bot size={14} />, text: '100 AI messages/day (4x more than free)' },
+                            { icon: <Bot size={14} />, text: '25 AI messages/day (trial) / 100 AI messages/day (subscribed)' },
                             { icon: <Users size={14} />, text: 'Order management & customer insights' },
+                            { icon: <MessageCircle size={14} />, text: 'Rozare WhatsApp order confirmation automation' },
+                            { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
+                            { icon: <Sparkles size={14} />, text: 'Smart tag AI generator for products' },
+                            { icon: <Star size={14} />, text: 'Featured product highlighting' },
+                            { icon: <Crown size={14} />, text: 'Coupon & discount management' },
+                            { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
                         ].map((f, i) => (
                             <div key={i} className="flex items-center gap-3">
                                 <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
                                     {f.icon}
                                 </div>
                                 <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>{f.text}</span>
-                            </div>
-                        ))}
-
-                        <div className="border-t my-3" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
-                        <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                            <Award size={13} /> Bonus Features
-                            <span className="text-[10px] font-normal px-2 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                Available for 6 months
-                            </span>
-                        </p>
-                        {[
-                            { icon: <Zap size={14} />, text: 'Advanced analytics & growth insights' },
-                            { icon: <Sparkles size={14} />, text: 'Smart tag AI generator for products' },
-                            { icon: <Star size={14} />, text: 'Featured product highlighting on the homepage' },
-                            { icon: <Shield size={14} />, text: 'Priority support & early access to new features' },
-                            { icon: <Crown size={14} />, text: 'Coupon & discount management system' },
-                            { icon: <Zap size={14} />, text: 'Bulk discount & promotional tools' },
-                            { icon: <Bot size={14} />, text: 'Automated WhatsApp order verification (poll-based, no buyer typing)' },
-                        ].map((f, i) => (
-                            <div key={`bonus-${i}`} className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    {f.icon}
-                                </div>
-                                <span className="text-xs" style={{ color: 'hsl(var(--foreground))' }}>
-                                    {f.text} <span className="text-[10px]" style={{ color: 'hsl(270, 60%, 55%)' }}>(In bonus available for 6 months)</span>
-                                </span>
                             </div>
                         ))}
                     </div>

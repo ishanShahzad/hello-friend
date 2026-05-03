@@ -223,6 +223,16 @@ exports.addProduct = async (req, res) => {
             if (!store) {
                 return res.status(403).json({ msg: 'You must create a store before adding products. Go to Store Settings to set up your store.' });
             }
+
+            // Enforce product limit for trial sellers (15 products max)
+            const SellerSubscription = require('../models/SellerSubscription');
+            const sub = await SellerSubscription.findOne({ seller: userId });
+            if (sub && sub.status === 'trial') {
+                const productCount = await Product.countDocuments({ seller: userId });
+                if (productCount >= 15) {
+                    return res.status(403).json({ msg: 'You have reached the maximum of 15 product listings during your free trial. Subscribe to add unlimited products.' });
+                }
+            }
         }
         
         // Gate: only entitled sellers (trial or active bonus) can publish a Featured product.

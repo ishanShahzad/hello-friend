@@ -178,9 +178,9 @@ exports.createCheckout = async (req, res) => {
                     currency: 'usd',
                     product_data: {
                         name: 'Rozare Starter',
-                        description: 'Seller subscription - First 30 days free, then $5/month. Cancel anytime.',
+                        description: 'Rozare Starter - First 30 days free, then $5.99/month. Cancel anytime.',
                     },
-                    unit_amount: 500, // $5.00
+                    unit_amount: 599, // $5.99
                     recurring: { interval: 'month' },
                 },
                 quantity: 1,
@@ -433,7 +433,7 @@ exports.getAllSubscriptionsForAdmin = async (req, res) => {
 };
 
 // Returns true if a seller is entitled to bonus features (Trial OR active bonusFeaturesActive).
-// Used by feature-gating helpers like sellerHasFeaturedProducts and sellerHasWhatsAppVerify.
+// Used by feature-gating helpers like sellerHasFeaturedProducts (bonus-only features).
 const isEntitledToBonus = (sub) => {
     if (!sub) return false;
     if (sub.status === 'trial') {
@@ -445,12 +445,25 @@ const isEntitledToBonus = (sub) => {
     return false;
 };
 
-// Gating helper: WhatsApp order auto-verification — Rozare Starter bonus
+// Check if seller has an active subscription or trial (for starter-level features like WhatsApp)
+const isSellerActive = (sub) => {
+    if (!sub) return false;
+    if (sub.status === 'trial') {
+        return sub.trialEndDate ? new Date() < sub.trialEndDate : true;
+    }
+    // Any active subscription status means they have starter features
+    if (['free_period', 'active', 'past_due'].includes(sub.status)) {
+        return true;
+    }
+    return false;
+};
+
+// Gating helper: WhatsApp order auto-verification — included in Starter plan (and trial)
 exports.sellerHasWhatsAppVerify = async (sellerId) => {
     try {
         if (!sellerId) return false;
         const sub = await SellerSubscription.findOne({ seller: sellerId });
-        return isEntitledToBonus(sub);
+        return isSellerActive(sub);
     } catch (err) {
         console.error('sellerHasWhatsAppVerify:', err.message);
         return false;

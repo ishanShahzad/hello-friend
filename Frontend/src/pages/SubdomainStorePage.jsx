@@ -33,6 +33,8 @@ const SubdomainStorePage = () => {
     const [loading, setLoading] = useState(true);
     const [productsLoading, setProductsLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [blocked, setBlocked] = useState(false);
+    const [blockedStoreName, setBlockedStoreName] = useState('');
     const [trustStatus, setTrustStatus] = useState({ isTrusted: false, trustCount: 0 });
 
     useEffect(() => {
@@ -60,7 +62,10 @@ const SubdomainStorePage = () => {
             setNotFound(false);
         } catch (error) {
             console.error('Error fetching store:', error);
-            if (error.response?.status === 404) {
+            if (error.response?.status === 403 && error.response?.data?.blocked) {
+                setBlocked(true);
+                setBlockedStoreName(error.response.data.storeName || 'This store');
+            } else if (error.response?.status === 404) {
                 setNotFound(true);
             } else {
                 toast.error('Failed to load store');
@@ -111,6 +116,29 @@ const SubdomainStorePage = () => {
         return (
             <div className="flex justify-center items-center min-h-screen">
                 <Loader />
+            </div>
+        );
+    }
+
+    if (blocked) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                <div className="glass-inner p-6 rounded-2xl mb-4">
+                    <Store size={48} style={{ color: 'hsl(30, 90%, 50%)' }} />
+                </div>
+                <h1 className="text-2xl font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Store Temporarily Unavailable</h1>
+                <p className="text-sm mb-2 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {blockedStoreName} is temporarily blocked.
+                </p>
+                <p className="text-sm mb-6 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Products are currently hidden. Please check back later.
+                </p>
+                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => redirectToMainDomain('/stores')}
+                    className="px-6 py-2.5 rounded-xl font-semibold text-sm"
+                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+                    Browse Other Stores
+                </motion.button>
             </div>
         );
     }

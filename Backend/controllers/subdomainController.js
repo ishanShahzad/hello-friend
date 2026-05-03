@@ -7,12 +7,19 @@ const User = require('../models/User');
 // Get store data for subdomain
 exports.getSubdomainStore = async (req, res) => {
     try {
+        // Check if store is blocked
+        if (req.subdomainStoreBlocked) {
+            return res.status(403).json({ 
+                msg: 'Store temporarily unavailable',
+                blocked: true,
+                storeName: req.subdomainStoreName || 'This store',
+            });
+        }
+
         if (!req.subdomainStore) {
             return res.status(404).json({ msg: 'Store not found' });
         }
-
         const store = req.subdomainStore;
-
         res.status(200).json({
             msg: 'Store fetched successfully',
             store,

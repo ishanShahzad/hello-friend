@@ -483,7 +483,7 @@ const SellerDashboard = () => {
                                     <Lock size={18} style={{ color: 'hsl(0, 72%, 55%)' }} />
                                     <div className="flex-1">
                                         <p className="text-xs font-bold" style={{ color: 'hsl(0, 72%, 55%)' }}>Store Blocked — Subscribe to Reactivate</p>
-                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Your store and products are hidden. Click to subscribe.</p>
+                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Your store and products are hidden from the marketplace. You will no longer receive any orders until you activate your account. Click to subscribe.</p>
                                     </div>
                                     <Crown size={16} style={{ color: 'hsl(0, 72%, 55%)' }} />
                                 </div>
