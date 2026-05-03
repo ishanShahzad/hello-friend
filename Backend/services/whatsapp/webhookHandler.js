@@ -537,8 +537,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         ? order.shippingInfo.email.replace(/^(.{2})(.*)(@.*)$/, '$1••••$3')
                         : 'your email';
 
-                    // ── Confirmed via email → buyer taps on WhatsApp ──
-                    if (confirmedViaEmail) {
+                    // ── Confirmed via email AND still confirmed (not subsequently cancelled) ──
+                    if (confirmedViaEmail && order.orderStatus !== 'cancelled') {
                         if (isYes) {
                             // Tap confirm — already confirmed
                             const msg = [
@@ -613,8 +613,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                         continue;
                     }
 
-                    // ── Confirmed via WA but then cancelled (from email or account) ──
-                    if (order.confirmation?.cancelledFromDashboardAt && confirmedViaWA) {
+                    // ── Confirmed (via any channel) but then cancelled from email page or account ──
+                    if (order.confirmation?.cancelledFromDashboardAt && order.orderStatus === 'cancelled') {
                         const note = order.confirmation?.cancelledFromDashboardNote || '';
                         const cancelledFrom = note.includes('account') || note.includes('dashboard')
                             ? 'your Rozare account'
