@@ -160,8 +160,8 @@ const SellerSubscription = () => {
                             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 {isSubscribed
                                     ? subscription?.status === 'free_period'
-                                        ? `Free until ${new Date(subscription.freePeriodEndDate).toLocaleDateString()}, then $5/mo`
-                                        : '$5/month • Cancel anytime'
+                                        ? `Free until ${new Date(subscription.freePeriodEndDate).toLocaleDateString()}, then $5.99/mo`
+                                        : '$5.99/month • Cancel anytime'
                                     : isTrial
                                         ? `${subscription?.trialDaysRemaining} day${subscription?.trialDaysRemaining !== 1 ? 's' : ''} remaining`
                                         : 'Subscribe to activate your store'
@@ -214,11 +214,11 @@ const SellerSubscription = () => {
                             Rozare Starter
                         </h3>
                         <p className="text-lg font-bold mt-1" style={{ color: 'hsl(var(--foreground))' }}>
-                            <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5/mo</span>
+                            <span style={{ color: 'hsl(var(--muted-foreground))', textDecoration: 'line-through', fontSize: '0.9rem' }}>$5.99/mo</span>
                             {' '}$0<span className="text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>/first 30 days</span>
                         </p>
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Then $5/month • Cancel anytime
+                            Then $5.99/month • Cancel anytime
                         </p>
                     </div>
 
