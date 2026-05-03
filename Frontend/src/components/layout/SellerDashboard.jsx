@@ -503,7 +503,7 @@ const SellerDashboard = () => {
                                         <p className="text-xs font-bold" style={{ color: 'hsl(45, 80%, 40%)' }}>
                                             Trial expires in {subscriptionData?.trialDaysRemaining} day{subscriptionData?.trialDaysRemaining !== 1 ? 's' : ''}
                                         </p>
-                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Subscribe now — 90 days free, then $5/mo</p>
+                                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Subscribe now — 30 days free, then $5.99/mo</p>
                                     </div>
                                     <Crown size={16} style={{ color: 'hsl(45, 80%, 40%)' }} />
                                 </div>

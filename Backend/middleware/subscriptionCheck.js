@@ -1,6 +1,8 @@
 const SellerSubscription = require('../models/SellerSubscription');
 
-// Middleware to check if seller's subscription is active (not blocked)
+// Middleware to check seller subscription status.
+// Blocked sellers CAN still access their dashboard (add products, manage settings)
+// but their store and products are hidden publicly.
 const subscriptionCheck = async (req, res, next) => {
     try {
         // Only apply to sellers
@@ -11,7 +13,7 @@ const subscriptionCheck = async (req, res, next) => {
         // No subscription record = new seller, let them through (will be initialized)
         if (!sub) return next();
 
-        // Check if trial expired
+        // Check if trial expired — auto-block
         if (sub.status === 'trial') {
             const now = new Date();
             if (now > sub.trialEndDate) {
@@ -25,22 +27,16 @@ const subscriptionCheck = async (req, res, next) => {
             }
         }
 
-        if (sub.status === 'blocked') {
-            return res.status(403).json({
-                msg: 'Your subscription has expired. Please subscribe to a paid plan to continue.',
-                subscriptionBlocked: true,
-                blockedReason: sub.blockedReason,
-            });
-        }
-
         // Check bonus features expiry
         if (sub.bonusFeaturesActive && sub.bonusExpiryDate && new Date() > sub.bonusExpiryDate) {
             sub.bonusFeaturesActive = false;
             await sub.save();
         }
 
-        // Attach subscription info to request
+        // Attach subscription info to request — seller can always proceed
+        // The frontend uses this to show warnings/blocked UI, but doesn't block access
         req.subscription = sub;
+        req.subscriptionBlocked = sub.status === 'blocked';
         next();
     } catch (error) {
         console.error('Subscription check error:', error);

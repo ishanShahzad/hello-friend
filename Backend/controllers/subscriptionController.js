@@ -276,6 +276,30 @@ exports.handleWebhook = async (event) => {
                     { seller: sub.seller },
                     { isActive: false }
                 );
+
+            // Remove seller's products from all customer carts
+            const Cart = require('../models/Cart');
+            const Product = require('../models/Product');
+            const sellerProducts = await Product.find({ seller: sub.seller }).select('_id');
+            if (sellerProducts.length > 0) {
+                const productIds = sellerProducts.map(p => p._id);
+                await Cart.updateMany(
+                    { 'cartItems.product': { $in: productIds } },
+                    { $pull: { cartItems: { product: { $in: productIds } } } }
+                );
+            }
+
+            // Send block notification
+            const Notification = require('../models/Notification');
+            await Notification.create({
+                user: sub.seller,
+                title: 'Store blocked — subscription ended',
+                body: 'Your subscription has ended. Your store and products are hidden from the marketplace. Subscribe again to reactivate.',
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Subscription end notification failed:', e.message));
+
                 break;
             }
 
@@ -338,8 +362,11 @@ exports.processTrialExpirations = async () => {
     try {
         const now = new Date();
         const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+        const Notification = require('../models/Notification');
+        const Cart = require('../models/Cart');
+        const Product = require('../models/Product');
 
-        // Send warning emails for trials expiring in 3 days
+        // ── 3-Day Warning: trials expiring soon ──
         const expiringSoon = await SellerSubscription.find({
             status: 'trial',
             trialEndDate: { $lte: threeDaysFromNow, $gt: now },
@@ -349,21 +376,21 @@ exports.processTrialExpirations = async () => {
         for (const sub of expiringSoon) {
             const user = await User.findById(sub.seller);
             const store = await Store.findOne({ seller: sub.seller });
+            const daysLeft = Math.ceil((sub.trialEndDate - now) / (1000 * 60 * 60 * 24));
 
             if (user?.email) {
-                const daysLeft = Math.ceil((sub.trialEndDate - now) / (1000 * 60 * 60 * 24));
                 const html = subscriptionEmailTemplate(
                     `⏰ Trial Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}!`,
                     `<p>Hello ${user.username || 'Seller'},</p>
                     <p>Your free trial for <strong>"${store?.storeName || 'your store'}"</strong> expires in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong>.</p>
                     <div class="highlight">
                         <strong>What happens next?</strong><br/>
-                        If you don't subscribe, your store and products will be temporarily hidden from customers.
+                        If you don't subscribe, your store and products will be hidden from the marketplace and you will no longer receive any orders.
                     </div>
                     <p><strong>Subscribe now</strong> and get:</p>
                     <ul>
                         <li>✅ First 30 days completely FREE</li>
-                        <li>✅ Then only $5/month — cancel anytime</li>
+                        <li>✅ Then only $5.99/month — cancel anytime</li>
                         <li>✅ 100 AI messages/day (4x more!)</li>
                         <li>✅ Bonus premium features for 6 months</li>
                         <li>✅ Uninterrupted store visibility</li>
@@ -371,12 +398,23 @@ exports.processTrialExpirations = async () => {
                     <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 30 Days Free</a></p>`
                 );
                 await sendEmail({ to: user.email, subject: `⏰ Trial Expiring in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}!`, html });
-                sub.warningEmailSent = true;
-                await sub.save();
             }
+
+            // Create in-app notification
+            await Notification.create({
+                user: sub.seller,
+                title: `Trial expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
+                body: `Your free trial for "${store?.storeName || 'your store'}" expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Subscribe now to keep your store active.`,
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Warning notification failed:', e.message));
+
+            sub.warningEmailSent = true;
+            await sub.save();
         }
 
-        // Block expired trials
+        // ── Block expired trials ──
         const expired = await SellerSubscription.find({
             status: 'trial',
             trialEndDate: { $lte: now },
@@ -392,9 +430,88 @@ exports.processTrialExpirations = async () => {
                 { seller: sub.seller },
                 { isActive: false }
             );
+
+            // Send block notification email
+            const user = await User.findById(sub.seller);
+            const store = await Store.findOne({ seller: sub.seller });
+            if (user?.email) {
+                const html = subscriptionEmailTemplate(
+                    '🚫 Store Blocked — Trial Expired',
+                    `<p>Hello ${user.username || 'Seller'},</p>
+                    <p>Your free trial for <strong>"${store?.storeName || 'your store'}"</strong> has expired.</p>
+                    <div class="highlight">
+                        <strong>Your store is now hidden</strong> from the marketplace. You will not receive any new orders until you subscribe.
+                    </div>
+                    <p>You can still log in and manage your products. Subscribe anytime to reactivate:</p>
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Subscribe Now — 30 Days Free</a></p>`
+                );
+                await sendEmail({ to: user.email, subject: '🚫 Your Rozare Store Has Been Blocked — Subscribe to Reactivate', html });
+            }
+
+            // Create in-app notification
+            await Notification.create({
+                user: sub.seller,
+                title: 'Store blocked — trial expired',
+                body: 'Your free trial has ended. Your store and products are hidden from the marketplace. Subscribe to reactivate.',
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Block notification failed:', e.message));
+
+            // ── Cart cleanup: remove this seller's products from ALL customer carts ──
+            const sellerProducts = await Product.find({ seller: sub.seller }).select('_id');
+            if (sellerProducts.length > 0) {
+                const productIds = sellerProducts.map(p => p._id);
+                await Cart.updateMany(
+                    { 'cartItems.product': { $in: productIds } },
+                    { $pull: { cartItems: { product: { $in: productIds } } } }
+                );
+                console.log(`[subscription] Removed ${sellerProducts.length} products of seller ${sub.seller} from customer carts`);
+            }
         }
 
-        console.log(`Trial check: ${expiringSoon.length} warnings sent, ${expired.length} stores blocked`);
+        // ── Also check active subscriptions approaching end (for paid subscriptions) ──
+        // This handles cases where subscription period is about to end
+        const subsExpiringSoon = await SellerSubscription.find({
+            status: { $in: ['active', 'free_period'] },
+            cancelledAt: { $ne: null }, // Only cancelled subs that are still active until period end
+            currentPeriodEnd: { $lte: threeDaysFromNow, $gt: now },
+            warningEmailSent: false,
+        });
+
+        for (const sub of subsExpiringSoon) {
+            const user = await User.findById(sub.seller);
+            const store = await Store.findOne({ seller: sub.seller });
+            const daysLeft = Math.ceil((sub.currentPeriodEnd - now) / (1000 * 60 * 60 * 24));
+
+            if (user?.email) {
+                const html = subscriptionEmailTemplate(
+                    `⏰ Subscription Ending in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`,
+                    `<p>Hello ${user.username || 'Seller'},</p>
+                    <p>Your subscription for <strong>"${store?.storeName || 'your store'}"</strong> is ending in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong> because you cancelled it.</p>
+                    <div class="highlight">
+                        <strong>After expiry:</strong> Your store and products will be hidden from the marketplace.
+                    </div>
+                    <p>Changed your mind? You can re-subscribe anytime from your dashboard.</p>
+                    <p style="text-align:center"><a href="${process.env.FRONTEND_URL}/seller-dashboard/subscription" class="button">Re-subscribe Now</a></p>`
+                );
+                await sendEmail({ to: user.email, subject: `⏰ Subscription Ending in ${daysLeft} Day${daysLeft > 1 ? 's' : ''}`, html });
+            }
+
+            await Notification.create({
+                user: sub.seller,
+                title: `Subscription ending in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
+                body: `Your subscription for "${store?.storeName || 'your store'}" is ending soon. Your store will be hidden after expiry.`,
+                category: 'subscription',
+                linkTo: '/seller-dashboard/subscription',
+                source: 'system',
+            }).catch(e => console.error('Sub expiry warning notification failed:', e.message));
+
+            sub.warningEmailSent = true;
+            await sub.save();
+        }
+
+        console.log(`Trial check: ${expiringSoon.length} warnings, ${expired.length} blocked, ${subsExpiringSoon.length} sub-expiry warnings`);
     } catch (error) {
         console.error('Process trial expirations error:', error);
     }
