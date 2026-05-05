@@ -497,10 +497,13 @@ exports.getOrders = async (req, res) => {
 /**
  * GET /api/order/export — download orders in CSV, PDF, or Excel format.
  * Query params: search, paymentStatus, status, startDate, endDate, format (csv|pdf|excel)
+ * Includes store branding for sellers and Rozare branding for admins.
  */
 exports.exportOrders = async (req, res) => {
     const { role, id: userId } = req.user;
     const { search, paymentStatus, status, startDate, endDate, format = 'csv' } = req.query;
+    const Store = require('../models/Store');
+    const User = require('../models/User');
 
     let query = {};
     if (search) {
@@ -522,8 +525,19 @@ exports.exportOrders = async (req, res) => {
     }
 
     try {
-        let orders;
+        // Get branding info
+        let brandName = 'Rozare';
+        let storeName = '';
+        let sellerName = '';
+        if (role === 'seller') {
+            const store = await Store.findOne({ seller: userId }).select('storeName').lean();
+            const user = await User.findById(userId).select('username').lean();
+            storeName = store?.storeName || '';
+            sellerName = user?.username || '';
+            brandName = storeName || sellerName || 'Rozare';
+        }
 
+        let orders;
         if (role === 'seller') {
             const sellerProducts = await Product.find({ seller: userId }).select('_id');
             const sellerProductIds = sellerProducts.map(p => p._id.toString());
@@ -585,17 +599,43 @@ exports.exportOrders = async (req, res) => {
         });
 
         const dateStr = new Date().toISOString().split('T')[0];
+        const generatedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const filterDesc = [
+            status ? `Status: ${status.charAt(0).toUpperCase() + status.slice(1)}` : null,
+            paymentStatus ? `Payment: ${paymentStatus}` : null,
+            startDate ? `From: ${startDate}` : null,
+            endDate ? `To: ${endDate}` : null,
+        ].filter(Boolean).join(' | ') || 'All Orders';
+
+        // Totals
+        const totalSubtotal = rows.reduce((s, r) => s + parseFloat(r.subtotal), 0).toFixed(2);
+        const totalShipping = rows.reduce((s, r) => s + parseFloat(r.shipping), 0).toFixed(2);
+        const totalTax = rows.reduce((s, r) => s + parseFloat(r.tax), 0).toFixed(2);
+        const grandTotal = rows.reduce((s, r) => s + parseFloat(r.total), 0).toFixed(2);
+        const totalItems = rows.reduce((s, r) => s + r.itemCount, 0);
 
         // ── CSV Format ──
         if (format === 'csv') {
-            const csvHeader = 'Order ID,Date,Customer,Email,Phone,City,Country,Status,Payment,Method,Items,Qty,Subtotal,Shipping,Tax,Total\n';
-            const csvRows = rows.map(r => {
+            const lines = [];
+            lines.push(`"${brandName} - Order Report"`);
+            if (storeName && role === 'seller') lines.push(`"Store: ${storeName}"`);
+            lines.push(`"Generated: ${generatedDate}"`);
+            lines.push(`"Filter: ${filterDesc}"`);
+            lines.push(`"Total Orders: ${rows.length} | Total Items: ${totalItems} | Grand Total: $${grandTotal}"`);
+            lines.push('');
+            lines.push('Order ID,Date,Customer,Email,Phone,City,Country,Status,Payment,Method,Items,Qty,Subtotal,Shipping,Tax,Total');
+            rows.forEach(r => {
                 const esc = (val) => `"${String(val).replace(/"/g, '""')}"`;
-                return [esc(r.orderId), esc(r.date), esc(r.customer), esc(r.email), esc(r.phone), esc(r.city), esc(r.country), esc(r.status), esc(r.payment), esc(r.paymentMethod), esc(r.items), r.itemCount, r.subtotal, r.shipping, r.tax, r.total].join(',');
-            }).join('\n');
+                lines.push([esc(r.orderId), esc(r.date), esc(r.customer), esc(r.email), esc(r.phone), esc(r.city), esc(r.country), esc(r.status), esc(r.payment), esc(r.paymentMethod), esc(r.items), r.itemCount, r.subtotal, r.shipping, r.tax, r.total].join(','));
+            });
+            lines.push('');
+            lines.push(`,,,,,,,,,,TOTALS,${totalItems},${totalSubtotal},${totalShipping},${totalTax},${grandTotal}`);
+            lines.push('');
+            lines.push(`"Powered by Rozare - www.rozare.com"`);
+
             res.setHeader('Content-Type', 'text/csv');
-            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.csv"`);
-            return res.status(200).send(csvHeader + csvRows);
+            res.setHeader('Content-Disposition', `attachment; filename="${brandName.replace(/\s/g, '-')}-orders-${dateStr}.csv"`);
+            return res.status(200).send(lines.join('\n'));
         }
 
         // ── Excel Format ──
@@ -605,6 +645,32 @@ exports.exportOrders = async (req, res) => {
             workbook.creator = 'Rozare';
             workbook.created = new Date();
             const sheet = workbook.addWorksheet('Orders');
+
+            // ─── Title section ───
+            sheet.mergeCells('A1:P1');
+            const titleCell = sheet.getCell('A1');
+            titleCell.value = `${brandName} - Order Report`;
+            titleCell.font = { bold: true, size: 16, color: { argb: 'FF6366F1' } };
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            sheet.getRow(1).height = 30;
+
+            if (storeName && role === 'seller') {
+                sheet.mergeCells('A2:P2');
+                const storeCell = sheet.getCell('A2');
+                storeCell.value = `Store: ${storeName}`;
+                storeCell.font = { size: 11, color: { argb: 'FF64748B' } };
+                storeCell.alignment = { horizontal: 'center' };
+            }
+
+            const infoRow = role === 'seller' && storeName ? 3 : 2;
+            sheet.mergeCells(`A${infoRow}:P${infoRow}`);
+            const infoCell = sheet.getCell(`A${infoRow}`);
+            infoCell.value = `Generated: ${generatedDate} | ${filterDesc} | ${rows.length} orders | Grand Total: $${grandTotal}`;
+            infoCell.font = { size: 10, italic: true, color: { argb: 'FF94A3B8' } };
+            infoCell.alignment = { horizontal: 'center' };
+
+            // Empty row before table
+            const dataStartRow = infoRow + 2;
 
             // Define columns
             sheet.columns = [
@@ -626,36 +692,50 @@ exports.exportOrders = async (req, res) => {
                 { header: 'Total', key: 'total', width: 12 },
             ];
 
-            // Style header row
-            const headerRow = sheet.getRow(1);
-            headerRow.font = { bold: true, size: 11 };
-            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
+            // Move header row to correct position
+            const headerRow = sheet.getRow(dataStartRow);
+            headerRow.values = ['Order ID', 'Date', 'Customer', 'Email', 'Phone', 'City', 'Country', 'Status', 'Payment', 'Method', 'Items', 'Qty', 'Subtotal', 'Shipping', 'Tax', 'Total'];
             headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
             headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
             headerRow.height = 24;
+            headerRow.eachCell(cell => { cell.border = { bottom: { style: 'medium', color: { argb: 'FF4F46E5' } } }; });
 
             // Add data rows
             rows.forEach((r, i) => {
-                const row = sheet.addRow(r);
+                const row = sheet.getRow(dataStartRow + 1 + i);
+                row.values = [r.orderId, r.date, r.customer, r.email, r.phone, r.city, r.country, r.status, r.payment, r.paymentMethod, r.items, r.itemCount, r.subtotal, r.shipping, r.tax, r.total];
                 row.alignment = { vertical: 'middle' };
                 if (i % 2 === 0) {
                     row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
                 }
+                // Color-code status
+                const statusCell = row.getCell(8);
+                const statusColors = { Pending: 'FFF59E0B', Confirmed: 'FF10B981', Processing: 'FF6366F1', Shipped: 'FF0EA5E9', Delivered: 'FF22C55E', Cancelled: 'FFEF4444' };
+                if (statusColors[r.status]) statusCell.font = { bold: true, color: { argb: statusColors[r.status] } };
+                // Color-code payment
+                const payCell = row.getCell(9);
+                payCell.font = { bold: true, color: { argb: r.payment === 'Paid' ? 'FF22C55E' : 'FFEF4444' } };
             });
 
             // Summary row
-            if (rows.length > 0) {
-                sheet.addRow({});
-                const totalSubtotal = rows.reduce((s, r) => s + parseFloat(r.subtotal), 0).toFixed(2);
-                const totalShipping = rows.reduce((s, r) => s + parseFloat(r.shipping), 0).toFixed(2);
-                const totalTax = rows.reduce((s, r) => s + parseFloat(r.tax), 0).toFixed(2);
-                const grandTotal = rows.reduce((s, r) => s + parseFloat(r.total), 0).toFixed(2);
-                const summaryRow = sheet.addRow({ orderId: '', date: '', customer: '', email: '', phone: '', city: '', country: '', status: '', payment: '', paymentMethod: '', items: `TOTAL (${rows.length} orders)`, itemCount: rows.reduce((s, r) => s + r.itemCount, 0), subtotal: totalSubtotal, shipping: totalShipping, tax: totalTax, total: grandTotal });
-                summaryRow.font = { bold: true, size: 11 };
-            }
+            const sumRowNum = dataStartRow + 1 + rows.length + 1;
+            const summaryRow = sheet.getRow(sumRowNum);
+            summaryRow.values = ['', '', '', '', '', '', '', '', '', '', `TOTAL (${rows.length} orders)`, totalItems, totalSubtotal, totalShipping, totalTax, grandTotal];
+            summaryRow.font = { bold: true, size: 11 };
+            summaryRow.getCell(16).font = { bold: true, size: 12, color: { argb: 'FF6366F1' } };
+            summaryRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } };
+
+            // Footer
+            const footerRow = sheet.getRow(sumRowNum + 2);
+            sheet.mergeCells(`A${sumRowNum + 2}:P${sumRowNum + 2}`);
+            const footerCell = sheet.getCell(`A${sumRowNum + 2}`);
+            footerCell.value = 'Powered by Rozare - www.rozare.com';
+            footerCell.font = { size: 9, italic: true, color: { argb: 'FF94A3B8' } };
+            footerCell.alignment = { horizontal: 'center' };
 
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.xlsx"`);
+            res.setHeader('Content-Disposition', `attachment; filename="${brandName.replace(/\s/g, '-')}-orders-${dateStr}.xlsx"`);
             await workbook.xlsx.write(res);
             return res.end();
         }
@@ -663,81 +743,129 @@ exports.exportOrders = async (req, res) => {
         // ── PDF Format ──
         if (format === 'pdf') {
             const PDFDocument = require('pdfkit');
-            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40 });
 
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.pdf"`);
+            res.setHeader('Content-Disposition', `attachment; filename="${brandName.replace(/\s/g, '-')}-orders-${dateStr}.pdf"`);
             doc.pipe(res);
 
-            // Header
-            doc.fontSize(18).font('Helvetica-Bold').fillColor('#6366f1').text('Order Report', { align: 'center' });
-            doc.moveDown(0.3);
-            doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} | ${rows.length} order(s)${status ? ` | Status: ${status}` : ''}${startDate ? ` | From: ${startDate}` : ''}${endDate ? ` | To: ${endDate}` : ''}`, { align: 'center' });
-            doc.moveDown(1);
+            const pageWidth = doc.page.width - 80;
+            const tableLeft = 40;
 
-            // Table setup
-            const tableLeft = 30;
+            // ─── Header / Branding ───
+            // Purple accent bar at top
+            doc.rect(0, 0, doc.page.width, 6).fill('#6366f1');
+
+            doc.moveDown(0.8);
+            doc.fontSize(22).font('Helvetica-Bold').fillColor('#6366f1').text(brandName, { align: 'center' });
+            if (storeName && role === 'seller') {
+                doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(storeName, { align: 'center' });
+            }
+            doc.moveDown(0.4);
+            doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text('Order Report', { align: 'center' });
+            doc.moveDown(0.3);
+            doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${generatedDate}`, { align: 'center' });
+            doc.fontSize(9).text(`Filter: ${filterDesc}`, { align: 'center' });
+            doc.moveDown(0.8);
+
+            // ─── Summary Cards ───
+            const cardY = doc.y;
+            const cardWidth = pageWidth / 4;
+            const summaryCards = [
+                { label: 'Total Orders', value: String(rows.length), color: '#6366f1' },
+                { label: 'Total Items', value: String(totalItems), color: '#0ea5e9' },
+                { label: 'Revenue', value: `$${grandTotal}`, color: '#22c55e' },
+                { label: 'Avg Order', value: `$${rows.length > 0 ? (parseFloat(grandTotal) / rows.length).toFixed(2) : '0.00'}`, color: '#f59e0b' },
+            ];
+
+            summaryCards.forEach((card, i) => {
+                const cx = tableLeft + (i * cardWidth);
+                doc.rect(cx + 2, cardY, cardWidth - 4, 38).lineWidth(0.5).strokeColor('#e2e8f0').fillAndStroke('#fafafe', '#e2e8f0');
+                doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(card.label, cx + 10, cardY + 8, { width: cardWidth - 20 });
+                doc.fontSize(13).font('Helvetica-Bold').fillColor(card.color).text(card.value, cx + 10, cardY + 20, { width: cardWidth - 20 });
+            });
+
+            doc.y = cardY + 50;
+            doc.moveDown(0.5);
+
+            // ─── Table ───
             const cols = [
-                { label: 'Order ID', width: 80 },
-                { label: 'Date', width: 70 },
-                { label: 'Customer', width: 100 },
-                { label: 'Phone', width: 80 },
-                { label: 'City', width: 60 },
-                { label: 'Status', width: 65 },
-                { label: 'Payment', width: 55 },
-                { label: 'Items', width: 150 },
+                { label: 'Order ID', width: 75 },
+                { label: 'Date', width: 65 },
+                { label: 'Customer', width: 90 },
+                { label: 'Phone', width: 75 },
+                { label: 'City', width: 55 },
+                { label: 'Status', width: 60 },
+                { label: 'Payment', width: 50 },
+                { label: 'Method', width: 40 },
+                { label: 'Items', width: 140 },
                 { label: 'Total', width: 60 },
             ];
-            const rowHeight = 22;
+            const totalTableWidth = cols.reduce((s, c) => s + c.width, 0);
+            const rowHeight = 20;
 
-            // Table header
-            let y = doc.y;
-            doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#6366f1');
-            let x = tableLeft;
-            cols.forEach(col => {
-                doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 4, y + 7, { width: col.width - 8, ellipsis: true });
-                x += col.width;
-            });
-            y += rowHeight;
+            const drawTableHeader = (yPos) => {
+                doc.rect(tableLeft, yPos, totalTableWidth, rowHeight + 2).fill('#6366f1');
+                let x = tableLeft;
+                cols.forEach(col => {
+                    doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 4, yPos + 6, { width: col.width - 8, ellipsis: true });
+                    x += col.width;
+                });
+                return yPos + rowHeight + 2;
+            };
+
+            let y = drawTableHeader(doc.y);
 
             // Table rows
             rows.forEach((r, i) => {
-                // New page if needed
-                if (y + rowHeight > doc.page.height - 50) {
-                    doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 });
-                    y = 30;
-                    // Re-draw header on new page
-                    doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#6366f1');
-                    let hx = tableLeft;
-                    cols.forEach(col => {
-                        doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, hx + 4, y + 7, { width: col.width - 8, ellipsis: true });
-                        hx += col.width;
-                    });
-                    y += rowHeight;
+                if (y + rowHeight > doc.page.height - 60) {
+                    // Footer on current page
+                    doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', tableLeft, doc.page.height - 40, { align: 'center', width: totalTableWidth });
+                    doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
+                    doc.rect(0, 0, doc.page.width, 4).fill('#6366f1');
+                    y = 20;
+                    y = drawTableHeader(y);
                 }
 
                 // Alternate row background
                 if (i % 2 === 0) {
-                    doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#f8fafc');
+                    doc.rect(tableLeft, y, totalTableWidth, rowHeight).fill('#f8fafc');
+                } else {
+                    doc.rect(tableLeft, y, totalTableWidth, rowHeight).fill('#ffffff');
                 }
 
-                const values = [r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.items, `$${r.total}`];
-                x = tableLeft;
+                // Light grid line
+                doc.rect(tableLeft, y, totalTableWidth, rowHeight).lineWidth(0.3).strokeColor('#e2e8f0').stroke();
+
+                const values = [r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.paymentMethod, r.items, `$${r.total}`];
+                let x = tableLeft;
                 values.forEach((val, ci) => {
-                    doc.fontSize(7).font('Helvetica').fillColor('#1e293b').text(String(val), x + 4, y + 7, { width: cols[ci].width - 8, ellipsis: true });
+                    let textColor = '#334155';
+                    if (ci === 5) { // Status column
+                        const sc = { Pending: '#f59e0b', Confirmed: '#10b981', Processing: '#6366f1', Shipped: '#0ea5e9', Delivered: '#22c55e', Cancelled: '#ef4444' };
+                        textColor = sc[val] || textColor;
+                    }
+                    if (ci === 6) textColor = val === 'Paid' ? '#22c55e' : '#ef4444'; // Payment column
+                    if (ci === 9) textColor = '#1e293b'; // Total column bold
+                    doc.fontSize(7).font(ci === 9 ? 'Helvetica-Bold' : 'Helvetica').fillColor(textColor).text(String(val), x + 4, y + 6, { width: cols[ci].width - 8, ellipsis: true });
                     x += cols[ci].width;
                 });
                 y += rowHeight;
             });
 
-            // Summary
-            if (rows.length > 0) {
-                y += 10;
-                if (y + 40 > doc.page.height - 30) { doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 }); y = 30; }
-                const grandTotal = rows.reduce((s, r) => s + parseFloat(r.total), 0).toFixed(2);
-                const totalItems = rows.reduce((s, r) => s + r.itemCount, 0);
-                doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b').text(`Summary: ${rows.length} orders | ${totalItems} items | Grand Total: $${grandTotal}`, tableLeft, y);
-            }
+            // ─── Summary bar ───
+            y += 8;
+            if (y + 30 > doc.page.height - 60) { doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 }); y = 40; }
+            doc.rect(tableLeft, y, totalTableWidth, 26).fill('#ede9fe');
+            doc.rect(tableLeft, y, totalTableWidth, 26).lineWidth(1).strokeColor('#6366f1').stroke();
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#6366f1').text(
+                `TOTALS: ${rows.length} orders | ${totalItems} items | Subtotal: $${totalSubtotal} | Shipping: $${totalShipping} | Tax: $${totalTax} | Grand Total: $${grandTotal}`,
+                tableLeft + 12, y + 8, { width: totalTableWidth - 24 }
+            );
+
+            // ─── Footer ───
+            const footerY = doc.page.height - 40;
+            doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', tableLeft, footerY, { align: 'center', width: totalTableWidth });
 
             doc.end();
             return;

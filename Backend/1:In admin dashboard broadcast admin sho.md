@@ -10,7 +10,6 @@
 5: Subdomain working..
 
 
-7: Sellers earned money balance for online payments..
 
 8:blur issue.
 
@@ -18,6 +17,7 @@
 
 
 
+7: Sellers earned money balance for online payments..
 Main: stripe or payment method
 
 featured products filter home page and seller store page
