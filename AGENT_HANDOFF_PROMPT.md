@@ -7,7 +7,7 @@ You are taking over an **IN-PROGRESS** Evolution API upgrade from v1.7.4 to v2.3
 - IP: `80.225.254.66`
 - SSH Key: `~/Downloads/ssh-key-2026-04-28.key`
 - SSH User: `ubuntu`
-- Current Status: **SERVER UNREACHABLE** (connection timeout, 100% packet loss)
+- Current Status: **SERVER UNREACHABLE** (connection timeout, 100% packet loss) 
 
 **Evolution API Credentials:**
 - API Key: `rozareplatform`
