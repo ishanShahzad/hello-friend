@@ -90,6 +90,23 @@ exports.sendWhatsAppOTP = async (req, res) => {
             });
         }
 
+        // Check if this WhatsApp number is already linked to an existing seller account
+        const requestingUserId = req.user?.id || req.user?._id || null;
+        const numberVariants = [whatsappNumber, `+${digits}`, digits];
+        const existingSeller = await User.findOne({
+            role: 'seller',
+            $or: [
+                { 'sellerInfo.whatsappNumber': { $in: numberVariants } },
+                { 'sellerInfo.phoneNumber': { $in: numberVariants } }
+            ]
+        });
+        if (existingSeller && existingSeller._id.toString() !== String(requestingUserId)) {
+            return res.status(409).json({
+                success: false,
+                msg: 'This number is already associated with an existing seller account. Please use a different WhatsApp number.'
+            });
+        }
+
         // Per-number rate limit
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         const perNumberCount = await WhatsAppOTP.countDocuments({
