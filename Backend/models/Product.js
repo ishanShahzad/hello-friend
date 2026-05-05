@@ -33,11 +33,12 @@ const productSchema = mongoose.Schema(
         tags: [String],
         colors: [{ type: String }], // Legacy: kept for backward compatibility
         // Flexible seller-defined option groups (Size, Color, Material, etc.)
-        // Each group: { name: 'Size', values: ['S','M','L'] }
+        // Each group: { name: 'Size', values: ['S','M','L'], default: 'M' }
         optionGroups: [{
             _id: false,
             name: { type: String, required: true },
             values: [{ type: String }],
+            default: { type: String, default: '' }, // Default selected value for this option group
         }],
         seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Track who created the product
         returnPolicy: {

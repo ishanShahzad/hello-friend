@@ -101,6 +101,18 @@ function ProductDetailPage() {
             setProduct(res.data.product);
             setMainImg(res.data.product.image);
             setImageLoading(true);
+            // Pre-select default options from optionGroups
+            if (res.data.product.optionGroups?.length) {
+                const defaults = {};
+                res.data.product.optionGroups.forEach(g => {
+                    if (g.default && g.values.includes(g.default)) {
+                        defaults[g.name] = g.default;
+                    }
+                });
+                if (Object.keys(defaults).length > 0) {
+                    setSelectedOptions(defaults);
+                }
+            }
             if (res.data.product.seller) {
                 try {
                     const storeRes = await axios.get(

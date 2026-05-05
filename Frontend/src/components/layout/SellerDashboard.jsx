@@ -599,6 +599,7 @@ const SellerDashboard = () => {
                                 subscriptionData?.status === 'trial' ||
                                 subscriptionData?.bonusFeaturesActive === true
                             }
+                            inline={true}
                         />
                     )}
                 </AnimatePresence>,
@@ -769,7 +770,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
         const n = newGroupName.trim();
         if (!n) return;
         if (groups.some(g => g.name.toLowerCase() === n.toLowerCase())) return;
-        update([...groups, { name: n, values: [] }]);
+        update([...groups, { name: n, values: [], default: '' }]);
         setNewGroupName("");
     };
     const removeGroup = (idx) => update(groups.filter((_, i) => i !== idx));
@@ -777,10 +778,21 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
     const addValue = (idx) => {
         const v = (valueDrafts[idx] || '').trim();
         if (!v) return;
-        update(groups.map((g, i) => i === idx ? { ...g, values: g.values.includes(v) ? g.values : [...g.values, v] } : g));
+        const group = groups[idx];
+        const newValues = group.values.includes(v) ? group.values : [...group.values, v];
+        // If this is the first value and no default is set, auto-set it as default
+        const newDefault = (!group.default && newValues.length === 1) ? v : group.default;
+        update(groups.map((g, i) => i === idx ? { ...g, values: newValues, default: newDefault } : g));
         setValueDrafts({ ...valueDrafts, [idx]: '' });
     };
-    const removeValue = (idx, v) => update(groups.map((g, i) => i === idx ? { ...g, values: g.values.filter(x => x !== v) } : g));
+    const removeValue = (idx, v) => {
+        const group = groups[idx];
+        const newValues = group.values.filter(x => x !== v);
+        // If removing the default value, reset default to first remaining or empty
+        const newDefault = group.default === v ? (newValues[0] || '') : group.default;
+        update(groups.map((g, i) => i === idx ? { ...g, values: newValues, default: newDefault } : g));
+    };
+    const setDefault = (idx, v) => update(groups.map((g, i) => i === idx ? { ...g, default: v } : g));
 
     return (
         <div className="space-y-3">
@@ -814,16 +826,27 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
                     {g.values.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                             {g.values.map((v) => (
-                                <span key={v} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                                    style={{ background: 'rgba(99,102,241,0.12)', color: 'hsl(220,70%,55%)' }}>
+                                <span key={v}
+                                    onClick={() => !disabled && setDefault(idx, v)}
+                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all ${g.default === v ? 'ring-2 ring-offset-1' : ''}`}
+                                    style={g.default === v
+                                        ? { background: 'rgba(34,197,94,0.15)', color: 'hsl(150,60%,35%)', '--tw-ring-color': 'hsl(150,60%,45%)' }
+                                        : { background: 'rgba(99,102,241,0.12)', color: 'hsl(220,70%,55%)' }}
+                                    title={g.default === v ? `Default: ${v}` : `Click to set "${v}" as default`}>
+                                    {g.default === v && <CheckCircle size={11} className="mr-1" />}
                                     {v}
-                                    <button type="button" disabled={disabled} onClick={() => removeValue(idx, v)}
-                                        className="ml-1.5" style={{ color: 'hsl(220,70%,55%)' }}>
+                                    <button type="button" disabled={disabled} onClick={(e) => { e.stopPropagation(); removeValue(idx, v); }}
+                                        className="ml-1.5" style={{ color: g.default === v ? 'hsl(150,60%,35%)' : 'hsl(220,70%,55%)' }}>
                                         <X size={11} />
                                     </button>
                                 </span>
                             ))}
                         </div>
+                    )}
+                    {g.values.length > 0 && (
+                        <p className="text-[10px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Click a value to set it as default. {g.default && <span style={{ color: 'hsl(150,60%,40%)' }}>Default: <strong>{g.default}</strong></span>}
+                        </p>
                     )}
                 </div>
             ))}
@@ -845,7 +868,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 };
 
 // ============================
-const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true }) => {
+const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, inline = false }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
@@ -872,21 +895,17 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-start justify-center p-4 pt-8 sm:pt-12 z-50 overflow-y-auto">
-            <motion.div initial={{ scale: 0.92, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 30 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-full max-w-4xl mb-8 glass-panel-strong"
-                style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.2), 0 8px 32px rgba(0,0,0,0.1)' }}>
-                <div className="max-h-[85vh] overflow-y-auto" style={{ borderRadius: 28 }}>
+            className="fixed inset-0 z-50 overflow-y-auto" style={{ background: 'hsl(var(--background))' }}>
+            <div className="min-h-screen p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
 
                 {/* Header */}
-                <div className="sticky top-0 z-10 p-5 sm:p-6 flex justify-between items-center glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '24px 24px 0 0' }}>
+                <div className="sticky top-0 z-10 py-4 sm:py-5 flex justify-between items-center mb-4" style={{ background: 'hsl(var(--background))' }}>
                     <div>
-                        <h3 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                        <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                             {product._id ? "Edit Product" : "Add New Product"}
-                        </h3>
-                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            {product._id ? 'Update product details below' : 'Fill in the details to create a new product'}
+                        </h2>
+                        <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            {product._id ? 'Update product details below' : 'Fill in the details to list a new product'}
                         </p>
                     </div>
                     <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} 
@@ -895,7 +914,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     </motion.button>
                 </div>
 
-                <form onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} onSubmit={handleSubmit} className="space-y-6 pb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Product Name *</label>
@@ -1210,8 +1229,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </motion.button>
                     </div>
                 </form>
-                </div>
-            </motion.div>
+            </div>
         </motion.div>
     );
 };
