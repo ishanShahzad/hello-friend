@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Store, MessageCircle, Edit3, CheckCircle2, AlertTriangle, Loader2, Shield, Clock } from 'lucide-react';
-import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
@@ -12,6 +11,8 @@ export default function SellerProfile() {
   const { currentUser, setCurrentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   // WhatsApp change state
   const [showWhatsAppChange, setShowWhatsAppChange] = useState(false);
@@ -62,8 +63,9 @@ export default function SellerProfile() {
     try {
       const res = await axios.get(`${API_URL}api/user/single`, { headers });
       setUserData(res.data.user);
+      setLoadError('');
     } catch (err) {
-      toast.error('Failed to load profile');
+      setLoadError('Failed to load profile. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -92,11 +94,11 @@ export default function SellerProfile() {
     }
     setWhatsAppSending(true);
     setWhatsAppError('');
+    setSuccessMsg('');
     try {
       await axios.post(`${API_URL}api/user/seller/change-whatsapp/initiate`, { newWhatsappNumber: newWhatsApp }, { headers });
       setWhatsAppOtpSent(true);
       setWhatsAppCountdown(120);
-      toast.success('Verification code sent to the new WhatsApp number');
     } catch (err) {
       setWhatsAppError(err.response?.data?.msg || 'Failed to send code');
     } finally {
@@ -110,7 +112,7 @@ export default function SellerProfile() {
     setWhatsAppError('');
     try {
       const res = await axios.post(`${API_URL}api/user/seller/change-whatsapp/verify`, { newWhatsappNumber: newWhatsApp, otp: whatsAppOtp }, { headers });
-      toast.success(res.data.msg);
+      setSuccessMsg('WhatsApp number updated successfully.');
       setShowWhatsAppChange(false);
       setWhatsAppOtpSent(false);
       setNewWhatsApp('');
@@ -133,11 +135,11 @@ export default function SellerProfile() {
     }
     setEmailSending(true);
     setEmailError('');
+    setSuccessMsg('');
     try {
       await axios.post(`${API_URL}api/user/seller/change-email/initiate`, { newEmail }, { headers });
       setEmailOtpSent(true);
       setEmailCountdown(600);
-      toast.success('Verification code sent to your new email');
     } catch (err) {
       setEmailError(err.response?.data?.msg || 'Failed to send code');
     } finally {
@@ -151,7 +153,7 @@ export default function SellerProfile() {
     setEmailError('');
     try {
       const res = await axios.post(`${API_URL}api/user/seller/change-email/verify`, { newEmail, otp: emailOtp }, { headers });
-      toast.success(res.data.msg);
+      setSuccessMsg('Email updated successfully.');
       if (res.data.token) {
         localStorage.setItem('jwtToken', res.data.token);
       }
@@ -200,6 +202,18 @@ export default function SellerProfile() {
           </div>
         </div>
       </div>
+
+      {/* Inline success message */}
+      {successMsg && (
+        <div className="p-3 rounded-xl mb-4 text-sm font-medium flex items-center gap-2" style={{ background: 'hsla(150, 60%, 40%, 0.08)', color: 'hsl(150, 60%, 40%)', border: '1px solid hsla(150, 60%, 40%, 0.2)' }}>
+          <CheckCircle2 size={16} /> {successMsg}
+        </div>
+      )}
+
+      {/* Load error */}
+      {loadError && (
+        <div className="p-3 rounded-xl mb-4 text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{loadError}</div>
+      )}
 
       {/* Profile Info Section */}
       <div className="glass-panel-strong rounded-3xl p-6 mb-6">

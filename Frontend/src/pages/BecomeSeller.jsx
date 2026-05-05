@@ -23,6 +23,8 @@ export default function BecomeSeller() {
   const [storeNameChecking, setStoreNameChecking] = useState(false);
   const [storeNameError, setStoreNameError] = useState('');
   const storeCheckRef = useRef(null);
+  // Inline form error (replaces toast.error for validation)
+  const [formError, setFormError] = useState('');
   // Guest signup state
   const [signupData, setSignupData] = useState({ username: '', email: '', password: '' });
   const [signupLoading, setSignupLoading] = useState(false);
@@ -145,9 +147,10 @@ export default function BecomeSeller() {
   // Guest signup: send email OTP
   const handleGuestSignup = async (e) => {
     e.preventDefault();
-    if (!signupData.username.trim() || signupData.username.trim().length < 2) { toast.error('Please enter a valid name'); return; }
-    if (!signupData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupData.email)) { toast.error('Please enter a valid email'); return; }
-    if (!signupData.password || signupData.password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    setFormError('');
+    if (!signupData.username.trim() || signupData.username.trim().length < 2) { setFormError('Please enter a valid name'); return; }
+    if (!signupData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupData.email)) { setFormError('Please enter a valid email'); return; }
+    if (!signupData.password || signupData.password.length < 6) { setFormError('Password must be at least 6 characters'); return; }
 
     setSignupLoading(true);
     try {
@@ -160,10 +163,10 @@ export default function BecomeSeller() {
       setEmailOtpCountdown(600); // 10 minutes
       setEmailResendCooldown(30);
       setFormStep(0.6); // Go to OTP verification step
-      toast.success('Verification code sent to your email');
+      setFormError('');
     } catch (err) {
       const msg = err.response?.data?.msg || 'Failed to send OTP. Please try again.';
-      toast.error(msg);
+      setFormError(msg);
     } finally {
       setSignupLoading(false);
     }
@@ -172,7 +175,8 @@ export default function BecomeSeller() {
   // Guest signup: verify email OTP and create account
   const handleVerifyEmailOtp = async (e) => {
     e.preventDefault();
-    if (emailOtp.length !== 6) { toast.error('Please enter the 6-digit code'); return; }
+    setFormError('');
+    if (emailOtp.length !== 6) { setFormError('Please enter the 6-digit code'); return; }
     setEmailVerifying(true);
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/verify-otp`, {
@@ -183,11 +187,11 @@ export default function BecomeSeller() {
       localStorage.setItem('jwtToken', res.data.token);
       localStorage.setItem('currentUser', JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
-      toast.success('Account created! Continue setting up your seller profile.');
+      setFormError('');
       setFormStep(1); // Proceed to seller info step
     } catch (err) {
       const msg = err.response?.data?.msg || 'Invalid or expired code. Please try again.';
-      toast.error(msg);
+      setFormError(msg);
     } finally {
       setEmailVerifying(false);
     }
@@ -204,9 +208,9 @@ export default function BecomeSeller() {
       });
       setEmailOtpCountdown(600);
       setEmailResendCooldown(30);
-      toast.success('New code sent to your email');
+      setFormError('');
     } catch (err) {
-      toast.error(err.response?.data?.msg || 'Failed to resend code');
+      setFormError(err.response?.data?.msg || 'Failed to resend code');
     } finally {
       setSignupLoading(false);
     }
@@ -267,32 +271,35 @@ export default function BecomeSeller() {
 
   const handleStep1Next = (e) => {
     e.preventDefault();
-    if (!formData.phoneNumber || !isValidPhone(formData.phoneNumber)) { toast.error('Please enter a valid phone number (select your country and enter the number)'); return; }
-    if (!formData.address || formData.address.trim().length < 5) { toast.error('Please enter a valid address'); return; }
-    if (!formData.city || formData.city.trim().length < 2) { toast.error('Please enter your city'); return; }
-    if (!formData.country || formData.country.trim().length < 2) { toast.error('Please enter your country'); return; }
+    setFormError('');
+    if (!formData.phoneNumber || !isValidPhone(formData.phoneNumber)) { setFormError('Please enter a valid phone number (select your country and enter the number)'); return; }
+    if (!formData.address || formData.address.trim().length < 5) { setFormError('Please enter a valid address'); return; }
+    if (!formData.city || formData.city.trim().length < 2) { setFormError('Please enter your city'); return; }
+    if (!formData.country || formData.country.trim().length < 2) { setFormError('Please enter your country'); return; }
     setFormStep(2);
   };
 
   const handleStep2Next = () => {
+    setFormError('');
     if (!storeData.storeName || storeData.storeName.trim().length < 3) {
-      toast.error('Store name is required (at least 3 characters)'); return;
+      setFormError('Store name is required (at least 3 characters)'); return;
     }
     if (!storeData.storeDescription || storeData.storeDescription.trim().length < 10) {
-      toast.error('Store description is required (at least 10 characters)'); return;
+      setFormError('Store description is required (at least 10 characters)'); return;
     }
     if (storeNameAvailable === false) {
-      toast.error('This store name is already taken. Please choose a different name.'); return;
+      setFormError('This store name is already taken. Please choose a different name.'); return;
     }
     if (storeNameChecking) {
-      toast.error('Please wait — checking store name availability'); return;
+      setFormError('Please wait — checking store name availability'); return;
     }
     // Go to WhatsApp verification step
     setFormStep(3);
   };
 
   const handleBecomeSeller = async () => {
-    if (!whatsappVerified) { toast.error('Please verify your WhatsApp number first'); return; }
+    setFormError('');
+    if (!whatsappVerified) { setFormError('Please verify your WhatsApp number first'); return; }
     setLoading(true);
     try {
       const token = localStorage.getItem('jwtToken');
@@ -317,7 +324,7 @@ export default function BecomeSeller() {
       toast.success('Congratulations! You are now a seller!');
       await fetchAndUpdateCurrentUser();
       setTimeout(() => { window.location.href = '/seller-dashboard/store-overview'; }, 1500);
-    } catch (error) { toast.error(error.response?.data?.message || 'Failed to create seller account'); }
+    } catch (error) { setFormError(error.response?.data?.message || 'Failed to create seller account'); }
     finally { setLoading(false); }
   };
 
@@ -483,6 +490,9 @@ export default function BecomeSeller() {
                 <input type="password" name="password" value={signupData.password} onChange={handleSignupChange}
                   placeholder="At least 6 characters" className="glass-input" required minLength={6} />
               </div>
+              {formError && formStep === 0.5 && (
+                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
+              )}
               <motion.button type="submit" disabled={signupLoading} whileHover={{ scale: signupLoading ? 1 : 1.02 }} whileTap={{ scale: signupLoading ? 1 : 0.98 }}
                 className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
@@ -534,6 +544,9 @@ export default function BecomeSeller() {
                 </div>
               )}
 
+              {formError && formStep === 0.6 && (
+                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
+              )}
               <motion.button type="submit" disabled={emailVerifying || emailOtp.length !== 6 || emailOtpCountdown === 0}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
@@ -608,6 +621,9 @@ export default function BecomeSeller() {
                   <input type="text" name="country" value={formData.country} onChange={handleInputChange} placeholder="Your country" className="glass-input" required />
                 </div>
               </div>
+              {formError && formStep === 1 && (
+                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
+              )}
               <button type="submit" className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
                 Next: Store Setup <ArrowRight size={18} />
@@ -705,7 +721,10 @@ export default function BecomeSeller() {
                 </div>
               </div>
             </div>
-            <div className="mt-8">
+            <div className="mt-8 space-y-3">
+              {formError && formStep === 2 && (
+                <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
+              )}
               <motion.button onClick={() => handleStep2Next()} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 disabled={storeNameChecking || storeNameAvailable === false}
                 className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
@@ -768,6 +787,9 @@ export default function BecomeSeller() {
                   <CheckCircle2 size={32} className="mx-auto mb-2" style={{ color: 'hsl(150, 70%, 40%)' }} />
                   <p className="text-sm font-bold" style={{ color: 'hsl(150, 70%, 40%)' }}>WhatsApp Verified!</p>
                 </div>
+                {formError && formStep === 3 && (
+                  <div className="p-3 rounded-lg text-sm font-medium mb-3" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
+                )}
                 <motion.button onClick={handleBecomeSeller} disabled={loading} whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
                   className="w-full py-3 px-6 rounded-xl font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
