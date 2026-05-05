@@ -1,6 +1,6 @@
 
 const express = require('express')
-const { placeOrder, getOrders, updateStatus, getOrderDetail, cancelOrder, getUserOrders, trackGuestOrder } = require('../controllers/orderController')
+const { placeOrder, getOrders, updateStatus, getOrderDetail, cancelOrder, getUserOrders, trackGuestOrder, exportOrders } = require('../controllers/orderController')
 const verifyToken = require('../middleware/authMiddleware')
 const router = express.Router()
 
@@ -20,6 +20,7 @@ const optionalAuth = async (req, res, next) => {
 router.post('/place', optionalAuth, placeOrder)
 router.get('/track', trackGuestOrder)
 router.get('/get', verifyToken, getOrders)
+router.get('/export', verifyToken, exportOrders)
 router.get('/user-orders', verifyToken, getUserOrders)
 router.patch('/update-status/:id', verifyToken, updateStatus)
 router.get('/detail/:id', verifyToken, getOrderDetail)

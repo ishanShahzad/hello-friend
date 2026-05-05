@@ -402,6 +402,17 @@ exports.getOrders = async (req, res) => {
         query.isPaid = paymentStatus === 'paid' ? true : false
     }
 
+    // Apply date range filtering
+    if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            query.createdAt.$lte = end;
+        }
+    }
+
     try {
         let orders
 
@@ -480,6 +491,109 @@ exports.getOrders = async (req, res) => {
     } catch (error) {
         console.error("Error fetching Order:", error);
         return res.status(500).json({ msg: "Server error while fetching orders" });
+    }
+}
+
+/**
+ * GET /api/order/export — download orders as CSV.
+ * Uses the same filtering logic as getOrders (status, payment, date range, search).
+ */
+exports.exportOrders = async (req, res) => {
+    const { role, id: userId } = req.user;
+    const { search, paymentStatus, status, startDate, endDate } = req.query;
+
+    let query = {};
+    if (search) {
+        query.$or = [
+            { "shippingInfo.fullName": { $regex: search, $options: 'i' } },
+            { orderId: { $regex: search, $options: 'i' } }
+        ];
+    }
+    if (status) query.orderStatus = status;
+    if (paymentStatus) query.isPaid = paymentStatus === 'paid';
+    if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            query.createdAt.$lte = end;
+        }
+    }
+
+    try {
+        let orders;
+
+        if (role === 'seller') {
+            const sellerProducts = await Product.find({ seller: userId }).select('_id');
+            const sellerProductIds = sellerProducts.map(p => p._id.toString());
+            if (sellerProductIds.length === 0) {
+                orders = [];
+            } else {
+                const allOrders = await Order.find(query).sort({ createdAt: -1 });
+                orders = allOrders
+                    .filter(order => order.orderItems.some(item => sellerProductIds.includes(item.productId.toString())))
+                    .map(order => {
+                        const sellerOrderItems = order.orderItems.filter(item => sellerProductIds.includes(item.productId.toString()));
+                        const sellerSubtotal = sellerOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                        let sellerShipping = 0;
+                        if (order.sellerShipping && order.sellerShipping.length > 0) {
+                            const ss = order.sellerShipping.find(s => s.seller.toString() === userId.toString());
+                            sellerShipping = ss ? ss.shippingMethod.price : 0;
+                        }
+                        const totalOrderValue = order.orderSummary.subtotal;
+                        const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0;
+                        const sellerTax = order.orderSummary.tax * sellerProportion;
+                        const sellerTotal = sellerSubtotal + sellerShipping + sellerTax;
+                        return {
+                            ...order.toObject(),
+                            orderItems: sellerOrderItems,
+                            orderSummary: {
+                                subtotal: Math.round(sellerSubtotal * 100) / 100,
+                                shippingCost: Math.round(sellerShipping * 100) / 100,
+                                tax: Math.round(sellerTax * 100) / 100,
+                                totalAmount: Math.round(sellerTotal * 100) / 100
+                            }
+                        };
+                    });
+            }
+        } else {
+            orders = await Order.find(query).sort({ createdAt: -1 });
+        }
+
+        // Generate CSV
+        const csvHeader = 'Order ID,Date,Customer,Email,Phone,City,Status,Payment,Items,Subtotal,Shipping,Tax,Total\n';
+        const csvRows = orders.map(order => {
+            const o = order.toObject ? order.toObject() : order;
+            const items = (o.orderItems || []).map(i => `${i.name} x${i.quantity}`).join(' | ');
+            const date = new Date(o.createdAt).toISOString().split('T')[0];
+            const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+            return [
+                escapeCsv(o.orderId),
+                escapeCsv(date),
+                escapeCsv(o.shippingInfo?.fullName),
+                escapeCsv(o.shippingInfo?.email),
+                escapeCsv(o.shippingInfo?.phone),
+                escapeCsv(o.shippingInfo?.city),
+                escapeCsv(o.orderStatus),
+                escapeCsv(o.isPaid ? 'Paid' : 'Unpaid'),
+                escapeCsv(items),
+                o.orderSummary?.subtotal?.toFixed(2) || '0.00',
+                o.orderSummary?.shippingCost?.toFixed(2) || '0.00',
+                o.orderSummary?.tax?.toFixed(2) || '0.00',
+                o.orderSummary?.totalAmount?.toFixed(2) || '0.00',
+            ].join(',');
+        }).join('\n');
+
+        const csv = csvHeader + csvRows;
+        const filename = `orders-export-${new Date().toISOString().split('T')[0]}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.status(200).send(csv);
+    } catch (error) {
+        console.error("Error exporting orders:", error);
+        return res.status(500).json({ msg: "Server error while exporting orders" });
     }
 }
 

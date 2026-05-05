@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle } from 'lucide-react';
+import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle, Download, Calendar } from 'lucide-react';
 import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer, isOrderDecidedByBuyer, getConfirmationSourceLabel } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -18,6 +18,7 @@ const OrderManagement = () => {
     const [paymentFilter, setPaymentFilter] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
     const fetchOrders = async () => {
         const token = localStorage.getItem('jwtToken');
@@ -40,6 +41,32 @@ const OrderManagement = () => {
     };
 
     useEffect(() => { fetchOrders(); }, [searchTerm, statusFilter, paymentFilter, dateRange]);
+
+    const handleExport = async () => {
+        const token = localStorage.getItem('jwtToken');
+        setExporting(true);
+        try {
+            const query = serializeFilters();
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/export?${query}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `orders-${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success('Orders exported successfully');
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('Failed to export orders');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const getStatusIcon = (status) => {
         const icons = { pending: <Clock className="w-3.5 h-3.5" />, confirmed: <CheckCircle className="w-3.5 h-3.5" />, processing: <RefreshCw className="w-3.5 h-3.5" />, shipped: <Truck className="w-3.5 h-3.5" />, delivered: <CheckCircle className="w-3.5 h-3.5" />, cancelled: <XCircle className="w-3.5 h-3.5" /> };
@@ -95,9 +122,22 @@ const OrderManagement = () => {
             {/* Filters */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 className="glass-panel p-4 sm:p-5 mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <Filter size={14} style={{ color: 'hsl(var(--muted-foreground))' }} />
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Filters</span>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <Filter size={14} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Filters</span>
+                    </div>
+                    <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleExport}
+                        disabled={exporting || orders.length === 0}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' }}
+                    >
+                        {exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+                        {exporting ? 'Exporting…' : 'Export CSV'}
+                    </motion.button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="search-input-wrapper sm:col-span-2 lg:col-span-1">
@@ -107,6 +147,7 @@ const OrderManagement = () => {
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="glass-input cursor-pointer font-medium">
                         <option value="all">All Statuses</option>
                         <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
                         <option value="processing">Processing</option>
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>
@@ -118,6 +159,30 @@ const OrderManagement = () => {
                         <option value="unpaid">Unpaid</option>
                     </select>
                 </div>
+                {/* Date Range */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <Calendar size={10} /> From Date
+                        </label>
+                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            className="glass-input w-full px-3 py-2 rounded-xl text-sm" style={{ color: 'hsl(var(--foreground))' }} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <Calendar size={10} /> To Date
+                        </label>
+                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            className="glass-input w-full px-3 py-2 rounded-xl text-sm" style={{ color: 'hsl(var(--foreground))' }} />
+                    </div>
+                </div>
+                {(dateRange.start || dateRange.end) && (
+                    <button onClick={() => setDateRange({ start: '', end: '' })}
+                        className="mt-2 text-[11px] font-medium px-3 py-1 rounded-lg transition-colors"
+                        style={{ color: 'hsl(0, 72%, 55%)', background: 'rgba(239,68,68,0.08)' }}>
+                        Clear date filter
+                    </button>
+                )}
             </motion.div>
 
             {/* Orders */}
