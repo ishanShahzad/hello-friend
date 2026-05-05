@@ -86,8 +86,11 @@ const OrderManagement = () => {
     };
 
     const pendingCount = orders.filter(o => o.orderStatus === 'pending').length;
+    const confirmedCount = orders.filter(o => o.orderStatus === 'confirmed').length;
     const processingCount = orders.filter(o => o.orderStatus === 'processing').length;
+    const shippedCount = orders.filter(o => o.orderStatus === 'shipped').length;
     const deliveredCount = orders.filter(o => o.orderStatus === 'delivered').length;
+    const cancelledCount = orders.filter(o => o.orderStatus === 'cancelled').length;
 
     return (
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -105,18 +108,25 @@ const OrderManagement = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
                 {[
-                    { label: 'Pending', count: pendingCount, color: 'hsl(30, 90%, 50%)', bg: 'rgba(249, 115, 22, 0.12)' },
-                    { label: 'Processing', count: processingCount, color: 'hsl(220, 70%, 55%)', bg: 'rgba(99, 102, 241, 0.12)' },
-                    { label: 'Delivered', count: deliveredCount, color: 'hsl(150, 60%, 45%)', bg: 'rgba(16, 185, 129, 0.12)' },
-                ].map((item, i) => (
-                    <motion.div key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }} className="glass-card p-4 text-center">
-                        <p className="text-2xl font-extrabold" style={{ color: item.color, letterSpacing: '-0.03em' }}>{item.count}</p>
-                        <p className="text-[11px] font-medium mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.label}</p>
-                    </motion.div>
-                ))}
+                    { label: 'Pending', count: pendingCount, color: 'hsl(30, 90%, 50%)', icon: Clock },
+                    { label: 'Confirmed', count: confirmedCount, color: 'hsl(150, 60%, 40%)', icon: CheckCircle },
+                    { label: 'Processing', count: processingCount, color: 'hsl(220, 70%, 55%)', icon: RefreshCw },
+                    { label: 'Shipped', count: shippedCount, color: 'hsl(200, 80%, 50%)', icon: Truck },
+                    { label: 'Delivered', count: deliveredCount, color: 'hsl(150, 60%, 45%)', icon: Package },
+                    { label: 'Cancelled', count: cancelledCount, color: 'hsl(0, 72%, 55%)', icon: XCircle },
+                ].map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                        <motion.div key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.03 }} className="glass-card p-3 text-center">
+                            <Icon size={14} style={{ color: item.color, margin: '0 auto 4px' }} />
+                            <p className="text-xl font-extrabold" style={{ color: item.color, letterSpacing: '-0.03em' }}>{item.count}</p>
+                            <p className="text-[10px] font-medium mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.label}</p>
+                        </motion.div>
+                    );
+                })}
             </div>
 
             {/* Filters */}
@@ -140,24 +150,64 @@ const OrderManagement = () => {
                     </motion.button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div className="search-input-wrapper sm:col-span-2 lg:col-span-1">
+                    <div className="search-input-wrapper sm:col-span-2 lg:col-span-3">
                         <div className="search-input-icon"><Search size={16} /></div>
                         <input type="text" placeholder="Search by ID or name" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="glass-input glass-input-search" />
                     </div>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="glass-input cursor-pointer font-medium">
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="processing">Processing</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                    <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="glass-input cursor-pointer font-medium">
-                        <option value="all">All Payments</option>
-                        <option value="paid">Paid</option>
-                        <option value="unpaid">Unpaid</option>
-                    </select>
+                </div>
+
+                {/* Status Filter Buttons */}
+                <div className="mt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Status</p>
+                    <div className="flex flex-wrap gap-2">
+                        {[
+                            { id: 'all', label: 'All', color: 'hsl(var(--foreground))', bg: 'rgba(255,255,255,0.08)' },
+                            { id: 'pending', label: 'Pending', color: 'hsl(30, 90%, 50%)', bg: 'rgba(249, 115, 22, 0.12)' },
+                            { id: 'confirmed', label: 'Confirmed', color: 'hsl(150, 60%, 40%)', bg: 'rgba(16, 185, 129, 0.12)' },
+                            { id: 'processing', label: 'Processing', color: 'hsl(220, 70%, 55%)', bg: 'rgba(99, 102, 241, 0.12)' },
+                            { id: 'shipped', label: 'Shipped', color: 'hsl(200, 80%, 50%)', bg: 'rgba(14, 165, 233, 0.12)' },
+                            { id: 'delivered', label: 'Delivered', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16, 185, 129, 0.12)' },
+                            { id: 'cancelled', label: 'Cancelled', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239, 68, 68, 0.12)' },
+                        ].map(s => {
+                            const active = statusFilter === s.id;
+                            return (
+                                <button key={s.id} onClick={() => setStatusFilter(s.id)}
+                                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                                    style={{
+                                        background: active ? s.bg : 'rgba(255,255,255,0.04)',
+                                        color: active ? s.color : 'hsl(var(--muted-foreground))',
+                                        border: `1px solid ${active ? s.color : 'transparent'}`,
+                                    }}>
+                                    {s.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Payment Filter Buttons */}
+                <div className="mt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Payment</p>
+                    <div className="flex flex-wrap gap-2">
+                        {[
+                            { id: 'all', label: 'All', color: 'hsl(var(--foreground))', bg: 'rgba(255,255,255,0.08)' },
+                            { id: 'paid', label: 'Paid', color: 'hsl(150, 60%, 40%)', bg: 'rgba(16, 185, 129, 0.12)' },
+                            { id: 'unpaid', label: 'Unpaid', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239, 68, 68, 0.12)' },
+                        ].map(p => {
+                            const active = paymentFilter === p.id;
+                            return (
+                                <button key={p.id} onClick={() => setPaymentFilter(p.id)}
+                                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                                    style={{
+                                        background: active ? p.bg : 'rgba(255,255,255,0.04)',
+                                        color: active ? p.color : 'hsl(var(--muted-foreground))',
+                                        border: `1px solid ${active ? p.color : 'transparent'}`,
+                                    }}>
+                                    {p.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
                 {/* Date Range */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
