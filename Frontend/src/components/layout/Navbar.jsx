@@ -34,8 +34,8 @@ function Navbar() {
             <nav className={`transition-all duration-300 fixed z-50 flex justify-between items-center
                 px-4 sm:px-6 md:px-10 lg:px-14
                 ${isScrolled
-                    ? 'top-0 left-0 right-0 h-[60px] glass-panel-strong backdrop-blur-xl'
-                    : 'top-4 left-4 right-4 h-[60px] sm:h-[64px] glass-panel backdrop-blur-lg'
+                    ? 'top-0 left-0 right-0 h-[60px] glass-panel-strong backdrop-blur-md'
+                    : 'top-4 left-4 right-4 h-[60px] sm:h-[64px] glass-panel backdrop-blur-sm'
                 }`}
                 style={{
                     borderRadius: isScrolled ? '0' : '24px',
