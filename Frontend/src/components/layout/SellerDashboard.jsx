@@ -64,7 +64,7 @@ const SellerDashboard = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [loading, setLoading] = useState(true);
     const [uploadingImages, setUploadingImages] = useState(false);
-    const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 3, allowed: true, plan: 'free_trial' });
+    const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 6, allowed: true, plan: 'free_trial' });
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);

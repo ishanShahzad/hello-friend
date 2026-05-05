@@ -169,7 +169,7 @@ exports.deleteProduct = async (req, res) => {
 
 // ── Featured product limits by plan tier ──
 const FEATURED_LIMITS = {
-    free_trial: 3,
+    free_trial: 6,
     starter: 6,
     elite: 12,
 };

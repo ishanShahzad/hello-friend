@@ -176,12 +176,12 @@ const SellerSubscription = () => {
         '25 AI messages/day',
         'Order management & customer insights',
         'Rozare WhatsApp order confirmation automation',
+        'Featured product highlighting (6 products)',
     ];
 
     const bonusFeatures = [
         'Advanced analytics & growth insights',
         'Smart tag AI generator for products',
-        'Featured product highlighting (6 products)',
         'Priority support & early access to new features',
         'Coupon & discount management system',
         'Bulk discount & promotional tools',
@@ -550,7 +550,7 @@ const SellerSubscription = () => {
                         ) : subscription?.bonusFeaturesActive && (
                             <>
                                 <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                                    Bonus Features
+                                    Features from Elite
                                     {bonusDaysUntilExpiry <= 30 && (
                                         <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(249, 115, 22, 0.12)', color: 'hsl(30, 90%, 50%)' }}>
                                             {bonusDaysUntilExpiry} DAYS LEFT
@@ -592,7 +592,7 @@ const SellerSubscription = () => {
                         </div>
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                            Bonus Features
+                            Features from Elite
                             <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
                                 PERMANENT
                             </span>
@@ -647,7 +647,7 @@ const SellerSubscription = () => {
                                 { icon: <Bot size={13} />, text: '100 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
-                                { icon: <Sparkles size={13} />, text: '6 featured products with badge' },
+                                { icon: <Sparkles size={13} />, text: 'Featured product highlighting (6 products)' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
@@ -659,7 +659,7 @@ const SellerSubscription = () => {
 
                             <div className="border-t my-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
                             <p className="text-[10px] font-bold flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                                <Award size={11} /> Bonus Features
+                                <Award size={11} /> Features from Elite
                                 <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
                                     6 months only
                                 </span>
@@ -737,7 +737,7 @@ const SellerSubscription = () => {
                                 { icon: <Bot size={13} />, text: '100 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
-                                { icon: <Sparkles size={13} />, text: '12 featured products with badge' },
+                                { icon: <Sparkles size={13} />, text: 'Featured product highlighting (12 products)' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
@@ -748,12 +748,6 @@ const SellerSubscription = () => {
                             ))}
 
                             <div className="border-t my-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
-                            <p className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'hsl(270, 60%, 55%)' }}>
-                                <Award size={13} /> Bonus Features
-                                <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    PERMANENT
-                                </span>
-                            </p>
                             {bonusFeatures.map((f, i) => (
                                 <div key={`elite-bonus-${i}`} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>

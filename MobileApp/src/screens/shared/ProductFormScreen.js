@@ -51,7 +51,7 @@ export default function ProductFormScreen({ navigation, route }) {
   const [touched, setTouched] = useState({});
   const [isFeatured, setIsFeatured] = useState(!!product?.isFeatured);
   const [canFeature, setCanFeature] = useState(true);
-  const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 3, allowed: true, plan: 'free_trial' });
+  const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 6, allowed: true, plan: 'free_trial' });
 
   // Fetch featured product stats (entitlement + count/limit).
   useEffect(() => {
