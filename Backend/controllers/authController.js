@@ -37,7 +37,7 @@ exports.sendOTP = async (req, res) => {
         });
         await otpDoc.save();
 
-        // Send OTP email with improved deliverability
+        // Send OTP email with professional branded template
         const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -45,98 +45,62 @@ exports.sendOTP = async (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Your Email</title>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f4f4f4; 
-            margin: 0; 
-            padding: 0;
-            line-height: 1.6;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 20px auto; 
-            background: white; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-        }
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 30px 20px; 
-            text-align: center; 
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .content { 
-            padding: 30px 20px; 
-            color: #333;
-        }
-        .otp-box { 
-            background: #f8f9fa; 
-            border: 2px solid #667eea; 
-            border-radius: 8px; 
-            padding: 20px; 
-            text-align: center; 
-            margin: 25px 0; 
-        }
-        .otp-code { 
-            font-size: 36px; 
-            font-weight: bold; 
-            color: #667eea; 
-            letter-spacing: 8px;
-            font-family: 'Courier New', monospace;
-        }
-        .footer { 
-            background: #f8f9fa; 
-            padding: 20px; 
-            text-align: center; 
-            font-size: 12px; 
-            color: #666; 
-            border-top: 1px solid #e0e0e0;
-        }
-        .company-info {
-            margin-top: 15px;
-            font-size: 11px;
-            color: #999;
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Verify Your Email Address</h1>
-        </div>
-        <div class="content">
-            <p>Hello <strong>${username}</strong>,</p>
-            
-            <p>Thank you for creating an account with Rozare. To complete your registration and verify your email address, please use the verification code below:</p>
-            
-            <div class="otp-box">
-                <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; font-weight: 600;">VERIFICATION CODE</p>
-                <div class="otp-code">${otp}</div>
-                <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">This code expires in 10 minutes</p>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;">
+    <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        
+        <!-- Header with Logo -->
+        <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%);padding:48px 32px;text-align:center;">
+            <div style="margin-bottom:16px;">
+                <div style="display:inline-block;width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;line-height:56px;text-align:center;">
+                    <span style="font-size:28px;color:#ffffff;">&#9993;</span>
+                </div>
             </div>
+            <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Verify Your Email</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">One more step to get started</p>
+        </div>
+        
+        <!-- Body Content -->
+        <div style="padding:40px 32px;">
+            <p style="color:#334155;font-size:16px;margin:0 0 20px;">Hi <strong>${username}</strong>,</p>
             
-            <p style="color: #666; font-size: 14px;">Enter this code on the verification page to activate your account.</p>
-            
-            <p style="color: #999; font-size: 13px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                <strong>Didn't request this?</strong> If you didn't create an account with Rozare, you can safely ignore this email.
+            <p style="color:#475569;font-size:15px;margin:0 0 28px;">
+                Thanks for signing up for Rozare! Please enter the verification code below to confirm your email address and activate your account.
             </p>
             
-            <p style="color: #999; font-size: 12px; margin-top: 15px;">
-                <strong>Security reminder:</strong> Never share this code with anyone. Rozare staff will never ask for your verification code.
-            </p>
-        </div>
-        <div class="footer">
-            <p style="margin: 0 0 5px 0;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
-            <div class="company-info">
-                <p style="margin: 5px 0;">This is an automated message, please do not reply to this email.</p>
+            <!-- OTP Code Box -->
+            <div style="background:linear-gradient(135deg,#f8faff 0%,#f0f4ff 100%);border:2px solid #e0e7ff;border-radius:12px;padding:28px 20px;text-align:center;margin:0 0 28px;">
+                <p style="margin:0 0 12px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Verification Code</p>
+                <div style="font-size:38px;font-weight:800;color:#6366f1;letter-spacing:10px;font-family:'Courier New',monospace;padding:8px 0;">${otp}</div>
+                <div style="margin-top:12px;display:inline-block;background:#fef3c7;border-radius:20px;padding:6px 14px;">
+                    <span style="color:#92400e;font-size:12px;font-weight:600;">&#9202; Expires in 10 minutes</span>
+                </div>
             </div>
+            
+            <!-- Instructions -->
+            <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+                <p style="color:#475569;font-size:14px;margin:0;line-height:1.7;">
+                    <strong style="color:#334155;">How to use:</strong><br/>
+                    Enter this 6-digit code on the verification page to complete your registration.
+                </p>
+            </div>
+            
+            <!-- Security Notice -->
+            <div style="border-top:1px solid #e2e8f0;padding-top:20px;margin-top:24px;">
+                <p style="color:#94a3b8;font-size:13px;margin:0 0 8px;">
+                    <strong style="color:#64748b;">&#128274; Security Notice</strong>
+                </p>
+                <p style="color:#94a3b8;font-size:13px;margin:0;line-height:1.6;">
+                    If you didn't create an account with Rozare, please ignore this email. Never share this code with anyone — our team will never ask for it.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+            <p style="margin:0 0 8px;color:#6366f1;font-size:16px;font-weight:700;">Rozare</p>
+            <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
+            <p style="margin:0;color:#cbd5e1;font-size:11px;">This is an automated message — please do not reply.</p>
         </div>
     </div>
 </body>
@@ -351,19 +315,74 @@ exports.sendSellerOTP = async (req, res) => {
         otpDoc._sellerInfo = { phoneNumber, address, city, country, businessName };
         await otpDoc.save();
 
-        // Reuse same OTP email template
+        // Professional seller OTP email template
         const html = `
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Verify Your Email</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f4f4f4;margin:0;padding:0}.container{max-width:600px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:30px 20px;text-align:center}.header h1{margin:0;font-size:24px}.content{padding:30px 20px;color:#333}.otp-box{background:#f8f9fa;border:2px solid #667eea;border-radius:8px;padding:20px;text-align:center;margin:25px 0}.otp-code{font-size:36px;font-weight:700;color:#667eea;letter-spacing:8px;font-family:'Courier New',monospace}.footer{background:#f8f9fa;padding:20px;text-align:center;font-size:12px;color:#666;border-top:1px solid #e0e0e0}</style></head>
-<body><div class="container"><div class="header"><h1>Verify Your Seller Account</h1></div>
-<div class="content"><p>Hello <strong>${username}</strong>,</p>
-<p>Thank you for signing up as a seller on Rozare. Please use the code below to verify your email:</p>
-<div class="otp-box"><p style="margin:0 0 10px;color:#666;font-size:14px;font-weight:600">VERIFICATION CODE</p>
-<div class="otp-code">${otp}</div>
-<p style="margin:10px 0 0;color:#999;font-size:12px">This code expires in 10 minutes</p></div>
-<p style="color:#999;font-size:13px;margin-top:25px;padding-top:20px;border-top:1px solid #e0e0e0"><strong>Didn't request this?</strong> You can safely ignore this email.</p></div>
-<div class="footer"><p style="margin:0">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p></div></div></body></html>`;
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Seller Account</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;">
+    <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%);padding:48px 32px;text-align:center;">
+            <div style="margin-bottom:16px;">
+                <div style="display:inline-block;width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;line-height:56px;text-align:center;">
+                    <span style="font-size:28px;color:#ffffff;">&#127979;</span>
+                </div>
+            </div>
+            <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Verify Your Seller Account</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Almost ready to start selling</p>
+        </div>
+        
+        <!-- Body Content -->
+        <div style="padding:40px 32px;">
+            <p style="color:#334155;font-size:16px;margin:0 0 20px;">Hi <strong>${username}</strong>,</p>
+            
+            <p style="color:#475569;font-size:15px;margin:0 0 28px;">
+                Thank you for signing up as a seller on Rozare! Enter the verification code below to confirm your email and complete your seller registration.
+            </p>
+            
+            <!-- OTP Code Box -->
+            <div style="background:linear-gradient(135deg,#f8faff 0%,#f0f4ff 100%);border:2px solid #e0e7ff;border-radius:12px;padding:28px 20px;text-align:center;margin:0 0 28px;">
+                <p style="margin:0 0 12px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Verification Code</p>
+                <div style="font-size:38px;font-weight:800;color:#6366f1;letter-spacing:10px;font-family:'Courier New',monospace;padding:8px 0;">${otp}</div>
+                <div style="margin-top:12px;display:inline-block;background:#fef3c7;border-radius:20px;padding:6px 14px;">
+                    <span style="color:#92400e;font-size:12px;font-weight:600;">&#9202; Expires in 10 minutes</span>
+                </div>
+            </div>
+            
+            <!-- What's Next -->
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+                <p style="color:#166534;font-size:14px;margin:0;font-weight:600;">&#127881; What happens next?</p>
+                <p style="color:#15803d;font-size:13px;margin:8px 0 0;line-height:1.6;">
+                    After verification, you'll be able to set up your store, list products, and start selling to customers worldwide — all for free!
+                </p>
+            </div>
+            
+            <!-- Security Notice -->
+            <div style="border-top:1px solid #e2e8f0;padding-top:20px;margin-top:24px;">
+                <p style="color:#94a3b8;font-size:13px;margin:0 0 8px;">
+                    <strong style="color:#64748b;">&#128274; Security Notice</strong>
+                </p>
+                <p style="color:#94a3b8;font-size:13px;margin:0;line-height:1.6;">
+                    If you didn't sign up as a seller on Rozare, please ignore this email. Never share this code with anyone — our team will never ask for it.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+            <p style="margin:0 0 8px;color:#6366f1;font-size:16px;font-weight:700;">Rozare</p>
+            <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
+            <p style="margin:0;color:#cbd5e1;font-size:11px;">This is an automated message — please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>`;
 
         await sendEmail({ to: email, subject: 'Verify Your Seller Account - Rozare', text: `Your OTP: ${otp}. Valid for 10 minutes.`, html });
 
