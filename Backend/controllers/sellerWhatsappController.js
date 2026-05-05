@@ -100,11 +100,20 @@ exports.sendWhatsAppOTP = async (req, res) => {
                 { 'sellerInfo.phoneNumber': { $in: numberVariants } }
             ]
         });
-        if (existingSeller && existingSeller._id.toString() !== String(requestingUserId)) {
-            return res.status(409).json({
-                success: false,
-                msg: 'This number is already associated with an existing seller account. Please use a different WhatsApp number.'
-            });
+        if (existingSeller) {
+            // Block if it's a different seller's number OR if it's the requesting user's own current number
+            if (existingSeller._id.toString() !== String(requestingUserId)) {
+                return res.status(409).json({
+                    success: false,
+                    msg: 'This number is already associated with an existing seller account. Please use a different WhatsApp number.'
+                });
+            } else {
+                // It's the same seller trying to re-verify their own number
+                return res.status(409).json({
+                    success: false,
+                    msg: 'This is already your current WhatsApp number.'
+                });
+            }
         }
 
         // Per-number rate limit
