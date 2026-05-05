@@ -203,8 +203,11 @@ const SellerDashboard = () => {
     const outletContext = useMemo(() => ({
         products, orders, categories, searchTerm, setSearchTerm,
         selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm,
-        handleEditProduct, handleCreateProduct, handleDeleteProduct, loading, fetchProducts
-    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading]);
+        handleEditProduct, handleCreateProduct, handleDeleteProduct, loading, fetchProducts,
+        isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages,
+        closeForm: () => { setIsFormOpen(false); setEditingProduct(null); },
+        canFeature: subscriptionData?.status === 'trial' || subscriptionData?.bonusFeaturesActive === true
+    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading, isFormOpen, editingProduct, uploadingImages, subscriptionData]);
 
     const location = useLocation();
 
@@ -584,32 +587,12 @@ const SellerDashboard = () => {
             )}
 
             {createPortal(notificationsDropdown, document.body)}
-
-            {/* Product Form Modal */}
-            {createPortal(
-                <AnimatePresence>
-                    {isFormOpen && (
-                        <ProductForm
-                            product={editingProduct}
-                            setProduct={setEditingProduct}
-                            onSave={handleSaveProduct}
-                            onClose={() => { setIsFormOpen(false); setEditingProduct(null); }}
-                            uploadingImages={uploadingImages}
-                            canFeature={
-                                subscriptionData?.status === 'trial' ||
-                                subscriptionData?.bonusFeaturesActive === true
-                            }
-                            inline={true}
-                        />
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
         </div>
     );
 };
 
 export default SellerDashboard;
+export { ProductForm };
 
 import ChatBotComponent from '../common/ChatBot';
 
@@ -868,7 +851,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 };
 
 // ============================
-const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, inline = false }) => {
+const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
@@ -894,25 +877,22 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 overflow-y-auto" style={{ background: 'hsl(var(--background))' }}>
-            <div className="min-h-screen p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-
-                {/* Header */}
-                <div className="sticky top-0 z-10 py-4 sm:py-5 flex justify-between items-center mb-4" style={{ background: 'hsl(var(--background))' }}>
-                    <div>
-                        <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                            {product._id ? "Edit Product" : "Add New Product"}
-                        </h2>
-                        <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            {product._id ? 'Update product details below' : 'Fill in the details to list a new product'}
-                        </p>
-                    </div>
-                    <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} 
-                        className="p-2.5 rounded-xl transition-colors" style={{ background: 'rgba(0,0,0,0.05)', color: 'hsl(var(--muted-foreground))' }}>
-                        <X size={20} />
-                    </motion.button>
-                </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen">
+            {/* Header with back button */}
+            <div className="flex items-center gap-4 mb-6">
+                <button onClick={onClose} className="flex items-center gap-2 text-sm font-medium transition-colors"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <ChevronLeft size={20} /> <span>Back to Products</span>
+                </button>
+            </div>
+            <div className="mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                    {product._id ? "Edit Product" : "Add New Product"}
+                </h2>
+                <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {product._id ? 'Update product details below' : 'Fill in the details to list a new product'}
+                </p>
+            </div>
 
                 <form onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} onSubmit={handleSubmit} className="space-y-6 pb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1229,7 +1209,6 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </motion.button>
                     </div>
                 </form>
-            </div>
         </motion.div>
     );
 };

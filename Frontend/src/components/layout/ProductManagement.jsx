@@ -6,10 +6,11 @@ import Loader from '../common/Loader'
 import ProductCard from "./ProductCard";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import BulkDiscountModal from "./BulkDiscountModal";
+import { ProductForm } from "./SellerDashboard";
 import axios from "axios";
 
 const ProductManagement = () => {
-    const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts } = useOutletContext();
+    const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature } = useOutletContext();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
@@ -64,6 +65,20 @@ const ProductManagement = () => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className='p-3 sm:p-4 lg:p-6'>
+            {/* Inline Product Form (replaces list when open) */}
+            {isFormOpen && editingProduct && (
+                <ProductForm
+                    product={editingProduct}
+                    setProduct={setEditingProduct}
+                    onSave={handleSaveProduct}
+                    onClose={closeForm}
+                    uploadingImages={uploadingImages}
+                    canFeature={canFeature}
+                />
+            )}
+
+            {/* Product List (hidden when form is open) */}
+            {(!isFormOpen || !editingProduct) && (<>
             {/* No Store Warning */}
             {!storeLoading && !hasStore && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-6 mb-4 sm:mb-6 flex flex-col sm:flex-row items-center gap-4"
@@ -197,6 +212,7 @@ const ProductManagement = () => {
             )}
 
             <BulkDiscountModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} selectedProducts={selectedProducts} onSuccess={handleBulkOperationSuccess} />
+            </>)}
         </motion.div>
     );
 };
