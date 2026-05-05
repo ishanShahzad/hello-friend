@@ -744,101 +744,126 @@ exports.exportOrders = async (req, res) => {
         if (format === 'pdf') {
             const PDFDocument = require('pdfkit');
             const margin = 40;
-            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margins: { top: margin, bottom: margin, left: margin, right: margin } });
+            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margins: { top: margin, bottom: margin, left: margin, right: margin }, autoFirstPage: false });
 
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${brandName.replace(/\s/g, '-')}-orders-${dateStr}.pdf"`);
             doc.pipe(res);
 
+            // Add first page explicitly
+            doc.addPage({ size: 'A4', layout: 'landscape', margins: { top: margin, bottom: margin, left: margin, right: margin } });
+
             const pageW = doc.page.width;
             const pageH = doc.page.height;
             const contentWidth = pageW - margin * 2;
-            const footerY = pageH - 30;
+            const maxY = pageH - margin - 20; // leave room for footer
 
             // Table config
             const cols = [
-                { label: '#', width: 22 },
-                { label: 'Order ID', width: 72 },
-                { label: 'Date', width: 62 },
-                { label: 'Customer', width: 88 },
-                { label: 'Phone', width: 72 },
-                { label: 'City', width: 52 },
-                { label: 'Status', width: 58 },
-                { label: 'Payment', width: 48 },
-                { label: 'Method', width: 36 },
-                { label: 'Items', width: 170 },
-                { label: 'Total', width: 55 },
+                { label: '#', width: 24 },
+                { label: 'Order ID', width: 74 },
+                { label: 'Date', width: 64 },
+                { label: 'Customer', width: 90 },
+                { label: 'Phone', width: 74 },
+                { label: 'City', width: 54 },
+                { label: 'Status', width: 60 },
+                { label: 'Payment', width: 50 },
+                { label: 'Method', width: 38 },
+                { label: 'Items', width: 160 },
+                { label: 'Total', width: 58 },
             ];
             const tableWidth = cols.reduce((s, c) => s + c.width, 0);
-            const rowH = 18;
-            const headerH = 20;
+            const rowH = 20;
+            const headerH = 22;
+            const fontSize = 7.5;
+            const headerFontSize = 7.5;
 
-            // ─── Draw page header (brand + info) ───
-            const drawPageHeader = () => {
-                // Purple top bar
+            // ─── Helper: draw text at exact position (no cursor movement) ───
+            const drawText = (text, x, y, opts = {}) => {
+                doc.save();
+                doc.fontSize(opts.size || fontSize)
+                    .font(opts.font || 'Helvetica')
+                    .fillColor(opts.color || '#334155');
+                doc.text(String(text || ''), x, y, { width: opts.width, ellipsis: true, lineBreak: false });
+                doc.restore();
+            };
+
+            // ─── Draw page branding header ───
+            const drawBrandHeader = () => {
+                // Purple top accent
                 doc.save();
                 doc.rect(0, 0, pageW, 5).fill('#6366f1');
                 doc.restore();
 
-                let y = margin + 5;
-                doc.fontSize(16).font('Helvetica-Bold').fillColor('#6366f1').text(brandName, margin, y, { width: contentWidth, align: 'center' });
+                let y = 20;
+                drawText(brandName, margin, y, { size: 18, font: 'Helvetica-Bold', color: '#6366f1', width: contentWidth });
+                y += 24;
+                drawText('Order Report', margin, y, { size: 11, font: 'Helvetica-Bold', color: '#1e293b', width: contentWidth });
+                y += 16;
+                drawText(`${generatedDate} | ${filterDesc} | ${rows.length} orders | Total: $${grandTotal}`, margin, y, { size: 9, color: '#64748b', width: contentWidth });
                 y += 20;
-                doc.fontSize(10).font('Helvetica').fillColor('#1e293b').text('Order Report', margin, y, { width: contentWidth, align: 'center' });
-                y += 14;
-                doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(`${generatedDate} | ${filterDesc} | ${rows.length} orders | Total: $${grandTotal}`, margin, y, { width: contentWidth, align: 'center' });
-                y += 18;
                 return y;
             };
 
-            // ─── Draw table header row ───
-            const drawTableHeader = (y) => {
-                doc.rect(margin, y, tableWidth, headerH).fill('#6366f1');
+            // ─── Draw table column header ───
+            const drawTableHeader = (startY) => {
+                doc.save();
+                doc.rect(margin, startY, tableWidth, headerH).fill('#6366f1');
+                doc.restore();
                 let x = margin;
                 cols.forEach(col => {
-                    doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 3, y + 6, { width: col.width - 6, ellipsis: true });
+                    drawText(col.label, x + 4, startY + 7, { size: headerFontSize, font: 'Helvetica-Bold', color: '#ffffff', width: col.width - 8 });
                     x += col.width;
                 });
-                return y + headerH;
+                return startY + headerH;
             };
 
-            // ─── Draw footer ───
+            // ─── Draw footer on current page ───
             const drawFooter = () => {
-                doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', margin, footerY, { width: contentWidth, align: 'center' });
+                drawText('Powered by Rozare - www.rozare.com', margin, pageH - 28, { size: 7.5, color: '#94a3b8', width: contentWidth });
             };
 
-            // ─── First page ───
-            let y = drawPageHeader();
+            // ─── Start new page (for continuation) ───
+            const startNewPage = () => {
+                doc.addPage({ size: 'A4', layout: 'landscape', margins: { top: margin, bottom: margin, left: margin, right: margin } });
+                // Small accent bar on continuation pages
+                doc.save();
+                doc.rect(0, 0, pageW, 3).fill('#6366f1');
+                doc.restore();
+                return drawTableHeader(margin);
+            };
+
+            // ─── First page: brand header + table header ───
+            let y = drawBrandHeader();
             y = drawTableHeader(y);
 
-            // ─── Render rows ───
+            // ─── Render data rows ───
             rows.forEach((r, i) => {
-                // Check if we need a new page (leave space for at least 1 row + footer)
-                if (y + rowH > footerY - 10) {
+                if (y + rowH > maxY) {
                     drawFooter();
-                    doc.addPage();
-                    y = margin + 10;
-                    y = drawTableHeader(y);
+                    y = startNewPage();
                 }
 
-                // Alternate row bg
-                const bgColor = i % 2 === 0 ? '#f8fafc' : '#ffffff';
-                doc.rect(margin, y, tableWidth, rowH).fill(bgColor);
+                // Alternate row background
+                doc.save();
+                doc.rect(margin, y, tableWidth, rowH).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
                 doc.rect(margin, y, tableWidth, rowH).lineWidth(0.2).strokeColor('#e2e8f0').stroke();
+                doc.restore();
 
-                // Row data
+                // Row values
                 const values = [String(i + 1), r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.paymentMethod, r.items, `$${r.total}`];
                 let x = margin;
                 values.forEach((val, ci) => {
                     let color = '#334155';
                     let font = 'Helvetica';
-                    if (ci === 6) { // Status
+                    if (ci === 6) {
                         const sc = { Pending: '#d97706', Confirmed: '#059669', Processing: '#4f46e5', Shipped: '#0284c7', Delivered: '#16a34a', Cancelled: '#dc2626' };
                         color = sc[val] || color;
                         font = 'Helvetica-Bold';
                     }
                     if (ci === 7) { color = val === 'Paid' ? '#16a34a' : '#dc2626'; font = 'Helvetica-Bold'; }
                     if (ci === 10) { color = '#1e293b'; font = 'Helvetica-Bold'; }
-                    doc.fontSize(6.5).font(font).fillColor(color).text(String(val), x + 3, y + 5, { width: cols[ci].width - 6, ellipsis: true });
+                    drawText(val, x + 4, y + 6, { color, font, width: cols[ci].width - 8 });
                     x += cols[ci].width;
                 });
                 y += rowH;
@@ -846,16 +871,17 @@ exports.exportOrders = async (req, res) => {
 
             // ─── Totals row ───
             if (rows.length > 0) {
-                if (y + 22 > footerY - 10) {
+                if (y + 24 > maxY) {
                     drawFooter();
-                    doc.addPage();
-                    y = margin + 10;
+                    y = startNewPage();
                 }
                 y += 4;
-                doc.rect(margin, y, tableWidth, 20).fill('#ede9fe');
-                doc.fontSize(8).font('Helvetica-Bold').fillColor('#4f46e5').text(
+                doc.save();
+                doc.rect(margin, y, tableWidth, 22).fill('#ede9fe');
+                doc.restore();
+                drawText(
                     `TOTALS: ${rows.length} orders | Subtotal: $${totalSubtotal} | Shipping: $${totalShipping} | Tax: $${totalTax} | Grand Total: $${grandTotal}`,
-                    margin + 8, y + 6, { width: tableWidth - 16 }
+                    margin + 10, y + 6, { size: 8.5, font: 'Helvetica-Bold', color: '#4f46e5', width: tableWidth - 20 }
                 );
             }
 
