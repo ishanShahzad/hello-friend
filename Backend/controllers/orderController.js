@@ -495,12 +495,12 @@ exports.getOrders = async (req, res) => {
 }
 
 /**
- * GET /api/order/export — download orders as CSV.
- * Uses the same filtering logic as getOrders (status, payment, date range, search).
+ * GET /api/order/export — download orders in CSV, PDF, or Excel format.
+ * Query params: search, paymentStatus, status, startDate, endDate, format (csv|pdf|excel)
  */
 exports.exportOrders = async (req, res) => {
     const { role, id: userId } = req.user;
-    const { search, paymentStatus, status, startDate, endDate } = req.query;
+    const { search, paymentStatus, status, startDate, endDate, format = 'csv' } = req.query;
 
     let query = {};
     if (search) {
@@ -561,36 +561,190 @@ exports.exportOrders = async (req, res) => {
             orders = await Order.find(query).sort({ createdAt: -1 });
         }
 
-        // Generate CSV
-        const csvHeader = 'Order ID,Date,Customer,Email,Phone,City,Status,Payment,Items,Subtotal,Shipping,Tax,Total\n';
-        const csvRows = orders.map(order => {
+        // Normalize orders to plain objects
+        const rows = orders.map(order => {
             const o = order.toObject ? order.toObject() : order;
-            const items = (o.orderItems || []).map(i => `${i.name} x${i.quantity}`).join(' | ');
-            const date = new Date(o.createdAt).toISOString().split('T')[0];
-            const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
-            return [
-                escapeCsv(o.orderId),
-                escapeCsv(date),
-                escapeCsv(o.shippingInfo?.fullName),
-                escapeCsv(o.shippingInfo?.email),
-                escapeCsv(o.shippingInfo?.phone),
-                escapeCsv(o.shippingInfo?.city),
-                escapeCsv(o.orderStatus),
-                escapeCsv(o.isPaid ? 'Paid' : 'Unpaid'),
-                escapeCsv(items),
-                o.orderSummary?.subtotal?.toFixed(2) || '0.00',
-                o.orderSummary?.shippingCost?.toFixed(2) || '0.00',
-                o.orderSummary?.tax?.toFixed(2) || '0.00',
-                o.orderSummary?.totalAmount?.toFixed(2) || '0.00',
-            ].join(',');
-        }).join('\n');
+            return {
+                orderId: o.orderId || '',
+                date: new Date(o.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                customer: o.shippingInfo?.fullName || '',
+                email: o.shippingInfo?.email || '',
+                phone: o.shippingInfo?.phone || '',
+                city: o.shippingInfo?.city || '',
+                country: o.shippingInfo?.country || '',
+                status: (o.orderStatus || '').charAt(0).toUpperCase() + (o.orderStatus || '').slice(1),
+                payment: o.isPaid ? 'Paid' : 'Unpaid',
+                paymentMethod: o.paymentMethod === 'cash_on_delivery' ? 'COD' : 'Stripe',
+                items: (o.orderItems || []).map(i => `${i.name} x${i.quantity}`).join(', '),
+                itemCount: (o.orderItems || []).reduce((sum, i) => sum + i.quantity, 0),
+                subtotal: o.orderSummary?.subtotal?.toFixed(2) || '0.00',
+                shipping: o.orderSummary?.shippingCost?.toFixed(2) || '0.00',
+                tax: o.orderSummary?.tax?.toFixed(2) || '0.00',
+                total: o.orderSummary?.totalAmount?.toFixed(2) || '0.00',
+            };
+        });
 
-        const csv = csvHeader + csvRows;
-        const filename = `orders-export-${new Date().toISOString().split('T')[0]}.csv`;
+        const dateStr = new Date().toISOString().split('T')[0];
 
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.status(200).send(csv);
+        // ── CSV Format ──
+        if (format === 'csv') {
+            const csvHeader = 'Order ID,Date,Customer,Email,Phone,City,Country,Status,Payment,Method,Items,Qty,Subtotal,Shipping,Tax,Total\n';
+            const csvRows = rows.map(r => {
+                const esc = (val) => `"${String(val).replace(/"/g, '""')}"`;
+                return [esc(r.orderId), esc(r.date), esc(r.customer), esc(r.email), esc(r.phone), esc(r.city), esc(r.country), esc(r.status), esc(r.payment), esc(r.paymentMethod), esc(r.items), r.itemCount, r.subtotal, r.shipping, r.tax, r.total].join(',');
+            }).join('\n');
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.csv"`);
+            return res.status(200).send(csvHeader + csvRows);
+        }
+
+        // ── Excel Format ──
+        if (format === 'excel') {
+            const ExcelJS = require('exceljs');
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Rozare';
+            workbook.created = new Date();
+            const sheet = workbook.addWorksheet('Orders');
+
+            // Define columns
+            sheet.columns = [
+                { header: 'Order ID', key: 'orderId', width: 18 },
+                { header: 'Date', key: 'date', width: 14 },
+                { header: 'Customer', key: 'customer', width: 22 },
+                { header: 'Email', key: 'email', width: 26 },
+                { header: 'Phone', key: 'phone', width: 16 },
+                { header: 'City', key: 'city', width: 14 },
+                { header: 'Country', key: 'country', width: 12 },
+                { header: 'Status', key: 'status', width: 12 },
+                { header: 'Payment', key: 'payment', width: 10 },
+                { header: 'Method', key: 'paymentMethod', width: 10 },
+                { header: 'Items', key: 'items', width: 40 },
+                { header: 'Qty', key: 'itemCount', width: 6 },
+                { header: 'Subtotal', key: 'subtotal', width: 12 },
+                { header: 'Shipping', key: 'shipping', width: 12 },
+                { header: 'Tax', key: 'tax', width: 10 },
+                { header: 'Total', key: 'total', width: 12 },
+            ];
+
+            // Style header row
+            const headerRow = sheet.getRow(1);
+            headerRow.font = { bold: true, size: 11 };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerRow.height = 24;
+
+            // Add data rows
+            rows.forEach((r, i) => {
+                const row = sheet.addRow(r);
+                row.alignment = { vertical: 'middle' };
+                if (i % 2 === 0) {
+                    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                }
+            });
+
+            // Summary row
+            if (rows.length > 0) {
+                sheet.addRow({});
+                const totalSubtotal = rows.reduce((s, r) => s + parseFloat(r.subtotal), 0).toFixed(2);
+                const totalShipping = rows.reduce((s, r) => s + parseFloat(r.shipping), 0).toFixed(2);
+                const totalTax = rows.reduce((s, r) => s + parseFloat(r.tax), 0).toFixed(2);
+                const grandTotal = rows.reduce((s, r) => s + parseFloat(r.total), 0).toFixed(2);
+                const summaryRow = sheet.addRow({ orderId: '', date: '', customer: '', email: '', phone: '', city: '', country: '', status: '', payment: '', paymentMethod: '', items: `TOTAL (${rows.length} orders)`, itemCount: rows.reduce((s, r) => s + r.itemCount, 0), subtotal: totalSubtotal, shipping: totalShipping, tax: totalTax, total: grandTotal });
+                summaryRow.font = { bold: true, size: 11 };
+            }
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.xlsx"`);
+            await workbook.xlsx.write(res);
+            return res.end();
+        }
+
+        // ── PDF Format ──
+        if (format === 'pdf') {
+            const PDFDocument = require('pdfkit');
+            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="orders-${dateStr}.pdf"`);
+            doc.pipe(res);
+
+            // Header
+            doc.fontSize(18).font('Helvetica-Bold').fillColor('#6366f1').text('Order Report', { align: 'center' });
+            doc.moveDown(0.3);
+            doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} | ${rows.length} order(s)${status ? ` | Status: ${status}` : ''}${startDate ? ` | From: ${startDate}` : ''}${endDate ? ` | To: ${endDate}` : ''}`, { align: 'center' });
+            doc.moveDown(1);
+
+            // Table setup
+            const tableLeft = 30;
+            const cols = [
+                { label: 'Order ID', width: 80 },
+                { label: 'Date', width: 70 },
+                { label: 'Customer', width: 100 },
+                { label: 'Phone', width: 80 },
+                { label: 'City', width: 60 },
+                { label: 'Status', width: 65 },
+                { label: 'Payment', width: 55 },
+                { label: 'Items', width: 150 },
+                { label: 'Total', width: 60 },
+            ];
+            const rowHeight = 22;
+
+            // Table header
+            let y = doc.y;
+            doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#6366f1');
+            let x = tableLeft;
+            cols.forEach(col => {
+                doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 4, y + 7, { width: col.width - 8, ellipsis: true });
+                x += col.width;
+            });
+            y += rowHeight;
+
+            // Table rows
+            rows.forEach((r, i) => {
+                // New page if needed
+                if (y + rowHeight > doc.page.height - 50) {
+                    doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 });
+                    y = 30;
+                    // Re-draw header on new page
+                    doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#6366f1');
+                    let hx = tableLeft;
+                    cols.forEach(col => {
+                        doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, hx + 4, y + 7, { width: col.width - 8, ellipsis: true });
+                        hx += col.width;
+                    });
+                    y += rowHeight;
+                }
+
+                // Alternate row background
+                if (i % 2 === 0) {
+                    doc.rect(tableLeft, y, cols.reduce((s, c) => s + c.width, 0), rowHeight).fill('#f8fafc');
+                }
+
+                const values = [r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.items, `$${r.total}`];
+                x = tableLeft;
+                values.forEach((val, ci) => {
+                    doc.fontSize(7).font('Helvetica').fillColor('#1e293b').text(String(val), x + 4, y + 7, { width: cols[ci].width - 8, ellipsis: true });
+                    x += cols[ci].width;
+                });
+                y += rowHeight;
+            });
+
+            // Summary
+            if (rows.length > 0) {
+                y += 10;
+                if (y + 40 > doc.page.height - 30) { doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 }); y = 30; }
+                const grandTotal = rows.reduce((s, r) => s + parseFloat(r.total), 0).toFixed(2);
+                const totalItems = rows.reduce((s, r) => s + r.itemCount, 0);
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b').text(`Summary: ${rows.length} orders | ${totalItems} items | Grand Total: $${grandTotal}`, tableLeft, y);
+            }
+
+            doc.end();
+            return;
+        }
+
+        // Unknown format
+        return res.status(400).json({ msg: 'Invalid format. Supported: csv, pdf, excel' });
     } catch (error) {
         console.error("Error exporting orders:", error);
         return res.status(500).json({ msg: "Server error while exporting orders" });

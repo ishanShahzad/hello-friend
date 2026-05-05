@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle, Download, Calendar } from 'lucide-react';
+import { Search, Truck, CheckCircle, XCircle, Clock, Package, RefreshCw, ShoppingBag, Filter, Sparkles, ArrowRight, MessageCircle, Download, Calendar, FileText, FileSpreadsheet } from 'lucide-react';
 import { openWhatsAppVerify, hasWhatsAppPhone, isOrderConfirmedByBuyer, isOrderDecidedByBuyer, getConfirmationSourceLabel } from '../../utils/whatsapp';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -19,6 +19,7 @@ const OrderManagement = () => {
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [exportFormat, setExportFormat] = useState('pdf');
 
     const fetchOrders = async () => {
         const token = localStorage.getItem('jwtToken');
@@ -47,19 +48,21 @@ const OrderManagement = () => {
         setExporting(true);
         try {
             const query = serializeFilters();
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/export?${query}`, {
+            const separator = query ? '&' : '';
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/export?${query}${separator}format=${exportFormat}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob',
             });
+            const ext = exportFormat === 'excel' ? 'xlsx' : exportFormat;
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `orders-${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `orders-${new Date().toISOString().split('T')[0]}.${ext}`);
             document.body.appendChild(link);
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            toast.success('Orders exported successfully');
+            toast.success(`Orders exported as ${ext.toUpperCase()}`);
         } catch (error) {
             console.error('Export failed:', error);
             toast.error('Failed to export orders');
@@ -137,17 +140,40 @@ const OrderManagement = () => {
                         <Filter size={14} style={{ color: 'hsl(var(--muted-foreground))' }} />
                         <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Filters</span>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleExport}
-                        disabled={exporting || orders.length === 0}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' }}
-                    >
-                        {exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
-                        {exporting ? 'Exporting…' : 'Export CSV'}
-                    </motion.button>
+                    <div className="flex items-center gap-2">
+                        {/* Format selector buttons */}
+                        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
+                            {[
+                                { id: 'pdf', label: 'PDF', icon: FileText, color: 'hsl(0, 72%, 55%)' },
+                                { id: 'excel', label: 'Excel', icon: FileSpreadsheet, color: 'hsl(150, 60%, 40%)' },
+                                { id: 'csv', label: 'CSV', icon: FileText, color: 'hsl(220, 70%, 55%)' },
+                            ].map(f => {
+                                const Icon = f.icon;
+                                const active = exportFormat === f.id;
+                                return (
+                                    <button key={f.id} onClick={() => setExportFormat(f.id)}
+                                        className="px-2.5 py-1.5 text-[10px] font-bold inline-flex items-center gap-1 transition-all"
+                                        style={{
+                                            background: active ? `${f.color}1A` : 'transparent',
+                                            color: active ? f.color : 'hsl(var(--muted-foreground))',
+                                        }}>
+                                        <Icon size={11} /> {f.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleExport}
+                            disabled={exporting || orders.length === 0}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' }}
+                        >
+                            {exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+                            {exporting ? 'Exporting…' : 'Download'}
+                        </motion.button>
+                    </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="search-input-wrapper sm:col-span-2 lg:col-span-3">
