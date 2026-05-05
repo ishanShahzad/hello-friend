@@ -12,7 +12,7 @@ function App() {
   return (
     <HelmetProvider>
       <ToastContainer
-        position='bottom-left'
+        position='bottom-right'
         autoClose={3500}
         hideProgressBar
         newestOnTop={false}
