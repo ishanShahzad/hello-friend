@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Megaphone, Send, Calendar, Repeat, Users, User as UserIcon, ShoppingBag,
     Search, X, Check, Clock, AlertTriangle, CheckCircle2, Loader2, Trash2,
-    Bell, Tag, Info, Link as LinkIcon,
+    Bell, Tag, Info, Link as LinkIcon, Mail, Smartphone, Globe, MessageCircle,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL;
@@ -21,6 +21,13 @@ const AUDIENCES = [
     { id: 'all_sellers', label: 'All Sellers', icon: ShoppingBag, desc: 'Everyone with a seller account' },
     { id: 'both', label: 'Users + Sellers', icon: Users, desc: 'Everyone on the platform' },
     { id: 'specific', label: 'Specific People', icon: Search, desc: 'Pick individuals by name or email' },
+];
+
+const CHANNELS = [
+    { id: 'inapp', label: 'Website', icon: Globe, color: 'hsl(220,70%,55%)', desc: 'In-app notification bell' },
+    { id: 'push', label: 'Mobile Push', icon: Smartphone, color: 'hsl(260,70%,55%)', desc: 'Push notification to app' },
+    { id: 'email', label: 'Email', icon: Mail, color: 'hsl(38,92%,50%)', desc: 'Send email to recipients' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: 'hsl(142,70%,45%)', desc: 'WhatsApp message' },
 ];
 
 const formatTime = (d) => {
@@ -48,6 +55,7 @@ const AdminBroadcastPanel = () => {
     const [scheduledAt, setScheduledAt] = useState('');
     const [recurrence, setRecurrence] = useState('daily');
     const [endsAt, setEndsAt] = useState('');
+    const [channels, setChannels] = useState(['inapp', 'push']);
 
     // UI state
     const [audienceCount, setAudienceCount] = useState(null);
@@ -116,12 +124,19 @@ const AdminBroadcastPanel = () => {
     };
     const removeUser = (id) => setSelectedUsers(selectedUsers.filter(u => u._id !== id));
 
+    const toggleChannel = (id) => {
+        setChannels((prev) =>
+            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+        );
+    };
+
     const canSubmit = useMemo(() => {
         if (!title.trim() || !body.trim()) return false;
+        if (channels.length === 0) return false;
         if (audience === 'specific' && selectedUsers.length === 0) return false;
         if ((scheduleType === 'one_time' || scheduleType === 'recurring') && !scheduledAt) return false;
         return true;
-    }, [title, body, audience, selectedUsers, scheduleType, scheduledAt]);
+    }, [title, body, channels, audience, selectedUsers, scheduleType, scheduledAt]);
 
     const handleSubmit = async () => {
         if (!canSubmit) return;
@@ -130,6 +145,7 @@ const AdminBroadcastPanel = () => {
         try {
             const payload = {
                 title, body, category, linkTo,
+                channels,
                 audience,
                 userIds: audience === 'specific' ? selectedUsers.map(u => u._id) : [],
                 scheduleType,
@@ -142,12 +158,13 @@ const AdminBroadcastPanel = () => {
             setFeedback({
                 type: 'success',
                 msg: scheduleType === 'immediate'
-                    ? `Sent to ${stats?.recipients ?? 0} recipient(s) — ${stats?.pushSent ?? 0} push(es) dispatched.`
+                    ? `Sent to ${stats?.recipients ?? 0} recipient(s) — ${stats?.pushSent ?? 0} push, ${stats?.emailSent ?? 0} email, ${stats?.whatsappSent ?? 0} WhatsApp.`
                     : 'Broadcast scheduled successfully.',
             });
             // Reset light fields
             setTitle(''); setBody(''); setLinkTo('');
             setSelectedUsers([]); setScheduledAt(''); setEndsAt('');
+            setChannels(['inapp', 'push']);
             fetchJobs();
         } catch (err) {
             setFeedback({ type: 'error', msg: err.response?.data?.msg || 'Failed to send broadcast' });
@@ -343,6 +360,49 @@ const AdminBroadcastPanel = () => {
                 </AnimatePresence>
             </div>
 
+            {/* Delivery Channels */}
+            <div className="glass-panel-strong rounded-3xl p-6 mb-6 space-y-4">
+                <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <Send size={14} /> Delivery Channels
+                    {channels.length === 0 && (
+                        <span className="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0,72%,55%)' }}>
+                            Select at least one
+                        </span>
+                    )}
+                </h2>
+                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Choose where this notification will be delivered. Select one or more channels.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {CHANNELS.map(ch => {
+                        const Icon = ch.icon;
+                        const active = channels.includes(ch.id);
+                        return (
+                            <button key={ch.id} onClick={() => toggleChannel(ch.id)}
+                                className="text-left p-4 rounded-2xl transition-all"
+                                style={{
+                                    background: active ? `${ch.color}1F` : 'rgba(255,255,255,0.04)',
+                                    border: `1px solid ${active ? ch.color : 'transparent'}`,
+                                }}>
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2"
+                                    style={{ background: active ? ch.color : 'rgba(255,255,255,0.06)', color: active ? '#fff' : 'hsl(var(--foreground))' }}>
+                                    <Icon size={16} />
+                                </div>
+                                <div className="text-sm font-bold" style={{ color: active ? ch.color : 'hsl(var(--foreground))' }}>{ch.label}</div>
+                                <div className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{ch.desc}</div>
+                                {active && (
+                                    <div className="mt-2">
+                                        <Check size={14} style={{ color: ch.color }} />
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             {/* Schedule */}
             <div className="glass-panel-strong rounded-3xl p-6 mb-6 space-y-4">
                 <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2"
@@ -476,8 +536,11 @@ const AdminBroadcastPanel = () => {
                                             <div className="text-xs mt-0.5 truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>{job.body}</div>
                                             <div className="text-[10px] mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                 <span>Audience: <strong>{job.audience.replace('_', ' ')}</strong></span>
+                                                {job.channels?.length > 0 && <span>Channels: <strong>{job.channels.join(', ')}</strong></span>}
                                                 {job.stats?.recipients > 0 && <span>{job.stats.recipients} recipient(s)</span>}
-                                                {job.stats?.pushSent > 0 && <span>{job.stats.pushSent} push(es)</span>}
+                                                {job.stats?.pushSent > 0 && <span>📱 {job.stats.pushSent} push</span>}
+                                                {job.stats?.emailSent > 0 && <span>📧 {job.stats.emailSent} email</span>}
+                                                {job.stats?.whatsappSent > 0 && <span>💬 {job.stats.whatsappSent} WhatsApp</span>}
                                                 {job.runCount > 0 && <span>Ran {job.runCount}×</span>}
                                                 {job.nextRunAt && <span>Next: {formatTime(job.nextRunAt)}</span>}
                                                 {job.lastRunAt && <span>Last: {formatTime(job.lastRunAt)}</span>}

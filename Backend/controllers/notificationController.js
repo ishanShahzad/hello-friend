@@ -2,6 +2,10 @@ const Notification = require('../models/Notification');
 const BroadcastJob = require('../models/BroadcastJob');
 const User = require('../models/User');
 const { sendExpoPush } = require('../utils/expoPush');
+const { sendEmail } = require('./mailController');
+const { broadcastEmail } = require('../utils/emailTemplates');
+const WhatsAppConfig = require('../models/WhatsAppConfig');
+const sellerEvolution = require('../services/whatsapp/sellerEvolutionClient');
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -25,51 +29,130 @@ const computeNextRunAt = (current, recurrence) => {
 };
 
 /**
- * Execute one run of a BroadcastJob: resolve recipients, persist Notification docs,
- * and fan out Expo pushes. Returns delivery stats for the run.
+ * Execute one run of a BroadcastJob: resolve recipients, then fan out to
+ * the selected channels (inapp, push, email, whatsapp). Returns delivery stats.
  */
 const dispatchBroadcast = async (job) => {
+    const channels = job.channels || ['inapp', 'push'];
     const audienceQuery = buildAudienceQuery(job.audience, job.userIds);
     const recipients = await User.find(audienceQuery)
-        .select('_id expoPushTokens')
+        .select('_id expoPushTokens email sellerInfo whatsappNotificationPrefs')
         .lean();
 
-    if (!recipients.length) return { recipients: 0, pushSent: 0 };
+    if (!recipients.length) return { recipients: 0, pushSent: 0, emailSent: 0, whatsappSent: 0 };
 
-    // Persist one Notification per recipient.
-    const docs = recipients.map((u) => ({
-        user: u._id,
-        title: job.title,
-        body: job.body,
-        category: job.category,
-        linkTo: job.linkTo,
-        source: 'admin_broadcast',
-        broadcastJob: job._id,
-        sentBy: job.createdBy,
-    }));
-    await Notification.insertMany(docs, { ordered: false }).catch((err) =>
-        console.warn('[broadcast] insertMany partial failure:', err.message)
-    );
-
-    // Fan out push notifications.
-    const tokens = recipients.flatMap((u) => u.expoPushTokens || []);
     let pushSent = 0;
-    if (tokens.length) {
-        await sendExpoPush(tokens, {
+    let emailSent = 0;
+    let whatsappSent = 0;
+
+    // ── Channel: In-App Notifications ──
+    if (channels.includes('inapp')) {
+        const docs = recipients.map((u) => ({
+            user: u._id,
             title: job.title,
             body: job.body,
-            data: {
-                type: 'admin_broadcast',
-                jobId: String(job._id),
-                category: job.category,
-                linkTo: job.linkTo || undefined,
-            },
-            channelId: 'general',
-        });
-        pushSent = tokens.length;
+            category: job.category,
+            linkTo: job.linkTo,
+            source: 'admin_broadcast',
+            broadcastJob: job._id,
+            sentBy: job.createdBy,
+        }));
+        await Notification.insertMany(docs, { ordered: false }).catch((err) =>
+            console.warn('[broadcast] insertMany partial failure:', err.message)
+        );
     }
 
-    return { recipients: recipients.length, pushSent };
+    // ── Channel: Push Notifications (Expo) ──
+    if (channels.includes('push')) {
+        const tokens = recipients.flatMap((u) => u.expoPushTokens || []);
+        if (tokens.length) {
+            await sendExpoPush(tokens, {
+                title: job.title,
+                body: job.body,
+                data: {
+                    type: 'admin_broadcast',
+                    jobId: String(job._id),
+                    category: job.category,
+                    linkTo: job.linkTo || undefined,
+                },
+                channelId: 'general',
+            });
+            pushSent = tokens.length;
+        }
+    }
+
+    // ── Channel: Email (batched, max 10 concurrent) ──
+    if (channels.includes('email')) {
+        const emailData = broadcastEmail(job.title, job.body, job.category, job.linkTo);
+        const emailRecipients = recipients.filter((u) => u.email);
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < emailRecipients.length; i += BATCH_SIZE) {
+            const batch = emailRecipients.slice(i, i + BATCH_SIZE);
+            const results = await Promise.all(
+                batch.map((u) =>
+                    sendEmail({ to: u.email, subject: emailData.subject, html: emailData.html })
+                        .then(() => 1)
+                        .catch((err) => {
+                            console.warn('[broadcast] email failed for', u.email, err.message);
+                            return 0;
+                        })
+                )
+            );
+            emailSent += results.reduce((sum, v) => sum + v, 0);
+        }
+    }
+
+    // ── Channel: WhatsApp (dispatched asynchronously to avoid blocking) ──
+    if (channels.includes('whatsapp')) {
+        // Check connection upfront; actual sending happens in background
+        try {
+            const cfg = await WhatsAppConfig.findOne({ singletonKey: 'seller' });
+            if (cfg && cfg.status === 'connected') {
+                const waRecipients = recipients.filter((u) => {
+                    if (u.sellerInfo?.whatsappNumber && u.sellerInfo?.whatsappVerified) return true;
+                    if (u.sellerInfo?.phoneNumber) return true;
+                    return false;
+                });
+                // Fire-and-forget: dispatch in background, update job stats when done
+                const jobId = job._id;
+                const waMessage = `*${job.title}*\n\n${job.body}${job.linkTo ? `\n\n🔗 ${process.env.FRONTEND_URL || 'https://rozare.com'}${job.linkTo}` : ''}`;
+                setImmediate(async () => {
+                    let waSent = 0;
+                    for (const u of waRecipients) {
+                        let phone = u.sellerInfo?.whatsappNumber && u.sellerInfo?.whatsappVerified
+                            ? u.sellerInfo.whatsappNumber
+                            : u.sellerInfo?.phoneNumber;
+                        const digits = phone?.replace(/\D/g, '');
+                        if (!digits) continue;
+                        try {
+                            await sellerEvolution.sendText(digits, waMessage);
+                            waSent++;
+                            await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
+                        } catch (err) {
+                            console.warn('[broadcast] whatsapp failed for user', String(u._id), err.message);
+                        }
+                    }
+                    // Update stats in DB after all WhatsApp messages are sent
+                    try {
+                        await BroadcastJob.updateOne(
+                            { _id: jobId },
+                            { $inc: { 'stats.whatsappSent': waSent } }
+                        );
+                    } catch (err) {
+                        console.error('[broadcast] failed to update whatsapp stats:', err.message);
+                    }
+                });
+                // Return estimated count (actual count updated async)
+                whatsappSent = waRecipients.length; // optimistic estimate
+            } else {
+                console.warn('[broadcast] WhatsApp instance not connected — skipping whatsapp channel');
+            }
+        } catch (err) {
+            console.warn('[broadcast] WhatsApp channel error:', err.message);
+        }
+    }
+
+    return { recipients: recipients.length, pushSent, emailSent, whatsappSent };
 };
 
 // ─────────────────────────── admin endpoints ───────────────────────────
@@ -88,6 +171,7 @@ exports.createBroadcast = async (req, res) => {
             linkTo = '',
             audience = 'all_users',
             userIds = [],
+            channels = ['inapp', 'push'],
             scheduleType = 'immediate',
             scheduledAt = null, // ISO string for one_time / recurring start
             recurrence = 'none',
@@ -96,6 +180,13 @@ exports.createBroadcast = async (req, res) => {
 
         if (!title || !body) {
             return res.status(400).json({ msg: 'title and body are required' });
+        }
+        if (!Array.isArray(channels) || channels.length === 0) {
+            return res.status(400).json({ msg: 'channels must be a non-empty array' });
+        }
+        const validChannels = ['inapp', 'push', 'email', 'whatsapp'];
+        if (channels.some((ch) => !validChannels.includes(ch))) {
+            return res.status(400).json({ msg: `Invalid channel. Allowed: ${validChannels.join(', ')}` });
         }
         if (audience === 'specific' && (!Array.isArray(userIds) || userIds.length === 0)) {
             return res.status(400).json({ msg: 'userIds required when audience is "specific"' });
@@ -120,6 +211,7 @@ exports.createBroadcast = async (req, res) => {
             linkTo,
             audience,
             userIds: audience === 'specific' ? userIds : [],
+            channels,
             scheduleType,
             recurrence: scheduleType === 'recurring' ? recurrence : 'none',
             nextRunAt,
@@ -140,6 +232,8 @@ exports.createBroadcast = async (req, res) => {
                 job.stats = {
                     recipients: stats.recipients,
                     pushSent: stats.pushSent,
+                    emailSent: stats.emailSent,
+                    whatsappSent: stats.whatsappSent,
                 };
                 job.nextRunAt = null;
                 await job.save();
@@ -148,7 +242,7 @@ exports.createBroadcast = async (req, res) => {
                 job.lastError = String(err.message || err).slice(0, 500);
                 await job.save();
                 console.error('[broadcast] immediate dispatch failed:', err.message);
-                return res.status(500).json({ msg: 'Broadcast failed: ' + err.message, job });
+                return res.status(500).json({ msg: 'Broadcast dispatch failed. Please try again or check server logs.', jobId: job._id, status: job.status });
             }
         }
 
@@ -294,6 +388,7 @@ exports.processDueBroadcasts = async () => {
     for (const job of due) {
         try {
             job.status = 'sending';
+            if (!job.channels || job.channels.length === 0) job.channels = ['inapp', 'push'];
             await job.save();
             const stats = await dispatchBroadcast(job);
             job.lastRunAt = new Date();
@@ -301,6 +396,8 @@ exports.processDueBroadcasts = async () => {
             job.stats = {
                 recipients: (job.stats?.recipients || 0) + stats.recipients,
                 pushSent: (job.stats?.pushSent || 0) + stats.pushSent,
+                emailSent: (job.stats?.emailSent || 0) + stats.emailSent,
+                whatsappSent: (job.stats?.whatsappSent || 0) + stats.whatsappSent,
             };
             if (job.scheduleType === 'recurring' && job.recurrence !== 'none') {
                 const next = computeNextRunAt(job.nextRunAt || now, job.recurrence);

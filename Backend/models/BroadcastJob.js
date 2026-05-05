@@ -16,6 +16,17 @@ const broadcastJobSchema = new mongoose.Schema(
         },
         linkTo: { type: String, default: '' },
 
+        // Delivery channels — at least one must be selected.
+        channels: {
+            type: [String],
+            enum: ['inapp', 'push', 'email', 'whatsapp'],
+            default: ['inapp', 'push'],
+            validate: {
+                validator: (v) => Array.isArray(v) && v.length > 0,
+                message: 'At least one notification channel must be selected.',
+            },
+        },
+
         // Targeting — combine `audience` with optional explicit user IDs.
         // 'all_users'   = role === 'user'
         // 'all_sellers' = role === 'seller'
@@ -57,6 +68,8 @@ const broadcastJobSchema = new mongoose.Schema(
         stats: {
             recipients: { type: Number, default: 0 },
             pushSent: { type: Number, default: 0 },
+            emailSent: { type: Number, default: 0 },
+            whatsappSent: { type: Number, default: 0 },
         },
 
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

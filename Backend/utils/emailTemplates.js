@@ -247,3 +247,29 @@ exports.welcomeEmail = (userName) => {
     `)
   };
 };
+
+exports.broadcastEmail = (title, body, category, linkTo) => {
+  const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const emojiMap = {
+    announcement: '📢',
+    promo: '🎉',
+    system: '⚙️',
+  };
+  const emoji = emojiMap[category] || '📣';
+  const safeTitle = escapeHtml(title);
+  const safeBody = escapeHtml(body).replace(/\n/g, '<br/>');
+  const ctaButton = linkTo
+    ? `<div style="text-align:center;margin-top:24px;">
+        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}${linkTo}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">View Details</a>
+      </div>`
+    : '';
+
+  return {
+    subject: title,
+    html: wrapper(`
+      <h2 style="color:#1e293b;margin:0 0 16px;">${emoji} ${safeTitle}</h2>
+      <p style="color:#64748b;margin:0 0 24px;line-height:1.6;">${safeBody}</p>
+      ${ctaButton}
+    `)
+  };
+};
