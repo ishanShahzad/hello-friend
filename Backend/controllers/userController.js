@@ -611,6 +611,22 @@ exports.verifyWhatsAppChange = async (req, res) => {
             return res.status(400).json({ msg: 'Invalid code. Please try again.' });
         }
 
+        // Double-check the number isn't taken (race condition protection)
+        const numberVariants = [newWhatsappNumber, `+${cleanDigits}`, cleanDigits];
+        const existingSeller = await User.findOne({
+            _id: { $ne: userId },
+            role: 'seller',
+            $or: [
+                { 'sellerInfo.whatsappNumber': { $in: numberVariants } },
+                { 'sellerInfo.phoneNumber': { $in: numberVariants } }
+            ]
+        });
+        if (existingSeller) {
+            otpRecord.verified = true;
+            await otpRecord.save();
+            return res.status(409).json({ msg: 'This number is now associated with another seller account. Please use a different number.' });
+        }
+
         // OTP matches — update user's WhatsApp number
         otpRecord.verified = true;
         await otpRecord.save();
