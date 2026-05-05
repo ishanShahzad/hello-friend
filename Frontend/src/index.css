@@ -249,8 +249,8 @@ input, select, textarea {
 ==================== */
 .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 24px;
@@ -258,8 +258,8 @@ input, select, textarea {
 
 .glass-panel-strong {
     background: var(--glass-bg-strong);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border-strong);
     box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
     border-radius: 28px;
