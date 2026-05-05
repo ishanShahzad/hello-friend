@@ -79,11 +79,7 @@ function AppRoutes() {
                     <Route path='/stores' element={<Navigate to='/marketplace' replace />} />
                     <Route path='/stores/trusted' element={<Navigate to='/marketplace/trusted' replace />} />
                     
-                    <Route path='/become-seller' element={
-                        <ProtectedRoute>
-                            <BecomeSeller />
-                        </ProtectedRoute>
-                    } />
+                    <Route path='/become-seller' element={<BecomeSeller />} />
 
                     {/* INFO & LEGAL PAGES */}
                     <Route path='/terms' element={<TermsOfService />} />

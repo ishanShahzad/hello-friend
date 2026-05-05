@@ -185,7 +185,7 @@ input, select, textarea {
 ==================== */
 .rozare-phone-field .PhoneInput {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 0.5rem;
     width: 100%;
 }
@@ -193,8 +193,7 @@ input, select, textarea {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0 0.6rem;
-    height: 100%;
+    padding: 0 0.75rem;
     border-radius: 0.75rem;
     background: var(--glass-bg, rgba(255, 255, 255, 0.18));
     border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.25));

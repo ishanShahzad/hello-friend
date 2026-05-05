@@ -145,6 +145,15 @@ export default function BecomeSeller() {
 
   if (currentUser?.role === 'seller' || currentUser?.role === 'admin') { navigate('/'); return null; }
 
+  // If guest (not logged in) tries to proceed past the landing page, redirect to seller signup
+  const handleGetStarted = () => {
+    if (!currentUser) {
+      navigate('/seller-signup');
+    } else {
+      setFormStep(1);
+    }
+  };
+
   const benefits = [
     { icon: <TrendingUp size={28} />, title: 'Grow Your Business', description: 'Reach millions of customers and scale your sales', color: 'hsl(220, 70%, 55%)' },
     { icon: <Shield size={28} />, title: 'Secure Platform', description: 'Safe payments and buyer protection guaranteed', color: 'hsl(200, 80%, 50%)' },
@@ -227,7 +236,7 @@ export default function BecomeSeller() {
               <p className="font-semibold text-xl mb-6" style={{ color: 'hsl(45, 93%, 70%)' }}>
                 <Sparkles size={18} className="inline mr-1" /> 100% FREE - No setup fees, no monthly charges!
               </p>
-              <motion.button onClick={() => setFormStep(1)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              <motion.button onClick={handleGetStarted} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="font-bold text-lg px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-3"
                 style={{ background: 'white', color: 'hsl(220, 70%, 55%)' }}>
                 <Store size={24} /> Get Started
