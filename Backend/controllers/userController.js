@@ -492,6 +492,14 @@ exports.initiateWhatsAppChange = async (req, res) => {
             return res.status(400).json({ msg: 'Please provide a valid WhatsApp number.' });
         }
 
+        // Check if the new number is the same as the current one
+        const cleanDigits = String(newWhatsappNumber).replace(/\D/g, '');
+        const currentWhatsApp = String(user.sellerInfo?.whatsappNumber || '').replace(/\D/g, '');
+        const currentPhone = String(user.sellerInfo?.phoneNumber || '').replace(/\D/g, '');
+        if (cleanDigits === currentWhatsApp || cleanDigits === currentPhone) {
+            return res.status(400).json({ msg: 'This is already your current WhatsApp number.' });
+        }
+
         // 30-day cooldown check
         if (user.sellerInfo?.lastWhatsAppChange) {
             const daysSinceChange = (Date.now() - new Date(user.sellerInfo.lastWhatsAppChange).getTime()) / (1000 * 60 * 60 * 24);
@@ -502,7 +510,6 @@ exports.initiateWhatsAppChange = async (req, res) => {
         }
 
         // Check if the new number is already used by another seller
-        const cleanDigits = String(newWhatsappNumber).replace(/\D/g, '');
         const numberVariants = [newWhatsappNumber, `+${cleanDigits}`, cleanDigits];
         const existingSeller = await User.findOne({
             _id: { $ne: userId },
