@@ -743,130 +743,124 @@ exports.exportOrders = async (req, res) => {
         // ── PDF Format ──
         if (format === 'pdf') {
             const PDFDocument = require('pdfkit');
-            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40 });
+            const margin = 40;
+            const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margins: { top: margin, bottom: margin, left: margin, right: margin } });
 
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${brandName.replace(/\s/g, '-')}-orders-${dateStr}.pdf"`);
             doc.pipe(res);
 
-            const pageWidth = doc.page.width - 80;
-            const tableLeft = 40;
+            const pageW = doc.page.width;
+            const pageH = doc.page.height;
+            const contentWidth = pageW - margin * 2;
+            const footerY = pageH - 30;
 
-            // ─── Header / Branding ───
-            // Purple accent bar at top
-            doc.rect(0, 0, doc.page.width, 6).fill('#6366f1');
-
-            doc.moveDown(0.8);
-            doc.fontSize(22).font('Helvetica-Bold').fillColor('#6366f1').text(brandName, { align: 'center' });
-            if (storeName && role === 'seller') {
-                doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(storeName, { align: 'center' });
-            }
-            doc.moveDown(0.4);
-            doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text('Order Report', { align: 'center' });
-            doc.moveDown(0.3);
-            doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${generatedDate}`, { align: 'center' });
-            doc.fontSize(9).text(`Filter: ${filterDesc}`, { align: 'center' });
-            doc.moveDown(0.8);
-
-            // ─── Summary Cards ───
-            const cardY = doc.y;
-            const cardWidth = pageWidth / 4;
-            const summaryCards = [
-                { label: 'Total Orders', value: String(rows.length), color: '#6366f1' },
-                { label: 'Total Items', value: String(totalItems), color: '#0ea5e9' },
-                { label: 'Revenue', value: `$${grandTotal}`, color: '#22c55e' },
-                { label: 'Avg Order', value: `$${rows.length > 0 ? (parseFloat(grandTotal) / rows.length).toFixed(2) : '0.00'}`, color: '#f59e0b' },
-            ];
-
-            summaryCards.forEach((card, i) => {
-                const cx = tableLeft + (i * cardWidth);
-                doc.rect(cx + 2, cardY, cardWidth - 4, 38).lineWidth(0.5).strokeColor('#e2e8f0').fillAndStroke('#fafafe', '#e2e8f0');
-                doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(card.label, cx + 10, cardY + 8, { width: cardWidth - 20 });
-                doc.fontSize(13).font('Helvetica-Bold').fillColor(card.color).text(card.value, cx + 10, cardY + 20, { width: cardWidth - 20 });
-            });
-
-            doc.y = cardY + 50;
-            doc.moveDown(0.5);
-
-            // ─── Table ───
+            // Table config
             const cols = [
-                { label: 'Order ID', width: 75 },
-                { label: 'Date', width: 65 },
-                { label: 'Customer', width: 90 },
-                { label: 'Phone', width: 75 },
-                { label: 'City', width: 55 },
-                { label: 'Status', width: 60 },
-                { label: 'Payment', width: 50 },
-                { label: 'Method', width: 40 },
-                { label: 'Items', width: 140 },
-                { label: 'Total', width: 60 },
+                { label: '#', width: 22 },
+                { label: 'Order ID', width: 72 },
+                { label: 'Date', width: 62 },
+                { label: 'Customer', width: 88 },
+                { label: 'Phone', width: 72 },
+                { label: 'City', width: 52 },
+                { label: 'Status', width: 58 },
+                { label: 'Payment', width: 48 },
+                { label: 'Method', width: 36 },
+                { label: 'Items', width: 170 },
+                { label: 'Total', width: 55 },
             ];
-            const totalTableWidth = cols.reduce((s, c) => s + c.width, 0);
-            const rowHeight = 20;
+            const tableWidth = cols.reduce((s, c) => s + c.width, 0);
+            const rowH = 18;
+            const headerH = 20;
 
-            const drawTableHeader = (yPos) => {
-                doc.rect(tableLeft, yPos, totalTableWidth, rowHeight + 2).fill('#6366f1');
-                let x = tableLeft;
-                cols.forEach(col => {
-                    doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 4, yPos + 6, { width: col.width - 8, ellipsis: true });
-                    x += col.width;
-                });
-                return yPos + rowHeight + 2;
+            // ─── Draw page header (brand + info) ───
+            const drawPageHeader = () => {
+                // Purple top bar
+                doc.save();
+                doc.rect(0, 0, pageW, 5).fill('#6366f1');
+                doc.restore();
+
+                let y = margin + 5;
+                doc.fontSize(16).font('Helvetica-Bold').fillColor('#6366f1').text(brandName, margin, y, { width: contentWidth, align: 'center' });
+                y += 20;
+                doc.fontSize(10).font('Helvetica').fillColor('#1e293b').text('Order Report', margin, y, { width: contentWidth, align: 'center' });
+                y += 14;
+                doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(`${generatedDate} | ${filterDesc} | ${rows.length} orders | Total: $${grandTotal}`, margin, y, { width: contentWidth, align: 'center' });
+                y += 18;
+                return y;
             };
 
-            let y = drawTableHeader(doc.y);
+            // ─── Draw table header row ───
+            const drawTableHeader = (y) => {
+                doc.rect(margin, y, tableWidth, headerH).fill('#6366f1');
+                let x = margin;
+                cols.forEach(col => {
+                    doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#ffffff').text(col.label, x + 3, y + 6, { width: col.width - 6, ellipsis: true });
+                    x += col.width;
+                });
+                return y + headerH;
+            };
 
-            // Table rows
+            // ─── Draw footer ───
+            const drawFooter = () => {
+                doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', margin, footerY, { width: contentWidth, align: 'center' });
+            };
+
+            // ─── First page ───
+            let y = drawPageHeader();
+            y = drawTableHeader(y);
+
+            // ─── Render rows ───
             rows.forEach((r, i) => {
-                if (y + rowHeight > doc.page.height - 60) {
-                    // Footer on current page
-                    doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', tableLeft, doc.page.height - 40, { align: 'center', width: totalTableWidth });
-                    doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
-                    doc.rect(0, 0, doc.page.width, 4).fill('#6366f1');
-                    y = 20;
+                // Check if we need a new page (leave space for at least 1 row + footer)
+                if (y + rowH > footerY - 10) {
+                    drawFooter();
+                    doc.addPage();
+                    y = margin + 10;
                     y = drawTableHeader(y);
                 }
 
-                // Alternate row background
-                if (i % 2 === 0) {
-                    doc.rect(tableLeft, y, totalTableWidth, rowHeight).fill('#f8fafc');
-                } else {
-                    doc.rect(tableLeft, y, totalTableWidth, rowHeight).fill('#ffffff');
-                }
+                // Alternate row bg
+                const bgColor = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+                doc.rect(margin, y, tableWidth, rowH).fill(bgColor);
+                doc.rect(margin, y, tableWidth, rowH).lineWidth(0.2).strokeColor('#e2e8f0').stroke();
 
-                // Light grid line
-                doc.rect(tableLeft, y, totalTableWidth, rowHeight).lineWidth(0.3).strokeColor('#e2e8f0').stroke();
-
-                const values = [r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.paymentMethod, r.items, `$${r.total}`];
-                let x = tableLeft;
+                // Row data
+                const values = [String(i + 1), r.orderId, r.date, r.customer, r.phone, r.city, r.status, r.payment, r.paymentMethod, r.items, `$${r.total}`];
+                let x = margin;
                 values.forEach((val, ci) => {
-                    let textColor = '#334155';
-                    if (ci === 5) { // Status column
-                        const sc = { Pending: '#f59e0b', Confirmed: '#10b981', Processing: '#6366f1', Shipped: '#0ea5e9', Delivered: '#22c55e', Cancelled: '#ef4444' };
-                        textColor = sc[val] || textColor;
+                    let color = '#334155';
+                    let font = 'Helvetica';
+                    if (ci === 6) { // Status
+                        const sc = { Pending: '#d97706', Confirmed: '#059669', Processing: '#4f46e5', Shipped: '#0284c7', Delivered: '#16a34a', Cancelled: '#dc2626' };
+                        color = sc[val] || color;
+                        font = 'Helvetica-Bold';
                     }
-                    if (ci === 6) textColor = val === 'Paid' ? '#22c55e' : '#ef4444'; // Payment column
-                    if (ci === 9) textColor = '#1e293b'; // Total column bold
-                    doc.fontSize(7).font(ci === 9 ? 'Helvetica-Bold' : 'Helvetica').fillColor(textColor).text(String(val), x + 4, y + 6, { width: cols[ci].width - 8, ellipsis: true });
+                    if (ci === 7) { color = val === 'Paid' ? '#16a34a' : '#dc2626'; font = 'Helvetica-Bold'; }
+                    if (ci === 10) { color = '#1e293b'; font = 'Helvetica-Bold'; }
+                    doc.fontSize(6.5).font(font).fillColor(color).text(String(val), x + 3, y + 5, { width: cols[ci].width - 6, ellipsis: true });
                     x += cols[ci].width;
                 });
-                y += rowHeight;
+                y += rowH;
             });
 
-            // ─── Summary bar ───
-            y += 8;
-            if (y + 30 > doc.page.height - 60) { doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 }); y = 40; }
-            doc.rect(tableLeft, y, totalTableWidth, 26).fill('#ede9fe');
-            doc.rect(tableLeft, y, totalTableWidth, 26).lineWidth(1).strokeColor('#6366f1').stroke();
-            doc.fontSize(9).font('Helvetica-Bold').fillColor('#6366f1').text(
-                `TOTALS: ${rows.length} orders | ${totalItems} items | Subtotal: $${totalSubtotal} | Shipping: $${totalShipping} | Tax: $${totalTax} | Grand Total: $${grandTotal}`,
-                tableLeft + 12, y + 8, { width: totalTableWidth - 24 }
-            );
+            // ─── Totals row ───
+            if (rows.length > 0) {
+                if (y + 22 > footerY - 10) {
+                    drawFooter();
+                    doc.addPage();
+                    y = margin + 10;
+                }
+                y += 4;
+                doc.rect(margin, y, tableWidth, 20).fill('#ede9fe');
+                doc.fontSize(8).font('Helvetica-Bold').fillColor('#4f46e5').text(
+                    `TOTALS: ${rows.length} orders | Subtotal: $${totalSubtotal} | Shipping: $${totalShipping} | Tax: $${totalTax} | Grand Total: $${grandTotal}`,
+                    margin + 8, y + 6, { width: tableWidth - 16 }
+                );
+            }
 
-            // ─── Footer ───
-            const footerY = doc.page.height - 40;
-            doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text('Powered by Rozare - www.rozare.com', tableLeft, footerY, { align: 'center', width: totalTableWidth });
-
+            // Footer on last page
+            drawFooter();
             doc.end();
             return;
         }
