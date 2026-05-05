@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle, User,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -223,6 +223,7 @@ const SellerDashboard = () => {
         if (path.includes('subdomain')) return 'Subdomain';
         if (path.includes('coupons')) return 'Coupons';
         if (path.includes('seller-home')) return 'Dashboard';
+        if (path.includes('profile')) return 'Seller Profile';
         return 'Dashboard';
     };
 
@@ -629,6 +630,7 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         { id: 'subdomain', label: 'Subdomain', icon: <LayoutPanelLeft size={18} />, link: '/seller-dashboard/subdomain' },
         { id: 'subscription', label: 'Subscription', icon: <Crown size={18} />, link: '/seller-dashboard/subscription' },
         { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
+        { id: 'profile', label: 'Seller Profile', icon: <User size={18} />, link: '/seller-dashboard/profile' },
         { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
         { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
         { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle size={18} />, link: '/seller-dashboard/whatsapp-settings' },

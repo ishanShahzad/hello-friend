@@ -23,6 +23,7 @@ import TaxConfiguration from '../components/layout/TaxConfiguration'
 import ShippingConfiguration from '../components/layout/ShippingConfiguration'
 import SellerHome from '../components/layout/SellerHome'
 import SellerAnalytics from '../components/layout/SellerAnalytics'
+import SellerProfile from '../components/layout/SellerProfile'
 import AdminAnalytics from '../components/layout/AdminAnalytics'
 import NotificationsPage from '../components/layout/NotificationsPage'
 import NotificationSettings from '../components/layout/NotificationSettings'
@@ -298,6 +299,11 @@ function AppRoutes() {
                     <Route path='/seller-dashboard/whatsapp-settings' element={
                         <ProtectedRoute role={'seller'}>
                             <SellerWhatsAppSettings />
+                        </ProtectedRoute>
+                    } />
+                    <Route path='/seller-dashboard/profile' element={
+                        <ProtectedRoute role={'seller'}>
+                            <SellerProfile />
                         </ProtectedRoute>
                     } />
                 </Route>

@@ -465,3 +465,317 @@ exports.removePushToken = async (req, res) => {
         res.status(500).json({ msg: 'Server error removing push token' });
     }
 };
+
+// ============================================================
+// SELLER PROFILE — Change WhatsApp Number & Email
+// ============================================================
+
+const OTP = require('../models/OTP');
+const CHANGE_COOLDOWN_DAYS = 30;
+
+/**
+ * POST /api/user/seller/change-whatsapp/initiate
+ * Initiates WhatsApp number change by sending OTP to the NEW number.
+ * Enforces 30-day cooldown.
+ */
+exports.initiateWhatsAppChange = async (req, res) => {
+    const { id: userId } = req.user;
+    const { newWhatsappNumber } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user || user.role !== 'seller') {
+            return res.status(403).json({ msg: 'Only sellers can change their WhatsApp number.' });
+        }
+
+        if (!newWhatsappNumber || newWhatsappNumber.trim().length < 10) {
+            return res.status(400).json({ msg: 'Please provide a valid WhatsApp number.' });
+        }
+
+        // 30-day cooldown check
+        if (user.sellerInfo?.lastWhatsAppChange) {
+            const daysSinceChange = (Date.now() - new Date(user.sellerInfo.lastWhatsAppChange).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceChange < CHANGE_COOLDOWN_DAYS) {
+                const daysLeft = Math.ceil(CHANGE_COOLDOWN_DAYS - daysSinceChange);
+                return res.status(429).json({ msg: `You can only change your WhatsApp number once every 30 days. Please try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.` });
+            }
+        }
+
+        // Check if the new number is already used by another seller
+        const cleanDigits = String(newWhatsappNumber).replace(/\D/g, '');
+        const numberVariants = [newWhatsappNumber, `+${cleanDigits}`, cleanDigits];
+        const existingSeller = await User.findOne({
+            _id: { $ne: userId },
+            role: 'seller',
+            $or: [
+                { 'sellerInfo.whatsappNumber': { $in: numberVariants } },
+                { 'sellerInfo.phoneNumber': { $in: numberVariants } }
+            ]
+        });
+        if (existingSeller) {
+            return res.status(409).json({ msg: 'This number is already associated with another seller account.' });
+        }
+
+        // Send WhatsApp OTP to the new number using the existing WhatsApp OTP system
+        // We forward to the sellerWhatsapp send-otp logic
+        const WhatsAppOTP = require('../models/WhatsAppOTP');
+        const WhatsAppConfig = require('../models/WhatsAppConfig');
+        const sellerEvolutionClient = require('../services/whatsapp/sellerEvolutionClient');
+
+        const cfg = await WhatsAppConfig.findOne({ singletonKey: 'seller' });
+        if (!cfg || cfg.status !== 'connected') {
+            return res.status(503).json({ msg: 'WhatsApp verification service is temporarily unavailable.' });
+        }
+
+        if (!sellerEvolutionClient.isConfigured()) {
+            return res.status(503).json({ msg: 'WhatsApp service is not configured.' });
+        }
+
+        // Rate limit: max 3 per hour for this number
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const perNumberCount = await WhatsAppOTP.countDocuments({ number: cleanDigits, createdAt: { $gte: oneHourAgo } });
+        if (perNumberCount >= 3) {
+            return res.status(429).json({ msg: 'Too many attempts. Please try again in an hour.' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const message = `*Rozare Verification*\n\nYour verification code is: *${otp}*\n\nThis code expires in 2 minutes.\nDo not share this code with anyone.`;
+
+        try {
+            await sellerEvolutionClient.sendText(cleanDigits, message);
+        } catch (sendErr) {
+            return res.status(502).json({ msg: 'Failed to send verification code. Please try again.' });
+        }
+
+        await WhatsAppOTP.create({
+            number: cleanDigits,
+            otp,
+            sellerId: userId,
+            attempts: 0,
+            verified: false,
+        });
+
+        res.status(200).json({ msg: 'Verification code sent to the new WhatsApp number.' });
+    } catch (error) {
+        console.error('initiateWhatsAppChange error:', error.message);
+        res.status(500).json({ msg: 'Server error. Please try again.' });
+    }
+};
+
+/**
+ * POST /api/user/seller/change-whatsapp/verify
+ * Verifies OTP and updates the WhatsApp number.
+ */
+exports.verifyWhatsAppChange = async (req, res) => {
+    const { id: userId } = req.user;
+    const { newWhatsappNumber, otp } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user || user.role !== 'seller') {
+            return res.status(403).json({ msg: 'Only sellers can change their WhatsApp number.' });
+        }
+
+        if (!newWhatsappNumber || !otp) {
+            return res.status(400).json({ msg: 'Number and OTP are required.' });
+        }
+
+        const cleanDigits = String(newWhatsappNumber).replace(/\D/g, '');
+        const WhatsAppOTP = require('../models/WhatsAppOTP');
+
+        // Find and verify the OTP
+        const otpRecord = await WhatsAppOTP.findOne({
+            number: cleanDigits,
+            verified: false,
+        }).sort({ createdAt: -1 });
+
+        if (!otpRecord) {
+            return res.status(400).json({ msg: 'No verification code found. Please request a new one.' });
+        }
+
+        // Check expiry (2 minutes)
+        const ageMs = Date.now() - new Date(otpRecord.createdAt).getTime();
+        if (ageMs > 2 * 60 * 1000) {
+            return res.status(400).json({ msg: 'Verification code has expired. Please request a new one.' });
+        }
+
+        // Check attempts
+        if (otpRecord.attempts >= 5) {
+            return res.status(400).json({ msg: 'Too many wrong attempts. Please request a new code.' });
+        }
+
+        // Verify OTP
+        if (otpRecord.otp !== otp) {
+            otpRecord.attempts += 1;
+            await otpRecord.save();
+            return res.status(400).json({ msg: 'Invalid code. Please try again.' });
+        }
+
+        // OTP matches — update user's WhatsApp number
+        otpRecord.verified = true;
+        await otpRecord.save();
+
+        user.sellerInfo.whatsappNumber = newWhatsappNumber.trim();
+        user.sellerInfo.phoneNumber = newWhatsappNumber.trim();
+        user.sellerInfo.whatsappVerified = true;
+        user.sellerInfo.lastWhatsAppChange = new Date();
+        await user.save();
+
+        res.status(200).json({ msg: 'WhatsApp number updated successfully.', whatsappNumber: newWhatsappNumber.trim() });
+    } catch (error) {
+        console.error('verifyWhatsAppChange error:', error.message);
+        res.status(500).json({ msg: 'Server error. Please try again.' });
+    }
+};
+
+/**
+ * POST /api/user/seller/change-email/initiate
+ * Sends OTP to the NEW email address. Enforces 30-day cooldown.
+ */
+exports.initiateEmailChange = async (req, res) => {
+    const { id: userId } = req.user;
+    const { newEmail } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user || user.role !== 'seller') {
+            return res.status(403).json({ msg: 'Only sellers can change their email here.' });
+        }
+
+        if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            return res.status(400).json({ msg: 'Please provide a valid email address.' });
+        }
+
+        if (newEmail.toLowerCase() === user.email.toLowerCase()) {
+            return res.status(400).json({ msg: 'This is already your current email.' });
+        }
+
+        // 30-day cooldown check
+        if (user.sellerInfo?.lastEmailChange) {
+            const daysSinceChange = (Date.now() - new Date(user.sellerInfo.lastEmailChange).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceChange < CHANGE_COOLDOWN_DAYS) {
+                const daysLeft = Math.ceil(CHANGE_COOLDOWN_DAYS - daysSinceChange);
+                return res.status(429).json({ msg: `You can only change your email once every 30 days. Please try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.` });
+            }
+        }
+
+        // Check if the new email is already used by another user
+        const existingUser = await User.findOne({ email: newEmail.toLowerCase(), _id: { $ne: userId } });
+        if (existingUser) {
+            return res.status(409).json({ msg: 'This email is already in use by another account.' });
+        }
+
+        // Generate OTP and send to new email
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        await OTP.deleteMany({ email: newEmail.toLowerCase() });
+
+        const otpDoc = new OTP({
+            email: newEmail.toLowerCase(),
+            otp: otpCode,
+            userData: { sellerId: userId, type: 'email-change' }
+        });
+        await otpDoc.save();
+
+        // Send professional email
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Verify Email Change</title></head>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;">
+    <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%);padding:48px 32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Verify Your New Email</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Email change verification</p>
+        </div>
+        <div style="padding:40px 32px;">
+            <p style="color:#334155;font-size:16px;margin:0 0 20px;">Hi <strong>${user.username}</strong>,</p>
+            <p style="color:#475569;font-size:15px;margin:0 0 28px;">
+                You requested to change your email address on Rozare. Enter the code below to verify this new email:
+            </p>
+            <div style="background:linear-gradient(135deg,#f8faff 0%,#f0f4ff 100%);border:2px solid #e0e7ff;border-radius:12px;padding:28px 20px;text-align:center;margin:0 0 28px;">
+                <p style="margin:0 0 12px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Verification Code</p>
+                <div style="font-size:38px;font-weight:800;color:#6366f1;letter-spacing:10px;font-family:'Courier New',monospace;padding:8px 0;">${otpCode}</div>
+                <div style="margin-top:12px;display:inline-block;background:#fef3c7;border-radius:20px;padding:6px 14px;">
+                    <span style="color:#92400e;font-size:12px;font-weight:600;">Expires in 10 minutes</span>
+                </div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0;padding-top:20px;">
+                <p style="color:#94a3b8;font-size:13px;margin:0;">If you didn't request this change, please ignore this email. Your account is safe.</p>
+            </div>
+        </div>
+        <div style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+            <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Rozare. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        await sendEmail({
+            to: newEmail,
+            subject: 'Verify Your New Email - Rozare',
+            text: `Your verification code is: ${otpCode}. Valid for 10 minutes.`,
+            html
+        });
+
+        res.status(200).json({ msg: 'Verification code sent to your new email address.' });
+    } catch (error) {
+        console.error('initiateEmailChange error:', error.message);
+        res.status(500).json({ msg: 'Server error. Please try again.' });
+    }
+};
+
+/**
+ * POST /api/user/seller/change-email/verify
+ * Verifies OTP and updates the email address.
+ */
+exports.verifyEmailChange = async (req, res) => {
+    const { id: userId } = req.user;
+    const { newEmail, otp } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user || user.role !== 'seller') {
+            return res.status(403).json({ msg: 'Only sellers can change their email here.' });
+        }
+
+        if (!newEmail || !otp) {
+            return res.status(400).json({ msg: 'Email and OTP are required.' });
+        }
+
+        // Find the OTP record
+        const otpDoc = await OTP.findOne({ email: newEmail.toLowerCase(), otp });
+        if (!otpDoc) {
+            return res.status(400).json({ msg: 'Invalid or expired verification code.' });
+        }
+
+        // Verify it's for an email change
+        if (otpDoc.userData?.type !== 'email-change' || otpDoc.userData?.sellerId !== userId) {
+            return res.status(400).json({ msg: 'Invalid verification code for this request.' });
+        }
+
+        // Double-check email is not taken (race condition)
+        const existingUser = await User.findOne({ email: newEmail.toLowerCase(), _id: { $ne: userId } });
+        if (existingUser) {
+            await OTP.deleteOne({ _id: otpDoc._id });
+            return res.status(409).json({ msg: 'This email is now in use by another account.' });
+        }
+
+        // Update email
+        user.email = newEmail.toLowerCase();
+        user.sellerInfo.lastEmailChange = new Date();
+        await user.save();
+        await OTP.deleteOne({ _id: otpDoc._id });
+
+        // Generate new JWT with updated email
+        const jwt = require('jsonwebtoken');
+        const token = jwt.sign(
+            { id: user._id, username: user.username, email: user.email, role: user.role, avatar: user.profilePicture || user.avatar },
+            process.env.JWT_SECRET
+        );
+
+        res.status(200).json({ msg: 'Email updated successfully.', email: user.email, token });
+    } catch (error) {
+        console.error('verifyEmailChange error:', error.message);
+        res.status(500).json({ msg: 'Server error. Please try again.' });
+    }
+};

@@ -27,7 +27,9 @@ const userSchema = mongoose.Schema({
         address: { type: String },
         city: { type: String },
         country: { type: String },
-        businessName: { type: String }
+        businessName: { type: String },
+        lastWhatsAppChange: { type: Date },         // Last time WhatsApp number was changed (30-day cooldown)
+        lastEmailChange: { type: Date }             // Last time email was changed (30-day cooldown)
     },
 
     // Seller WhatsApp notification preferences

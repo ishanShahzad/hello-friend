@@ -1,6 +1,6 @@
 
 const express = require('express')
-const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, savePushToken, removePushToken } = require('../controllers/userController')
+const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, savePushToken, removePushToken, initiateWhatsAppChange, verifyWhatsAppChange, initiateEmailChange, verifyEmailChange } = require('../controllers/userController')
 const verifyToken = require('../middleware/authMiddleware')
 const router = express.Router()
 
@@ -16,6 +16,14 @@ router.delete('/delete-account', verifyToken, deleteOwnAccount)
 
 // Become a seller
 router.post('/become-seller', verifyToken, becomeSeller)
+
+// Seller profile — change WhatsApp number
+router.post('/seller/change-whatsapp/initiate', verifyToken, initiateWhatsAppChange)
+router.post('/seller/change-whatsapp/verify', verifyToken, verifyWhatsAppChange)
+
+// Seller profile — change email
+router.post('/seller/change-email/initiate', verifyToken, initiateEmailChange)
+router.post('/seller/change-email/verify', verifyToken, verifyEmailChange)
 
 // Shipping info (single default for back-compat)
 router.get('/shipping-info', verifyToken, getShippingInfo)
