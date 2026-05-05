@@ -15,8 +15,11 @@ router.post('/seller/verify-otp', verifySellerOTPAndRegister)
 router.post('/registerr', registerr)
 router.post('/login', login)
 
-// Web Google OAuth
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+// Web Google OAuth — supports state param (e.g. ?state=seller for become-seller flow)
+router.get("/google", (req, res, next) => {
+    const state = req.query.state || '';
+    passport.authenticate("google", { scope: ["profile", "email"], state })(req, res, next);
+});
 
 // Mobile Google OAuth — passes state=mobile so callback can redirect to deep link
 router.get("/google/mobile", passport.authenticate("google", { scope: ["profile", "email"], state: "mobile" }));

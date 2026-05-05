@@ -80,8 +80,15 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem("jwtToken", res.data.token);
             setCurrentUser(res.data.user);
             reset();
-            navigate('/')
-            location.reload()
+            // Check for redirect param in URL (e.g., /login?redirect=/become-seller)
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectTo = urlParams.get('redirect');
+            if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+                window.location.href = redirectTo;
+            } else {
+                navigate('/');
+                location.reload();
+            }
         } catch (error) {
             console.error(error);
             // Re-throw so Login component can catch and show inline error

@@ -291,8 +291,9 @@ exports.login = async (req, res) => {
 exports.googleCallback = async (req, res) => {
     try {
         const user = req.user;
-        // When initiated from mobile, passport preserves state=mobile through OAuth flow
-        const isMobile = req.query.state === 'mobile';
+        const state = req.query.state || '';
+        const isMobile = state === 'mobile';
+        const isSeller = state === 'seller';
 
         const payload = {
             id: user._id,
@@ -309,12 +310,13 @@ exports.googleCallback = async (req, res) => {
             return res.redirect(`rozare://auth/google/success?token=${encodeURIComponent(token)}`);
         }
 
-        // Web redirect
-        res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}`);
+        // Web redirect — include redirect param for seller flow
+        const redirectParam = isSeller ? `&redirect=${encodeURIComponent('/become-seller?from=google')}` : '';
+        res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}${redirectParam}`);
     } catch (error) {
         console.error('Google callback error:', error);
-        const isMobile = req.query.state === 'mobile';
-        if (isMobile) {
+        const state = req.query.state || '';
+        if (state === 'mobile') {
             return res.redirect('rozare://auth/google/error');
         }
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);

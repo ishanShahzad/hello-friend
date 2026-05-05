@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, ArrowRight, MessageCircle, Edit3 } from 'lucide-react';
+import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,11 +10,23 @@ import PhoneField, { isValidPhone } from '../components/common/PhoneField';
 
 export default function BecomeSeller() {
   const navigate = useNavigate();
-  const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { currentUser, setCurrentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [formStep, setFormStep] = useState(0); // 0: landing, 1: seller info, 2: store setup, 3: WhatsApp verify
+  // Steps: 0=landing, 0.5=guest signup, 0.6=OTP verify, 1=seller info, 2=store setup, 3=WhatsApp verify
+  const [formStep, setFormStep] = useState(0);
   const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', country: '', businessName: '' });
   const [storeData, setStoreData] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
+  // Guest signup state
+  const [signupData, setSignupData] = useState({ username: '', email: '', password: '' });
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailVerifying, setEmailVerifying] = useState(false);
+  const [emailOtpCountdown, setEmailOtpCountdown] = useState(0);
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
+  const emailCountdownRef = useRef(null);
+  const emailResendRef = useRef(null);
   // WhatsApp OTP state
   const [whatsappOtp, setWhatsappOtp] = useState('');
   const [whatsappVerified, setWhatsappVerified] = useState(false);
@@ -29,10 +41,33 @@ export default function BecomeSeller() {
   const countdownRef = useRef(null);
   const resendRef = useRef(null);
 
+  // If user just came back from Google auth (redirected here), auto-advance to step 1
+  useEffect(() => {
+    if (searchParams.get('from') === 'google' && currentUser) {
+      setFormStep(1);
+    }
+  }, [searchParams, currentUser]);
+
   const handleInputChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
   const handleStoreChange = (e) => { const { name, value } = e.target; setStoreData(prev => ({ ...prev, [name]: value })); };
+  const handleSignupChange = (e) => { const { name, value } = e.target; setSignupData(prev => ({ ...prev, [name]: value })); };
 
-  // Countdown timer effect
+  // Email OTP countdown effects
+  useEffect(() => {
+    if (emailOtpCountdown > 0) {
+      emailCountdownRef.current = setTimeout(() => setEmailOtpCountdown(emailOtpCountdown - 1), 1000);
+      return () => clearTimeout(emailCountdownRef.current);
+    }
+  }, [emailOtpCountdown]);
+
+  useEffect(() => {
+    if (emailResendCooldown > 0) {
+      emailResendRef.current = setTimeout(() => setEmailResendCooldown(emailResendCooldown - 1), 1000);
+      return () => clearTimeout(emailResendRef.current);
+    }
+  }, [emailResendCooldown]);
+
+  // WhatsApp countdown timer effect
   useEffect(() => {
     if (otpCountdown > 0) {
       countdownRef.current = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
@@ -51,6 +86,84 @@ export default function BecomeSeller() {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Guest signup: send email OTP
+  const handleGuestSignup = async (e) => {
+    e.preventDefault();
+    if (!signupData.username.trim() || signupData.username.trim().length < 2) { toast.error('Please enter a valid name'); return; }
+    if (!signupData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupData.email)) { toast.error('Please enter a valid email'); return; }
+    if (!signupData.password || signupData.password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+
+    setSignupLoading(true);
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}api/auth/send-otp`, {
+        username: signupData.username.trim(),
+        email: signupData.email.trim(),
+        password: signupData.password
+      });
+      setEmailOtpSent(true);
+      setEmailOtpCountdown(600); // 10 minutes
+      setEmailResendCooldown(30);
+      setFormStep(0.6); // Go to OTP verification step
+      toast.success('Verification code sent to your email');
+    } catch (err) {
+      const msg = err.response?.data?.msg || 'Failed to send OTP. Please try again.';
+      toast.error(msg);
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  // Guest signup: verify email OTP and create account
+  const handleVerifyEmailOtp = async (e) => {
+    e.preventDefault();
+    if (emailOtp.length !== 6) { toast.error('Please enter the 6-digit code'); return; }
+    setEmailVerifying(true);
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/verify-otp`, {
+        email: signupData.email.trim(),
+        otp: emailOtp
+      });
+      // Account created, store token and user
+      localStorage.setItem('jwtToken', res.data.token);
+      localStorage.setItem('currentUser', JSON.stringify(res.data.user));
+      setCurrentUser(res.data.user);
+      toast.success('Account created! Continue setting up your seller profile.');
+      setFormStep(1); // Proceed to seller info step
+    } catch (err) {
+      const msg = err.response?.data?.msg || 'Invalid or expired code. Please try again.';
+      toast.error(msg);
+    } finally {
+      setEmailVerifying(false);
+    }
+  };
+
+  // Resend email OTP
+  const handleResendEmailOtp = async () => {
+    setSignupLoading(true);
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}api/auth/send-otp`, {
+        username: signupData.username.trim(),
+        email: signupData.email.trim(),
+        password: signupData.password
+      });
+      setEmailOtpCountdown(600);
+      setEmailResendCooldown(30);
+      toast.success('New code sent to your email');
+    } catch (err) {
+      toast.error(err.response?.data?.msg || 'Failed to resend code');
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  // Continue with Google for guest users
+  const handleGoogleSignup = () => {
+    // Store a flag with timestamp so when user comes back after Google auth, we know to continue the seller flow
+    // Expires after 10 minutes to avoid stale redirects
+    localStorage.setItem('sellerSignupRedirect', JSON.stringify({ timestamp: Date.now() }));
+    window.location.href = `${import.meta.env.VITE_API_URL}api/auth/google?state=seller`;
   };
 
   const handleSendWhatsAppOtp = async () => {
@@ -145,10 +258,10 @@ export default function BecomeSeller() {
 
   if (currentUser?.role === 'seller' || currentUser?.role === 'admin') { navigate('/'); return null; }
 
-  // If guest (not logged in) tries to proceed past the landing page, redirect to seller signup
+  // If guest (not logged in) tries to proceed past the landing page, show inline signup
   const handleGetStarted = () => {
     if (!currentUser) {
-      navigate('/seller-signup');
+      setFormStep(0.5); // Show guest signup form
     } else {
       setFormStep(1);
     }
@@ -183,7 +296,12 @@ export default function BecomeSeller() {
         }}
       />
       <div className="max-w-4xl mx-auto">
-        <button onClick={() => formStep > 0 ? setFormStep(formStep - 1) : navigate(-1)} className="flex items-center gap-2 mb-6 transition-colors text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+        <button onClick={() => {
+          if (formStep === 0.5 || formStep === 0) navigate(-1);
+          else if (formStep === 0.6) setFormStep(0.5);
+          else if (formStep === 1) setFormStep(0);
+          else setFormStep(formStep - 1);
+        }} className="flex items-center gap-2 mb-6 transition-colors text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
           <ArrowLeft size={20} /> <span>Back</span>
         </button>
 
@@ -243,6 +361,144 @@ export default function BecomeSeller() {
               </motion.button>
             </motion.div>
           </>
+        )}
+
+        {/* Step 0.5: Guest Signup (Upwork-style inline registration) */}
+        {formStep === 0.5 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 max-w-md mx-auto">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold mb-2" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Create Your Account
+              </h2>
+              <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Sign up to get started as a seller on Rozare
+              </p>
+            </div>
+
+            {/* Continue with Google */}
+            <motion.button onClick={handleGoogleSignup} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-3 mb-5 border transition-colors"
+              style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </motion.button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px" style={{ background: 'hsl(var(--border))' }}></div>
+              <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>or sign up with email</span>
+              <div className="flex-1 h-px" style={{ background: 'hsl(var(--border))' }}></div>
+            </div>
+
+            {/* Email/Password form */}
+            <form onSubmit={handleGuestSignup} className="space-y-4">
+              <div>
+                <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <UserIcon size={14} style={{ color: 'hsl(var(--primary))' }} /> Full Name <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
+                </label>
+                <input type="text" name="username" value={signupData.username} onChange={handleSignupChange}
+                  placeholder="Your full name" className="glass-input" required minLength={2} />
+              </div>
+              <div>
+                <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <Mail size={14} style={{ color: 'hsl(var(--primary))' }} /> Email <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
+                </label>
+                <input type="email" name="email" value={signupData.email} onChange={handleSignupChange}
+                  placeholder="you@example.com" className="glass-input" required />
+              </div>
+              <div>
+                <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <Lock size={14} style={{ color: 'hsl(var(--primary))' }} /> Password <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
+                </label>
+                <input type="password" name="password" value={signupData.password} onChange={handleSignupChange}
+                  placeholder="At least 6 characters" className="glass-input" required minLength={6} />
+              </div>
+              <motion.button type="submit" disabled={signupLoading} whileHover={{ scale: signupLoading ? 1 : 1.02 }} whileTap={{ scale: signupLoading ? 1 : 0.98 }}
+                className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
+                {signupLoading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending code...</> : <>Continue <ArrowRight size={18} /></>}
+              </motion.button>
+            </form>
+
+            {/* Login link */}
+            <p className="text-center mt-5 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              Already have an account?{' '}
+              <button onClick={() => navigate('/login?redirect=/become-seller')} className="font-semibold underline" style={{ color: 'hsl(var(--primary))' }}>
+                Log in
+              </button>
+            </p>
+          </motion.div>
+        )}
+
+        {/* Step 0.6: Email OTP Verification */}
+        {formStep === 0.6 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 max-w-md mx-auto">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', color: '#fff' }}>
+                <Mail size={28} />
+              </div>
+              <h2 className="text-2xl font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Verify Your Email</h2>
+              <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                We sent a 6-digit code to <strong style={{ color: 'hsl(var(--foreground))' }}>{signupData.email}</strong>
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
+              <div>
+                <input type="text" value={emailOtp} onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="glass-input text-center text-2xl font-bold tracking-widest" placeholder="000000" maxLength={6} autoFocus />
+              </div>
+
+              {/* Countdown */}
+              {emailOtpCountdown > 0 && (
+                <div className="text-center">
+                  <p className="text-xs" style={{ color: emailOtpCountdown <= 60 ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>
+                    Code expires in <span className="font-bold">{formatCountdown(emailOtpCountdown)}</span>
+                  </p>
+                </div>
+              )}
+              {emailOtpCountdown === 0 && emailOtpSent && (
+                <div className="text-center">
+                  <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>Code expired. Please request a new one.</p>
+                </div>
+              )}
+
+              <motion.button type="submit" disabled={emailVerifying || emailOtp.length !== 6 || emailOtpCountdown === 0}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
+                {emailVerifying ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Verifying...</> : <>Verify & Continue <ArrowRight size={18} /></>}
+              </motion.button>
+            </form>
+
+            {/* Resend */}
+            <div className="text-center mt-4">
+              {emailResendCooldown > 0 ? (
+                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Resend available in <span className="font-bold">{emailResendCooldown}s</span>
+                </p>
+              ) : (
+                <button type="button" onClick={handleResendEmailOtp} disabled={signupLoading}
+                  className="text-xs font-medium underline disabled:opacity-50" style={{ color: 'hsl(var(--primary))' }}>
+                  {signupLoading ? 'Sending...' : 'Resend Code'}
+                </button>
+              )}
+            </div>
+
+            {/* Back to edit email */}
+            <div className="text-center mt-3">
+              <button type="button" onClick={() => { setFormStep(0.5); setEmailOtp(''); setEmailOtpCountdown(0); }}
+                className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                ← Change email address
+              </button>
+            </div>
+          </motion.div>
         )}
 
         {/* Step 1: Seller Info */}

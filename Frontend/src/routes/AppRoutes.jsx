@@ -51,7 +51,7 @@ import AboutPage from '../pages/AboutPage'
 import ContactPage from '../pages/ContactPage'
 import FAQPage from '../pages/FAQPage'
 import TrackOrderPage from '../pages/TrackOrderPage'
-import SellerSignUp from '../components/auth/SellerSignUp'
+// SellerSignUp removed — all seller registration now handled by /become-seller
 import OrderConfirmationPage from '../pages/OrderConfirmationPage'
 import WhatsAppVerificationPanel from '../components/layout/admin/WhatsAppVerificationPanel'
 import AdminBroadcastPanel from '../components/layout/admin/AdminBroadcastPanel'
@@ -99,7 +99,7 @@ function AppRoutes() {
                 </Route>
                 <Route path='/login' element={<Login />} />
                 <Route path='/signup' element={<SignUp />} />
-                <Route path='/seller-signup' element={<SellerSignUp />} />
+                <Route path='/seller-signup' element={<Navigate to='/become-seller' replace />} />
                 <Route path='/auth/google/success' element={<GoogleAuthSuccess />} />
                 <Route path='/orders/confirm/:token' element={<OrderConfirmationPage />} />
 

@@ -9,6 +9,7 @@ const GoogleAuthSuccess = () => {
 
     useEffect(() => {
         const token = searchParams.get('token');
+        const redirect = searchParams.get('redirect');
         
         if (token) {
             // Store token
@@ -27,6 +28,27 @@ const GoogleAuthSuccess = () => {
             }));
             
             toast.success('Signed in successfully with Google!');
+            
+            // If there's a redirect param (e.g., from seller signup flow), go there
+            if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+                window.location.href = redirect;
+                return;
+            }
+
+            // Also check localStorage for seller signup redirect flag (with 10-min expiry)
+            const sellerRedirect = localStorage.getItem('sellerSignupRedirect');
+            if (sellerRedirect) {
+                localStorage.removeItem('sellerSignupRedirect');
+                try {
+                    const { timestamp } = JSON.parse(sellerRedirect);
+                    if (timestamp && Date.now() - timestamp < 10 * 60 * 1000) {
+                        window.location.href = '/become-seller?from=google';
+                        return;
+                    }
+                } catch (e) {
+                    // Invalid JSON, ignore stale flag
+                }
+            }
             
             // Redirect based on role
             if (payload.role === 'admin') {
