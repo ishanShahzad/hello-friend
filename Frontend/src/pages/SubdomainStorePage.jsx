@@ -57,7 +57,7 @@ const SubdomainStorePage = () => {
     const fetchStore = async () => {
         try {
             setLoading(true);
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/store`);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/store?slug=${subdomain}`);
             setStore(res.data.store);
             setNotFound(false);
         } catch (error) {
@@ -78,7 +78,7 @@ const SubdomainStorePage = () => {
     const fetchProducts = async () => {
         try {
             setProductsLoading(true);
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/products`);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/products?slug=${subdomain}`);
             setProducts(res.data.products);
         } catch (error) {
             console.error('Error fetching products:', error);
