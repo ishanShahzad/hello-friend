@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, ArrowRight, MessageCircle } from 'lucide-react';
+import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, ArrowRight, MessageCircle, Edit3 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,18 +12,46 @@ export default function BecomeSeller() {
   const navigate = useNavigate();
   const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [formStep, setFormStep] = useState(0); // 0: landing, 1: seller info, 2: store setup
+  const [formStep, setFormStep] = useState(0); // 0: landing, 1: seller info, 2: store setup, 3: WhatsApp verify
   const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', country: '', businessName: '' });
   const [storeData, setStoreData] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
+  // WhatsApp OTP state
   const [whatsappOtp, setWhatsappOtp] = useState('');
   const [whatsappVerified, setWhatsappVerified] = useState(false);
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappVerifying, setWhatsappVerifying] = useState(false);
   const [whatsappError, setWhatsappError] = useState('');
-  const [showWhatsappOtp, setShowWhatsappOtp] = useState(false);
+  const [whatsappCodeSent, setWhatsappCodeSent] = useState(false);
+  const [editingNumber, setEditingNumber] = useState(false);
+  // Timers
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const countdownRef = useRef(null);
+  const resendRef = useRef(null);
 
   const handleInputChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
   const handleStoreChange = (e) => { const { name, value } = e.target; setStoreData(prev => ({ ...prev, [name]: value })); };
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      countdownRef.current = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(countdownRef.current);
+    }
+  }, [otpCountdown]);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      resendRef.current = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(resendRef.current);
+    }
+  }, [resendCooldown]);
+
+  const formatCountdown = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const handleSendWhatsAppOtp = async () => {
     if (!formData.phoneNumber || !isValidPhone(formData.phoneNumber)) {
@@ -34,13 +62,16 @@ export default function BecomeSeller() {
     setWhatsappError('');
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}api/seller-whatsapp/send-otp`, { whatsappNumber: formData.phoneNumber });
-      setShowWhatsappOtp(true);
+      setWhatsappCodeSent(true);
+      setOtpCountdown(120);
+      setResendCooldown(30);
+      setEditingNumber(false);
     } catch (err) {
       const status = err.response?.status;
       if (status === 503) {
-        setWhatsappError('WhatsApp verification is temporarily unavailable. You can verify your number later in settings.');
+        setWhatsappError('WhatsApp verification is temporarily unavailable. Please try again later.');
       } else if (status === 429) {
-        setWhatsappError(err.response?.data?.msg || 'Too many attempts. Please try again in an hour, or verify later in settings.');
+        setWhatsappError(err.response?.data?.msg || 'Too many attempts. Please try again later.');
       } else {
         setWhatsappError(err.response?.data?.message || err.response?.data?.msg || 'Failed to send verification code');
       }
@@ -55,8 +86,9 @@ export default function BecomeSeller() {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}api/seller-whatsapp/verify-otp`, { whatsappNumber: formData.phoneNumber, otp: whatsappOtp });
       setWhatsappVerified(true);
-      setShowWhatsappOtp(false);
+      setWhatsappCodeSent(false);
       setWhatsappOtp('');
+      setOtpCountdown(0);
     } catch (err) {
       setWhatsappError(err.response?.data?.message || err.response?.data?.msg || 'Invalid code. Please try again.');
     } finally {
@@ -73,10 +105,16 @@ export default function BecomeSeller() {
     setFormStep(2);
   };
 
-  const handleBecomeSeller = async (skipStore = false) => {
+  const handleStep2Next = (skipStore = false) => {
     if (!skipStore && storeData.storeName && storeData.storeName.trim().length < 3) {
       toast.error('Store name must be at least 3 characters'); return;
     }
+    // Go to WhatsApp verification step
+    setFormStep(3);
+  };
+
+  const handleBecomeSeller = async () => {
+    if (!whatsappVerified) { toast.error('Please verify your WhatsApp number first'); return; }
     setLoading(true);
     try {
       const token = localStorage.getItem('jwtToken');
@@ -92,10 +130,10 @@ export default function BecomeSeller() {
         phoneNumber: formData.phoneNumber.trim(), address: formData.address.trim(),
         city: formData.city.trim(), country: formData.country.trim(), businessName: formData.businessName.trim(),
         whatsappNumber: formData.phoneNumber.trim(),
-        whatsappVerified: whatsappVerified === true,
-        storeName: skipStore ? '' : storeData.storeName?.trim() || '',
-        storeDescription: skipStore ? '' : storeData.storeDescription?.trim() || '',
-        socialLinks: skipStore ? undefined : (Object.keys(socialLinks).length > 0 ? socialLinks : undefined)
+        whatsappVerified: true,
+        storeName: storeData.storeName?.trim() || '',
+        storeDescription: storeData.storeDescription?.trim() || '',
+        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
       }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.token) localStorage.setItem('jwtToken', res.data.token);
       toast.success('Congratulations! You are now a seller!');
@@ -158,7 +196,6 @@ export default function BecomeSeller() {
 
         {formStep === 0 && (
           <>
-            {/* Benefits */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid md:grid-cols-3 gap-6 mb-8">
               {benefits.map((b, i) => (
                 <motion.div key={i} whileHover={{ y: -4 }} className="glass-card p-6 text-center">
@@ -169,7 +206,6 @@ export default function BecomeSeller() {
               ))}
             </motion.div>
 
-            {/* Features */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-8 mb-8">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
                 <Sparkles size={24} style={{ color: 'hsl(45, 93%, 47%)' }} /> What You'll Get
@@ -184,7 +220,6 @@ export default function BecomeSeller() {
               </div>
             </motion.div>
 
-            {/* CTA */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="rounded-2xl p-8 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 40px -8px hsl(220, 70%, 55%, 0.4)' }}>
               <h2 className="text-3xl font-bold mb-4">Ready to Start Selling?</h2>
@@ -214,55 +249,12 @@ export default function BecomeSeller() {
                 <PhoneField
                   name="phoneNumber"
                   value={formData.phoneNumber}
-                  onChange={(v) => { setFormData((prev) => ({ ...prev, phoneNumber: v || '' })); if (whatsappVerified) { setWhatsappVerified(false); setShowWhatsappOtp(false); setWhatsappOtp(''); } }}
+                  onChange={(v) => { setFormData((prev) => ({ ...prev, phoneNumber: v || '' })); if (whatsappVerified) { setWhatsappVerified(false); setWhatsappCodeSent(false); setWhatsappOtp(''); } }}
                   profileCountry={formData.country}
                   required
                   placeholder="WhatsApp number"
                 />
-                <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>We'll send you order notifications and important alerts on this number</p>
-
-                {/* WhatsApp Verification */}
-                <div className="mt-1 p-3 rounded-xl" style={{ background: 'hsla(150, 70%, 40%, 0.06)', border: '1px solid hsla(150, 70%, 40%, 0.15)' }}>
-                  {whatsappVerified ? (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'hsl(150, 70%, 40%)' }}>
-                        <CheckCircle2 size={16} /> WhatsApp Verified
-                      </div>
-                      <button type="button" onClick={() => { setWhatsappVerified(false); setShowWhatsappOtp(false); setWhatsappOtp(''); }}
-                        className="text-xs font-medium underline" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        Change Number
-                      </button>
-                    </div>
-                  ) : showWhatsappOtp ? (
-                    <div className="space-y-2">
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Enter the 6-digit code sent to your WhatsApp</p>
-                      <input type="text" value={whatsappOtp} onChange={(e) => setWhatsappOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="glass-input text-center text-lg font-bold tracking-widest" placeholder="000000" maxLength={6} />
-                      {whatsappError && <p className="text-xs" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => { setShowWhatsappOtp(false); setWhatsappOtp(''); setWhatsappError(''); }}
-                          className="flex-1 py-2 rounded-lg text-xs font-medium glass-inner" style={{ color: 'hsl(var(--foreground))' }}>Back</button>
-                        <button type="button" onClick={handleVerifyWhatsApp} disabled={whatsappVerifying || whatsappOtp.length !== 6}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-1"
-                          style={{ background: 'hsl(150, 70%, 40%)' }}>
-                          {whatsappVerifying ? 'Verifying...' : 'Verify'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <button type="button" onClick={handleSendWhatsAppOtp} disabled={whatsappSending || !formData.phoneNumber || !isValidPhone(formData.phoneNumber)}
-                        className="w-full py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
-                        style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))' }}>
-                        <MessageCircle size={14} /> {whatsappSending ? 'Sending...' : 'Send Verification Code'}
-                      </button>
-                      {whatsappError && <p className="text-xs mt-1.5" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
-                      <p className="text-[10px] mt-1.5 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        Optional — you can verify later in seller settings
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>We'll send order notifications on this number. You'll verify it in the final step.</p>
               </div>
               <div>
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -336,17 +328,137 @@ export default function BecomeSeller() {
               </div>
             </div>
             <div className="mt-8 space-y-3">
-              <motion.button onClick={() => handleBecomeSeller(false)} disabled={loading} whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
-                className="w-full py-3 px-6 rounded-xl font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+              <motion.button onClick={() => handleStep2Next(false)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
-                {loading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Activating...</> : <><Store size={20} /> Activate Seller Account</>}
+                Next: Verify WhatsApp <ArrowRight size={18} />
               </motion.button>
-              <button onClick={() => handleBecomeSeller(true)} disabled={loading}
+              <button onClick={() => handleStep2Next(true)}
                 className="w-full py-2.5 px-4 text-sm font-medium rounded-xl glass-button flex items-center justify-center gap-2"
                 style={{ color: 'hsl(var(--muted-foreground))' }}>
-                <SkipForward size={14} /> Skip store setup — I'll do it later
+                <SkipForward size={14} /> Skip store setup — verify WhatsApp
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {/* Step 3: WhatsApp Verification (MANDATORY) */}
+        {formStep === 3 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 max-w-md mx-auto">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))', color: '#fff' }}>
+                <MessageCircle size={28} />
+              </div>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: 'hsl(var(--foreground))' }}>Verify WhatsApp</h2>
+              <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Verify your WhatsApp number to activate your seller account
+              </p>
+            </div>
+
+            {/* Show number with edit */}
+            <div className="p-4 rounded-xl mb-4" style={{ background: 'hsla(220, 70%, 55%, 0.06)', border: '1px solid hsla(220, 70%, 55%, 0.15)' }}>
+              {editingNumber ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Edit WhatsApp Number</label>
+                  <PhoneField
+                    value={formData.phoneNumber}
+                    onChange={(v) => { setFormData(prev => ({ ...prev, phoneNumber: v || '' })); setWhatsappVerified(false); setWhatsappCodeSent(false); setWhatsappOtp(''); setOtpCountdown(0); }}
+                    profileCountry={formData.country}
+                    placeholder="WhatsApp number"
+                  />
+                  <button type="button" onClick={() => setEditingNumber(false)}
+                    className="w-full py-2 rounded-lg text-xs font-medium glass-inner" style={{ color: 'hsl(var(--foreground))' }}>
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>WhatsApp Number</p>
+                    <p className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formData.phoneNumber || '—'}</p>
+                  </div>
+                  <button type="button" onClick={() => { setEditingNumber(true); setWhatsappCodeSent(false); setWhatsappOtp(''); setOtpCountdown(0); setWhatsappError(''); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 glass-inner"
+                    style={{ color: 'hsl(var(--primary))' }}>
+                    <Edit3 size={12} /> Edit
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {whatsappVerified ? (
+              /* Verified state */
+              <div className="text-center">
+                <div className="p-4 rounded-xl mb-4" style={{ background: 'hsla(150, 70%, 40%, 0.08)', border: '1px solid hsla(150, 70%, 40%, 0.2)' }}>
+                  <CheckCircle2 size={32} className="mx-auto mb-2" style={{ color: 'hsl(150, 70%, 40%)' }} />
+                  <p className="text-sm font-bold" style={{ color: 'hsl(150, 70%, 40%)' }}>WhatsApp Verified!</p>
+                </div>
+                <motion.button onClick={handleBecomeSeller} disabled={loading} whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
+                  className="w-full py-3 px-6 rounded-xl font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
+                  {loading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Activating...</> : <><Store size={20} /> Activate Seller Account</>}
+                </motion.button>
+              </div>
+            ) : whatsappCodeSent ? (
+              /* OTP entry state */
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Enter the 6-digit code sent to your WhatsApp
+                  </label>
+                  <input type="text" value={whatsappOtp} onChange={(e) => { setWhatsappOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setWhatsappError(''); }}
+                    className="glass-input text-center text-2xl font-bold tracking-widest" placeholder="000000" maxLength={6} />
+                </div>
+
+                {/* Countdown timer */}
+                {otpCountdown > 0 && (
+                  <div className="text-center">
+                    <p className="text-xs" style={{ color: otpCountdown <= 30 ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>
+                      Code expires in <span className="font-bold">{formatCountdown(otpCountdown)}</span>
+                    </p>
+                  </div>
+                )}
+                {otpCountdown === 0 && whatsappCodeSent && (
+                  <div className="text-center">
+                    <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>Code expired. Please request a new one.</p>
+                  </div>
+                )}
+
+                {whatsappError && <p className="text-xs text-center" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
+
+                <button type="button" onClick={handleVerifyWhatsApp} disabled={whatsappVerifying || whatsappOtp.length !== 6 || otpCountdown === 0}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  style={{ background: 'hsl(150, 70%, 40%)' }}>
+                  {whatsappVerifying ? 'Verifying...' : <><CheckCircle2 size={16} /> Verify Code</>}
+                </button>
+
+                {/* Resend */}
+                <div className="text-center">
+                  {resendCooldown > 0 ? (
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Resend available in <span className="font-bold">{resendCooldown}s</span>
+                    </p>
+                  ) : (
+                    <button type="button" onClick={handleSendWhatsAppOtp} disabled={whatsappSending}
+                      className="text-xs font-medium underline disabled:opacity-50" style={{ color: 'hsl(var(--primary))' }}>
+                      {whatsappSending ? 'Sending...' : 'Resend Code'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Initial state — send code button */
+              <div className="space-y-3">
+                <button type="button" onClick={handleSendWhatsAppOtp}
+                  disabled={whatsappSending || !formData.phoneNumber || !isValidPhone(formData.phoneNumber)}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))' }}>
+                  <MessageCircle size={16} /> {whatsappSending ? 'Sending...' : 'Send Verification Code'}
+                </button>
+                {whatsappError && <p className="text-xs text-center" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
+              </div>
+            )}
           </motion.div>
         )}
       </div>

@@ -4,7 +4,7 @@ const User = require('../models/User');
 const sellerEvolutionClient = require('../services/whatsapp/sellerEvolutionClient');
 
 // Configuration constants
-const OTP_EXPIRY_MINUTES = 5;         // How long a code is valid for ENTRY
+const OTP_EXPIRY_MINUTES = 2;         // How long a code is valid for ENTRY
 const VERIFIED_EXPIRY_MINUTES = 10;   // How long a verified record is valid for CONSUMPTION during signup
 const MAX_ATTEMPTS = 5;               // Wrong OTP tries before the record is locked
 const RATE_LIMIT_PER_HOUR = 3;        // Max OTPs sent per phone number per hour

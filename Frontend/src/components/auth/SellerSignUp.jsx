@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2, Store, Phone, MapPin, ArrowLeft, ArrowRight, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, MessageCircle } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2, Store, Phone, MapPin, ArrowLeft, ArrowRight, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, MessageCircle, Edit3 } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SellerSignUp = () => {
-  const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: OTP
+  const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: WhatsApp verify, 5: email OTP
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [sellerForm, setSellerForm] = useState({ phoneNumber: '', businessName: '', address: '', city: '', country: '' });
   const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', sellerType: 'store', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
@@ -18,14 +18,43 @@ const SellerSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // WhatsApp OTP state
   const [whatsappOtp, setWhatsappOtp] = useState('');
   const [whatsappVerified, setWhatsappVerified] = useState(false);
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappVerifying, setWhatsappVerifying] = useState(false);
   const [whatsappError, setWhatsappError] = useState('');
-  const [showWhatsappOtp, setShowWhatsappOtp] = useState(false);
+  const [whatsappCodeSent, setWhatsappCodeSent] = useState(false);
+  const [editingNumber, setEditingNumber] = useState(false);
+  // Timers
+  const [otpCountdown, setOtpCountdown] = useState(0); // 2min countdown
+  const [resendCooldown, setResendCooldown] = useState(0); // 30s cooldown
+  const countdownRef = useRef(null);
+  const resendRef = useRef(null);
+
   const navigate = useNavigate();
   const { setCurrentUser } = useAuth();
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      countdownRef.current = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(countdownRef.current);
+    }
+  }, [otpCountdown]);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      resendRef.current = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(resendRef.current);
+    }
+  }, [resendCooldown]);
+
+  const formatCountdown = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -54,13 +83,16 @@ const SellerSignUp = () => {
     setWhatsappError('');
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}api/seller-whatsapp/send-otp`, { whatsappNumber: sellerForm.phoneNumber });
-      setShowWhatsappOtp(true);
+      setWhatsappCodeSent(true);
+      setOtpCountdown(120); // 2 minutes
+      setResendCooldown(30); // 30s before resend allowed
+      setEditingNumber(false);
     } catch (err) {
       const status = err.response?.status;
       if (status === 503) {
-        setWhatsappError('WhatsApp verification is temporarily unavailable. You can verify your number later in settings.');
+        setWhatsappError('WhatsApp verification is temporarily unavailable. Please try again later.');
       } else if (status === 429) {
-        setWhatsappError(err.response?.data?.msg || 'Too many attempts. Please try again in an hour, or verify later in settings.');
+        setWhatsappError(err.response?.data?.msg || 'Too many attempts. Please try again later.');
       } else {
         setWhatsappError(err.response?.data?.message || err.response?.data?.msg || 'Failed to send verification code');
       }
@@ -75,8 +107,9 @@ const SellerSignUp = () => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}api/seller-whatsapp/verify-otp`, { whatsappNumber: sellerForm.phoneNumber, otp: whatsappOtp });
       setWhatsappVerified(true);
-      setShowWhatsappOtp(false);
+      setWhatsappCodeSent(false);
       setWhatsappOtp('');
+      setOtpCountdown(0);
     } catch (err) {
       setWhatsappError(err.response?.data?.message || err.response?.data?.msg || 'Invalid code. Please try again.');
     } finally {
@@ -100,17 +133,24 @@ const SellerSignUp = () => {
     setError(''); setStep(3);
   };
 
-  const handleStep3Submit = async (skipStore = false) => {
+  const handleStep3Next = async (skipStore = false) => {
     if (!skipStore && storeForm.storeName && storeForm.storeName.trim().length < 3) {
       setError('Store name must be at least 3 characters'); return;
     }
+    setError('');
+    // Go to WhatsApp verification step
+    setStep(4);
+  };
+
+  const handleWhatsAppVerifiedNext = async () => {
+    // After WhatsApp verified, send email OTP and go to step 5
     setLoading(true); setError(''); setSuccess('');
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/seller/send-otp`, {
         ...form, ...sellerForm
       }, { timeout: 30000 });
       setSuccess(res.data.msg || 'OTP sent successfully!');
-      setStep(4);
+      setStep(5);
     } catch (error) {
       if (error.code === 'ECONNABORTED') setError('Request timed out. Please try again.');
       else setError(error.response?.data?.msg || 'Failed to send OTP. Please try again.');
@@ -132,7 +172,7 @@ const SellerSignUp = () => {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/seller/verify-otp`, {
         email: form.email, otp, ...sellerForm,
         whatsappNumber: sellerForm.phoneNumber,
-        whatsappVerified: whatsappVerified === true,
+        whatsappVerified: true,
         storeName: storeForm.storeName?.trim() || '',
         storeDescription: storeForm.storeDescription?.trim() || '',
         sellerType: storeForm.sellerType || 'store',
@@ -159,8 +199,8 @@ const SellerSignUp = () => {
   };
 
   const alertVariants = { initial: { opacity: 0, y: -8, scale: 0.95 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, y: -8, scale: 0.95 } };
-  const stepTitles = ['Create Account', 'Business Details', 'Store Setup', 'Verify Email'];
-  const stepDescriptions = ['Set up your seller credentials', 'Tell us about your business', 'Set up your store (optional)', 'Check your email for the code'];
+  const stepTitles = ['Create Account', 'Business Details', 'Store Setup', 'Verify WhatsApp', 'Verify Email'];
+  const stepDescriptions = ['Set up your seller credentials', 'Tell us about your business', 'Set up your store (optional)', 'Verify your WhatsApp number', 'Check your email for the code'];
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
@@ -176,14 +216,14 @@ const SellerSignUp = () => {
           </div>
 
           {/* Step indicators */}
-          <div className="flex items-center justify-center gap-1.5 mb-6">
-            {[1, 2, 3, 4].map(s => (
-              <div key={s} className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+          <div className="flex items-center justify-center gap-1 mb-6">
+            {[1, 2, 3, 4, 5].map(s => (
+              <div key={s} className="flex items-center gap-1">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
                   style={{ background: step >= s ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' : 'hsl(var(--muted))', color: step >= s ? 'white' : 'hsl(var(--muted-foreground))' }}>
                   {step > s ? '✓' : s}
                 </div>
-                {s < 4 && <div className="w-6 h-0.5 rounded" style={{ background: step > s ? 'hsl(var(--primary))' : 'hsl(var(--muted))' }} />}
+                {s < 5 && <div className="w-4 h-0.5 rounded" style={{ background: step > s ? 'hsl(var(--primary))' : 'hsl(var(--muted))' }} />}
               </div>
             ))}
           </div>
@@ -244,56 +284,13 @@ const SellerSignUp = () => {
                   <PhoneField
                     name="phoneNumber"
                     value={sellerForm.phoneNumber}
-                    onChange={(v) => { setSellerForm((prev) => ({ ...prev, phoneNumber: v || '' })); if (whatsappVerified) { setWhatsappVerified(false); setShowWhatsappOtp(false); setWhatsappOtp(''); } }}
+                    onChange={(v) => { setSellerForm((prev) => ({ ...prev, phoneNumber: v || '' })); if (whatsappVerified) { setWhatsappVerified(false); setWhatsappCodeSent(false); setWhatsappOtp(''); } }}
                     profileCountry={sellerForm.country}
                     disabled={loading}
                     required
                     placeholder="WhatsApp number"
                   />
-                  <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>We'll send you order notifications and important alerts on this number</p>
-
-                  {/* WhatsApp Verification */}
-                  <div className="mt-1 p-3 rounded-xl" style={{ background: 'hsla(150, 70%, 40%, 0.06)', border: '1px solid hsla(150, 70%, 40%, 0.15)' }}>
-                    {whatsappVerified ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'hsl(150, 70%, 40%)' }}>
-                          <CheckCircle2 size={16} /> WhatsApp Verified
-                        </div>
-                        <button type="button" onClick={() => { setWhatsappVerified(false); setShowWhatsappOtp(false); setWhatsappOtp(''); }}
-                          className="text-xs font-medium underline" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Change Number
-                        </button>
-                      </div>
-                    ) : showWhatsappOtp ? (
-                      <div className="space-y-2">
-                        <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Enter the 6-digit code sent to your WhatsApp</p>
-                        <input type="text" value={whatsappOtp} onChange={(e) => setWhatsappOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          className="glass-input text-center text-lg font-bold tracking-widest" placeholder="000000" maxLength={6} />
-                        {whatsappError && <p className="text-xs" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => { setShowWhatsappOtp(false); setWhatsappOtp(''); setWhatsappError(''); }}
-                            className="flex-1 py-2 rounded-lg text-xs font-medium glass-inner" style={{ color: 'hsl(var(--foreground))' }}>Back</button>
-                          <button type="button" onClick={handleVerifyWhatsApp} disabled={whatsappVerifying || whatsappOtp.length !== 6}
-                            className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-1"
-                            style={{ background: 'hsl(150, 70%, 40%)' }}>
-                            {whatsappVerifying ? 'Verifying...' : 'Verify'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <button type="button" onClick={handleSendWhatsAppOtp} disabled={whatsappSending || !sellerForm.phoneNumber || !isValidPhone(sellerForm.phoneNumber)}
-                          className="w-full py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
-                          style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))' }}>
-                          <MessageCircle size={14} /> {whatsappSending ? 'Sending...' : 'Send Verification Code'}
-                        </button>
-                        {whatsappError && <p className="text-xs mt-1.5" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
-                        <p className="text-[10px] mt-1.5 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Optional — you can verify later in seller settings
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>We'll send order notifications on this number. You'll verify it in a later step.</p>
                 </div>
                 <div>
                   <label className="flex text-sm font-medium mb-1 items-center gap-2"><Store size={14} style={{ color: 'hsl(var(--primary))' }} /> Business Name (Optional)</label>
@@ -340,16 +337,9 @@ const SellerSignUp = () => {
                       const active = storeForm.sellerType === opt.value;
                       const Icon = opt.Icon;
                       return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setStoreForm(prev => ({ ...prev, sellerType: opt.value }))}
+                        <button key={opt.value} type="button" onClick={() => setStoreForm(prev => ({ ...prev, sellerType: opt.value }))}
                           className="p-3 rounded-xl text-left transition-all border"
-                          style={{
-                            background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(260, 60%, 60%, 0.15))' : 'hsla(0,0%,100%,0.04)',
-                            borderColor: active ? 'hsl(220, 70%, 55%)' : 'hsla(0,0%,100%,0.12)',
-                          }}
-                        >
+                          style={{ background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(260, 60%, 60%, 0.15))' : 'hsla(0,0%,100%,0.04)', borderColor: active ? 'hsl(220, 70%, 55%)' : 'hsla(0,0%,100%,0.12)' }}>
                           <div className="flex items-center gap-2 font-bold text-sm" style={{ color: active ? 'hsl(220, 70%, 55%)' : 'hsl(var(--foreground))' }}>
                             <Icon size={14} /> {opt.label}
                           </div>
@@ -394,13 +384,13 @@ const SellerSignUp = () => {
                 <button type="button" onClick={() => { setStep(2); setError(''); }} className="flex-1 py-3 px-4 rounded-xl font-semibold glass-button flex items-center justify-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
                   <ArrowLeft size={18} /> Back
                 </button>
-                <button type="button" onClick={() => handleStep3Submit(false)} disabled={loading}
+                <button type="button" onClick={() => handleStep3Next(false)} disabled={loading}
                   className="flex-1 py-3 px-4 rounded-xl font-semibold glow-soft hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
-                  {loading ? 'Sending OTP...' : <><span>Continue</span> <ArrowRight size={18} /></>}
+                  {loading ? 'Loading...' : <><span>Next</span> <ArrowRight size={18} /></>}
                 </button>
               </div>
-              <button type="button" onClick={() => handleStep3Submit(true)} disabled={loading}
+              <button type="button" onClick={() => handleStep3Next(true)} disabled={loading}
                 className="w-full mt-3 py-2 px-4 text-sm font-medium transition flex items-center justify-center gap-2 rounded-xl glass-button"
                 style={{ color: 'hsl(var(--muted-foreground))' }}>
                 <SkipForward size={14} /> Skip — I'll set up my store later
@@ -408,8 +398,132 @@ const SellerSignUp = () => {
             </div>
           )}
 
-          {/* Step 4: OTP */}
+          {/* Step 4: WhatsApp Verification (MANDATORY) */}
           {step === 4 && (
+            <div>
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))', color: '#fff' }}>
+                  <MessageCircle size={28} />
+                </div>
+                <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Verify your WhatsApp number to complete registration
+                </p>
+              </div>
+
+              {/* Show number with edit */}
+              <div className="p-4 rounded-xl mb-4" style={{ background: 'hsla(220, 70%, 55%, 0.06)', border: '1px solid hsla(220, 70%, 55%, 0.15)' }}>
+                {editingNumber ? (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Edit WhatsApp Number</label>
+                    <PhoneField
+                      value={sellerForm.phoneNumber}
+                      onChange={(v) => { setSellerForm(prev => ({ ...prev, phoneNumber: v || '' })); setWhatsappVerified(false); setWhatsappCodeSent(false); setWhatsappOtp(''); setOtpCountdown(0); }}
+                      profileCountry={sellerForm.country}
+                      placeholder="WhatsApp number"
+                    />
+                    <button type="button" onClick={() => setEditingNumber(false)}
+                      className="w-full py-2 rounded-lg text-xs font-medium glass-inner" style={{ color: 'hsl(var(--foreground))' }}>
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>WhatsApp Number</p>
+                      <p className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>{sellerForm.phoneNumber || '—'}</p>
+                    </div>
+                    <button type="button" onClick={() => { setEditingNumber(true); setWhatsappCodeSent(false); setWhatsappOtp(''); setOtpCountdown(0); setWhatsappError(''); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 glass-inner"
+                      style={{ color: 'hsl(var(--primary))' }}>
+                      <Edit3 size={12} /> Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {whatsappVerified ? (
+                /* Verified state */
+                <div className="text-center">
+                  <div className="p-4 rounded-xl mb-4" style={{ background: 'hsla(150, 70%, 40%, 0.08)', border: '1px solid hsla(150, 70%, 40%, 0.2)' }}>
+                    <CheckCircle2 size={32} className="mx-auto mb-2" style={{ color: 'hsl(150, 70%, 40%)' }} />
+                    <p className="text-sm font-bold" style={{ color: 'hsl(150, 70%, 40%)' }}>WhatsApp Verified!</p>
+                  </div>
+                  <button type="button" onClick={handleWhatsAppVerifiedNext} disabled={loading}
+                    className="w-full py-3 px-4 rounded-xl font-semibold glow-soft hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+                    {loading ? 'Sending Email OTP...' : <><span>Continue</span> <ArrowRight size={18} /></>}
+                  </button>
+                </div>
+              ) : whatsappCodeSent ? (
+                /* OTP entry state */
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Enter the 6-digit code sent to your WhatsApp
+                    </label>
+                    <input type="text" value={whatsappOtp} onChange={(e) => { setWhatsappOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setWhatsappError(''); }}
+                      className="glass-input text-center text-2xl font-bold tracking-widest" placeholder="000000" maxLength={6} />
+                  </div>
+
+                  {/* Countdown timer */}
+                  {otpCountdown > 0 && (
+                    <div className="text-center">
+                      <p className="text-xs" style={{ color: otpCountdown <= 30 ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>
+                        Code expires in <span className="font-bold">{formatCountdown(otpCountdown)}</span>
+                      </p>
+                    </div>
+                  )}
+                  {otpCountdown === 0 && whatsappCodeSent && (
+                    <div className="text-center">
+                      <p className="text-xs font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>Code expired. Please request a new one.</p>
+                    </div>
+                  )}
+
+                  {whatsappError && <p className="text-xs text-center" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
+
+                  <button type="button" onClick={handleVerifyWhatsApp} disabled={whatsappVerifying || whatsappOtp.length !== 6 || otpCountdown === 0}
+                    className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    style={{ background: 'hsl(150, 70%, 40%)' }}>
+                    {whatsappVerifying ? 'Verifying...' : <><CheckCircle2 size={16} /> Verify Code</>}
+                  </button>
+
+                  {/* Resend */}
+                  <div className="text-center">
+                    {resendCooldown > 0 ? (
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Resend available in <span className="font-bold">{resendCooldown}s</span>
+                      </p>
+                    ) : (
+                      <button type="button" onClick={handleSendWhatsAppOtp} disabled={whatsappSending}
+                        className="text-xs font-medium underline disabled:opacity-50" style={{ color: 'hsl(var(--primary))' }}>
+                        {whatsappSending ? 'Sending...' : 'Resend Code'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Initial state — send code button */
+                <div className="space-y-3">
+                  <button type="button" onClick={handleSendWhatsAppOtp}
+                    disabled={whatsappSending || !sellerForm.phoneNumber || !isValidPhone(sellerForm.phoneNumber)}
+                    className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 40%), hsl(170, 70%, 38%))' }}>
+                    <MessageCircle size={16} /> {whatsappSending ? 'Sending...' : 'Send Verification Code'}
+                  </button>
+                  {whatsappError && <p className="text-xs text-center" style={{ color: 'hsl(0, 72%, 55%)' }}>{whatsappError}</p>}
+                </div>
+              )}
+
+              <button type="button" onClick={() => { setStep(3); setError(''); setWhatsappError(''); }}
+                className="w-full mt-4 py-2 px-4 font-medium transition flex items-center justify-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                <ArrowLeft size={16} /> Back
+              </button>
+            </div>
+          )}
+
+          {/* Step 5: Email OTP */}
+          {step === 5 && (
             <form onSubmit={handleVerifyOTP}>
               <div className="space-y-4">
                 <div className="text-center mb-6">
@@ -431,7 +545,7 @@ const SellerSignUp = () => {
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
                 {loading ? 'Creating Account...' : 'Create Seller Account'}
               </button>
-              <button type="button" onClick={() => { setStep(3); setOtp(''); setError(''); setSuccess(''); }}
+              <button type="button" onClick={() => { setStep(4); setOtp(''); setError(''); setSuccess(''); }}
                 className="w-full mt-4 py-2 px-4 font-medium transition" style={{ color: 'hsl(var(--muted-foreground))' }}>← Back</button>
             </form>
           )}
