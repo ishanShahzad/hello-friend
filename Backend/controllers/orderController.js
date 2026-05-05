@@ -213,7 +213,8 @@ exports.placeOrder = async (req, res) => {
         if (order.instructions && order.instructions !== '') newOrder.instructions = order.instructions
 
         // Always attach a confirmation token so WhatsApp/email auto-verify can use it.
-        // Email-confirm flow only triggers for COD; WhatsApp flow runs for both COD & paid orders.
+        // Email-confirm flow only triggers for COD; WhatsApp poll only for COD.
+        // Online-paid orders are auto-confirmed in the Stripe webhook.
         const isCOD = newOrder.paymentMethod === 'cash_on_delivery';
         {
             const { token, tokenExpiresAt } = generateConfirmationToken();
@@ -263,8 +264,11 @@ exports.placeOrder = async (req, res) => {
             console.error('Failed to send seller notification email:', emailErr.message);
         }
 
-        // 🟢 Enqueue WhatsApp confirmation (gated by subscription bonus + admin link)
-        await maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
+        // 🟢 Enqueue WhatsApp confirmation poll ONLY for COD orders.
+        // Online-paid orders are auto-confirmed — no need to ask "do you confirm?"
+        if (isCOD) {
+            await maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
+        }
 
         // Record coupon usage
         if (userId && order.appliedCoupons && order.appliedCoupons.length > 0) {

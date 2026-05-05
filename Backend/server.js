@@ -65,8 +65,16 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       order.paidAt = Date.now();
       order.paymentResult.paymentIntentId = paymentIntentId;
       order.paymentResult.emailAddress = email;
+
+      // Auto-confirm online-paid orders — buyer already committed by paying
+      order.orderStatus = 'confirmed';
+      if (order.confirmation) {
+        order.confirmation.confirmedAt = new Date();
+        order.confirmation.confirmedVia = 'stripe_payment';
+      }
+
       await order.save();
-      console.log("✅ Order updated:", order.orderId);
+      console.log("✅ Order updated & auto-confirmed:", order.orderId);
 
       try {
         const user = await User.findById(order.user);
