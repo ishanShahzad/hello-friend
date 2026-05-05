@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,6 +17,12 @@ export default function BecomeSeller() {
   const [formStep, setFormStep] = useState(0);
   const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', country: '', businessName: '' });
   const [storeData, setStoreData] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
+  // Store name availability state
+  const [storeSlugPreview, setStoreSlugPreview] = useState('');
+  const [storeNameAvailable, setStoreNameAvailable] = useState(null); // null=unchecked, true=available, false=taken
+  const [storeNameChecking, setStoreNameChecking] = useState(false);
+  const [storeNameError, setStoreNameError] = useState('');
+  const storeCheckRef = useRef(null);
   // Guest signup state
   const [signupData, setSignupData] = useState({ username: '', email: '', password: '' });
   const [signupLoading, setSignupLoading] = useState(false);
@@ -51,6 +57,54 @@ export default function BecomeSeller() {
   const handleInputChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
   const handleStoreChange = (e) => { const { name, value } = e.target; setStoreData(prev => ({ ...prev, [name]: value })); };
   const handleSignupChange = (e) => { const { name, value } = e.target; setSignupData(prev => ({ ...prev, [name]: value })); };
+
+  // Generate slug from store name
+  const generateSlug = (name) => {
+    return name.toLowerCase().trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
+  // Debounced store name availability check
+  const checkStoreNameAvailability = useCallback((slug) => {
+    if (storeCheckRef.current) clearTimeout(storeCheckRef.current);
+    if (!slug || slug.length < 3) {
+      setStoreNameAvailable(null);
+      setStoreNameError(slug && slug.length < 3 ? 'Store name must be at least 3 characters' : '');
+      setStoreNameChecking(false);
+      return;
+    }
+    setStoreNameChecking(true);
+    setStoreNameError('');
+    storeCheckRef.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('jwtToken');
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/check-subdomain/${slug}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setStoreNameAvailable(res.data.available);
+        if (!res.data.available) {
+          setStoreNameError(res.data.msg || 'This name is already taken');
+        }
+      } catch (err) {
+        setStoreNameAvailable(null);
+        setStoreNameError('Could not check availability');
+      } finally {
+        setStoreNameChecking(false);
+      }
+    }, 500);
+  }, []);
+
+  // Handle store name change with slug preview and availability check
+  const handleStoreNameChange = (e) => {
+    const { value } = e.target;
+    setStoreData(prev => ({ ...prev, storeName: value }));
+    const slug = generateSlug(value);
+    setStoreSlugPreview(slug);
+    setStoreNameAvailable(null);
+    checkStoreNameAvailability(slug);
+  };
 
   // Email OTP countdown effects
   useEffect(() => {
@@ -218,9 +272,18 @@ export default function BecomeSeller() {
     setFormStep(2);
   };
 
-  const handleStep2Next = (skipStore = false) => {
-    if (!skipStore && storeData.storeName && storeData.storeName.trim().length < 3) {
-      toast.error('Store name must be at least 3 characters'); return;
+  const handleStep2Next = () => {
+    if (!storeData.storeName || storeData.storeName.trim().length < 3) {
+      toast.error('Store name is required (at least 3 characters)'); return;
+    }
+    if (!storeData.storeDescription || storeData.storeDescription.trim().length < 10) {
+      toast.error('Store description is required (at least 10 characters)'); return;
+    }
+    if (storeNameAvailable === false) {
+      toast.error('This store name is already taken. Please choose a different name.'); return;
+    }
+    if (storeNameChecking) {
+      toast.error('Please wait — checking store name availability'); return;
     }
     // Go to WhatsApp verification step
     setFormStep(3);
@@ -551,28 +614,76 @@ export default function BecomeSeller() {
           </motion.div>
         )}
 
-        {/* Step 2: Store Setup */}
+        {/* Step 2: Store Setup (Required) */}
         {formStep === 2 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8">
             <h2 className="text-3xl font-bold mb-2 text-center" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Set Up Your Store</h2>
-            <p className="text-center mb-6 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Create your store now or skip and set it up later</p>
+            <p className="text-center mb-6 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Choose your store name and tell customers about your brand</p>
             <div className="space-y-5">
+              {/* Store Name - Required */}
               <div>
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  <Store size={14} style={{ color: 'hsl(var(--primary))' }} /> Store Name <span className="normal-case font-normal text-xs">(recommended)</span>
+                  <Store size={14} style={{ color: 'hsl(var(--primary))' }} /> Store / Brand Name <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
                 </label>
-                <input type="text" name="storeName" value={storeData.storeName} onChange={handleStoreChange} placeholder="My Awesome Store" className="glass-input" maxLength={50} />
+                <input type="text" name="storeName" value={storeData.storeName} onChange={handleStoreNameChange}
+                  placeholder="Your store or brand name" className="glass-input" maxLength={50} required />
+
+                {/* Live Subdomain Preview */}
+                {storeSlugPreview && (
+                  <div className="mt-2.5 p-3 rounded-lg" style={{ background: 'hsla(220, 70%, 55%, 0.04)', border: '1px solid hsla(220, 70%, 55%, 0.12)' }}>
+                    <p className="text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Your store URL will be:</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold" style={{ color: 'hsl(var(--primary))' }}>{storeSlugPreview}</span>
+                      <span className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>.rozare.com</span>
+                      {storeNameChecking && (
+                        <Loader2 size={14} className="animate-spin ml-2" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                      )}
+                      {!storeNameChecking && storeNameAvailable === true && (
+                        <CheckCircle size={14} className="ml-2" style={{ color: 'hsl(150, 60%, 40%)' }} />
+                      )}
+                      {!storeNameChecking && storeNameAvailable === false && (
+                        <AlertCircle size={14} className="ml-2" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                      )}
+                    </div>
+                    {/* Availability message */}
+                    {!storeNameChecking && storeNameAvailable === true && (
+                      <p className="text-[11px] mt-1.5 font-medium" style={{ color: 'hsl(150, 60%, 40%)' }}>Available!</p>
+                    )}
+                    {!storeNameChecking && storeNameAvailable === false && (
+                      <p className="text-[11px] mt-1.5 font-medium" style={{ color: 'hsl(0, 72%, 55%)' }}>{storeNameError}</p>
+                    )}
+                    {storeNameChecking && (
+                      <p className="text-[11px] mt-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Checking availability...</p>
+                    )}
+                  </div>
+                )}
+                {storeNameError && !storeSlugPreview && (
+                  <p className="text-[11px] mt-1.5" style={{ color: 'hsl(0, 72%, 55%)' }}>{storeNameError}</p>
+                )}
               </div>
+
+              {/* Store Description - Required */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Store Description <span className="normal-case font-normal">(optional)</span></label>
-                <textarea name="storeDescription" value={storeData.storeDescription} onChange={handleStoreChange} placeholder="Tell customers about your store..." className="glass-input" maxLength={500} rows={2} style={{ resize: 'none' }} />
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Store Description <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span>
+                </label>
+                <textarea name="storeDescription" value={storeData.storeDescription} onChange={handleStoreChange}
+                  placeholder="Tell customers what you sell and what makes your store special..." className="glass-input"
+                  maxLength={500} rows={3} style={{ resize: 'none' }} required />
+                <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  {storeData.storeDescription.length}/500 characters (minimum 10)
+                </p>
               </div>
+
+              {/* Website - Optional */}
               <div>
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <Globe size={14} style={{ color: 'hsl(var(--primary))' }} /> Website <span className="normal-case font-normal">(optional)</span>
                 </label>
                 <input type="url" name="website" value={storeData.website} onChange={handleStoreChange} placeholder="https://yourwebsite.com" className="glass-input" />
               </div>
+
+              {/* Social Links - Optional */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}><Instagram size={13} /> Instagram</label>
@@ -592,17 +703,13 @@ export default function BecomeSeller() {
                 </div>
               </div>
             </div>
-            <div className="mt-8 space-y-3">
-              <motion.button onClick={() => handleStep2Next(false)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2"
+            <div className="mt-8">
+              <motion.button onClick={() => handleStep2Next()} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                disabled={storeNameChecking || storeNameAvailable === false}
+                className="w-full py-3 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}>
                 Next: Verify WhatsApp <ArrowRight size={18} />
               </motion.button>
-              <button onClick={() => handleStep2Next(true)}
-                className="w-full py-2.5 px-4 text-sm font-medium rounded-xl glass-button flex items-center justify-center gap-2"
-                style={{ color: 'hsl(var(--muted-foreground))' }}>
-                <SkipForward size={14} /> Skip store setup — verify WhatsApp
-              </button>
             </div>
           </motion.div>
         )}

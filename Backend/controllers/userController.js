@@ -176,6 +176,20 @@ exports.becomeSeller = async (req, res) => {
         if (!country || country.trim().length < 2) {
             return res.status(400).json({ message: 'Please provide your country' })
         }
+        if (!storeName || storeName.trim().length < 3) {
+            return res.status(400).json({ message: 'Store name is required (at least 3 characters)' })
+        }
+        if (!storeDescription || storeDescription.trim().length < 10) {
+            return res.status(400).json({ message: 'Store description is required (at least 10 characters)' })
+        }
+
+        // Check store name uniqueness before proceeding
+        const StoreModel = require('../models/Store')
+        const desiredSlug = storeName.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+        const slugTaken = await StoreModel.findOne({ storeSlug: desiredSlug })
+        if (slugTaken) {
+            return res.status(409).json({ message: 'This store name is already taken. Please choose a different name.' })
+        }
 
         // Verify WhatsApp against server-side OTP record (if a number was provided).
         // We DO NOT trust a client-sent `whatsappVerified` flag — the client could
@@ -200,37 +214,31 @@ exports.becomeSeller = async (req, res) => {
         
         await user.save()
 
-        // Auto-create store if storeName is provided
-        if (storeName && storeName.trim().length >= 3) {
-            try {
-                const Store = require('../models/Store')
-                const { initializeSubscription } = require('./subscriptionController')
-                
-                let slug = storeName.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
-                let existingStore = await Store.findOne({ storeSlug: slug })
-                let counter = 1
-                while (existingStore) {
-                    slug = `${slug}-${counter}`
-                    existingStore = await Store.findOne({ storeSlug: slug })
-                    counter++
+        // Auto-create store (storeName is now required)
+        try {
+            const Store = require('../models/Store')
+            const { initializeSubscription } = require('./subscriptionController')
+            
+            // Use the slug we already validated above
+            const newStore = new Store({
+                seller: user._id,
+                storeName: storeName.trim(),
+                storeSlug: desiredSlug,
+                description: storeDescription.trim(),
+                socialLinks: socialLinks || {},
+                address: {
+                    street: address?.trim() || '',
+                    city: city?.trim() || '',
+                    country: country?.trim() || ''
                 }
-
-                const newStore = new Store({
-                    seller: user._id,
-                    storeName: storeName.trim(),
-                    storeSlug: slug,
-                    description: storeDescription?.trim() || '',
-                    socialLinks: socialLinks || {},
-                    address: {
-                        street: address?.trim() || '',
-                        city: city?.trim() || '',
-                        country: country?.trim() || ''
-                    }
-                })
-                await newStore.save()
-                await initializeSubscription(user._id)
-            } catch (storeErr) {
-                console.error('Auto-create store error:', storeErr.message)
+            })
+            await newStore.save()
+            await initializeSubscription(user._id)
+        } catch (storeErr) {
+            console.error('Auto-create store error:', storeErr.message)
+            // If store creation fails due to duplicate (race condition), return error
+            if (storeErr.code === 11000) {
+                return res.status(409).json({ message: 'This store name is already taken. Please choose a different name.' })
             }
         }
 
