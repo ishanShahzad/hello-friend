@@ -51,18 +51,20 @@ export default function ProductFormScreen({ navigation, route }) {
   const [touched, setTouched] = useState({});
   const [isFeatured, setIsFeatured] = useState(!!product?.isFeatured);
   const [canFeature, setCanFeature] = useState(true);
+  const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 3, allowed: true, plan: 'free_trial' });
 
-  // Fetch seller subscription to determine featured-product entitlement.
-  // Trial sellers and those with active bonus features may mark products as Featured.
+  // Fetch featured product stats (entitlement + count/limit).
   useEffect(() => {
-    if (isAdmin) { setCanFeature(true); return; }
+    if (isAdmin) { setCanFeature(true); setFeaturedStats({ current: 0, max: 999, allowed: true, plan: 'admin' }); return; }
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get('/api/subscription/status');
-        const sub = res.data?.subscription;
-        const entitled = sub?.status === 'trial' || sub?.bonusFeaturesActive === true;
-        if (!cancelled) setCanFeature(!!entitled);
+        const res = await api.get('/api/products/featured-stats');
+        const stats = res.data;
+        if (!cancelled) {
+          setFeaturedStats(stats);
+          setCanFeature(stats.allowed || stats.current < stats.max);
+        }
       } catch { if (!cancelled) setCanFeature(false); }
     })();
     return () => { cancelled = true; };
@@ -250,12 +252,12 @@ export default function ProductFormScreen({ navigation, route }) {
                 </View>
                 <Text style={{ ...typography.caption, color: palette.colors.textSecondary, marginTop: spacing.xs }}>
                   {canFeature
-                    ? 'Adds a Featured badge on the homepage and store.'
-                    : 'Available with the Rozare Starter bonus features. Subscribe to unlock.'}
+                    ? `Adds a Featured badge. ${featuredStats.current}/${featuredStats.max} slots used.`
+                    : `Featured limit reached (${featuredStats.max}). Upgrade for more slots.`}
                 </Text>
               </View>
               <TouchableOpacity
-                disabled={!canFeature}
+                disabled={!canFeature || (!isFeatured && featuredStats.current >= featuredStats.max)}
                 onPress={() => setIsFeatured(v => !v)}
                 activeOpacity={0.8}
                 style={{

@@ -1,6 +1,6 @@
 
 const express = require('express')
-const { getProducts, getSingleProduct, getFilters, addReview, deleteProduct, editProduct, addProduct, bulkDiscount, bulkPriceUpdate, removeDiscount, getSellerProducts } = require('../controllers/productController')
+const { getProducts, getSingleProduct, getFilters, addReview, deleteProduct, editProduct, addProduct, bulkDiscount, bulkPriceUpdate, removeDiscount, getSellerProducts, getFeaturedStats } = require('../controllers/productController')
 const verifyToken = require('../middleware/authMiddleware')
 const { addToWishlist, getWishlist, deleteFromWishlist } = require('../controllers/wishlistController')
 const router = express.Router()
@@ -36,5 +36,6 @@ router.put('/edit/:id', (req, res, next) => {
 }, verifyToken, editProduct)
 router.get('/get-products', getProducts)
 router.get('/get-seller-products', verifyToken, getSellerProducts)
+router.get('/featured-stats', verifyToken, getFeaturedStats)
 
 module.exports = router

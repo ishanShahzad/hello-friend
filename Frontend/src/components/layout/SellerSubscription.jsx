@@ -181,7 +181,7 @@ const SellerSubscription = () => {
     const bonusFeatures = [
         'Advanced analytics & growth insights',
         'Smart tag AI generator for products',
-        'Featured product highlighting on the homepage',
+        'Featured product highlighting (6 products)',
         'Priority support & early access to new features',
         'Coupon & discount management system',
         'Bulk discount & promotional tools',
@@ -647,6 +647,7 @@ const SellerSubscription = () => {
                                 { icon: <Bot size={13} />, text: '100 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                                { icon: <Sparkles size={13} />, text: '6 featured products with badge' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
@@ -736,6 +737,7 @@ const SellerSubscription = () => {
                                 { icon: <Bot size={13} />, text: '100 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                                { icon: <Sparkles size={13} />, text: '12 featured products with badge' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>

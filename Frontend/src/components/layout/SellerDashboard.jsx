@@ -64,6 +64,7 @@ const SellerDashboard = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [loading, setLoading] = useState(true);
     const [uploadingImages, setUploadingImages] = useState(false);
+    const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 3, allowed: true, plan: 'free_trial' });
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
@@ -90,6 +91,18 @@ const SellerDashboard = () => {
     };
 
     useEffect(() => { fetchFilters(); }, []);
+
+    const fetchFeaturedStats = async () => {
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/featured-stats`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setFeaturedStats(res.data);
+        } catch { /* keep defaults */ }
+    };
+
+    useEffect(() => { fetchFeaturedStats(); }, []);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -159,7 +172,7 @@ const SellerDashboard = () => {
                 const res = await axios.put(`${import.meta.env.VITE_API_URL}api/products/edit/${editingProduct._id}`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg);
-                fetchProducts(); fetchFilters();
+                fetchProducts(); fetchFilters(); fetchFeaturedStats();
             } catch (error) { toast.error(error.response?.data?.msg || 'Failed to update product'); }
         } else {
             try {
@@ -167,7 +180,7 @@ const SellerDashboard = () => {
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/add`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg);
-                fetchProducts(); fetchFilters();
+                fetchProducts(); fetchFilters(); fetchFeaturedStats();
             } catch (error) { toast.error(error.response?.data?.msg || 'Failed to add product'); }
         }
         setUploadingImages(false);
@@ -206,8 +219,9 @@ const SellerDashboard = () => {
         handleEditProduct, handleCreateProduct, handleDeleteProduct, loading, fetchProducts,
         isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages,
         closeForm: () => { setIsFormOpen(false); setEditingProduct(null); },
-        canFeature: subscriptionData?.status === 'trial' || subscriptionData?.bonusFeaturesActive === true
-    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading, isFormOpen, editingProduct, uploadingImages, subscriptionData]);
+        canFeature: subscriptionData?.status === 'trial' || subscriptionData?.bonusFeaturesActive === true || ['active', 'free_period'].includes(subscriptionData?.status),
+        featuredStats, fetchFeaturedStats,
+    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading, isFormOpen, editingProduct, uploadingImages, subscriptionData, featuredStats]);
 
     const location = useLocation();
 
@@ -851,7 +865,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 };
 
 // ============================
-const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true }) => {
+const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, featuredStats = { current: 0, max: 3, allowed: true } }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
@@ -1168,9 +1182,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         )}
                     </div>
 
-                    {/* Featured Checkbox — gated behind Rozare Starter bonus features */}
+                    {/* Featured Checkbox — gated by plan tier featured limits */}
                     <div className="flex items-start gap-3 glass-inner rounded-xl p-4" style={!canFeature ? { opacity: 0.85 } : undefined}>
-                        <input id="featured" type="checkbox" disabled={uploadingImages || !canFeature}
+                        <input id="featured" type="checkbox" disabled={uploadingImages || !canFeature || (!product.isFeatured && !featuredStats.allowed)}
                             checked={!!product.isFeatured && canFeature}
                             onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
                             className="h-4 w-4 rounded mt-0.5" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
@@ -1183,12 +1197,20 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                     style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
                                     <Crown size={10} /> PREMIUM
                                 </span>
+                                {canFeature && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                        style={{ background: featuredStats.current >= featuredStats.max ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', color: featuredStats.current >= featuredStats.max ? 'hsl(0,72%,55%)' : 'hsl(150,60%,45%)' }}>
+                                        {featuredStats.current}/{featuredStats.max} used
+                                    </span>
+                                )}
                             </div>
                             <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 {canFeature
-                                    ? 'Adds a Featured badge to your product across the homepage and store.'
+                                    ? (!featuredStats.allowed && !product.isFeatured
+                                        ? `You've reached your limit of ${featuredStats.max} featured products. Upgrade your plan to feature more.`
+                                        : `Adds a Featured badge to your product. Your plan allows up to ${featuredStats.max} featured products.`)
                                     : (
-                                        <>Available with the Rozare Starter bonus features. <Link to="/seller-dashboard/subscription" className="underline font-semibold" style={{ color: 'hsl(270, 60%, 55%)' }}>Upgrade now →</Link></>
+                                        <>Available with an active subscription. <Link to="/seller-dashboard/subscription" className="underline font-semibold" style={{ color: 'hsl(270, 60%, 55%)' }}>Upgrade now →</Link></>
                                     )}
                             </p>
                         </div>

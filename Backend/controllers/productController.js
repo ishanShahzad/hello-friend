@@ -167,23 +167,88 @@ exports.deleteProduct = async (req, res) => {
 
 }
 
-// Helper: check if a seller is entitled to the "Featured product" premium bonus.
-// Allowed during trial OR when bonusFeaturesActive is true and not expired.
-async function sellerCanFeatureProduct(userId) {
+// ── Featured product limits by plan tier ──
+const FEATURED_LIMITS = {
+    free_trial: 3,
+    starter: 6,
+    elite: 12,
+};
+
+/**
+ * Check if a seller can feature a product. Returns:
+ * { allowed: boolean, current: number, max: number, plan: string, reason?: string }
+ */
+async function sellerCanFeatureProduct(userId, excludeProductId = null) {
     try {
         const SellerSubscription = require('../models/SellerSubscription');
         const sub = await SellerSubscription.findOne({ seller: userId });
-        if (!sub) return true; // No record yet — treat as trial-grace
-        if (sub.status === 'trial') return true;
-        if (sub.bonusFeaturesActive && (!sub.bonusExpiryDate || new Date() < sub.bonusExpiryDate)) {
-            return true;
+
+        // Determine plan tier and entitlement
+        let plan = 'free_trial';
+        let entitled = false;
+
+        if (!sub) {
+            // No subscription record — trial-grace
+            plan = 'free_trial';
+            entitled = true;
+        } else if (sub.status === 'trial') {
+            plan = 'free_trial';
+            entitled = true;
+        } else if (sub.plan === 'elite' && ['active', 'free_period'].includes(sub.status)) {
+            plan = 'elite';
+            entitled = true;
+        } else if (['active', 'free_period'].includes(sub.status)) {
+            plan = sub.plan || 'starter';
+            // Starter: needs bonus features active OR just allow (featured is a core feature per tier now)
+            entitled = true;
+        } else if (sub.bonusFeaturesActive && (!sub.bonusExpiryDate || new Date() < sub.bonusExpiryDate)) {
+            plan = sub.plan || 'starter';
+            entitled = true;
+        } else {
+            plan = sub.plan || 'free_trial';
+            entitled = false;
         }
-        return false;
+
+        if (!entitled) {
+            return { allowed: false, current: 0, max: 0, plan, reason: 'not_entitled' };
+        }
+
+        const max = FEATURED_LIMITS[plan] || FEATURED_LIMITS.free_trial;
+
+        // Count current featured products for this seller
+        const query = { seller: userId, isFeatured: true };
+        if (excludeProductId) {
+            query._id = { $ne: excludeProductId };
+        }
+        const current = await Product.countDocuments(query);
+
+        if (current >= max) {
+            return { allowed: false, current, max, plan, reason: 'limit_reached' };
+        }
+
+        return { allowed: true, current, max, plan };
     } catch (e) {
         console.error('sellerCanFeatureProduct error:', e);
-        return false;
+        return { allowed: false, current: 0, max: 0, plan: 'free_trial', reason: 'error' };
     }
 }
+
+/**
+ * GET /api/products/featured-stats — returns the seller's featured product count and limit.
+ */
+exports.getFeaturedStats = async (req, res) => {
+    try {
+        const { role, id: userId } = req.user;
+        if (role !== 'seller' && role !== 'admin') {
+            return res.status(403).json({ msg: 'Unauthorized' });
+        }
+        const stats = await sellerCanFeatureProduct(userId);
+        res.json({ current: stats.current, max: stats.max, plan: stats.plan, allowed: stats.allowed });
+    } catch (err) {
+        console.error('getFeaturedStats:', err);
+        res.status(500).json({ msg: 'Failed to fetch featured stats' });
+    }
+};
 
 exports.editProduct = async (req, res) => {
     try {
@@ -207,10 +272,14 @@ exports.editProduct = async (req, res) => {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
-        // Gate: only entitled sellers (trial or active bonus) can mark a product as Featured.
+        // Gate: enforce featured product limits based on subscription tier.
         if (role === 'seller' && product && product.isFeatured === true) {
-            const entitled = await sellerCanFeatureProduct(userId);
-            if (!entitled) {
+            // Exclude this product from the count (since we're editing it)
+            const featCheck = await sellerCanFeatureProduct(userId, id);
+            if (!featCheck.allowed) {
+                if (featCheck.reason === 'limit_reached') {
+                    return res.status(403).json({ msg: `You've reached your featured product limit (${featCheck.max}). Upgrade your plan to feature more products.`, featuredStats: featCheck });
+                }
                 product.isFeatured = false;
             }
         }
@@ -257,11 +326,14 @@ exports.addProduct = async (req, res) => {
             }
         }
         
-        // Gate: only entitled sellers (trial or active bonus) can publish a Featured product.
+        // Gate: enforce featured product limits based on subscription tier.
         let safeProduct = product;
         if (role === 'seller' && product?.isFeatured === true) {
-            const entitled = await sellerCanFeatureProduct(userId);
-            if (!entitled) {
+            const featCheck = await sellerCanFeatureProduct(userId);
+            if (!featCheck.allowed) {
+                if (featCheck.reason === 'limit_reached') {
+                    return res.status(403).json({ msg: `You've reached your featured product limit (${featCheck.max}). Upgrade your plan to feature more products.`, featuredStats: featCheck });
+                }
                 safeProduct = { ...product, isFeatured: false };
             }
         }

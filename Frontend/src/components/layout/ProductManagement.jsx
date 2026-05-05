@@ -10,7 +10,7 @@ import { ProductForm } from "./SellerDashboard";
 import axios from "axios";
 
 const ProductManagement = () => {
-    const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature } = useOutletContext();
+    const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats } = useOutletContext();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
@@ -74,6 +74,7 @@ const ProductManagement = () => {
                     onClose={closeForm}
                     uploadingImages={uploadingImages}
                     canFeature={canFeature}
+                    featuredStats={featuredStats}
                 />
             )}
 
