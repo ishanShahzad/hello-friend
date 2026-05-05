@@ -58,7 +58,7 @@ const Timeline = ({ data }) => {
                 const sentH = (d.sent / max) * 100;
                 const confirmedH = (d.confirmed / max) * 100;
                 const declinedH = (d.declined / max) * 100;
-                const dayLabel = new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' });
+                const dayLabel = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' });
                 return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                         <div className="w-full flex-1 flex items-end gap-0.5">
@@ -82,7 +82,7 @@ const SellerTimeline = ({ data }) => {
                 const sentH = (d.sent / max) * 100;
                 const failedH = (d.failed / max) * 100;
                 const skippedH = (d.skipped / max) * 100;
-                const dayLabel = new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' });
+                const dayLabel = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' });
                 return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                         <div className="w-full flex-1 flex items-end gap-0.5">
@@ -158,8 +158,11 @@ const WhatsAppVerificationPanel = () => {
 
     useEffect(() => {
         fetchStatus();
+    }, [fetchStatus]);
+
+    useEffect(() => {
         fetchQueue(queueFilter, queuePage);
-    }, [fetchStatus, fetchQueue, queueFilter, queuePage]);
+    }, [fetchQueue, queueFilter, queuePage]);
 
     // Refetch queue when filter/page changes
     const handleFilterChange = (f) => { setQueueFilter(f); setQueuePage(1); };
@@ -581,11 +584,11 @@ const WhatsAppVerificationPanel = () => {
                         </div>
 
                         {/* Pagination */}
-                        {queueMeta.totalPages > 1 && (
-                            <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
-                                <span className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Page {queueMeta.page} of {queueMeta.totalPages} ({queueMeta.total} total)
-                                </span>
+                        <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                            <span className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {queueMeta.total > 0 ? `Page ${queueMeta.page} of ${queueMeta.totalPages} (${queueMeta.total} total)` : ''}
+                            </span>
+                            {queueMeta.totalPages > 1 && (
                                 <div className="flex gap-1">
                                     <button onClick={() => handlePageChange(queuePage - 1)} disabled={queuePage <= 1}
                                         className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
@@ -594,8 +597,8 @@ const WhatsAppVerificationPanel = () => {
                                         className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
                                         style={{ color: 'hsl(var(--foreground))' }}>Next →</button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                         </>
                     )}
                 </div>
@@ -912,8 +915,11 @@ const SellerNotificationTab = () => {
 
     useEffect(() => {
         fetchSellerStatus();
+    }, [fetchSellerStatus]);
+
+    useEffect(() => {
         fetchSellerQueue(sellerQueueFilter, sellerQueuePage);
-    }, [fetchSellerStatus, fetchSellerQueue, sellerQueueFilter, sellerQueuePage]);
+    }, [fetchSellerQueue, sellerQueueFilter, sellerQueuePage]);
 
     const handleSellerFilterChange = (f) => { setSellerQueueFilter(f); setSellerQueuePage(1); };
     const handleSellerPageChange = (p) => { setSellerQueuePage(p); };
