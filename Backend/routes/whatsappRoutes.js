@@ -20,6 +20,8 @@ router.post('/seller/connect', verifyToken, admin, ctrl.sellerConnect);
 router.post('/seller/disconnect', verifyToken, admin, ctrl.sellerDisconnect);
 router.post('/seller/reset', verifyToken, admin, ctrl.sellerReset);
 router.post('/seller/pairing-code', verifyToken, admin, ctrl.sellerRequestPairingCode);
+router.get('/seller/queue', verifyToken, admin, ctrl.getSellerQueue);
+router.get('/seller/stats', verifyToken, admin, ctrl.getSellerStats);
 
 // Public webhook (validated via shared secret in handler)
 router.post('/webhook', ctrl.webhook);

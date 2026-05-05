@@ -74,10 +74,37 @@ const Timeline = ({ data }) => {
     );
 };
 
+const SellerTimeline = ({ data }) => {
+    const max = Math.max(1, ...data.map(d => d.sent + d.failed + d.skipped));
+    return (
+        <div className="flex items-end gap-2 h-32">
+            {data.map((d, i) => {
+                const sentH = (d.sent / max) * 100;
+                const failedH = (d.failed / max) * 100;
+                const skippedH = (d.skipped / max) * 100;
+                const dayLabel = new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' });
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full flex-1 flex items-end gap-0.5">
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${sentH}%`, background: 'hsl(220,70%,55%)', minHeight: d.sent ? 4 : 0 }} title={`${d.sent} sent`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${failedH}%`, background: 'hsl(0,72%,55%)', minHeight: d.failed ? 4 : 0 }} title={`${d.failed} failed`} />
+                            <div className="flex-1 rounded-t-md transition-all" style={{ height: `${skippedH}%`, background: 'hsl(0,0%,55%)', minHeight: d.skipped ? 4 : 0 }} title={`${d.skipped} skipped`} />
+                        </div>
+                        <span className="text-[9px] font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{dayLabel}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 const WhatsAppVerificationPanel = () => {
     const [activeTab, setActiveTab] = useState('orders');
     const [status, setStatus] = useState(null);
     const [queue, setQueue] = useState([]);
+    const [queueMeta, setQueueMeta] = useState({ total: 0, page: 1, totalPages: 1 });
+    const [queueFilter, setQueueFilter] = useState('all');
+    const [queuePage, setQueuePage] = useState(1);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showQrModal, setShowQrModal] = useState(false);
@@ -96,11 +123,18 @@ const WhatsAppVerificationPanel = () => {
     const [resetMsg, setResetMsg] = useState('');
     const pollRef = useRef(null);
 
+    const fetchQueue = useCallback(async (filter, page) => {
+        try {
+            const { data } = await axios.get(`${API}api/whatsapp/queue?filter=${filter}&page=${page}&limit=15`, { headers: authHeaders() });
+            setQueue(data.items || []);
+            setQueueMeta({ total: data.total || 0, page: data.page || 1, totalPages: data.totalPages || 1 });
+        } catch { /* ignore */ }
+    }, []);
+
     const fetchStatus = useCallback(async () => {
         try {
-            const [s, q, st] = await Promise.all([
+            const [s, st] = await Promise.all([
                 axios.get(`${API}api/whatsapp/status`, { headers: authHeaders() }),
-                axios.get(`${API}api/whatsapp/queue`, { headers: authHeaders() }),
                 axios.get(`${API}api/whatsapp/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
             ]);
             setStatus(s.data);
@@ -114,7 +148,6 @@ const WhatsAppVerificationPanel = () => {
                 setQrDiagnostic('');
                 setPairingCode('');
             }
-            setQueue(q.data.items || []);
             if (st.data) setStats(st.data);
         } catch (err) {
             console.error('whatsapp panel fetch error:', err);
@@ -125,7 +158,12 @@ const WhatsAppVerificationPanel = () => {
 
     useEffect(() => {
         fetchStatus();
-    }, [fetchStatus]);
+        fetchQueue(queueFilter, queuePage);
+    }, [fetchStatus, fetchQueue, queueFilter, queuePage]);
+
+    // Refetch queue when filter/page changes
+    const handleFilterChange = (f) => { setQueueFilter(f); setQueuePage(1); };
+    const handlePageChange = (p) => { setQueuePage(p); };
 
     const requestQr = useCallback(async () => {
         setQrLoading(true);
@@ -228,11 +266,26 @@ const WhatsAppVerificationPanel = () => {
         await requestQr();
     };
 
+    const closeQrModal = () => {
+        setShowQrModal(false);
+        // If not connected after closing, reset status to disconnected
+        // so it doesn't stay stuck at "connecting"
+        if (status?.status !== 'connected') {
+            setStatus(prev => ({ ...prev, status: 'disconnected', qrBase64: '' }));
+        }
+        // Fetch fresh status after a moment to reconcile with live state
+        setTimeout(() => fetchStatus(), 1500);
+    };
+
     const handleDisconnect = async () => {
         try {
             await axios.post(`${API}api/whatsapp/disconnect`, {}, { headers: authHeaders() });
             setConfirmDisconnect(false);
-            await fetchStatus();
+            // Optimistically update status immediately — don't rely on fetchStatus
+            // because Evolution may still briefly report 'open' right after logout
+            setStatus(prev => ({ ...prev, status: 'disconnected', linkedNumber: '', qrBase64: '' }));
+            // Fetch again after a delay to confirm
+            setTimeout(() => fetchStatus(), 2000);
         } catch (err) {
             console.error(err);
         }
@@ -448,21 +501,41 @@ const WhatsAppVerificationPanel = () => {
 
                 {/* Recent activity */}
                 <div className="glass-panel-strong rounded-3xl p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2"
                             style={{ color: 'hsl(var(--muted-foreground))' }}>
                             <Inbox size={14} /> Recent Activity
                         </h2>
+                        <div className="flex gap-1 flex-wrap">
+                            {[
+                                { key: 'all', label: 'All' },
+                                { key: 'sent', label: 'Sent' },
+                                { key: 'confirmed', label: 'Confirmed' },
+                                { key: 'cancelled', label: 'Declined' },
+                                { key: 'queued', label: 'Queued' },
+                                { key: 'failed', label: 'Failed' },
+                            ].map(f => (
+                                <button key={f.key} onClick={() => handleFilterChange(f.key)}
+                                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+                                    style={queueFilter === f.key
+                                        ? { background: 'hsl(220,70%,55%)', color: '#fff' }
+                                        : { background: 'transparent', color: 'hsl(var(--muted-foreground))' }}>
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {queue.length === 0 ? (
                         <div className="text-center py-12 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            No messages yet. New orders will appear here once WhatsApp is linked.
+                            {queueFilter === 'all'
+                                ? 'No messages yet. New orders will appear here once WhatsApp is linked.'
+                                : `No ${queueFilter} messages found.`}
                         </div>
                     ) : (
+                        <>
                         <div className="space-y-2">
                             {queue.map(item => {
-                                // Override display when order was confirmed on WA but then cancelled from email
                                 let qm = QUEUE_STATUS_META[item.status] || QUEUE_STATUS_META.queued;
                                 let overrideLabel = null;
                                 if (item.status === 'voted_yes' && item.cancelledAfterConfirm) {
@@ -506,6 +579,24 @@ const WhatsAppVerificationPanel = () => {
                                 );
                             })}
                         </div>
+
+                        {/* Pagination */}
+                        {queueMeta.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                                <span className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Page {queueMeta.page} of {queueMeta.totalPages} ({queueMeta.total} total)
+                                </span>
+                                <div className="flex gap-1">
+                                    <button onClick={() => handlePageChange(queuePage - 1)} disabled={queuePage <= 1}
+                                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
+                                        style={{ color: 'hsl(var(--foreground))' }}>← Prev</button>
+                                    <button onClick={() => handlePageChange(queuePage + 1)} disabled={queuePage >= queueMeta.totalPages}
+                                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
+                                        style={{ color: 'hsl(var(--foreground))' }}>Next →</button>
+                                </div>
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
                 </>
@@ -522,7 +613,7 @@ const WhatsAppVerificationPanel = () => {
                 <AnimatePresence>
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
-                        onClick={() => setShowQrModal(false)}>
+                        onClick={closeQrModal}>
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                             className="glass-panel-strong rounded-3xl p-6 max-w-md w-full">
@@ -530,7 +621,7 @@ const WhatsAppVerificationPanel = () => {
                                 <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
                                     Link WhatsApp
                                 </h3>
-                                <button onClick={() => setShowQrModal(false)}
+                                <button onClick={closeQrModal}
                                     className="p-1.5 rounded-lg glass-inner"><X size={16} /></button>
                             </div>
 
@@ -768,6 +859,11 @@ const WhatsAppVerificationPanel = () => {
 const SellerNotificationTab = () => {
     const [sellerStatus, setSellerStatus] = useState(null);
     const [sellerLoading, setSellerLoading] = useState(true);
+    const [sellerStats, setSellerStats] = useState(null);
+    const [sellerQueue, setSellerQueue] = useState([]);
+    const [sellerQueueMeta, setSellerQueueMeta] = useState({ total: 0, page: 1, totalPages: 1 });
+    const [sellerQueueFilter, setSellerQueueFilter] = useState('all');
+    const [sellerQueuePage, setSellerQueuePage] = useState(1);
     const [showSellerQrModal, setShowSellerQrModal] = useState(false);
     const [sellerQrLoading, setSellerQrLoading] = useState(false);
     const [sellerQrBase64, setSellerQrBase64] = useState('');
@@ -783,18 +879,30 @@ const SellerNotificationTab = () => {
     const [sellerResetMsg, setSellerResetMsg] = useState('');
     const sellerPollRef = useRef(null);
 
+    const fetchSellerQueue = useCallback(async (filter, page) => {
+        try {
+            const { data } = await axios.get(`${API}api/whatsapp/seller/queue?filter=${filter}&page=${page}&limit=15`, { headers: authHeaders() });
+            setSellerQueue(data.items || []);
+            setSellerQueueMeta({ total: data.total || 0, page: data.page || 1, totalPages: data.totalPages || 1 });
+        } catch { /* ignore */ }
+    }, []);
+
     const fetchSellerStatus = useCallback(async () => {
         try {
-            const { data } = await axios.get(`${API}api/whatsapp/seller/status`, { headers: authHeaders() });
-            setSellerStatus(data);
-            if (data?.qrBase64) {
-                setSellerQrBase64(data.qrBase64);
+            const [statusRes, statsRes] = await Promise.all([
+                axios.get(`${API}api/whatsapp/seller/status`, { headers: authHeaders() }),
+                axios.get(`${API}api/whatsapp/seller/stats`, { headers: authHeaders() }).catch(() => ({ data: null })),
+            ]);
+            setSellerStatus(statusRes.data);
+            if (statusRes.data?.qrBase64) {
+                setSellerQrBase64(statusRes.data.qrBase64);
                 setSellerQrError('');
             }
-            if (data?.status === 'connected') {
+            if (statusRes.data?.status === 'connected') {
                 setSellerQrHint('');
                 setSellerPairingCode('');
             }
+            if (statsRes.data) setSellerStats(statsRes.data);
         } catch (err) {
             console.error('seller whatsapp fetch error:', err);
         } finally {
@@ -804,7 +912,11 @@ const SellerNotificationTab = () => {
 
     useEffect(() => {
         fetchSellerStatus();
-    }, [fetchSellerStatus]);
+        fetchSellerQueue(sellerQueueFilter, sellerQueuePage);
+    }, [fetchSellerStatus, fetchSellerQueue, sellerQueueFilter, sellerQueuePage]);
+
+    const handleSellerFilterChange = (f) => { setSellerQueueFilter(f); setSellerQueuePage(1); };
+    const handleSellerPageChange = (p) => { setSellerQueuePage(p); };
 
     const requestSellerQr = useCallback(async () => {
         setSellerQrLoading(true);
@@ -897,11 +1009,22 @@ const SellerNotificationTab = () => {
         await requestSellerQr();
     };
 
+    const closeSellerQrModal = () => {
+        setShowSellerQrModal(false);
+        // If not connected after closing, reset status to disconnected
+        if (sellerStatus?.status !== 'connected') {
+            setSellerStatus(prev => ({ ...prev, status: 'disconnected', qrBase64: '' }));
+        }
+        setTimeout(() => fetchSellerStatus(), 1500);
+    };
+
     const handleSellerDisconnect = async () => {
         try {
             await axios.post(`${API}api/whatsapp/seller/disconnect`, {}, { headers: authHeaders() });
             setConfirmSellerDisconnect(false);
-            await fetchSellerStatus();
+            // Optimistically update status immediately
+            setSellerStatus(prev => ({ ...prev, status: 'disconnected', linkedNumber: '', qrBase64: '' }));
+            setTimeout(() => fetchSellerStatus(), 2000);
         } catch (err) {
             console.error(err);
         }
@@ -1022,12 +1145,133 @@ const SellerNotificationTab = () => {
                 </div>
             </div>
 
+            {/* Seller Analytics */}
+            {sellerStats && (
+                <div className="mb-6">
+                    <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2 mb-3 px-1"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        <BarChart3 size={14} /> Analytics
+                    </h2>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <StatCard icon={Send} label="Sent" value={sellerStats.sent} sub={`${sellerStats.last24h} in last 24h`} color="hsl(220,70%,55%)" />
+                        <StatCard icon={AlertTriangle} label="Failed" value={sellerStats.failed} color="hsl(0,72%,55%)" />
+                        <StatCard icon={Clock} label="Skipped" value={sellerStats.skipped} sub="Prefs/cap/unverified" color="hsl(0,0%,55%)" />
+                        <StatCard icon={TrendingUp} label="Delivery Rate" value={`${sellerStats.deliveryRate}%`} sub={`${sellerStats.last7d} this week`} color="hsl(150,70%,40%)" />
+                    </div>
+
+                    {sellerStats.timeline && sellerStats.timeline.length > 0 && (
+                        <div className="glass-panel-strong rounded-3xl p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Last 7 Days</h3>
+                                <div className="flex gap-3 text-[10px]">
+                                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(220,70%,55%)' }} />Sent</span>
+                                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(0,72%,55%)' }} />Failed</span>
+                                    <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'hsl(0,0%,55%)' }} />Skipped</span>
+                                </div>
+                            </div>
+                            <SellerTimeline data={sellerStats.timeline} />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Seller Recent Activity */}
+            <div className="glass-panel-strong rounded-3xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h2 className="text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        <Inbox size={14} /> Recent Activity
+                    </h2>
+                    <div className="flex gap-1 flex-wrap">
+                        {[
+                            { key: 'all', label: 'All' },
+                            { key: 'sent', label: 'Sent' },
+                            { key: 'failed', label: 'Failed' },
+                            { key: 'skipped', label: 'Skipped' },
+                        ].map(f => (
+                            <button key={f.key} onClick={() => handleSellerFilterChange(f.key)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+                                style={sellerQueueFilter === f.key
+                                    ? { background: 'hsl(220,70%,55%)', color: '#fff' }
+                                    : { background: 'transparent', color: 'hsl(var(--muted-foreground))' }}>
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {sellerQueue.length === 0 ? (
+                    <div className="text-center py-12 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        {sellerQueueFilter === 'all'
+                            ? 'No notifications sent yet. Seller notifications will appear here once the instance is connected and sellers are verified.'
+                            : `No ${sellerQueueFilter} notifications found.`}
+                    </div>
+                ) : (
+                    <>
+                    <div className="space-y-2">
+                        {sellerQueue.map(item => {
+                            const statusMeta = {
+                                sent: { label: 'Sent', color: 'hsl(220,70%,55%)', icon: CheckCircle2 },
+                                failed: { label: 'Failed', color: 'hsl(0,72%,55%)', icon: AlertTriangle },
+                                skipped: { label: 'Skipped', color: 'hsl(0,0%,55%)', icon: Clock },
+                            };
+                            const sm = statusMeta[item.status] || statusMeta.skipped;
+                            const Icon = sm.icon;
+                            return (
+                                <div key={item._id} className="glass-inner rounded-2xl p-3 flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                        style={{ background: `${sm.color}1A`, color: sm.color }}>
+                                        <Icon size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                                {item.category?.replace(/_/g, ' ')}
+                                            </span>
+                                            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                {item.sellerName || item.phone || '—'}
+                                            </span>
+                                        </div>
+                                        <div className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            {formatTime(item.createdAt)}
+                                            {item.reason && ` · ${item.reason}`}
+                                        </div>
+                                    </div>
+                                    <span className="text-[11px] font-bold px-2 py-1 rounded-full"
+                                        style={{ background: `${sm.color}1A`, color: sm.color }}>
+                                        {sm.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {sellerQueueMeta.totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                            <span className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Page {sellerQueueMeta.page} of {sellerQueueMeta.totalPages} ({sellerQueueMeta.total} total)
+                            </span>
+                            <div className="flex gap-1">
+                                <button onClick={() => handleSellerPageChange(sellerQueuePage - 1)} disabled={sellerQueuePage <= 1}
+                                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
+                                    style={{ color: 'hsl(var(--foreground))' }}>← Prev</button>
+                                <button onClick={() => handleSellerPageChange(sellerQueuePage + 1)} disabled={sellerQueuePage >= sellerQueueMeta.totalPages}
+                                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium glass-inner disabled:opacity-40"
+                                    style={{ color: 'hsl(var(--foreground))' }}>Next →</button>
+                            </div>
+                        </div>
+                    )}
+                    </>
+                )}
+            </div>
+
             {/* Seller QR Modal */}
             {showSellerQrModal && createPortal(
                 <AnimatePresence>
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
-                        onClick={() => setShowSellerQrModal(false)}>
+                        onClick={closeSellerQrModal}>
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                             className="glass-panel-strong rounded-3xl p-6 max-w-md w-full">
@@ -1035,7 +1279,7 @@ const SellerNotificationTab = () => {
                                 <h3 className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
                                     Link Seller WhatsApp
                                 </h3>
-                                <button onClick={() => setShowSellerQrModal(false)}
+                                <button onClick={closeSellerQrModal}
                                     className="p-1.5 rounded-lg glass-inner"><X size={16} /></button>
                             </div>
 

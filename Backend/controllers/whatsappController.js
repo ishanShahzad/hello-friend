@@ -193,15 +193,21 @@ exports.getStatus = async (req, res) => {
         }
 
         // Reconcile DB with live Evolution status
-        if (liveState?.state === 'open' && cfg.status !== 'connected') {
-            cfg.status = 'connected';
-            cfg.linkedAt = cfg.linkedAt || new Date();
-            cfg.lastSeen = new Date();
-            cfg.lastError = '';
-            await cfg.save();
-        } else if (liveState?.state === 'close' && cfg.status === 'connected') {
-            cfg.status = 'disconnected';
-            await cfg.save();
+        // BUT skip reconciliation if status was explicitly changed in the last 5s
+        // (prevents getStatus from immediately overriding a fresh disconnect/connect)
+        const recentlyUpdated = cfg.updatedAt && (Date.now() - new Date(cfg.updatedAt).getTime() < 5000);
+        if (!recentlyUpdated) {
+            if (liveState?.state === 'open' && cfg.status !== 'connected') {
+                cfg.status = 'connected';
+                cfg.linkedAt = cfg.linkedAt || new Date();
+                cfg.lastSeen = new Date();
+                cfg.lastError = '';
+                await cfg.save();
+            } else if (liveState?.state === 'close' && ['connected', 'connecting', 'pending_qr'].includes(cfg.status)) {
+                cfg.status = 'disconnected';
+                cfg.lastQrBase64 = '';
+                await cfg.save();
+            }
         }
 
         res.json({
@@ -483,13 +489,32 @@ exports.reset = async (req, res) => {
     }
 };
 
-// GET /api/whatsapp/queue — admin: recent activity
+// GET /api/whatsapp/queue — admin: recent activity (supports filter & pagination)
 exports.getQueue = async (req, res) => {
     try {
-        const items = await WhatsAppPendingMessage.find()
-            .sort({ updatedAt: -1 })
-            .limit(20)
-            .select('orderId phone status attempts lastError sentAt repliedAt createdAt updatedAt order');
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
+        const filter = req.query.filter || 'all';
+        const skip = (page - 1) * limit;
+
+        // Build status filter
+        let statusFilter = {};
+        if (filter === 'sent') statusFilter = { status: { $in: ['sent', 'voted_yes', 'voted_no'] } };
+        else if (filter === 'queued') statusFilter = { status: 'queued' };
+        else if (filter === 'failed') statusFilter = { status: { $in: ['failed', 'failed_invalid_number'] } };
+        else if (filter === 'cancelled') statusFilter = { status: 'voted_no' };
+        else if (filter === 'confirmed') statusFilter = { status: 'voted_yes' };
+        else if (filter === 'expired') statusFilter = { status: 'expired' };
+        // 'all' = no filter
+
+        const [items, totalCount] = await Promise.all([
+            WhatsAppPendingMessage.find(statusFilter)
+                .sort({ updatedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .select('orderId phone status attempts lastError sentAt repliedAt createdAt updatedAt order'),
+            WhatsAppPendingMessage.countDocuments(statusFilter),
+        ]);
 
         // Mask middle digits of phone and include current order status
         const Order = require('../models/Order');
@@ -502,14 +527,13 @@ exports.getQueue = async (req, res) => {
             const obj = it.toObject();
             const p = obj.phone || '';
             obj.phone = p.length > 6 ? `${p.slice(0, 3)}••••${p.slice(-3)}` : p;
-            // Attach current order status for the frontend to display accurately
             const linkedOrder = obj.order ? orderMap[obj.order.toString()] : null;
             obj.currentOrderStatus = linkedOrder?.orderStatus || null;
             obj.cancelledAfterConfirm = !!(linkedOrder?.confirmation?.cancelledFromDashboardAt);
-            delete obj.order; // Don't expose raw ObjectId
+            delete obj.order;
             return obj;
         });
-        res.json({ items: masked });
+        res.json({ items: masked, total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) });
     } catch (err) {
         console.error('whatsapp.getQueue:', err.message);
         res.status(500).json({ msg: 'Failed to fetch queue' });
@@ -613,6 +637,22 @@ exports.getStats = async (req, res) => {
         const confirmationRate = replied > 0 ? Math.round((confirmed / replied) * 100) : 0;
         const avgResponseMinutes = avgResponse[0]?.avg ? Math.round(avgResponse[0].avg / 60000) : null;
 
+        // Fill in missing days so timeline always has exactly 7 entries
+        const seriesMap = {};
+        recentSeries.forEach(d => { seriesMap[d._id] = d; });
+        const timeline = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const key = d.toISOString().slice(0, 10);
+            const entry = seriesMap[key];
+            timeline.push({
+                date: key,
+                sent: entry?.sent || 0,
+                confirmed: entry?.confirmed || 0,
+                declined: entry?.declined || 0,
+            });
+        }
+
         res.json({
             total,
             last24h,
@@ -629,7 +669,7 @@ exports.getStats = async (req, res) => {
             responseRate,
             confirmationRate,
             avgResponseMinutes,
-            timeline: recentSeries.map(d => ({ date: d._id, sent: d.sent, confirmed: d.confirmed, declined: d.declined })),
+            timeline,
         });
     } catch (err) {
         console.error('whatsapp.getStats:', err.message);
@@ -679,15 +719,20 @@ exports.getSellerStatus = async (req, res) => {
         }
 
         // Reconcile DB with live Evolution status
-        if (liveState?.state === 'open' && cfg.status !== 'connected') {
-            cfg.status = 'connected';
-            cfg.linkedAt = cfg.linkedAt || new Date();
-            cfg.lastSeen = new Date();
-            cfg.lastError = '';
-            await cfg.save();
-        } else if (liveState?.state === 'close' && cfg.status === 'connected') {
-            cfg.status = 'disconnected';
-            await cfg.save();
+        // Skip reconciliation if status was explicitly changed in the last 5s
+        const recentlyUpdated = cfg.updatedAt && (Date.now() - new Date(cfg.updatedAt).getTime() < 5000);
+        if (!recentlyUpdated) {
+            if (liveState?.state === 'open' && cfg.status !== 'connected') {
+                cfg.status = 'connected';
+                cfg.linkedAt = cfg.linkedAt || new Date();
+                cfg.lastSeen = new Date();
+                cfg.lastError = '';
+                await cfg.save();
+            } else if (liveState?.state === 'close' && ['connected', 'connecting', 'pending_qr'].includes(cfg.status)) {
+                cfg.status = 'disconnected';
+                cfg.lastQrBase64 = '';
+                await cfg.save();
+            }
         }
 
         res.json({
@@ -972,5 +1017,113 @@ exports.sellerRequestPairingCode = async (req, res) => {
     } catch (err) {
         console.error('whatsapp.sellerRequestPairingCode:', err.message);
         res.status(500).json({ msg: 'Failed to request seller pairing code: ' + err.message });
+    }
+};
+
+// ── Seller Notification Activity & Stats (admin only) ────────────────────────
+
+const SellerNotificationLog = require('../models/SellerNotificationLog');
+
+// GET /api/whatsapp/seller/queue — admin: seller notification activity (filter + pagination)
+exports.getSellerQueue = async (req, res) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
+        const filter = req.query.filter || 'all';
+        const skip = (page - 1) * limit;
+
+        let statusFilter = {};
+        if (filter === 'sent') statusFilter = { status: 'sent' };
+        else if (filter === 'failed') statusFilter = { status: 'failed' };
+        else if (filter === 'skipped') statusFilter = { status: 'skipped' };
+
+        const [items, totalCount] = await Promise.all([
+            SellerNotificationLog.find(statusFilter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .select('seller sellerName phone category message status reason error createdAt')
+                .lean(),
+            SellerNotificationLog.countDocuments(statusFilter),
+        ]);
+
+        res.json({ items, total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) });
+    } catch (err) {
+        console.error('whatsapp.getSellerQueue:', err.message);
+        res.status(500).json({ msg: 'Failed to fetch seller notification log' });
+    }
+};
+
+// GET /api/whatsapp/seller/stats — admin: seller notification analytics
+exports.getSellerStats = async (req, res) => {
+    try {
+        const now = new Date();
+        const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const [byStatus, last24h, last7d, total, recentSeries] = await Promise.all([
+            SellerNotificationLog.aggregate([
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+            ]),
+            SellerNotificationLog.countDocuments({ createdAt: { $gte: dayAgo } }),
+            SellerNotificationLog.countDocuments({ createdAt: { $gte: weekAgo } }),
+            SellerNotificationLog.countDocuments({}),
+            SellerNotificationLog.aggregate([
+                { $match: { createdAt: { $gte: weekAgo } } },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                        sent: { $sum: { $cond: [{ $eq: ['$status', 'sent'] }, 1, 0] } },
+                        failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+                        skipped: { $sum: { $cond: [{ $eq: ['$status', 'skipped'] }, 1, 0] } },
+                    },
+                },
+                { $sort: { _id: 1 } },
+            ]),
+        ]);
+
+        const counts = byStatus.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
+        const sent = counts.sent || 0;
+        const failed = counts.failed || 0;
+        const skipped = counts.skipped || 0;
+        const deliveryRate = (sent + failed) > 0 ? Math.round((sent / (sent + failed)) * 100) : 0;
+
+        // By category breakdown
+        const byCategory = await SellerNotificationLog.aggregate([
+            { $match: { status: 'sent', createdAt: { $gte: weekAgo } } },
+            { $group: { _id: '$category', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+        ]);
+
+        // Fill in missing days for timeline
+        const seriesMap = {};
+        recentSeries.forEach(d => { seriesMap[d._id] = d; });
+        const timeline = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const key = d.toISOString().slice(0, 10);
+            const entry = seriesMap[key];
+            timeline.push({
+                date: key,
+                sent: entry?.sent || 0,
+                failed: entry?.failed || 0,
+                skipped: entry?.skipped || 0,
+            });
+        }
+
+        res.json({
+            total,
+            last24h,
+            last7d,
+            sent,
+            failed,
+            skipped,
+            deliveryRate,
+            byCategory,
+            timeline,
+        });
+    } catch (err) {
+        console.error('whatsapp.getSellerStats:', err.message);
+        res.status(500).json({ msg: 'Failed to fetch seller notification stats' });
     }
 };

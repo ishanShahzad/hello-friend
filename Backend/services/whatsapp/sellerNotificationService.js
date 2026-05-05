@@ -1,5 +1,6 @@
 const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const User = require('../../models/User');
+const SellerNotificationLog = require('../../models/SellerNotificationLog');
 const sellerEvolution = require('./sellerEvolutionClient');
 
 /**
@@ -77,16 +78,21 @@ async function sendNow(sellerId, category, message) {
     // 1. Seller instance connected?
     const cfg = await WhatsAppConfig.findOne({ singletonKey: 'seller' });
     if (!cfg || cfg.status !== 'connected') {
+        await logNotification(sellerId, category, message, 'skipped', 'seller_instance_not_connected');
         return { sent: false, reason: 'seller_instance_not_connected' };
     }
 
     // 2. Seller exists and is verified?
     const seller = await User.findById(sellerId).select('sellerInfo whatsappNotificationPrefs');
-    if (!seller) return { sent: false, reason: 'seller_not_found' };
+    if (!seller) {
+        await logNotification(sellerId, category, message, 'skipped', 'seller_not_found');
+        return { sent: false, reason: 'seller_not_found' };
+    }
 
     const whatsappNumber = seller.sellerInfo?.whatsappNumber;
     const whatsappVerified = seller.sellerInfo?.whatsappVerified;
     if (!whatsappNumber || !whatsappVerified) {
+        await logNotification(sellerId, category, message, 'skipped', 'whatsapp_not_verified');
         return { sent: false, reason: 'whatsapp_not_verified' };
     }
 
@@ -94,37 +100,69 @@ async function sendNow(sellerId, category, message) {
     const catConfig = NOTIFICATION_CATEGORIES[category];
     if (!catConfig) {
         console.warn(`[sellerNotification] Unknown category: ${category}`);
+        await logNotification(sellerId, category, message, 'skipped', 'unknown_category');
         return { sent: false, reason: 'unknown_category' };
     }
     if (!catConfig.critical) {
         const prefs = seller.whatsappNotificationPrefs || {};
         if (prefs.enabled === false) {
+            await logNotification(sellerId, category, message, 'skipped', 'notifications_disabled');
             return { sent: false, reason: 'notifications_disabled' };
         }
         if (catConfig.prefKey && prefs[catConfig.prefKey] === false) {
+            await logNotification(sellerId, category, message, 'skipped', `category_disabled:${catConfig.prefKey}`);
             return { sent: false, reason: `category_disabled:${catConfig.prefKey}` };
         }
     }
 
     // 4. Normalize phone
     const digits = whatsappNumber.replace(/\D/g, '');
-    if (!digits) return { sent: false, reason: 'invalid_number' };
+    if (!digits) {
+        await logNotification(sellerId, category, message, 'failed', 'invalid_number');
+        return { sent: false, reason: 'invalid_number' };
+    }
 
     // 5. Hourly cap (reserve slot before sending; if send fails we accept the
     //    small over-count — much better than racing the cap)
     const slot = await tryReserveHourlySlot();
     if (!slot.allowed) {
         console.warn(`[sellerNotification] ${slot.reason} — skipping ${category} to ${sellerId}`);
+        await logNotification(sellerId, category, message, 'skipped', slot.reason);
         return { sent: false, reason: slot.reason };
     }
 
     // 6. Send
     try {
         await sellerEvolution.sendText(digits, message);
+        await logNotification(sellerId, category, message, 'sent', '', '', seller.sellerInfo, digits);
         return { sent: true };
     } catch (err) {
         console.error(`[sellerNotification] sendText failed for ${category} to ${sellerId}:`, err.message);
+        await logNotification(sellerId, category, message, 'failed', 'send_error', err.message, seller.sellerInfo, digits);
         return { sent: false, reason: 'send_error', error: err.message };
+    }
+}
+
+/**
+ * Log a notification attempt for admin visibility.
+ */
+async function logNotification(sellerId, category, message, status, reason, error, sellerInfo, phone) {
+    try {
+        const p = phone || '';
+        const maskedPhone = p.length > 6 ? `${p.slice(0, 3)}••••${p.slice(-3)}` : p;
+        await SellerNotificationLog.create({
+            seller: sellerId,
+            sellerName: sellerInfo?.shopName || sellerInfo?.storeName || '',
+            phone: maskedPhone,
+            category,
+            message: message?.slice(0, 500) || '',
+            status,
+            reason: reason || '',
+            error: error || '',
+        });
+    } catch (err) {
+        // Non-critical — don't break the notification flow
+        console.error('[sellerNotification] logNotification error:', err.message);
     }
 }
 
