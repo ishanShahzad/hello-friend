@@ -882,6 +882,62 @@ const SellerNotificationTab = () => {
     const [sellerResetMsg, setSellerResetMsg] = useState('');
     const sellerPollRef = useRef(null);
 
+    // ─── Admin AI WhatsApp Numbers ────────────────────────────────────
+    const [adminNumbers, setAdminNumbers] = useState([]);
+    const [adminNumbersLoading, setAdminNumbersLoading] = useState(true);
+    const [newAdminNumber, setNewAdminNumber] = useState('');
+    const [newAdminLabel, setNewAdminLabel] = useState('');
+    const [addingNumber, setAddingNumber] = useState(false);
+    const [adminNumberError, setAdminNumberError] = useState('');
+    const [adminNumberSuccess, setAdminNumberSuccess] = useState('');
+
+    const fetchAdminNumbers = useCallback(async () => {
+        try {
+            const { data } = await axios.get(`${API}api/whatsapp/admin-numbers`, { headers: authHeaders() });
+            setAdminNumbers(data.numbers || []);
+        } catch { /* ignore */ }
+        finally { setAdminNumbersLoading(false); }
+    }, []);
+
+    useEffect(() => { fetchAdminNumbers(); }, [fetchAdminNumbers]);
+
+    const handleAddAdminNumber = async () => {
+        const digits = newAdminNumber.replace(/\D/g, '');
+        if (!digits || digits.length < 10) {
+            setAdminNumberError('Enter a valid phone number with country code');
+            return;
+        }
+        setAddingNumber(true);
+        setAdminNumberError('');
+        setAdminNumberSuccess('');
+        try {
+            const { data } = await axios.post(`${API}api/whatsapp/admin-numbers`,
+                { number: digits, label: newAdminLabel.trim() || undefined },
+                { headers: authHeaders() }
+            );
+            setAdminNumberSuccess(data.msg || 'Number added');
+            setNewAdminNumber('');
+            setNewAdminLabel('');
+            fetchAdminNumbers();
+        } catch (err) {
+            setAdminNumberError(err.response?.data?.msg || 'Failed to add number');
+        } finally { setAddingNumber(false); }
+    };
+
+    const handleRemoveAdminNumber = async (numberId) => {
+        try {
+            await axios.delete(`${API}api/whatsapp/admin-numbers/${numberId}`, { headers: authHeaders() });
+            fetchAdminNumbers();
+        } catch { /* ignore */ }
+    };
+
+    const handleToggleAdminNumber = async (numberId) => {
+        try {
+            await axios.patch(`${API}api/whatsapp/admin-numbers/${numberId}/toggle`, {}, { headers: authHeaders() });
+            fetchAdminNumbers();
+        } catch { /* ignore */ }
+    };
+
     const fetchSellerQueue = useCallback(async (filter, page) => {
         try {
             const { data } = await axios.get(`${API}api/whatsapp/seller/queue?filter=${filter}&page=${page}&limit=15`, { headers: authHeaders() });
@@ -1269,6 +1325,122 @@ const SellerNotificationTab = () => {
                         </div>
                     )}
                     </>
+                )}
+            </div>
+
+            {/* ─── Admin AI WhatsApp Numbers ──────────────────────────────── */}
+            <div className="glass-panel-strong rounded-3xl p-6 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: 'rgba(168,85,247,0.14)', color: 'hsl(270,60%,55%)' }}>
+                        <ShieldAlert size={18} />
+                    </div>
+                    <div>
+                        <h2 className="text-base font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
+                            Admin AI WhatsApp Numbers
+                        </h2>
+                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Phone numbers that can chat with AI as <strong>admin</strong> on this seller instance. Everyone else is treated as a seller.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Add number form */}
+                <div className="glass-inner rounded-2xl p-4 mb-4">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1">
+                            <PhoneField
+                                value={newAdminNumber}
+                                onChange={(v) => { setNewAdminNumber(v || ''); setAdminNumberError(''); setAdminNumberSuccess(''); }}
+                                placeholder="Admin phone number"
+                            />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Label (optional)"
+                            value={newAdminLabel}
+                            onChange={(e) => setNewAdminLabel(e.target.value)}
+                            className="px-3 py-2 rounded-xl text-sm glass-inner sm:w-40"
+                            style={{ color: 'hsl(var(--foreground))', background: 'transparent', border: '1px solid hsl(var(--border))' }}
+                        />
+                        <button
+                            onClick={handleAddAdminNumber}
+                            disabled={addingNumber || !newAdminNumber}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                            style={{ background: 'linear-gradient(135deg, hsl(270,60%,55%), hsl(290,50%,50%))' }}>
+                            {addingNumber ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                            Add Number
+                        </button>
+                    </div>
+                    {adminNumberError && (
+                        <div className="mt-2 text-xs font-medium" style={{ color: 'hsl(0,72%,55%)' }}>{adminNumberError}</div>
+                    )}
+                    {adminNumberSuccess && (
+                        <div className="mt-2 text-xs font-medium" style={{ color: 'hsl(150,70%,40%)' }}>{adminNumberSuccess}</div>
+                    )}
+                </div>
+
+                {/* Numbers list */}
+                {adminNumbersLoading ? (
+                    <div className="text-center py-8">
+                        <Loader2 size={24} className="animate-spin mx-auto" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                    </div>
+                ) : adminNumbers.length === 0 ? (
+                    <div className="text-center py-8 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        No admin numbers added yet. Add a phone number above to enable admin AI chat on WhatsApp.
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {adminNumbers.map(num => (
+                            <div key={num._id} className="glass-inner rounded-2xl p-3 flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                    style={{
+                                        background: num.isActive ? 'rgba(168,85,247,0.14)' : 'rgba(120,120,120,0.12)',
+                                        color: num.isActive ? 'hsl(270,60%,55%)' : 'hsl(0,0%,55%)',
+                                    }}>
+                                    <Phone size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                            +{num.number}
+                                        </span>
+                                        {num.label && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(168,85,247,0.1)', color: 'hsl(270,60%,55%)' }}>
+                                                {num.label}
+                                            </span>
+                                        )}
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                            style={{
+                                                background: num.isActive ? 'rgba(34,197,94,0.12)' : 'rgba(120,120,120,0.12)',
+                                                color: num.isActive ? 'hsl(150,70%,40%)' : 'hsl(0,0%,55%)',
+                                            }}>
+                                            {num.isActive ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    <div className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        Added {formatTime(num.createdAt)}
+                                    </div>
+                                </div>
+                                <div className="flex gap-1.5">
+                                    <button
+                                        onClick={() => handleToggleAdminNumber(num._id)}
+                                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium glass-inner"
+                                        style={{ color: 'hsl(var(--foreground))' }}
+                                        title={num.isActive ? 'Deactivate' : 'Activate'}>
+                                        <Power size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleRemoveAdminNumber(num._id)}
+                                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium"
+                                        style={{ background: 'rgba(239,68,68,0.1)', color: 'hsl(0,72%,55%)' }}
+                                        title="Remove number">
+                                        <X size={13} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
 
