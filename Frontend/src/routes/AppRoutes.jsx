@@ -57,6 +57,7 @@ import OrderConfirmationPage from '../pages/OrderConfirmationPage'
 import WhatsAppVerificationPanel from '../components/layout/admin/WhatsAppVerificationPanel'
 import AdminBroadcastPanel from '../components/layout/admin/AdminBroadcastPanel'
 import AIChatPage from '../pages/AIChatPage'
+import DocsPage from '../pages/DocsPage'
 
 function AppRoutes() {
     const navigate = useNavigate()
@@ -89,6 +90,7 @@ function AppRoutes() {
                     <Route path='/about' element={<AboutPage />} />
                     <Route path='/contact' element={<ContactPage />} />
                     <Route path='/faq' element={<FAQPage />} />
+                    <Route path='/docs' element={<DocsPage />} />
                     <Route path='/track-order' element={<TrackOrderPage />} />
 
                     {/* Checkout - accessible to everyone (guest & logged in) */}
