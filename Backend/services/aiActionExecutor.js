@@ -220,14 +220,39 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'get_my_orders': {
         if (!userId) return { success: false, error: 'You must be logged in to view orders.' };
         const { status, limit } = args;
-        const filter = { user: userId };
-        if (status && status !== 'all') filter.orderStatus = status;
 
-        const orders = await Order.find(filter)
-          .sort({ createdAt: -1 })
-          .limit(safeLimit(limit, 10))
-          .populate('orderItems.productId', 'name image price')
-          .lean();
+        // ROLE-AWARE: If seller, show orders containing THEIR products (not personal purchases)
+        let orders;
+        if (role === 'seller') {
+          const myProducts = await Product.find({ seller: userId }).select('_id').lean();
+          const productIds = myProducts.map(p => p._id);
+          const filter = { 'orderItems.productId': { $in: productIds } };
+          if (status && status !== 'all') filter.orderStatus = status;
+
+          orders = await Order.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(safeLimit(limit, 15))
+            .populate('user', 'username email')
+            .populate('orderItems.productId', 'name image price seller')
+            .lean();
+
+          // CRITICAL: Filter order items to only show THIS seller's products
+          orders = orders.map(o => ({
+            ...o,
+            orderItems: (o.orderItems || []).filter(i =>
+              productIds.some(pid => pid.toString() === (i.productId?._id || i.productId)?.toString())
+            ),
+          }));
+        } else {
+          // Regular user: show their OWN orders only
+          const filter = { user: userId };
+          if (status && status !== 'all') filter.orderStatus = status;
+          orders = await Order.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(safeLimit(limit, 10))
+            .populate('orderItems.productId', 'name image price')
+            .lean();
+        }
 
         return {
           success: true,
@@ -237,6 +262,7 @@ async function executeToolCall(toolName, args = {}, user) {
               orderId: o.orderId,
               status: o.orderStatus,
               total: o.orderSummary?.totalAmount || 0,
+              buyer: role === 'seller' ? (o.user?.username || 'Guest') : undefined,
               items: (o.orderItems || []).map(i => ({
                 name: i.name || i.productId?.name,
                 price: i.price,
@@ -248,7 +274,7 @@ async function executeToolCall(toolName, args = {}, user) {
             })),
             count: orders.length,
           },
-          message: `Found ${orders.length} order${orders.length !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''}`,
+          message: `Found ${orders.length} order${orders.length !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''}${role === 'seller' ? ' for your store' : ''}`,
         };
       }
 
@@ -257,14 +283,37 @@ async function executeToolCall(toolName, args = {}, user) {
         const { orderId } = args;
         if (!orderId) return { success: false, error: 'Please provide an order ID.' };
 
-        const order = await Order.findOne({
-          $or: [
-            { _id: toId(orderId), user: userId },
-            { orderId: orderId, user: userId },
-          ],
-        })
-          .populate('orderItems.productId', 'name image price category')
-          .lean();
+        let order;
+        if (role === 'seller') {
+          // Sellers can view orders containing THEIR products
+          const myProducts = await Product.find({ seller: userId }).select('_id').lean();
+          const productIds = myProducts.map(p => p._id.toString());
+          order = await Order.findOne({
+            $or: [{ _id: toId(orderId) }, { orderId: orderId }],
+            'orderItems.productId': { $in: myProducts.map(p => p._id) },
+          })
+            .populate('orderItems.productId', 'name image price category seller')
+            .populate('user', 'username email')
+            .lean();
+        } else if (role === 'admin') {
+          // Admins can view any order
+          order = await Order.findOne({
+            $or: [{ _id: toId(orderId) }, { orderId: orderId }],
+          })
+            .populate('orderItems.productId', 'name image price category')
+            .populate('user', 'username email')
+            .lean();
+        } else {
+          // Users can only view their own orders
+          order = await Order.findOne({
+            $or: [
+              { _id: toId(orderId), user: userId },
+              { orderId: orderId, user: userId },
+            ],
+          })
+            .populate('orderItems.productId', 'name image price category')
+            .lean();
+        }
 
         if (!order) return { success: false, error: 'Order not found or access denied.' };
 
