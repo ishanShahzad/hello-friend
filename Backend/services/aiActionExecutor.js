@@ -413,10 +413,10 @@ async function executeToolCall(toolName, args = {}, user) {
         const filter = { user: userId };
         if (status) filter.status = status;
 
-        const complaints = await Complaint.find(filter)
-          .sort({ createdAt: -1 })
-          .limit(15)
-          .lean();
+        const [complaints, totalCount] = await Promise.all([
+          Complaint.find(filter).sort({ createdAt: -1 }).limit(20).lean(),
+          Complaint.countDocuments(filter),
+        ]);
 
         return {
           success: true,
@@ -431,8 +431,9 @@ async function executeToolCall(toolName, args = {}, user) {
               date: c.createdAt,
             })),
             count: complaints.length,
+            totalCount,
           },
-          message: `Found ${complaints.length} complaint${complaints.length !== 1 ? 's' : ''}`,
+          message: `You have ${totalCount} complaint${totalCount !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''} (showing ${complaints.length})`,
         };
       }
 
@@ -528,12 +529,12 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const { limit } = args;
 
-        const notifications = await Notification.find({ user: userId })
-          .sort({ createdAt: -1 })
-          .limit(safeLimit(limit, 15))
-          .lean();
+        const [notifications, totalCount, totalUnread] = await Promise.all([
+          Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(safeLimit(limit, 20)).lean(),
+          Notification.countDocuments({ user: userId }),
+          Notification.countDocuments({ user: userId, read: false }),
+        ]);
 
-        const unread = notifications.filter(n => !n.read).length;
         return {
           success: true,
           data: {
@@ -545,10 +546,11 @@ async function executeToolCall(toolName, args = {}, user) {
               read: n.read,
               date: n.createdAt,
             })),
-            unreadCount: unread,
-            total: notifications.length,
+            unreadCount: totalUnread,
+            totalCount,
+            showing: notifications.length,
           },
-          message: `${unread} unread notification${unread !== 1 ? 's' : ''} out of ${notifications.length} total.`,
+          message: `${totalUnread} unread notification${totalUnread !== 1 ? 's' : ''} out of ${totalCount} total (showing ${notifications.length}).`,
         };
       }
 
