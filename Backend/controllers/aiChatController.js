@@ -78,10 +78,20 @@ If the user asks for something only a seller or admin can do, politely explain: 
 - Seasonal trends and timeless essentials
 - Budget-aware: you respect what they say about price
 
+## ORDER WORKFLOW — VERY IMPORTANT
+When a user wants to order a product:
+1. If the product has **colors** or **sizes/options** (optionGroups), you MUST ask which one they want BEFORE placing the order. Never choose for them.
+2. Ask for **payment method** (Cash on Delivery or Stripe) — don't default silently.
+3. If they have NO saved address, ask for shipping details (fullName, address, city, state, postalCode, country, phone).
+4. If they HAVE a saved address, confirm: "I'll ship to [their address]. Is that okay?"
+5. Give a clear summary before placing: "Placing order for [product] in [color/size] — $[price] — [payment] — shipping to [address]. Shall I confirm?"
+6. Only call place_order AFTER the user confirms.
+
 ## Rules
 - Use tools to fetch REAL data — never fabricate product names, prices, or order details
 - When user asks for action, use the tool directly (don't just describe what you'd do)
 - For destructive actions (cancel order, delete something), confirm once before executing
+- For ORDER PLACEMENT: ALWAYS confirm product options, payment method, and address before calling place_order
 - If information is missing for a tool, ask for it specifically
 - End replies with a small, inviting follow-up when natural`;
 
@@ -1547,19 +1557,16 @@ exports.streamChat = async (req, res) => {
       // Loop continues — AI will now see tool results and generate a response
     }
 
-    // ── Save chat history ──
+    // ── Save chat history to conversation ──
     if (userId) {
       try {
+        const conversationId = body.conversationId || null;
         const userMessages = conversationMessages
           .filter(m => m.role === 'user' || m.role === 'assistant')
           .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }))
           .filter(m => m.content);
 
-        await ChatHistory.findOneAndUpdate(
-          { user: userId },
-          { $set: { messages: userMessages.slice(-100), updatedAt: new Date() } },
-          { upsert: true }
-        );
+        await saveToConversation(userId, conversationId, userMessages);
       } catch (e) {
         console.error('Chat history save error:', e.message);
       }
@@ -1729,5 +1736,245 @@ exports.chatOnce = async (req, res) => {
   } catch (err) {
     console.error('chatOnce error:', err);
     return res.status(500).json({ error: err.message || 'Server error' });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  CHAT HISTORY / CONVERSATION MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Save messages to a specific conversation (or create/find the active one).
+ */
+async function saveToConversation(userId, conversationId, messages) {
+  let history = await ChatHistory.findOne({ user: userId });
+  if (!history) {
+    history = new ChatHistory({ user: userId, conversations: [] });
+  }
+
+  let convo;
+  if (conversationId) {
+    convo = history.conversations.id(conversationId);
+  }
+  if (!convo) {
+    // Find the active conversation or create one
+    convo = history.conversations.find(c => c.isActive);
+    if (!convo) {
+      // Auto-generate title from first user message
+      const firstUserMsg = messages.find(m => m.role === 'user');
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? '...' : '')
+        : 'New Chat';
+      history.conversations.push({ title, messages: [], isActive: true });
+      convo = history.conversations[history.conversations.length - 1];
+      history.activeConversationId = convo._id;
+    }
+  }
+
+  // Replace the conversation's messages with the full set
+  convo.messages = messages.slice(-200).map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
+  convo.lastActive = new Date();
+
+  await history.save();
+  return convo._id;
+}
+
+/**
+ * GET /api/ai-chat/conversations — list user's conversations (sidebar)
+ */
+exports.getConversations = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    const history = await ChatHistory.findOne({ user: userId }).lean();
+    if (!history || !history.conversations?.length) {
+      return res.json({ conversations: [], activeConversationId: null });
+    }
+
+    // Return conversations sorted by last active, with summary info
+    const conversations = history.conversations
+      .sort((a, b) => new Date(b.lastActive || b.updatedAt) - new Date(a.lastActive || a.updatedAt))
+      .map(c => ({
+        _id: c._id,
+        title: c.title,
+        messageCount: c.messages?.length || 0,
+        lastActive: c.lastActive || c.updatedAt,
+        isActive: c.isActive,
+        preview: c.messages?.filter(m => m.role === 'user').pop()?.content?.slice(0, 80) || '',
+      }));
+
+    return res.json({
+      conversations,
+      activeConversationId: history.activeConversationId,
+    });
+  } catch (err) {
+    console.error('getConversations error:', err);
+    return res.status(500).json({ error: 'Failed to fetch conversations.' });
+  }
+};
+
+/**
+ * GET /api/ai-chat/conversations/:conversationId — load a specific conversation's messages
+ */
+exports.getConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    const history = await ChatHistory.findOne({ user: userId }).lean();
+    if (!history) return res.json({ messages: [], title: 'New Chat' });
+
+    const convo = history.conversations?.find(c => c._id?.toString() === conversationId);
+    if (!convo) return res.status(404).json({ error: 'Conversation not found.' });
+
+    // Mark this as active
+    await ChatHistory.updateOne(
+      { user: userId },
+      {
+        $set: {
+          activeConversationId: convo._id,
+          'conversations.$[c].isActive': true,
+        },
+      },
+      { arrayFilters: [{ 'c._id': convo._id }] }
+    );
+
+    // Deactivate other conversations
+    await ChatHistory.updateOne(
+      { user: userId },
+      { $set: { 'conversations.$[c].isActive': false } },
+      { arrayFilters: [{ 'c._id': { $ne: convo._id } }] }
+    );
+
+    return res.json({
+      _id: convo._id,
+      title: convo.title,
+      messages: (convo.messages || []).map(m => ({
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error('getConversation error:', err);
+    return res.status(500).json({ error: 'Failed to load conversation.' });
+  }
+};
+
+/**
+ * POST /api/ai-chat/conversations — create a new conversation
+ */
+exports.createConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    let history = await ChatHistory.findOne({ user: userId });
+    if (!history) {
+      history = new ChatHistory({ user: userId, conversations: [] });
+    }
+
+    // Deactivate all existing conversations
+    history.conversations.forEach(c => { c.isActive = false; });
+
+    const title = req.body.title || 'New Chat';
+    history.conversations.push({ title, messages: [], isActive: true });
+    const newConvo = history.conversations[history.conversations.length - 1];
+    history.activeConversationId = newConvo._id;
+
+    await history.save();
+
+    return res.json({
+      _id: newConvo._id,
+      title: newConvo.title,
+      messages: [],
+    });
+  } catch (err) {
+    console.error('createConversation error:', err);
+    return res.status(500).json({ error: 'Failed to create conversation.' });
+  }
+};
+
+/**
+ * DELETE /api/ai-chat/conversations/:conversationId — delete a conversation
+ */
+exports.deleteConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    const history = await ChatHistory.findOne({ user: userId });
+    if (!history) return res.status(404).json({ error: 'No chat history found.' });
+
+    history.conversations = history.conversations.filter(
+      c => c._id?.toString() !== conversationId
+    );
+
+    // If we deleted the active one, activate the latest
+    if (history.activeConversationId?.toString() === conversationId) {
+      const latest = history.conversations[history.conversations.length - 1];
+      if (latest) {
+        latest.isActive = true;
+        history.activeConversationId = latest._id;
+      } else {
+        history.activeConversationId = null;
+      }
+    }
+
+    await history.save();
+    return res.json({ success: true, message: 'Conversation deleted.' });
+  } catch (err) {
+    console.error('deleteConversation error:', err);
+    return res.status(500).json({ error: 'Failed to delete conversation.' });
+  }
+};
+
+/**
+ * PATCH /api/ai-chat/conversations/:conversationId/rename
+ */
+exports.renameConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    const { title } = req.body;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+    if (!title) return res.status(400).json({ error: 'Title is required.' });
+
+    await ChatHistory.updateOne(
+      { user: userId, 'conversations._id': conversationId },
+      { $set: { 'conversations.$.title': title.slice(0, 100) } }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('renameConversation error:', err);
+    return res.status(500).json({ error: 'Failed to rename.' });
+  }
+};
+
+/**
+ * DELETE /api/ai-chat/conversations/:conversationId/messages — clear messages but keep conversation
+ */
+exports.clearConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    if (!userId) return res.status(401).json({ error: 'Authentication required.' });
+
+    await ChatHistory.updateOne(
+      { user: userId, 'conversations._id': conversationId },
+      { $set: { 'conversations.$.messages': [] } }
+    );
+
+    return res.json({ success: true, message: 'Messages cleared.' });
+  } catch (err) {
+    console.error('clearConversation error:', err);
+    return res.status(500).json({ error: 'Failed to clear.' });
   }
 };

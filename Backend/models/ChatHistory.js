@@ -1,5 +1,30 @@
 const mongoose = require('mongoose');
 
+// ─── Individual message in a conversation ───
+const messageSchema = new mongoose.Schema({
+  role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
+  content: { type: String, default: '' },
+  toolEvents: [{ type: mongoose.Schema.Types.Mixed }], // tool results, navigation, etc.
+}, { timestamps: true });
+
+// ─── A single conversation (chat session) ───
+const conversationSchema = new mongoose.Schema({
+  title: { type: String, default: 'New Chat' },
+  messages: [messageSchema],
+  isActive: { type: Boolean, default: true },
+  lastActive: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+// Cap messages per conversation
+conversationSchema.pre('save', function (next) {
+  if (this.messages && this.messages.length > 200) {
+    this.messages = this.messages.slice(-200);
+  }
+  this.lastActive = new Date();
+  next();
+});
+
+// ─── Chat History: one per user, holds multiple conversations ───
 const chatHistorySchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -7,31 +32,20 @@ const chatHistorySchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  messages: [
-    {
-      role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
-      content: { type: String, default: '' },
-      timestamp: { type: Date, default: Date.now },
-    },
-  ],
-  // Track conversation metadata for personalization
-  totalMessages: { type: Number, default: 0 },
-  lastActive: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
+  conversations: [conversationSchema],
+  activeConversationId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  totalConversations: { type: Number, default: 0 },
 }, { timestamps: true });
 
-// Cap messages at 100 to prevent unbounded growth
+// Keep max 50 conversations, prune oldest
 chatHistorySchema.pre('save', function (next) {
-  if (this.messages && this.messages.length > 100) {
-    this.messages = this.messages.slice(-100);
+  if (this.conversations && this.conversations.length > 50) {
+    this.conversations = this.conversations.slice(-50);
   }
-  this.totalMessages = this.messages?.length || 0;
-  this.lastActive = new Date();
+  this.totalConversations = this.conversations?.length || 0;
   next();
 });
 
-// Index for fast user lookup
 chatHistorySchema.index({ user: 1 });
-chatHistorySchema.index({ lastActive: -1 });
 
 module.exports = mongoose.model('ChatHistory', chatHistorySchema);
