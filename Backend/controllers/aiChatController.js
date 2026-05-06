@@ -596,6 +596,21 @@ const userTools = [
   {
     type: 'function',
     function: {
+      name: 'send_product_image',
+      description: 'Send a product image to the user on WhatsApp. Only use this when the user explicitly asks to see a product image. Do NOT send images automatically when listing products.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'Product ID to send image for' },
+          caption: { type: 'string', description: 'Optional caption to include with the image' },
+        },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'place_order',
       description: 'Place an order. Can order a specific product by ID or checkout the entire cart. Uses the user\'s saved address if available, otherwise requires shipping info. Default payment is Cash on Delivery.',
       parameters: {
@@ -1463,10 +1478,18 @@ const WHATSAPP_SYSTEM_PROMPT_ADDENDUM = `
 - Use WhatsApp formatting: *bold*, _italic_, ~strikethrough~
 - Do NOT use markdown headers (#), code blocks (\`\`\`), or tables
 - Share links as full URLs (e.g. https://www.rozare.com/marketplace)
-- When listing products, use bullet points with emoji
+- When listing products, use bullet points with emoji and NUMBER them (1, 2, 3...)
 - For navigation suggestions, just share the URL directly
 - Be even more conversational and mobile-friendly in tone
 - Remember: the user is on their phone — short, punchy, helpful
+
+## PRODUCT IMAGES ON WHATSAPP
+- When you list products, do NOT automatically send images — just list them as text with numbers
+- After listing products, sometimes naturally ask: "Want to see the image of any of these? Just say which one! 📸"
+- When the user says "show me image of 1st product" or "send image of product 3" or "I want to see it", use the send_product_image tool with the productId
+- You can send multiple images if the user asks for multiple (e.g. "show me 1st and 3rd")
+- Only send images when explicitly asked — never spam images automatically
+- If the product has no image, tell the user: "This product doesn't have an image yet"
 `;
 
 /**
@@ -1573,6 +1596,39 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       const toolName = tc.function.name;
       let args = {};
       try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
+
+      // Special handling for send_product_image in WhatsApp mode
+      if (toolName === 'send_product_image' && isWhatsApp) {
+        try {
+          const product = await Product.findById(args.productId).select('name images price discountedPrice').lean();
+          if (!product || !product.images?.length) {
+            conversationMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify({ success: false, message: 'This product does not have an image.' }),
+            });
+          } else {
+            const imageUrl = product.images[0]?.url || product.images[0];
+            const caption = args.caption || `*${product.name}*\n💰 ${product.discountedPrice ? `~$${product.price}~ $${product.discountedPrice}` : `$${product.price}`}\n🔗 ${SITE_URL}/single-product/${product._id}`;
+            // Store image info for the WhatsApp service to send after response
+            if (!options._pendingImages) options._pendingImages = [];
+            options._pendingImages.push({ imageUrl, caption });
+            conversationMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify({ success: true, message: `Image of "${product.name}" will be sent to the user.` }),
+            });
+          }
+        } catch (imgErr) {
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ success: false, message: 'Failed to fetch product image.' }),
+          });
+        }
+        toolResults.push({ tool: toolName, result: { success: true }, id: tc.id });
+        continue;
+      }
 
       if (isClientSideTool(toolName)) {
         if (isWhatsApp) {

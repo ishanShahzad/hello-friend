@@ -392,9 +392,8 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType) 
         // 5. Process through AI pipeline
         const userObj = { _id: user._id, id: user._id.toString(), role };
 
-        const result = await processAIChatMessage(userObj, messages, {
-            mode: 'whatsapp',
-        });
+        const aiOptions = { mode: 'whatsapp' };
+        const result = await processAIChatMessage(userObj, messages, aiOptions);
 
         // 6. Send AI response
         if (result.responseText) {
@@ -402,6 +401,21 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType) 
         } else {
             // AI returned empty response — send a fallback
             await sendResponse(phone, "I'm sorry, I couldn't process that. Could you try rephrasing? 🤔", instanceType);
+        }
+
+        // 7. Send pending product images (if AI used send_product_image tool)
+        if (aiOptions._pendingImages?.length) {
+            const client = getClient(instanceType);
+            for (const img of aiOptions._pendingImages) {
+                try {
+                    await client.sendMedia(phone, img.imageUrl, img.caption, 'image');
+                    await new Promise(r => setTimeout(r, 800)); // delay between images
+                } catch (imgErr) {
+                    console.error(`[wa-ai-chat] Failed to send product image to ${phone}:`, imgErr.message);
+                    // Fallback: send image URL as text
+                    await client.sendText(phone, `📸 Image: ${img.imageUrl}\n${img.caption}`).catch(() => {});
+                }
+            }
         }
 
         console.log(`[wa-ai-chat] Response sent to ${phone} (${role}) via ${instanceType}`);

@@ -229,6 +229,26 @@ function createEvolutionClient(instanceEnvVar, defaultName) {
         return { messageId, raw: data };
     };
 
+    /**
+     * Send an image (media) message via WhatsApp.
+     * @param {string} number - Recipient phone number
+     * @param {string} mediaUrl - Public URL of the image
+     * @param {string} caption - Optional caption text
+     * @param {string} mediaType - 'image' (default), 'video', 'document'
+     */
+    const sendMedia = async (number, mediaUrl, caption = '', mediaType = 'image') => {
+        if (!isConfigured()) throw new Error('Evolution API not configured');
+        const { data } = await client().post(`/message/sendMedia/${instanceName()}`, {
+            number,
+            mediatype: mediaType,
+            media: mediaUrl,
+            caption,
+            delay: 0,
+        });
+        const messageId = data?.key?.id || data?.messageId || data?.id || '';
+        return { messageId, raw: data };
+    };
+
     const sendPoll = async (number, { name, values, selectableCount = 1 }) => {
         if (!isConfigured()) throw new Error('Evolution API not configured');
         const { data } = await client().post(`/message/sendPoll/${instanceName()}`, {
@@ -331,6 +351,7 @@ function createEvolutionClient(instanceEnvVar, defaultName) {
         connectInstance,
         requestPairingCode,
         sendText,
+        sendMedia,
         sendPoll,
         sendList,
         sendButtons,
