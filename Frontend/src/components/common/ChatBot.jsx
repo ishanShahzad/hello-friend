@@ -358,9 +358,50 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     setActiveConvoId(conversationId);
   }, [conversationId]);
 
-  // ─── Greeting on open (floating mode only) ───
+  // ─── Load chat history on open (floating mode only) ───
   useEffect(() => {
-    if (isOpen && messages.length === 0 && initialMessages === null) {
+    if (isOpen && messages.length === 0 && initialMessages === null && !hasLoadedHistory.current && authToken) {
+      hasLoadedHistory.current = true;
+      // Try to load the active conversation from the API
+      fetch(`${API_BASE}api/ai-chat/conversations`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+        .then(r => r.json())
+        .then(data => {
+          const activeId = data.activeConversationId;
+          const activeConvo = data.conversations?.find(c => c._id === activeId);
+          if (activeId && activeConvo && activeConvo.messageCount > 0) {
+            // Load that conversation's messages
+            return fetch(`${API_BASE}api/ai-chat/conversations/${activeId}`, {
+              headers: { Authorization: `Bearer ${authToken}` },
+            }).then(r => r.json());
+          }
+          return null;
+        })
+        .then(convoData => {
+          if (convoData && convoData.messages?.length > 0) {
+            setMessages(convoData.messages.map(m => ({ role: m.role, content: m.content })));
+            setActiveConvoId(convoData._id);
+            setShowChips(false);
+          } else {
+            // No history — show greeting
+            const hour = new Date().getHours();
+            const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+            const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
+            setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
+            setShowChips(true);
+          }
+        })
+        .catch(() => {
+          // Fallback greeting
+          const hour = new Date().getHours();
+          const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+          const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
+          setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
+          setShowChips(true);
+        });
+    } else if (isOpen && messages.length === 0 && initialMessages === null && !authToken) {
+      // Guest — just show greeting
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
       const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
@@ -508,6 +549,13 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                 }
                 return copy;
               });
+              continue;
+            }
+
+            // Conversation ID tracking (server sends this after saving)
+            if (parsed.type === 'conversation_id' && parsed.conversationId) {
+              setActiveConvoId(parsed.conversationId);
+              if (onConversationCreated) onConversationCreated(parsed.conversationId);
               continue;
             }
 

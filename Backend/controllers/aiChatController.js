@@ -1606,12 +1606,16 @@ exports.streamChat = async (req, res) => {
     if (userId) {
       try {
         const conversationId = body.conversationId || null;
-        const userMessages = conversationMessages
-          .filter(m => m.role === 'user' || m.role === 'assistant')
-          .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }))
-          .filter(m => m.content);
+        // Extract only NEW user+assistant messages from this request (skip system & tool messages)
+        const newMessages = conversationMessages
+          .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+          .map(m => ({ role: m.role, content: m.content }));
 
-        await saveToConversation(userId, conversationId, userMessages);
+        const savedConvoId = await saveToConversation(userId, conversationId, newMessages);
+        // Send the conversationId back to the client so it can track it
+        if (savedConvoId && !closed()) {
+          res.write(`data: ${JSON.stringify({ type: 'conversation_id', conversationId: savedConvoId.toString() })}\n\n`);
+        }
       } catch (e) {
         console.error('Chat history save error:', e.message);
       }
@@ -1816,11 +1820,14 @@ async function saveToConversation(userId, conversationId, messages) {
     }
   }
 
-  // Replace the conversation's messages with the full set
-  convo.messages = messages.slice(-200).map(m => ({
-    role: m.role,
-    content: m.content,
-  }));
+  // APPEND new messages (don't replace existing ones)
+  for (const m of messages) {
+    convo.messages.push({ role: m.role, content: m.content });
+  }
+  // Cap at 200 messages
+  if (convo.messages.length > 200) {
+    convo.messages = convo.messages.slice(-200);
+  }
   convo.lastActive = new Date();
 
   await history.save();
