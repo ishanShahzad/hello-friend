@@ -89,6 +89,15 @@ const userSchema = mongoose.Schema({
 
     // Expo push notification tokens (one user may have multiple devices)
     expoPushTokens: { type: [String], default: [] },
+
+    // User WhatsApp linking (for AI chat via WhatsApp on buyer instance)
+    // Distinct from sellerInfo.whatsappNumber which is for seller notifications
+    whatsappInfo: {
+        number: { type: String, default: '' },          // E.164 format e.g. "+923028588506"
+        verified: { type: Boolean, default: false },     // verified via OTP
+        verifiedAt: { type: Date, default: null },
+        lastChange: { type: Date, default: null },       // cooldown tracking
+    },
 })
 
 
@@ -123,6 +132,12 @@ userSchema.virtual('store', {
     foreignField: 'seller',
     justOne: true
 });
+
+// Unique sparse index: only one user can link a given WhatsApp number
+userSchema.index(
+    { 'whatsappInfo.number': 1 },
+    { unique: true, sparse: true, partialFilterExpression: { 'whatsappInfo.number': { $gt: '' } } }
+);
 
 // Ensure virtuals are included when converting to JSON
 userSchema.set('toJSON', { virtuals: true });

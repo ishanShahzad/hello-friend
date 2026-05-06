@@ -1455,6 +1455,213 @@ async function consumeStream(response, { onText, onToolCallDelta, role }) {
   return { assistantContent, toolCalls };
 }
 
+// ─── WhatsApp Mode System Prompt Addendum ────────────────────────────
+const WHATSAPP_SYSTEM_PROMPT_ADDENDUM = `
+
+## IMPORTANT: You are chatting via WhatsApp
+- Keep responses concise — under 500 words unless the user asks for detailed info
+- Use WhatsApp formatting: *bold*, _italic_, ~strikethrough~
+- Do NOT use markdown headers (#), code blocks (\`\`\`), or tables
+- Share links as full URLs (e.g. https://www.rozare.com/marketplace)
+- When listing products, use bullet points with emoji
+- For navigation suggestions, just share the URL directly
+- Be even more conversational and mobile-friendly in tone
+- Remember: the user is on their phone — short, punchy, helpful
+`;
+
+/**
+ * processAIChatMessage — Reusable core AI chat engine
+ * ────────────────────────────────────────────────────
+ * Used by both the HTTP chatOnce endpoint AND the WhatsApp AI chat service.
+ * Runs a non-streaming AI conversation with server-side tool execution loop.
+ *
+ * @param {Object} userObj - { _id, id, role } — the authenticated user
+ * @param {Array}  incomingMessages - array of { role, content } messages
+ * @param {Object} options - { mode: 'web'|'whatsapp', conversationId?: string }
+ * @returns {Object} { responseText, toolResults, clientActions, conversationId }
+ */
+async function processAIChatMessage(userObj, incomingMessages, options = {}) {
+  const mode = options.mode || 'web';
+  const isWhatsApp = mode === 'whatsapp';
+
+  const userId = userObj?._id || userObj?.id || null;
+  const effectiveRole = ['user', 'seller', 'admin'].includes(userObj?.role)
+    ? userObj.role
+    : 'guest';
+
+  const userContext = await buildUserContext(userId, effectiveRole);
+  let systemContent = getSystemPrompt(effectiveRole);
+  systemContent += formatContextBlock(userContext, effectiveRole);
+
+  if (effectiveRole === 'guest') {
+    systemContent += `\n\n## IMPORTANT: This user is NOT logged in. Encourage them to sign in for personalized help.`;
+  }
+
+  if (isWhatsApp) {
+    systemContent += WHATSAPP_SYSTEM_PROMPT_ADDENDUM;
+  }
+
+  const cleanMessages = incomingMessages
+    .filter(m => m && typeof m.role === 'string')
+    .map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
+      ...(m.name ? { name: m.name } : {}),
+      ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
+    }));
+
+  const conversationMessages = [
+    { role: 'system', content: systemContent },
+    ...optimizeMessages(cleanMessages),
+  ];
+
+  const tools = getTools(effectiveRole);
+  const toolResults = [];
+  const clientActions = [];
+
+  const MAX_ITERATIONS = 5;
+  let lastMessage = null;
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const isLast = i === MAX_ITERATIONS - 1;
+
+    const upstream = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': SITE_URL,
+        'X-Title': SITE_NAME,
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        messages: conversationMessages,
+        tools: isLast ? undefined : tools,
+        stream: false,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!upstream.ok) {
+      const t = await upstream.text().catch(() => '');
+      console.error('OpenRouter non-stream error', upstream.status, t);
+      if (upstream.status === 429) throw new Error('AI rate limit hit. Try again in a moment.');
+      if (upstream.status === 402) throw new Error('AI credits exhausted.');
+      throw new Error('AI service temporarily unavailable.');
+    }
+
+    const data = await upstream.json();
+    const message = data.choices?.[0]?.message;
+    if (!message) break;
+
+    lastMessage = message;
+
+    // Filter tool calls by role
+    if (message.tool_calls?.length) {
+      message.tool_calls = message.tool_calls.filter(tc =>
+        tc.function?.name && isToolAllowedForRole(tc.function.name, effectiveRole)
+      );
+    }
+
+    if (!message.tool_calls?.length) break;
+
+    // Add assistant message and execute tools
+    conversationMessages.push(message);
+
+    for (const tc of message.tool_calls) {
+      const toolName = tc.function.name;
+      let args = {};
+      try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
+
+      if (isClientSideTool(toolName)) {
+        if (isWhatsApp) {
+          // In WhatsApp mode, convert client-side tools to text results
+          let textResult = '';
+          if (toolName === 'navigate') {
+            const route = args.route || '/';
+            const label = args.label || 'Page';
+            textResult = `Here's the link: ${SITE_URL}${route} (${label})`;
+          } else if (toolName === 'show_style_advice') {
+            textResult = `Style Advice for ${args.occasion || 'any occasion'}:\n${args.advice || ''}`;
+            if (args.tips?.length) textResult += '\n\nTips:\n' + args.tips.map(t => `• ${t}`).join('\n');
+          } else if (toolName === 'suggest_outfit') {
+            textResult = `Outfit for ${args.occasion || 'any occasion'}:\n`;
+            if (args.pieces?.length) {
+              textResult += args.pieces.map(p => `• ${p.type}: ${p.description}`).join('\n');
+            }
+            if (args.reasoning) textResult += `\n\n${args.reasoning}`;
+          } else {
+            textResult = `${toolName} executed.`;
+          }
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ success: true, message: textResult }),
+          });
+          toolResults.push({ tool: toolName, result: { success: true, message: textResult }, id: tc.id });
+        } else {
+          // Web mode: send client actions as before
+          clientActions.push({ action: toolName, args, id: tc.id });
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ success: true, message: `${toolName} sent to client.` }),
+          });
+        }
+      } else {
+        // Server-side execution
+        const result = await executeToolCall(toolName, args, userObj);
+        toolResults.push({ tool: toolName, result, id: tc.id });
+        conversationMessages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      }
+    }
+  }
+
+  const responseText = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
+
+  // Save to conversation history — ONLY the NEW messages from this interaction
+  // (not the full history that was passed in as context, to avoid duplication)
+  let savedConvoId = null;
+  if (userId) {
+    try {
+      // Save only NEW messages from this request (not the history passed as context).
+      // Simple approach: save the last user message + the final AI response text.
+      // This avoids index calculation bugs when optimizeMessages condenses history.
+      const lastUserMsg = incomingMessages.filter(m => m.role === 'user').pop();
+      const newMessages = [];
+      if (lastUserMsg?.content) {
+        newMessages.push({ role: 'user', content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '' });
+      }
+      if (responseText) {
+        newMessages.push({ role: 'assistant', content: responseText });
+      }
+
+      if (newMessages.length > 0) {
+        savedConvoId = await saveToConversation(userId, options.conversationId || null, newMessages, isWhatsApp ? 'whatsapp' : 'web');
+      }
+    } catch (e) {
+      console.error('processAIChatMessage: chat history save error:', e.message);
+    }
+  }
+
+  return {
+    responseText,
+    toolResults,
+    clientActions,
+    conversationId: savedConvoId?.toString() || null,
+    role: effectiveRole,
+    lastMessage,
+  };
+}
+
+// Export for use by WhatsApp AI chat service
+exports.processAIChatMessage = processAIChatMessage;
+
 // ─── MAIN CHAT ENDPOINT (Streaming SSE with Server-Side Tool Loop) ───
 
 exports.streamChat = async (req, res) => {
@@ -1818,7 +2025,7 @@ exports.chatOnce = async (req, res) => {
 /**
  * Save messages to a specific conversation (or create/find the active one).
  */
-async function saveToConversation(userId, conversationId, messages) {
+async function saveToConversation(userId, conversationId, messages, source = 'web') {
   let history = await ChatHistory.findOne({ user: userId });
   if (!history) {
     history = new ChatHistory({ user: userId, conversations: [] });
@@ -1829,17 +2036,26 @@ async function saveToConversation(userId, conversationId, messages) {
     convo = history.conversations.id(conversationId);
   }
   if (!convo) {
-    // Find the active conversation or create one
-    convo = history.conversations.find(c => c.isActive);
+    if (source === 'whatsapp') {
+      // For WhatsApp: find existing WhatsApp conversation or create one
+      convo = history.conversations.find(c => c.source === 'whatsapp');
+    } else {
+      // For web: find the active web conversation
+      convo = history.conversations.find(c => c.isActive && c.source !== 'whatsapp');
+    }
     if (!convo) {
       // Auto-generate title from first user message
       const firstUserMsg = messages.find(m => m.role === 'user');
-      const title = firstUserMsg
-        ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? '...' : '')
-        : 'New Chat';
-      history.conversations.push({ title, messages: [], isActive: true });
+      const title = source === 'whatsapp'
+        ? '[WhatsApp] Chat'
+        : (firstUserMsg
+          ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? '...' : '')
+          : 'New Chat');
+      history.conversations.push({ title, messages: [], isActive: source !== 'whatsapp', source });
       convo = history.conversations[history.conversations.length - 1];
-      history.activeConversationId = convo._id;
+      if (source !== 'whatsapp') {
+        history.activeConversationId = convo._id;
+      }
     }
   }
 

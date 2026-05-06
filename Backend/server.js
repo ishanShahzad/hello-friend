@@ -245,6 +245,7 @@ const couponRoutes = require('./routes/couponRoutes');
 const storeReviewRoutes = require('./routes/storeReviewRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
 const sellerWhatsappRoutes = require('./routes/sellerWhatsappRoutes');
+const userWhatsappRoutes = require('./routes/userWhatsappRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const Cart = require('./models/Cart');
 const { sendEmail } = require('./controllers/mailController');
@@ -276,6 +277,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/store-reviews', storeReviewRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/seller-whatsapp', sellerWhatsappRoutes);
+app.use('/api/user-whatsapp', userWhatsappRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // ── Trial expiration (runs on persistent Heroku dyno) ──

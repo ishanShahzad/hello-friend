@@ -23,6 +23,13 @@ router.post('/seller/pairing-code', verifyToken, admin, ctrl.sellerRequestPairin
 router.get('/seller/queue', verifyToken, admin, ctrl.getSellerQueue);
 router.get('/seller/stats', verifyToken, admin, ctrl.getSellerStats);
 
+// Admin WhatsApp AI chat number management (admin only)
+const adminNumberCtrl = require('../controllers/adminWhatsappNumberController');
+router.get('/admin-numbers', verifyToken, admin, adminNumberCtrl.getAdminNumbers);
+router.post('/admin-numbers', verifyToken, admin, adminNumberCtrl.addAdminNumber);
+router.delete('/admin-numbers/:id', verifyToken, admin, adminNumberCtrl.removeAdminNumber);
+router.patch('/admin-numbers/:id', verifyToken, admin, adminNumberCtrl.toggleAdminNumber);
+
 // Public webhook (validated via shared secret in handler)
 router.post('/webhook', ctrl.webhook);
 

@@ -13,6 +13,7 @@ const conversationSchema = new mongoose.Schema({
   messages: [messageSchema],
   isActive: { type: Boolean, default: true },
   lastActive: { type: Date, default: Date.now },
+  source: { type: String, enum: ['web', 'whatsapp', 'mobile'], default: 'web' },
 }, { timestamps: true });
 
 // Cap messages per conversation

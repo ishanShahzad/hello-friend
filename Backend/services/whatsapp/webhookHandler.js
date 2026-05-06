@@ -28,6 +28,7 @@ const { parseConfirmReply, buildReconfirmButtonsPayload } = require('./messageBu
 const evolution = require('./evolutionClient');
 const { notifySeller } = require('./sellerNotificationService');
 const sellerTemplates = require('./sellerMessageTemplates');
+const { processIncomingWhatsAppMessage } = require('./whatsappAIChatService');
 
 // ──────────────────────────────────────────────────────────────────────────
 // Outgoing friendly replies
@@ -366,12 +367,32 @@ exports.handleEvolutionWebhook = async (req, res) => {
             return res.status(200).json({ ok: true, status: cfg.status, instance: singletonKey });
         }
 
-        // ── If this is from the seller instance, do NOT run buyer-order logic ──
-        // The seller instance is one-way (we send notifications TO sellers).
-        // Any inbound messages (sellers replying to notifications, random chat, OTP replies)
-        // must NOT be interpreted as buyer order confirmations.
+        // ── Seller instance: route inbound messages to AI chat ──
+        // The seller instance now supports bidirectional AI chat for sellers and admins.
+        // Messages are routed to the WhatsApp AI Chat Service (NOT order confirmation).
         if (isSellerInstance) {
-            return res.status(200).json({ ok: true, skipped: 'seller_instance_inbound' });
+            if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
+                const messages = Array.isArray(body.data) ? body.data : [body.data].filter(Boolean);
+                for (const msg of messages) {
+                    if (msg?.key?.fromMe) continue;
+                    const remoteJid = msg?.key?.remoteJid || msg?.remoteJid || '';
+                    // Skip group messages — only process 1:1 private chats
+                    if (remoteJid.endsWith('@g.us') || remoteJid.includes('@broadcast')) continue;
+                    const phone = phoneFromJid(remoteJid);
+                    if (!phone) continue;
+
+                    // Extract text from the message
+                    const m = msg.message || {};
+                    const text = m.conversation || m.extendedTextMessage?.text || '';
+                    if (!text || !text.trim()) continue;
+
+                    // Route to AI chat (fire-and-forget — don't block webhook response)
+                    processIncomingWhatsAppMessage(phone, text.trim(), 'seller').catch(err => {
+                        console.error('[whatsapp] seller AI chat error:', err.message);
+                    });
+                }
+            }
+            return res.status(200).json({ ok: true, instance: 'seller' });
         }
 
         // ── MESSAGES_UPSERT — button click OR text YES/NO reply (+ legacy poll) ──
@@ -430,11 +451,25 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 if (!job) {
                     job = await findPendingJobByPhone(phone);
                 }
-                if (!job) continue;
 
-                // If the buyer sent *something* but we couldn't decide, nudge them.
+                // ── No pending order confirmation → route to AI chat ──
+                if (!job) {
+                    const rawText = replyTextForHint || (extracted?.source === 'text' ? extracted.text : '');
+                    if (rawText) {
+                        processIncomingWhatsAppMessage(phone, rawText, 'main').catch(err => {
+                            console.error('[whatsapp] main AI chat error:', err.message);
+                        });
+                    }
+                    continue;
+                }
+
+                // If the buyer has a pending order but sent something that's not YES/NO,
+                // route to AI chat instead of just sending a YES/NO hint — the AI is
+                // smarter and can help with order questions or other requests.
                 if (!decision && replyTextForHint) {
-                    await sendUnclearReplyHint(phone, job.orderId, job.buyerName);
+                    processIncomingWhatsAppMessage(phone, replyTextForHint, 'main').catch(err => {
+                        console.error('[whatsapp] main AI chat error (with pending order):', err.message);
+                    });
                     continue;
                 }
                 if (!decision) continue; // silent message with no useful content
