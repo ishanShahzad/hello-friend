@@ -56,6 +56,7 @@ import TrackOrderPage from '../pages/TrackOrderPage'
 import OrderConfirmationPage from '../pages/OrderConfirmationPage'
 import WhatsAppVerificationPanel from '../components/layout/admin/WhatsAppVerificationPanel'
 import AdminBroadcastPanel from '../components/layout/admin/AdminBroadcastPanel'
+import AIChatPage from '../pages/AIChatPage'
 
 function AppRoutes() {
     const navigate = useNavigate()
@@ -103,6 +104,7 @@ function AppRoutes() {
                 <Route path='/seller-signup' element={<Navigate to='/become-seller' replace />} />
                 <Route path='/auth/google/success' element={<GoogleAuthSuccess />} />
                 <Route path='/orders/confirm/:token' element={<OrderConfirmationPage />} />
+                <Route path='/ai-chat' element={<AIChatPage />} />
 
                 <Route path={'/success'} element={<Success />} />
 

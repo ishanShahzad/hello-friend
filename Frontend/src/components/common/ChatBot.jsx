@@ -219,7 +219,7 @@ const DataListCard = ({ title, items, renderItem, icon: Icon = Package, color = 
 //  MAIN CHATBOT COMPONENT
 // ═══════════════════════════════════════════════════════
 
-function ChatBot({ embedded = false }) {
+function ChatBot({ embedded = false, conversationId = null, initialMessages = null, onConversationCreated = null }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
@@ -229,11 +229,13 @@ function ChatBot({ embedded = false }) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showChips, setShowChips] = useState(true);
-  const [pendingTools, setPendingTools] = useState([]); // Tool execution progress
+  const [pendingTools, setPendingTools] = useState([]);
+  const [activeConvoId, setActiveConvoId] = useState(conversationId);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
+  const hasLoadedHistory = useRef(false);
 
   // Derived
   const role = currentUser?.role || 'user';
@@ -242,9 +244,31 @@ function ChatBot({ embedded = false }) {
   const chips = ROLE_CHIPS[role] || ROLE_CHIPS.user;
   const titles = ROLE_TITLES[role] || ROLE_TITLES.user;
 
-  // ─── Greeting on open ───
+  // ─── Load initial messages from parent (AI Chat page) ───
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (initialMessages !== null) {
+      if (initialMessages.length > 0) {
+        setMessages(initialMessages.map(m => ({ role: m.role, content: m.content })));
+        setShowChips(false);
+      } else {
+        // New empty conversation — show greeting
+        const hour = new Date().getHours();
+        const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
+        setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
+        setShowChips(true);
+      }
+    }
+  }, [initialMessages, conversationId]);
+
+  // ─── Track conversationId from parent ───
+  useEffect(() => {
+    setActiveConvoId(conversationId);
+  }, [conversationId]);
+
+  // ─── Greeting on open (floating mode only) ───
+  useEffect(() => {
+    if (isOpen && messages.length === 0 && initialMessages === null) {
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
       const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
