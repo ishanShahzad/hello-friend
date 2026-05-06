@@ -1,7 +1,6 @@
 
 
 
-2 : Ai powered for sellers and user.. and both can chat from whatsapp also..
 
 
 

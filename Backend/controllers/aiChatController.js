@@ -1,0 +1,1651 @@
+/**
+ * AI Chat Controller
+ * ─────────────────────
+ * Handles the streaming AI chat for Rozare platform.
+ * Uses OpenRouter API (https://openrouter.ai) to access any model.
+ *
+ * Key responsibilities:
+ *  1. Role-based system prompts (user / seller / admin)
+ *  2. Role-based tool (function) exposure + strict server-side validation
+ *  3. Deep personalization via live context injection
+ *  4. Streaming Server-Sent Events (SSE) response to the client
+ *  5. Security: the AI NEVER performs actions directly — it returns tool calls
+ *     which the frontend executes against our own `/api/ai-actions/*` routes,
+ *     which re-validate the caller's role on the server.
+ */
+
+const User = require('../models/User');
+const Order = require('../models/Order');
+const Product = require('../models/Product');
+const Store = require('../models/Store');
+const ChatHistory = require('../models/ChatHistory');
+const { executeToolCall, isClientSideTool } = require('../services/aiActionExecutor');
+
+// ─── OpenRouter Config ───────────────────────────────────────────────
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const AI_MODEL = process.env.AI_MODEL || 'google/gemini-2.5-flash';
+const AI_FALLBACK_MODEL = process.env.AI_FALLBACK_MODEL || 'google/gemini-flash-1.5';
+const SITE_URL = process.env.FRONTEND_URL || 'https://www.rozare.com';
+const SITE_NAME = 'Rozare';
+
+// ─── SYSTEM PROMPTS ──────────────────────────────────────────────────
+// These are crafted for warmth, expertise, and personal connection.
+// Each prompt is role-scoped and explicitly lists forbidden cross-role actions.
+
+const USER_PROMPT = `You are Rozare AI — a warm, witty, incredibly helpful personal shopping companion for the Rozare e-commerce platform. Think of yourself as a close friend who happens to be a brilliant stylist and shopping expert.
+
+## Who You Are
+- Friendly, conversational, genuinely interested in helping
+- A fashion & lifestyle expert with a sharp eye for style
+- Patient, never condescending, always positive
+- Remember details the user shares and weave them back naturally
+
+## What You Can Do For The User
+You help the user perform real actions on their account through tool calls. You can:
+- **Shop smart**: Search products, compare options, find coupons, save items to wishlist
+- **Manage orders**: View order history, check order details, track orders, cancel pending orders
+- **Manage profile**: Update profile info, manage saved addresses, set default address
+- **Notifications**: View notifications, mark them as read
+- **Style expertise**: Give fashion advice, color coordination, outfit suggestions for any occasion
+- **Navigation**: Take them directly to any page (cart, profile, orders, stores, etc.)
+- **Help**: Submit complaints, check complaint status
+
+## Hard Boundaries (NEVER cross these)
+You are talking to a USER (customer). You CANNOT and MUST NEVER:
+- View another user's data, orders, profile, or anything private
+- View seller analytics, seller orders, or store management data
+- Add/edit/delete products (only sellers can)
+- Manage users, stores, complaints platform-wide (only admins can)
+- Approve/reject store verifications
+- Change anyone's role or block anyone
+- Access admin or seller dashboards
+
+If the user asks for something only a seller or admin can do, politely explain: "That's a seller/admin feature — I can only help you with things on your own account as a shopper." Then suggest what you CAN help with.
+
+## How To Talk
+- Warm, slightly playful tone. Occasional tasteful emojis (not too many).
+- When suggesting a product, explain WHY it's a great fit
+- Ask clarifying questions when helpful (occasion, budget, color, style) rather than guessing
+- Give specific, actionable suggestions — never vague
+- Reference their past orders and preferences naturally when relevant
+- Keep replies conversational length (under ~150 words) unless they ask for a detailed breakdown
+
+## Styling Expertise
+- Color theory: complementary, analogous, triadic — use real color names
+- Occasion dressing: casual, office, date, wedding guest, travel, athleisure
+- Body-conscious flattering without being judgmental
+- Seasonal trends and timeless essentials
+- Budget-aware: you respect what they say about price
+
+## Rules
+- Use tools to fetch REAL data — never fabricate product names, prices, or order details
+- When user asks for action, use the tool directly (don't just describe what you'd do)
+- For destructive actions (cancel order, delete something), confirm once before executing
+- If information is missing for a tool, ask for it specifically
+- End replies with a small, inviting follow-up when natural`;
+
+const SELLER_PROMPT = `You are Rozare AI Business Partner — a sharp, strategic, proactive business advisor for sellers on Rozare. You're the friend every small business owner wishes they had: business-savvy, data-driven, and genuinely invested in their growth.
+
+## Who You Are
+- Professional and warm. Confident, not pushy.
+- Data-driven: every recommendation is backed by numbers
+- Proactive: spot opportunities and flag risks before being asked
+- Action-oriented: get things done, don't just talk about them
+
+## What You Can Do For The Seller
+Through tool calls, you execute REAL actions on the seller's store:
+- **Products**: Add, edit, delete, bulk-discount, bulk price update, remove discounts, list products
+- **Orders**: View orders, update order status (processing → shipped → delivered)
+- **Store**: View store details, update store settings (name, description, logo, banner, socials, return policy), view store analytics, apply for verification
+- **Shipping**: View and update shipping methods
+- **Coupons**: Create, list, update, delete, toggle coupons; view coupon analytics
+- **Subscription**: Check subscription status and plan details
+- **Analytics**: Revenue, orders count, top products, stock alerts, growth insights
+- **Everything a shopper can do**: Plus their own orders, wishlist, addresses as a customer
+
+## Hard Boundaries (NEVER cross these)
+You are talking to a SELLER. You CANNOT and MUST NEVER:
+- View, edit, or delete ANOTHER seller's products, orders, or store
+- View platform-wide analytics (only admins see that)
+- View or manage users (only admins can)
+- Approve/reject store verifications for anyone (only admins can)
+- Block users, delete user accounts, change user roles
+- View/cancel orders that don't contain your products
+- Update platform tax configuration
+- Access the admin dashboard or admin-only reports
+- Send platform-wide broadcast notifications
+
+If the seller asks for something admin-only, say: "That's a platform-admin capability — I can help you with your own store and analytics, but not platform-wide operations. Want me to [suggest relevant seller action]?"
+
+## Interaction Style
+- When the seller says "add a product": collect name, price, category, brand, stock. If any missing, ask specifically.
+- When showing analytics: present numbers clearly (totals, %, comparisons)
+- Proactively suggest: social media marketing, seasonal promotions, optimizing low-performing listings, cross-sells
+- Always confirm destructive actions (delete product, delete coupon) before executing
+- When bulk-updating: show a summary of what will change and confirm
+
+## Growth Mindset
+You're a growth partner. Regularly suggest:
+- Social media content ideas (Instagram Reels, TikTok trends, Pinterest boards)
+- Photography improvements (better lighting, lifestyle shots, consistent style)
+- Pricing psychology (charm pricing, premium tier anchors, bundle offers)
+- Seasonal campaigns (back-to-school, holiday, summer sale)
+- Coupon strategies (first-time buyer, loyalty, cart-abandonment)
+
+## Rules
+- Keep replies under 200 words unless presenting a detailed analytics breakdown
+- Tables and bullet points for data — easy to scan
+- Never fabricate numbers — always use tools to fetch fresh data
+- Reference past conversation and seller's business details naturally`;
+
+const ADMIN_PROMPT = `You are Rozare AI Platform Commander — a decisive, authoritative administrative co-pilot with FULL operational access to the Rozare e-commerce platform.
+
+## Who You Are
+- Efficient, professional, direct
+- Data-driven and security-conscious
+- Proactive in flagging platform risks (suspicious activity, abuse, fraud signals)
+- Respectful of the weight of admin actions
+
+## What You Can Do
+You have FULL platform access through tools:
+- **Users**: Search, list, view, delete, block/unblock, change roles
+- **Products**: Search any product, edit/delete any product
+- **Orders**: View all orders, cancel any order, view order details
+- **Stores**: List all stores, view any store's details, search stores, view verified stores
+- **Verifications**: Approve, reject, or revoke store verifications
+- **Complaints**: View all, respond to, resolve, escalate, prioritize
+- **Broadcasts**: Send/schedule platform-wide notifications, view past broadcasts, cancel scheduled ones
+- **Subscriptions**: View all seller subscriptions and their statuses
+- **Tax Config**: View and update platform tax rates
+- **Analytics**: Platform-wide revenue, user growth, store distribution, order volume
+- **Everything sellers and users can do**
+
+## Interaction Style
+- Execute read operations (list, view, search) directly without confirmation
+- For destructive actions (delete user, cancel order, reject verification, delete anything), confirm ONCE then execute
+- Present data in clean, scannable tables with counts and totals
+- Flag anomalies: unusual traffic, spam complaints, suspicious sellers, fraud signals
+- Suggest platform improvements based on data patterns you notice
+
+## Security Mindset
+- Warn before irreversible actions (delete user — "This will permanently remove all their data")
+- Suggest reviewing data before mass operations
+- Flag when an admin action might affect many users
+
+## Rules
+- Admin has full access — no operation is off-limits
+- Always show counts, totals, and percentages with lists
+- Keep replies under 250 words unless giving a full platform report
+- Use structured formatting (headers, tables, bullets) for clarity
+- Never fabricate numbers — always use tools
+- Be direct and concise: admins value efficiency`;
+
+// ─── TOOLS BY ROLE ───────────────────────────────────────────────────
+
+const SHARED_NAVIGATION_TOOL = {
+  type: 'function',
+  function: {
+    name: 'navigate',
+    description: 'Navigate the user to a page in the application.',
+    parameters: {
+      type: 'object',
+      properties: {
+        route: { type: 'string', description: 'Route path e.g. /profile, /cart' },
+        label: { type: 'string', description: 'Human-readable label for what page this is' },
+      },
+      required: ['route', 'label'],
+    },
+  },
+};
+
+const userTools = [
+  {
+    type: 'function',
+    function: {
+      name: 'search_products',
+      description: 'Search for products in the Rozare catalog. Returns matching products.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query (product name, keyword, description)' },
+          category: { type: 'string', description: 'Category filter (optional)' },
+          maxPrice: { type: 'number', description: 'Maximum price (optional)' },
+          minPrice: { type: 'number', description: 'Minimum price (optional)' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  SHARED_NAVIGATION_TOOL,
+  {
+    type: 'function',
+    function: {
+      name: 'show_style_advice',
+      description: 'Display rich, styled fashion advice with a color palette to the user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          advice: { type: 'string', description: 'The core style advice' },
+          occasion: { type: 'string', description: 'Occasion this is for' },
+          colorPalette: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                color: { type: 'string', description: 'Hex color or CSS color' },
+                name: { type: 'string', description: 'Name of the color' },
+              },
+              required: ['color', 'name'],
+            },
+          },
+          tips: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['advice', 'occasion'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'suggest_outfit',
+      description: 'Suggest a complete outfit combination for an occasion.',
+      parameters: {
+        type: 'object',
+        properties: {
+          occasion: { type: 'string' },
+          pieces: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', description: 'e.g. "Top", "Bottom", "Shoes", "Accessory"' },
+                description: { type: 'string' },
+                color: { type: 'string', description: 'Hex or CSS color' },
+                searchQuery: { type: 'string', description: 'Query to find this piece in store' },
+              },
+              required: ['type', 'description', 'color'],
+            },
+          },
+          reasoning: { type: 'string' },
+        },
+        required: ['occasion', 'pieces', 'reasoning'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_my_orders',
+      description: "Get the user's own order history.",
+      parameters: {
+        type: 'object',
+        properties: { status: { type: 'string', description: 'Optional status filter' } },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_order_detail',
+      description: 'Get full details of a specific order.',
+      parameters: {
+        type: 'object',
+        properties: { orderId: { type: 'string', description: 'MongoDB _id of the order' } },
+        required: ['orderId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_order',
+      description: "Cancel a pending order (user's own only).",
+      parameters: {
+        type: 'object',
+        properties: { orderId: { type: 'string', description: 'MongoDB _id of the order' } },
+        required: ['orderId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'submit_complaint',
+      description: 'Submit a complaint on behalf of the user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: {
+            type: 'string',
+            enum: ['product_issue', 'order_issue', 'delivery', 'refund', 'seller_complaint', 'website_bug', 'suggestion', 'other'],
+          },
+          subject: { type: 'string' },
+          message: { type: 'string' },
+        },
+        required: ['category', 'subject', 'message'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_my_complaints',
+      description: "Get the user's own complaint history.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  // ─── NEW USER TOOLS ───
+  {
+    type: 'function',
+    function: {
+      name: 'get_wishlist',
+      description: "Get all items in the user's wishlist.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_to_wishlist',
+      description: "Add a product to the user's wishlist.",
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'string' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'remove_from_wishlist',
+      description: "Remove a product from the user's wishlist.",
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'string' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_addresses',
+      description: "Get the user's saved shipping addresses.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_address',
+      description: "Add a new shipping address to the user's saved addresses.",
+      parameters: {
+        type: 'object',
+        properties: {
+          address: {
+            type: 'object',
+            description: 'Address object with fullName, address, city, state, postalCode, country, phone',
+          },
+        },
+        required: ['address'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_profile',
+      description: "Update the user's own profile (username only).",
+      parameters: {
+        type: 'object',
+        properties: {
+          updates: { type: 'object', description: 'Object with fields to update (e.g. { username: "NewName" })' },
+        },
+        required: ['updates'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_notifications',
+      description: "Get the user's recent notifications.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'mark_notifications_read',
+      description: 'Mark all notifications as read for the current user.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_available_coupons',
+      description: 'List currently available active coupons (optionally for a specific store).',
+      parameters: {
+        type: 'object',
+        properties: {
+          storeId: { type: 'string', description: 'Optional seller/store id to filter coupons' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'validate_coupon',
+      description: 'Validate a coupon code against a cart total to check savings.',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          cartTotal: { type: 'number' },
+        },
+        required: ['code', 'cartTotal'],
+      },
+    },
+  },
+];
+
+const sellerTools = [
+  ...userTools,
+  {
+    type: 'function',
+    function: {
+      name: 'add_product',
+      description: "Add a new product to the seller's store. REQUIRED: name, price, category, brand, stock. Ask for any missing fields.",
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          price: { type: 'number' },
+          description: { type: 'string' },
+          category: { type: 'string' },
+          brand: { type: 'string' },
+          stock: { type: 'number' },
+          image: { type: 'string' },
+          discountedPrice: { type: 'number' },
+          tags: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name', 'price', 'category', 'brand', 'stock'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'edit_product',
+      description: "Edit one of the seller's own products. Only owner can edit.",
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string' },
+          updates: { type: 'object', description: 'Fields to update' },
+        },
+        required: ['productId', 'updates'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_product',
+      description: "Delete one of the seller's own products. Confirm first.",
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'string' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_my_products',
+      description: "List the seller's products with optional filtering.",
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string' },
+          category: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'bulk_discount',
+      description: "Apply a discount to multiple of the seller's own products.",
+      parameters: {
+        type: 'object',
+        properties: {
+          productIds: { type: 'array', items: { type: 'string' } },
+          discountType: { type: 'string', enum: ['percentage', 'fixed'] },
+          discountValue: { type: 'number' },
+        },
+        required: ['productIds', 'discountType', 'discountValue'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'bulk_price_update',
+      description: "Update prices on multiple of the seller's own products.",
+      parameters: {
+        type: 'object',
+        properties: {
+          productIds: { type: 'array', items: { type: 'string' } },
+          updateType: { type: 'string', enum: ['percentage', 'fixed', 'set'] },
+          value: { type: 'number' },
+        },
+        required: ['productIds', 'updateType', 'value'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'remove_discount',
+      description: "Remove discounts from the seller's own products.",
+      parameters: {
+        type: 'object',
+        properties: { productIds: { type: 'array', items: { type: 'string' } } },
+        required: ['productIds'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_seller_analytics',
+      description: "Get the seller's business analytics: revenue, orders, top products, stock alerts.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_seller_orders',
+      description: "Get orders that contain the seller's products.",
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_order_status',
+      description: "Update status of an order containing the seller's product (processing/shipped/delivered only; sellers can't cancel).",
+      parameters: {
+        type: 'object',
+        properties: {
+          orderId: { type: 'string' },
+          newStatus: { type: 'string', enum: ['processing', 'shipped', 'delivered'] },
+        },
+        required: ['orderId', 'newStatus'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_my_store',
+      description: "Get the seller's own store details.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_store',
+      description: "Update seller's own store settings.",
+      parameters: {
+        type: 'object',
+        properties: {
+          updates: {
+            type: 'object',
+            description: 'Fields: storeName, description, logo, banner, socialLinks, returnPolicy, address',
+          },
+        },
+        required: ['updates'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_store_analytics',
+      description: "Get the seller's store performance metrics.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'apply_for_verification',
+      description: "Submit a verification application for seller's store.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_shipping_methods',
+      description: "View the seller's shipping methods.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_shipping',
+      description: "Update one of the seller's shipping methods.",
+      parameters: {
+        type: 'object',
+        properties: {
+          methodId: { type: 'string' },
+          updates: { type: 'object' },
+        },
+        required: ['methodId', 'updates'],
+      },
+    },
+  },
+  // ─── SELLER COUPON TOOLS ───
+  {
+    type: 'function',
+    function: {
+      name: 'create_coupon',
+      description: "Create a new discount coupon for the seller's store.",
+      parameters: {
+        type: 'object',
+        properties: {
+          coupon: {
+            type: 'object',
+            description: 'Coupon: { code, discountType ("percentage"|"fixed"), discountValue, minOrderAmount?, maxUses?, expiryDate?, maxDiscount? }',
+          },
+        },
+        required: ['coupon'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_my_coupons',
+      description: "List the seller's own coupons.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_coupon',
+      description: "Update one of the seller's own coupons.",
+      parameters: {
+        type: 'object',
+        properties: {
+          couponId: { type: 'string' },
+          updates: { type: 'object' },
+        },
+        required: ['couponId', 'updates'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_coupon',
+      description: "Delete one of the seller's own coupons. Confirm first.",
+      parameters: {
+        type: 'object',
+        properties: { couponId: { type: 'string' } },
+        required: ['couponId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'toggle_coupon',
+      description: "Toggle active/inactive state of one of seller's coupons.",
+      parameters: {
+        type: 'object',
+        properties: { couponId: { type: 'string' } },
+        required: ['couponId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_subscription_status',
+      description: "Get the seller's current subscription plan and status.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+];
+
+const adminTools = [
+  ...sellerTools,
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_users',
+      description: 'List/search all users on the platform.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string' },
+          role: { type: 'string' },
+          status: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_user',
+      description: 'Delete a user. This is permanent. Confirm with admin first.',
+      parameters: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'block_user',
+      description: 'Toggle block/unblock for a user.',
+      parameters: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'change_user_role',
+      description: "Change a user's role.",
+      parameters: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' },
+          newRole: { type: 'string', enum: ['user', 'seller', 'admin'] },
+        },
+        required: ['userId', 'newRole'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_admin_analytics',
+      description: 'Get platform-wide analytics.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_orders',
+      description: 'List all orders across the platform.',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_complaints',
+      description: 'List all complaints platform-wide.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          status: { type: 'string' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_complaint',
+      description: 'Respond to, resolve, escalate or reprioritize a complaint.',
+      parameters: {
+        type: 'object',
+        properties: {
+          complaintId: { type: 'string' },
+          status: { type: 'string' },
+          adminResponse: { type: 'string' },
+          priority: { type: 'string' },
+        },
+        required: ['complaintId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_pending_verifications',
+      description: 'List stores awaiting verification.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'approve_verification',
+      description: "Approve a store's verification application.",
+      parameters: {
+        type: 'object',
+        properties: { storeId: { type: 'string' } },
+        required: ['storeId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reject_verification',
+      description: "Reject a store's verification application.",
+      parameters: {
+        type: 'object',
+        properties: {
+          storeId: { type: 'string' },
+          reason: { type: 'string' },
+        },
+        required: ['storeId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'remove_verification',
+      description: "Revoke a store's verified badge.",
+      parameters: {
+        type: 'object',
+        properties: { storeId: { type: 'string' } },
+        required: ['storeId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_stores',
+      description: 'List all stores on the platform.',
+      parameters: {
+        type: 'object',
+        properties: { limit: { type: 'number' } },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_tax_config',
+      description: 'Update platform tax configuration.',
+      parameters: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['percentage', 'fixed'] },
+          value: { type: 'number' },
+          isActive: { type: 'boolean' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_tax_config',
+      description: 'View platform tax configuration.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  // ─── ADMIN BROADCAST + SUBSCRIPTION TOOLS ───
+  {
+    type: 'function',
+    function: {
+      name: 'send_broadcast',
+      description: 'Send/schedule a broadcast notification to all users or a targeted audience.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          message: { type: 'string' },
+          audience: {
+            type: 'object',
+            description: 'Audience target: { target: "all"|"users"|"sellers"|"admins"|"custom", userIds?: [...] }',
+          },
+          scheduledAt: { type: 'string', description: 'ISO datetime string; omit for immediate' },
+        },
+        required: ['title', 'message'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_broadcasts',
+      description: 'List recent/scheduled broadcasts.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_broadcast',
+      description: 'Cancel a scheduled broadcast that has not yet been sent.',
+      parameters: {
+        type: 'object',
+        properties: { broadcastId: { type: 'string' } },
+        required: ['broadcastId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_subscriptions',
+      description: 'View all seller subscriptions and their statuses.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_verified_stores',
+      description: 'List all verified stores on the platform.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_store_details',
+      description: 'Get detailed info on a specific store by ID or slug.',
+      parameters: {
+        type: 'object',
+        properties: {
+          storeId: { type: 'string' },
+          slug: { type: 'string' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_stores',
+      description: 'Search stores by name or slug.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+    },
+  },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+function getSystemPrompt(role) {
+  switch (role) {
+    case 'seller':
+      return SELLER_PROMPT;
+    case 'admin':
+      return ADMIN_PROMPT;
+    default:
+      return USER_PROMPT;
+  }
+}
+
+function getTools(role) {
+  switch (role) {
+    case 'seller':
+      return sellerTools;
+    case 'admin':
+      return adminTools;
+    default:
+      return userTools;
+  }
+}
+
+/**
+ * Server-side allow-list: hard-enforces which tools each role can invoke.
+ * This is the second layer of security (the first being the role-scoped tool list
+ * sent to the model). Even if the model hallucinates a tool, we block it here.
+ */
+const ALLOWED_TOOLS_BY_ROLE = {
+  user: new Set(userTools.map(t => t.function.name)),
+  seller: new Set(sellerTools.map(t => t.function.name)),
+  admin: new Set(adminTools.map(t => t.function.name)),
+  guest: new Set([
+    'search_products',
+    'navigate',
+    'show_style_advice',
+    'suggest_outfit',
+    'get_available_coupons',
+  ]),
+};
+
+function isToolAllowedForRole(toolName, role) {
+  const set = ALLOWED_TOOLS_BY_ROLE[role] || ALLOWED_TOOLS_BY_ROLE.guest;
+  return set.has(toolName);
+}
+
+/**
+ * Token-saving: keep last N full messages, condense older ones into summary.
+ */
+function optimizeMessages(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return [];
+  if (messages.length <= 20) return messages;
+
+  const older = messages.slice(0, messages.length - 20);
+  const recent = messages.slice(-20);
+
+  const summary = older
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .slice(-10)
+    .map(m => {
+      const content = typeof m.content === 'string' ? m.content : '';
+      return `${m.role}: ${content.slice(0, 140)}`;
+    })
+    .join('\n');
+
+  if (!summary) return recent;
+
+  return [
+    { role: 'system', content: `## Earlier conversation (condensed context)\n${summary}` },
+    ...recent,
+  ];
+}
+
+/**
+ * Build deep user context for personalization.
+ */
+async function buildUserContext(userId, role) {
+  if (!userId) return null;
+  try {
+    const user = await User.findById(userId).select('username email role currency sellerInfo createdAt');
+    if (!user) return null;
+
+    const ctx = {
+      name: user.username || '',
+      email: user.email || '',
+      role: user.role,
+      currency: user.currency || 'USD',
+      memberSince: user.createdAt ? user.createdAt.toISOString().split('T')[0] : null,
+    };
+
+    // Recent orders (all roles)
+    const recentOrders = await Order.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('orderItems.productId', 'name category brand')
+      .lean();
+
+    ctx.recentOrders = recentOrders.map(o => ({
+      orderId: o.orderId,
+      status: o.orderStatus,
+      total: o.orderSummary?.totalAmount || 0,
+      items: (o.orderItems || []).map(i => i.productId?.name).filter(Boolean).slice(0, 3),
+      date: o.createdAt,
+    }));
+
+    // Favorite categories from order history
+    const categories = {};
+    recentOrders.forEach(o => {
+      (o.orderItems || []).forEach(item => {
+        if (item.productId?.category) {
+          categories[item.productId.category] = (categories[item.productId.category] || 0) + 1;
+        }
+      });
+    });
+    ctx.topCategories = Object.entries(categories)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat]) => cat);
+
+    // Seller-specific enrichment
+    if (role === 'seller') {
+      try {
+        const store = await Store.findOne({ seller: userId }).select('storeName storeSlug verification trustCount isActive');
+        if (store) {
+          ctx.store = {
+            name: store.storeName,
+            slug: store.storeSlug,
+            isVerified: store.verification?.isVerified || false,
+            trustCount: store.trustCount || 0,
+            isActive: store.isActive,
+          };
+        }
+        const productCount = await Product.countDocuments({ seller: userId });
+        ctx.productCount = productCount;
+      } catch (e) { /* non-fatal */ }
+    }
+
+    // Admin-specific enrichment
+    if (role === 'admin') {
+      try {
+        const [totalUsers, totalOrders, totalStores, pendingVerifications] = await Promise.all([
+          User.countDocuments(),
+          Order.countDocuments(),
+          Store.countDocuments(),
+          Store.countDocuments({ 'verification.status': 'pending' }),
+        ]);
+        ctx.platform = { totalUsers, totalOrders, totalStores, pendingVerifications };
+      } catch (e) { /* non-fatal */ }
+    }
+
+    return ctx;
+  } catch (e) {
+    console.error('buildUserContext error:', e.message);
+    return null;
+  }
+}
+
+function formatContextBlock(ctx, role) {
+  if (!ctx) return '';
+  let s = `\n\n## Current User Context (use this to personalize, don't repeat back verbatim)\n`;
+  if (ctx.name) s += `- Name: ${ctx.name}\n`;
+  s += `- Role: ${ctx.role}\n`;
+  if (ctx.currency) s += `- Preferred currency: ${ctx.currency}\n`;
+  if (ctx.memberSince) s += `- Member since: ${ctx.memberSince}\n`;
+  if (ctx.topCategories?.length) s += `- Loves: ${ctx.topCategories.join(', ')}\n`;
+  if (ctx.recentOrders?.length) {
+    s += `- Recent orders:\n`;
+    ctx.recentOrders.forEach(o => {
+      s += `  • #${o.orderId}: ${o.items?.join(', ') || 'items'} — ${o.status} — $${o.total}\n`;
+    });
+  }
+  if (role === 'seller' && ctx.store) {
+    s += `- Store: "${ctx.store.name}" (${ctx.store.slug}) — ${ctx.store.isVerified ? 'verified ✓' : 'not verified'} — ${ctx.productCount ?? 0} products — ${ctx.store.trustCount} trust\n`;
+  }
+  if (role === 'admin' && ctx.platform) {
+    s += `- Platform snapshot: ${ctx.platform.totalUsers} users, ${ctx.platform.totalOrders} orders, ${ctx.platform.totalStores} stores, ${ctx.platform.pendingVerifications} pending verifications\n`;
+  }
+
+  const hour = new Date().getHours();
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+  s += `- Current time of day: ${timeOfDay}\n`;
+  return s;
+}
+
+/**
+ * Filter/stamp tool calls coming back from the model to enforce role allowlist.
+ * This is a LAST-MILE check; the backend AI-action routes ALSO re-validate role.
+ */
+function filterToolCallsByRole(parsed, role) {
+  if (!parsed?.choices) return parsed;
+  parsed.choices = parsed.choices.map(choice => {
+    const delta = choice.delta || choice.message;
+    if (!delta?.tool_calls) return choice;
+    const filtered = [];
+    for (const tc of delta.tool_calls) {
+      const name = tc.function?.name;
+      // When streaming, the first chunk has the name; subsequent chunks have argument deltas
+      // We only filter when a named tool call appears and is disallowed
+      if (name && !isToolAllowedForRole(name, role)) {
+        // Drop this tool call entirely — replace with null/no-op
+        continue;
+      }
+      filtered.push(tc);
+    }
+    if (delta.tool_calls) delta.tool_calls = filtered;
+    return choice;
+  });
+  return parsed;
+}
+
+// ─── Helper: read a full streaming response, buffer tool calls, forward text ─
+async function consumeStream(response, { onText, onToolCallDelta, role }) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let assistantContent = '';
+  const toolCallMap = {}; // indexed by tool_call index
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let idx;
+      while ((idx = buffer.indexOf('\n')) !== -1) {
+        let line = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 1);
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        if (!line.startsWith('data: ')) continue;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.error) throw new Error(parsed.error?.message || parsed.error);
+          const choice = parsed.choices?.[0];
+          if (!choice) continue;
+          const delta = choice.delta;
+          if (!delta) continue;
+
+          // Text content
+          if (delta.content) {
+            assistantContent += delta.content;
+            if (onText) onText(delta.content);
+          }
+
+          // Tool call deltas — accumulate into toolCallMap
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const i = tc.index ?? 0;
+              if (!toolCallMap[i]) {
+                toolCallMap[i] = { id: '', name: '', arguments: '' };
+              }
+              if (tc.id) toolCallMap[i].id = tc.id;
+              if (tc.function?.name) toolCallMap[i].name = tc.function.name;
+              if (tc.function?.arguments) toolCallMap[i].arguments += tc.function.arguments;
+            }
+          }
+        } catch (e) {
+          if (e.message?.includes('AI') || e.message?.includes('rate')) throw e;
+          // Ignore JSON parse errors mid-stream
+        }
+      }
+    }
+  } finally {
+    try { reader.cancel(); } catch {}
+  }
+
+  // Build tool_calls array (only allowed tools)
+  const toolCalls = Object.values(toolCallMap)
+    .filter(tc => tc.name && isToolAllowedForRole(tc.name, role));
+
+  return { assistantContent, toolCalls };
+}
+
+// ─── MAIN CHAT ENDPOINT (Streaming SSE with Server-Side Tool Loop) ───
+
+exports.streamChat = async (req, res) => {
+  try {
+    if (!OPENROUTER_API_KEY) {
+      return res.status(500).json({
+        error: 'AI service not configured. Please contact support.',
+        detail: 'OPENROUTER_API_KEY missing',
+      });
+    }
+
+    const body = req.body || {};
+    const incoming = Array.isArray(body.messages) ? body.messages : [];
+
+    const authenticatedRole = req.user?.role || 'guest';
+    const userId = req.user?.id || null;
+    const effectiveRole = ['user', 'seller', 'admin'].includes(authenticatedRole)
+      ? authenticatedRole
+      : 'guest';
+
+    // Build the user object for the executor
+    const userObj = userId ? { _id: userId, id: userId, role: effectiveRole } : null;
+
+    const userContext = await buildUserContext(userId, effectiveRole);
+
+    let systemContent = getSystemPrompt(effectiveRole);
+    systemContent += formatContextBlock(userContext, effectiveRole);
+    if (effectiveRole === 'guest') {
+      systemContent += `\n\n## IMPORTANT: This user is NOT logged in. Do not try to access their personal data. Encourage them to sign in for personalized help.`;
+    }
+
+    // Sanitize messages
+    const cleanMessages = incoming
+      .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content }));
+
+    const tools = getTools(effectiveRole);
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    const closed = () => res.writableEnded || res.destroyed;
+    const send = (obj) => { if (!closed()) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
+
+    // Heartbeat
+    const heartbeat = setInterval(() => { if (!closed()) res.write(': ping\n\n'); }, 15000);
+    const cleanupHB = () => clearInterval(heartbeat);
+    req.on('close', cleanupHB);
+
+    // Build conversation for the API
+    const conversationMessages = [
+      { role: 'system', content: systemContent },
+      ...optimizeMessages(cleanMessages),
+    ];
+
+    // ═══ Tool Execution Loop ═══
+    // The AI may request tool calls. We execute them server-side, feed results back,
+    // and let the AI generate a natural language summary. Max 5 iterations for safety.
+    const MAX_TOOL_ITERATIONS = 5;
+    let iteration = 0;
+    let finalTextSent = false;
+
+    while (iteration < MAX_TOOL_ITERATIONS && !closed()) {
+      iteration++;
+      const isLastChance = iteration === MAX_TOOL_ITERATIONS;
+
+      // Call OpenRouter (streaming)
+      const upstreamResp = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': SITE_URL,
+          'X-Title': SITE_NAME,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: conversationMessages,
+          tools: isLastChance ? undefined : tools, // Don't offer tools on last iteration
+          stream: true,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!upstreamResp.ok) {
+        const errorText = await upstreamResp.text().catch(() => '');
+        console.error('OpenRouter error', upstreamResp.status, errorText);
+        const errMsg = upstreamResp.status === 429
+          ? 'AI rate limit hit. Please try again in a moment.'
+          : upstreamResp.status === 402
+            ? 'AI credits exhausted. Please top up.'
+            : 'AI service temporarily unavailable.';
+        send({ error: errMsg });
+        break;
+      }
+
+      if (!upstreamResp.body) {
+        send({ error: 'Empty AI response' });
+        break;
+      }
+
+      // Consume the stream: forward text to client in real-time, accumulate tool calls
+      const { assistantContent, toolCalls } = await consumeStream(upstreamResp, {
+        onText: (chunk) => {
+          // Stream text chunks to client in real-time (typing effect)
+          if (!closed()) {
+            res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunk } }] })}\n\n`);
+          }
+        },
+        role: effectiveRole,
+      });
+
+      // If no tool calls, the AI gave a direct text answer — we're done
+      if (toolCalls.length === 0) {
+        finalTextSent = true;
+        // Add assistant message to conversation for history
+        conversationMessages.push({ role: 'assistant', content: assistantContent });
+        break;
+      }
+
+      // ── Tool calls detected: execute them server-side ──
+      // Add the assistant's tool-call message to the conversation
+      const assistantMsg = {
+        role: 'assistant',
+        content: assistantContent || null,
+        tool_calls: toolCalls.map((tc, i) => ({
+          id: tc.id || `call_${Date.now()}_${i}`,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      };
+      conversationMessages.push(assistantMsg);
+
+      // Execute each tool call
+      for (const tc of assistantMsg.tool_calls) {
+        const toolName = tc.function.name;
+        let args = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
+
+        if (isClientSideTool(toolName)) {
+          // Client-side tools: send to frontend for rendering, give AI a success ack
+          send({ type: 'client_action', action: toolName, args, id: tc.id });
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ success: true, message: `${toolName} displayed to user.` }),
+          });
+        } else {
+          // Server-side execution
+          send({ type: 'tool_start', tool: toolName, id: tc.id });
+
+          const result = await executeToolCall(toolName, args, userObj);
+
+          send({ type: 'tool_result', tool: toolName, result, id: tc.id });
+
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify(result),
+          });
+        }
+      }
+
+      // Loop continues — AI will now see tool results and generate a response
+    }
+
+    // ── Save chat history ──
+    if (userId) {
+      try {
+        const userMessages = conversationMessages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }))
+          .filter(m => m.content);
+
+        await ChatHistory.findOneAndUpdate(
+          { user: userId },
+          { $set: { messages: userMessages.slice(-100), updatedAt: new Date() } },
+          { upsert: true }
+        );
+      } catch (e) {
+        console.error('Chat history save error:', e.message);
+      }
+    }
+
+    // Finalize SSE
+    if (!closed()) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+    cleanupHB();
+  } catch (err) {
+    console.error('streamChat fatal error:', err);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: err.message || 'Server error' });
+    }
+    try {
+      res.write(`data: ${JSON.stringify({ error: err.message || 'Server error' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch {}
+  }
+};
+
+/**
+ * Non-streaming variant with server-side tool execution loop.
+ * Used by React Native / Expo clients that cannot handle SSE.
+ */
+exports.chatOnce = async (req, res) => {
+  try {
+    if (!OPENROUTER_API_KEY) {
+      return res.status(500).json({ error: 'AI service not configured' });
+    }
+
+    const body = req.body || {};
+    const incoming = Array.isArray(body.messages) ? body.messages : [];
+    const authenticatedRole = req.user?.role || 'guest';
+    const userId = req.user?.id || null;
+    const effectiveRole = ['user', 'seller', 'admin'].includes(authenticatedRole)
+      ? authenticatedRole
+      : 'guest';
+
+    const userObj = userId ? { _id: userId, id: userId, role: effectiveRole } : null;
+
+    const userContext = await buildUserContext(userId, effectiveRole);
+    let systemContent = getSystemPrompt(effectiveRole);
+    systemContent += formatContextBlock(userContext, effectiveRole);
+    if (effectiveRole === 'guest') {
+      systemContent += `\n\n## IMPORTANT: This user is NOT logged in. Encourage them to sign in for personalized help.`;
+    }
+
+    const cleanMessages = incoming
+      .filter(m => m && typeof m.role === 'string')
+      .map(m => ({
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
+        ...(m.name ? { name: m.name } : {}),
+        ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
+      }));
+
+    const conversationMessages = [
+      { role: 'system', content: systemContent },
+      ...optimizeMessages(cleanMessages),
+    ];
+    const tools = getTools(effectiveRole);
+    const toolResults = []; // Collect tool results for client
+    const clientActions = []; // Collect client-side actions
+
+    // Tool execution loop (non-streaming)
+    const MAX_ITERATIONS = 5;
+    let lastMessage = null;
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const isLast = i === MAX_ITERATIONS - 1;
+
+      const upstream = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': SITE_URL,
+          'X-Title': SITE_NAME,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: conversationMessages,
+          tools: isLast ? undefined : tools,
+          stream: false,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!upstream.ok) {
+        const t = await upstream.text().catch(() => '');
+        console.error('OpenRouter non-stream error', upstream.status, t);
+        if (upstream.status === 429) return res.status(429).json({ error: 'AI rate limit hit. Try again.' });
+        if (upstream.status === 402) return res.status(402).json({ error: 'AI credits exhausted.' });
+        return res.status(500).json({ error: 'AI service temporarily unavailable' });
+      }
+
+      const data = await upstream.json();
+      const message = data.choices?.[0]?.message;
+      if (!message) break;
+
+      lastMessage = message;
+
+      // Filter tool calls by role
+      if (message.tool_calls?.length) {
+        message.tool_calls = message.tool_calls.filter(tc =>
+          tc.function?.name && isToolAllowedForRole(tc.function.name, effectiveRole)
+        );
+      }
+
+      // If no tool calls, done
+      if (!message.tool_calls?.length) break;
+
+      // Add assistant message and execute tools
+      conversationMessages.push(message);
+
+      for (const tc of message.tool_calls) {
+        const toolName = tc.function.name;
+        let args = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
+
+        if (isClientSideTool(toolName)) {
+          clientActions.push({ action: toolName, args, id: tc.id });
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ success: true, message: `${toolName} sent to client.` }),
+          });
+        } else {
+          const result = await executeToolCall(toolName, args, userObj);
+          toolResults.push({ tool: toolName, result, id: tc.id });
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify(result),
+          });
+        }
+      }
+    }
+
+    // Save chat history
+    if (userId) {
+      try {
+        const msgs = conversationMessages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }))
+          .filter(m => m.content);
+
+        await ChatHistory.findOneAndUpdate(
+          { user: userId },
+          { $set: { messages: msgs.slice(-100), updatedAt: new Date() } },
+          { upsert: true }
+        );
+      } catch (e) { /* non-fatal */ }
+    }
+
+    return res.json({
+      message: lastMessage,
+      toolResults,
+      clientActions,
+      role: effectiveRole,
+    });
+  } catch (err) {
+    console.error('chatOnce error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+};

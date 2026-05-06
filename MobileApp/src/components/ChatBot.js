@@ -17,8 +17,9 @@ import {
 } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
-const AI_CHAT_URL = 'https://tveuvogqzovgsdfnexkw.supabase.co/functions/v1/ai-chat';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2ZXV2b2dxem92Z3NkZm5leGt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MjEzNzksImV4cCI6MjA5MDI5NzM3OX0.cxcLp93P2VGW4Zv_JVNKgNbZA135dEMkRaGaz_FnoZM';
+// Uses our own backend (no Supabase) — the /api/ai-chat/once endpoint handles
+// non-streaming tool execution loop server-side and returns the final response.
+const AI_CHAT_ONCE_URL = null; // Set dynamically from api.defaults.baseURL below
 
 const ROLE_CHIPS = {
   user: [
@@ -153,18 +154,12 @@ async function executeToolCall(name, args) {
   }
 }
 
-// ─── Non-streaming AI call (RN doesn't support ReadableStream well) ───
-async function callAI(messages, userContext, role) {
-  const resp = await fetch(AI_CHAT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
-    body: JSON.stringify({ messages, userContext, role, stream: false }),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error || `AI request failed (${resp.status})`);
-  }
-  return resp.json();
+// ─── Non-streaming AI call via our backend ───
+// Uses /api/ai-chat/once which handles the tool execution loop server-side
+// and returns the final response with tool results included.
+async function callAI(messages) {
+  const resp = await api.post('/api/ai-chat/once', { messages });
+  return resp.data;
 }
 
 // ─── Main Component ───
@@ -264,46 +259,37 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
     aiMessages.push({ role: 'user', content: msgText });
 
     try {
-      let response = await callAI(aiMessages, userContext, effectiveRole);
-      let assistantContent = '';
-      let toolResults = [];
+      // The backend /api/ai-chat/once handles the ENTIRE tool execution loop
+      // server-side and returns: { message, toolResults, clientActions, role }
+      const response = await callAI(aiMessages);
+      const assistantContent = response.message?.content || "Sorry, I couldn't process that.";
+      const toolResults = (response.toolResults || []).map(tr => ({
+        name: tr.tool,
+        result: tr.result,
+      }));
+      const clientActions = response.clientActions || [];
 
-      // Handle tool calls
-      if (response.choices?.[0]?.message?.tool_calls) {
-        const toolCalls = response.choices[0].message.tool_calls;
-        for (const tc of toolCalls) {
-          try {
-            const args = JSON.parse(tc.function.arguments);
-            const result = await executeToolCall(tc.function.name, args);
-            toolResults.push({ name: tc.function.name, args, result });
-
-            // Update chips contextually
-            if (tc.function.name === 'search_products' && result.products?.length > 0) {
-              setContextualChips([
-                { label: '🔍 More like this', msg: `Show me more products similar to ${result.products[0].name}` },
-                { label: '💰 Cheaper options', msg: 'Show me cheaper alternatives' },
-              ]);
-            } else if (['get_seller_analytics', 'get_admin_analytics'].includes(tc.function.name)) {
-              setContextualChips([
-                { label: '📈 More details', msg: 'Give me a deeper breakdown of the analytics' },
-                { label: '🚀 Growth tips', msg: 'Based on this data, what should I do to grow?' },
-              ]);
-            }
-
-            // Follow up with tool results
-            aiMessages.push(response.choices[0].message);
-            aiMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
-          } catch {}
+      // Handle client-side actions (navigate, etc.)
+      for (const ca of clientActions) {
+        if (ca.action === 'navigate' && ca.args?.route && navigation) {
+          // Try to navigate within the app
+          toolResults.push({ name: 'navigate', result: { navigated: true, label: ca.args.label || ca.args.route } });
         }
-        // Get final response after tool execution
-        try {
-          const followUp = await callAI(aiMessages, userContext, effectiveRole);
-          assistantContent = followUp.choices?.[0]?.message?.content || '';
-        } catch {
-          assistantContent = 'Action completed! Let me know if you need anything else.';
+      }
+
+      // Update contextual chips based on tool results
+      for (const tr of toolResults) {
+        if (tr.name === 'search_products' && tr.result?.data?.products?.length > 0) {
+          setContextualChips([
+            { label: '🔍 More like this', msg: `Show me more products similar to ${tr.result.data.products[0].name}` },
+            { label: '💰 Cheaper options', msg: 'Show me cheaper alternatives' },
+          ]);
+        } else if (['get_seller_analytics', 'get_admin_analytics'].includes(tr.name)) {
+          setContextualChips([
+            { label: '📈 More details', msg: 'Give me a deeper breakdown of the analytics' },
+            { label: '🚀 Growth tips', msg: 'Based on this data, what should I do to grow?' },
+          ]);
         }
-      } else {
-        assistantContent = response.choices?.[0]?.message?.content || "Sorry, I couldn't process that.";
       }
 
       const assistantMsg = {

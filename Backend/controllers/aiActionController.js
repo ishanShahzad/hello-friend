@@ -822,3 +822,517 @@ exports.searchProducts = async (req, res) => {
         res.status(500).json({ msg: 'Server error' });
     }
 };
+
+// ─── USER ACTIONS ───
+
+exports.getWishlist = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).populate('wishlist', 'name price discountedPrice image category brand stock');
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        res.json({ 
+            wishlist: (user.wishlist || []).map(p => ({
+                _id: p._id, name: p.name, price: p.price, 
+                discountedPrice: p.discountedPrice, image: p.image,
+                category: p.category, brand: p.brand, inStock: p.stock > 0
+            })),
+            count: (user.wishlist || []).length
+        });
+    } catch (error) {
+        console.error('AI get wishlist error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.addToWishlist = async (req, res) => {
+    const { productId } = req.body;
+    try {
+        const product = await Product.findById(productId);
+        if (!product) return res.status(404).json({ msg: 'Product not found' });
+        
+        const user = await User.findById(req.user.id);
+        if (user.wishlist.includes(productId)) {
+            return res.json({ msg: `"${product.name}" is already in your wishlist` });
+        }
+        
+        user.wishlist.push(productId);
+        await user.save();
+        res.json({ msg: `"${product.name}" added to your wishlist`, wishlistCount: user.wishlist.length });
+    } catch (error) {
+        console.error('AI add to wishlist error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.removeFromWishlist = async (req, res) => {
+    const { productId } = req.body;
+    try {
+        const user = await User.findById(req.user.id);
+        const product = await Product.findById(productId);
+        const productName = product?.name || 'Product';
+        
+        user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+        await user.save();
+        res.json({ msg: `"${productName}" removed from your wishlist`, wishlistCount: user.wishlist.length });
+    } catch (error) {
+        console.error('AI remove from wishlist error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getAddresses = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        
+        const addresses = user.savedAddresses || [];
+        const defaultAddress = user.savedShippingInfo || null;
+        
+        res.json({ addresses, defaultAddress, count: addresses.length });
+    } catch (error) {
+        console.error('AI get addresses error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.addAddress = async (req, res) => {
+    const { address } = req.body;
+    try {
+        if (!address || !address.fullName || !address.address || !address.city || !address.phone) {
+            return res.status(400).json({ msg: 'Missing required fields: fullName, address, city, phone' });
+        }
+        
+        const user = await User.findById(req.user.id);
+        if (!user.savedAddresses) user.savedAddresses = [];
+        
+        user.savedAddresses.push(address);
+        await user.save();
+        res.json({ msg: `Address for "${address.fullName}" added successfully`, addressCount: user.savedAddresses.length });
+    } catch (error) {
+        console.error('AI add address error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    const { updates } = req.body;
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        
+        const allowed = ['username'];
+        const applied = [];
+        allowed.forEach(key => {
+            if (updates[key] !== undefined) { user[key] = updates[key]; applied.push(key); }
+        });
+        
+        if (applied.length === 0) return res.status(400).json({ msg: 'No valid fields to update' });
+        
+        await user.save();
+        res.json({ msg: `Profile updated: ${applied.join(', ')}`, updatedFields: applied });
+    } catch (error) {
+        console.error('AI update profile error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getNotifications = async (req, res) => {
+    try {
+        const Notification = require('../models/Notification');
+        const notifications = await Notification.find({ userId: req.user.id })
+            .sort({ createdAt: -1 }).limit(20);
+        
+        const unreadCount = await Notification.countDocuments({ userId: req.user.id, read: false });
+        
+        res.json({
+            notifications: notifications.map(n => ({
+                _id: n._id, title: n.title, message: n.message,
+                type: n.type, read: n.read, createdAt: n.createdAt
+            })),
+            unreadCount,
+            totalCount: notifications.length
+        });
+    } catch (error) {
+        console.error('AI get notifications error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.markNotificationsRead = async (req, res) => {
+    try {
+        const Notification = require('../models/Notification');
+        const result = await Notification.updateMany(
+            { userId: req.user.id, read: false },
+            { $set: { read: true } }
+        );
+        res.json({ msg: `Marked ${result.modifiedCount} notification(s) as read` });
+    } catch (error) {
+        console.error('AI mark notifications read error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getAvailableCoupons = async (req, res) => {
+    const { productId, storeId } = req.query;
+    try {
+        const Coupon = require('../models/Coupon');
+        let query = { isActive: true, expiryDate: { $gte: new Date() } };
+        
+        if (storeId) query.seller = storeId;
+        
+        const coupons = await Coupon.find(query).limit(10);
+        res.json({
+            coupons: coupons.map(c => ({
+                code: c.code, discountType: c.discountType, discountValue: c.discountValue,
+                minOrderAmount: c.minOrderAmount, maxUses: c.maxUses, usedCount: c.usedCount,
+                expiryDate: c.expiryDate
+            })),
+            count: coupons.length
+        });
+    } catch (error) {
+        console.error('AI get coupons error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.validateCoupon = async (req, res) => {
+    const { code, cartTotal } = req.body;
+    try {
+        const Coupon = require('../models/Coupon');
+        const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+        
+        if (!coupon) return res.json({ valid: false, msg: 'Coupon not found or inactive' });
+        if (coupon.expiryDate < new Date()) return res.json({ valid: false, msg: 'Coupon has expired' });
+        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return res.json({ valid: false, msg: 'Coupon usage limit reached' });
+        if (coupon.minOrderAmount && cartTotal < coupon.minOrderAmount) {
+            return res.json({ valid: false, msg: `Minimum order amount is $${coupon.minOrderAmount}` });
+        }
+        
+        let discount = 0;
+        if (coupon.discountType === 'percentage') {
+            discount = (cartTotal * coupon.discountValue) / 100;
+            if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+        } else {
+            discount = coupon.discountValue;
+        }
+        
+        res.json({ valid: true, discount: Math.round(discount * 100) / 100, code: coupon.code, msg: `Coupon "${coupon.code}" saves you $${discount.toFixed(2)}!` });
+    } catch (error) {
+        console.error('AI validate coupon error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// ─── SELLER COUPON MANAGEMENT ───
+
+exports.createCoupon = async (req, res) => {
+    const { role, id: userId } = req.user;
+    const { coupon } = req.body;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const Coupon = require('../models/Coupon');
+        
+        if (!coupon || !coupon.code || !coupon.discountType || coupon.discountValue === undefined) {
+            return res.status(400).json({ msg: 'Missing required fields: code, discountType, discountValue' });
+        }
+        
+        // Check if code already exists
+        const existing = await Coupon.findOne({ code: coupon.code.toUpperCase(), seller: userId });
+        if (existing) return res.status(400).json({ msg: `Coupon code "${coupon.code}" already exists` });
+        
+        const newCoupon = new Coupon({
+            ...coupon,
+            code: coupon.code.toUpperCase(),
+            seller: userId,
+            isActive: true
+        });
+        await newCoupon.save();
+        
+        res.json({ msg: `Coupon "${newCoupon.code}" created! ${coupon.discountType === 'percentage' ? coupon.discountValue + '% off' : '$' + coupon.discountValue + ' off'}` });
+    } catch (error) {
+        console.error('AI create coupon error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getMyCoupons = async (req, res) => {
+    const { role, id: userId } = req.user;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const Coupon = require('../models/Coupon');
+        const coupons = await Coupon.find({ seller: userId }).sort({ createdAt: -1 });
+        
+        res.json({
+            coupons: coupons.map(c => ({
+                _id: c._id, code: c.code, discountType: c.discountType,
+                discountValue: c.discountValue, isActive: c.isActive,
+                minOrderAmount: c.minOrderAmount, maxUses: c.maxUses,
+                usedCount: c.usedCount, expiryDate: c.expiryDate
+            })),
+            totalCoupons: coupons.length,
+            activeCoupons: coupons.filter(c => c.isActive).length
+        });
+    } catch (error) {
+        console.error('AI get my coupons error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.updateCoupon = async (req, res) => {
+    const { role, id: userId } = req.user;
+    const { couponId, updates } = req.body;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const Coupon = require('../models/Coupon');
+        const coupon = await Coupon.findOne({ _id: couponId, seller: userId });
+        if (!coupon) return res.status(404).json({ msg: 'Coupon not found' });
+        
+        const allowed = ['discountType', 'discountValue', 'minOrderAmount', 'maxUses', 'expiryDate', 'maxDiscount'];
+        allowed.forEach(key => { if (updates[key] !== undefined) coupon[key] = updates[key]; });
+        await coupon.save();
+        
+        res.json({ msg: `Coupon "${coupon.code}" updated successfully` });
+    } catch (error) {
+        console.error('AI update coupon error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.deleteCoupon = async (req, res) => {
+    const { role, id: userId } = req.user;
+    const { couponId } = req.body;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const Coupon = require('../models/Coupon');
+        const coupon = await Coupon.findOneAndDelete({ _id: couponId, seller: userId });
+        if (!coupon) return res.status(404).json({ msg: 'Coupon not found' });
+        
+        res.json({ msg: `Coupon "${coupon.code}" deleted` });
+    } catch (error) {
+        console.error('AI delete coupon error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.toggleCoupon = async (req, res) => {
+    const { role, id: userId } = req.user;
+    const { couponId } = req.body;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const Coupon = require('../models/Coupon');
+        const coupon = await Coupon.findOne({ _id: couponId, seller: userId });
+        if (!coupon) return res.status(404).json({ msg: 'Coupon not found' });
+        
+        coupon.isActive = !coupon.isActive;
+        await coupon.save();
+        
+        res.json({ msg: `Coupon "${coupon.code}" is now ${coupon.isActive ? 'active' : 'inactive'}` });
+    } catch (error) {
+        console.error('AI toggle coupon error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getSubscriptionStatus = async (req, res) => {
+    const { role, id: userId } = req.user;
+    try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+        
+        const SellerSubscription = require('../models/SellerSubscription');
+        const sub = await SellerSubscription.findOne({ seller: userId });
+        
+        if (!sub) return res.json({ msg: 'No subscription found', hasSubscription: false });
+        
+        res.json({
+            hasSubscription: true,
+            plan: sub.plan,
+            status: sub.status,
+            trialEndsAt: sub.trialEndsAt,
+            currentPeriodEnd: sub.currentPeriodEnd,
+            features: sub.features || [],
+            aiMessageLimit: sub.aiMessageLimit,
+            bonusExpiresAt: sub.bonusExpiresAt
+        });
+    } catch (error) {
+        console.error('AI subscription status error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// ─── ADMIN BROADCAST & SUBSCRIPTION ───
+
+exports.sendBroadcast = async (req, res) => {
+    const { role } = req.user;
+    const { title, message, audience, scheduledAt } = req.body;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        if (!title || !message) return res.status(400).json({ msg: 'Title and message are required' });
+        
+        const BroadcastJob = require('../models/BroadcastJob');
+        const broadcast = new BroadcastJob({
+            title, message,
+            audience: audience || { target: 'all' },
+            scheduledAt: scheduledAt || new Date(),
+            status: 'pending',
+            createdBy: req.user.id
+        });
+        await broadcast.save();
+        
+        res.json({ msg: `Broadcast "${title}" scheduled for ${audience?.target || 'all users'}`, broadcastId: broadcast._id });
+    } catch (error) {
+        console.error('AI send broadcast error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getBroadcasts = async (req, res) => {
+    const { role } = req.user;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        const BroadcastJob = require('../models/BroadcastJob');
+        const broadcasts = await BroadcastJob.find().sort({ createdAt: -1 }).limit(20);
+        
+        res.json({
+            broadcasts: broadcasts.map(b => ({
+                _id: b._id, title: b.title, message: b.message,
+                audience: b.audience, status: b.status,
+                scheduledAt: b.scheduledAt, sentAt: b.sentAt,
+                recipientCount: b.recipientCount
+            })),
+            count: broadcasts.length
+        });
+    } catch (error) {
+        console.error('AI get broadcasts error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.cancelBroadcast = async (req, res) => {
+    const { role } = req.user;
+    const { broadcastId } = req.body;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        const BroadcastJob = require('../models/BroadcastJob');
+        const broadcast = await BroadcastJob.findById(broadcastId);
+        if (!broadcast) return res.status(404).json({ msg: 'Broadcast not found' });
+        if (broadcast.status === 'sent') return res.status(400).json({ msg: 'Cannot cancel an already sent broadcast' });
+        
+        broadcast.status = 'cancelled';
+        await broadcast.save();
+        
+        res.json({ msg: `Broadcast "${broadcast.title}" cancelled` });
+    } catch (error) {
+        console.error('AI cancel broadcast error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getAllSubscriptions = async (req, res) => {
+    const { role } = req.user;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        const SellerSubscription = require('../models/SellerSubscription');
+        const subs = await SellerSubscription.find().populate('seller', 'username email').sort({ createdAt: -1 }).limit(30);
+        
+        const stats = await SellerSubscription.aggregate([
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+        
+        res.json({
+            subscriptions: subs.map(s => ({
+                _id: s._id, seller: s.seller?.username, email: s.seller?.email,
+                plan: s.plan, status: s.status,
+                trialEndsAt: s.trialEndsAt, currentPeriodEnd: s.currentPeriodEnd
+            })),
+            stats: stats.reduce((a, s) => ({ ...a, [s._id]: s.count }), {}),
+            total: subs.length
+        });
+    } catch (error) {
+        console.error('AI get all subscriptions error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getVerifiedStores = async (req, res) => {
+    const { role } = req.user;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        const stores = await Store.find({ 'verification.isVerified': true }).populate('seller', 'username email');
+        res.json({
+            stores: stores.map(s => ({
+                _id: s._id, storeName: s.storeName, storeSlug: s.storeSlug,
+                seller: s.seller?.username, sellerEmail: s.seller?.email,
+                verifiedAt: s.verification?.verifiedAt, trustCount: s.trustCount
+            })),
+            count: stores.length
+        });
+    } catch (error) {
+        console.error('AI get verified stores error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.getStoreDetails = async (req, res) => {
+    const { role } = req.user;
+    const { storeId, slug } = req.query;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        let store;
+        if (storeId) store = await Store.findById(storeId).populate('seller', 'username email role status');
+        else if (slug) store = await Store.findOne({ storeSlug: slug }).populate('seller', 'username email role status');
+        
+        if (!store) return res.status(404).json({ msg: 'Store not found' });
+        
+        const productCount = await Product.countDocuments({ seller: store.seller?._id });
+        
+        res.json({
+            storeName: store.storeName, storeSlug: store.storeSlug,
+            seller: store.seller?.username, sellerEmail: store.seller?.email,
+            sellerStatus: store.seller?.status,
+            verification: store.verification, trustCount: store.trustCount,
+            isActive: store.isActive, productCount,
+            socialLinks: store.socialLinks, description: store.description,
+            createdAt: store.createdAt
+        });
+    } catch (error) {
+        console.error('AI get store details error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+exports.searchStores = async (req, res) => {
+    const { role } = req.user;
+    const { query, limit = 10 } = req.query;
+    try {
+        if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
+        
+        const stores = await Store.find({
+            $or: [
+                { storeName: { $regex: query || '', $options: 'i' } },
+                { storeSlug: { $regex: query || '', $options: 'i' } }
+            ]
+        }).populate('seller', 'username email').limit(parseInt(limit));
+        
+        res.json({
+            stores: stores.map(s => ({
+                _id: s._id, storeName: s.storeName, storeSlug: s.storeSlug,
+                seller: s.seller?.username, isVerified: s.verification?.isVerified,
+                trustCount: s.trustCount, isActive: s.isActive
+            })),
+            count: stores.length
+        });
+    } catch (error) {
+        console.error('AI search stores error:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+};
