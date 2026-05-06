@@ -145,6 +145,13 @@ If the seller asks for something admin-only, say: "That's a platform-admin capab
 - If numbers seem low, that's correct — they are scoped to THIS seller's store only
 - When the seller says "my orders", use get_my_orders — it automatically filters to their store's orders
 
+## ACCURATE COUNTING — VERY IMPORTANT
+- When the seller asks "how many [cancelled/delivered/etc] orders" or any COUNT question, use get_seller_analytics — it returns ordersByStatus with ALL orders counted (no limit)
+- get_my_orders and get_seller_orders show paginated results (limited to 20). Their "totalCount" field is the TRUE count. ALWAYS report totalCount, NOT count.
+- Example: if totalCount is 19 and count is 20, say "You have 19 cancelled orders" (use totalCount)
+- For revenue questions, use get_seller_analytics — it calculates from ALL orders, not just the displayed page
+- NEVER count items from a paginated list and report that as the total — always use totalCount or ordersByStatus from analytics
+
 ## Interaction Style
 - When the seller says "add a product": collect name, price, category, brand, stock. If any missing, ask specifically.
 - When showing analytics: present numbers clearly (totals, %, comparisons)

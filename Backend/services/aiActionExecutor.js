@@ -222,16 +222,19 @@ async function executeToolCall(toolName, args = {}, user) {
         const { status, limit } = args;
 
         // ROLE-AWARE: If seller, show orders containing THEIR products (not personal purchases)
-        let orders;
+        let orders, totalCount;
         if (role === 'seller') {
           const myProducts = await Product.find({ seller: userId }).select('_id').lean();
           const productIds = myProducts.map(p => p._id);
           const filter = { 'orderItems.productId': { $in: productIds } };
           if (status && status !== 'all') filter.orderStatus = status;
 
+          // Get TOTAL count first (no limit) for accurate reporting
+          totalCount = await Order.countDocuments(filter);
+
           orders = await Order.find(filter)
             .sort({ createdAt: -1 })
-            .limit(safeLimit(limit, 15))
+            .limit(safeLimit(limit, 20))
             .populate('user', 'username email')
             .populate('orderItems.productId', 'name image price seller')
             .lean();
@@ -248,9 +251,12 @@ async function executeToolCall(toolName, args = {}, user) {
           // Regular user: show their OWN orders only
           const filter = { user: userId };
           if (status && status !== 'all') filter.orderStatus = status;
+
+          totalCount = await Order.countDocuments(filter);
+
           orders = await Order.find(filter)
             .sort({ createdAt: -1 })
-            .limit(safeLimit(limit, 10))
+            .limit(safeLimit(limit, 15))
             .populate('orderItems.productId', 'name image price')
             .lean();
         }
@@ -274,8 +280,9 @@ async function executeToolCall(toolName, args = {}, user) {
               isPaid: o.isPaid,
             })),
             count: orders.length,
+            totalCount,
           },
-          message: `Found ${orders.length} order${orders.length !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''}${role === 'seller' ? ' for your store' : ''}`,
+          message: `Found ${totalCount} total order${totalCount !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''}${role === 'seller' ? ' for your store' : ''} (showing ${orders.length})`,
         };
       }
 
@@ -1231,9 +1238,12 @@ async function executeToolCall(toolName, args = {}, user) {
         const filter = { 'orderItems.productId': { $in: productIds } };
         if (status && status !== 'all') filter.orderStatus = status;
 
+        // Get TRUE total count (no limit) for accurate reporting
+        const totalCount = await Order.countDocuments(filter);
+
         const orders = await Order.find(filter)
           .sort({ createdAt: -1 })
-          .limit(safeLimit(limit, 15))
+          .limit(safeLimit(limit, 20))
           .populate('user', 'username email')
           .lean();
 
@@ -1257,8 +1267,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
-          data: { orders: sellerOrders, count: sellerOrders.length },
-          message: `Found ${sellerOrders.length} order${sellerOrders.length !== 1 ? 's' : ''}${status ? ` (${status})` : ''} for your store (your products only).`,
+          data: { orders: sellerOrders, count: sellerOrders.length, totalCount },
+          message: `You have ${totalCount} total order${totalCount !== 1 ? 's' : ''}${status ? ` with status "${status}"` : ''} for your store (showing ${sellerOrders.length}).`,
         };
       }
 
