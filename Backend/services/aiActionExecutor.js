@@ -57,6 +57,99 @@ function safePage(v) {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+// ─── Smart Search: Synonym/Multilingual Expansion ───
+const SYNONYM_MAP = {
+  // Multilingual (Urdu/Hindi → English)
+  chapal: ['sandals', 'slippers', 'flip flops', 'slides'],
+  joota: ['shoes', 'sneakers', 'footwear', 'boots'],
+  juta: ['shoes', 'sneakers', 'footwear'],
+  kapray: ['clothes', 'clothing', 'apparel', 'garments'],
+  kurta: ['kurta', 'tunic', 'ethnic wear', 'traditional'],
+  dupatta: ['dupatta', 'scarf', 'shawl', 'stole'],
+  shalwar: ['shalwar', 'trousers', 'pants', 'bottoms'],
+  kamiz: ['kameez', 'shirt', 'top', 'tunic'],
+  ghari: ['watch', 'watches', 'wristwatch', 'timepiece'],
+  basta: ['bag', 'bags', 'backpack', 'handbag'],
+  topi: ['cap', 'hat', 'beanie', 'headwear'],
+  chasma: ['glasses', 'sunglasses', 'eyewear', 'shades'],
+  
+  // Common slang/alternate spellings
+  airpods: ['airpods', 'wireless earbuds', 'bluetooth earphones', 'tws earbuds', 'ear buds'],
+  'air pods': ['airpods', 'wireless earbuds', 'bluetooth earphones', 'tws earbuds', 'ear buds'],
+  earphones: ['earphones', 'earbuds', 'headphones', 'wireless earbuds', 'in-ear'],
+  headphones: ['headphones', 'earphones', 'over-ear', 'wireless headphones', 'bluetooth headphones'],
+  sneakers: ['sneakers', 'running shoes', 'trainers', 'sport shoes', 'athletic shoes'],
+  tshirt: ['t-shirt', 'tee', 'top', 'casual shirt'],
+  't-shirt': ['t-shirt', 'tee', 'top', 'casual shirt'],
+  hoodie: ['hoodie', 'sweatshirt', 'pullover', 'hooded'],
+  jeans: ['jeans', 'denim', 'pants', 'trousers'],
+  jacket: ['jacket', 'coat', 'blazer', 'outerwear'],
+  perfume: ['perfume', 'fragrance', 'cologne', 'eau de toilette', 'scent'],
+  lipstick: ['lipstick', 'lip color', 'lip gloss', 'lip tint', 'lip'],
+  cream: ['cream', 'moisturizer', 'lotion', 'skincare'],
+  mobile: ['mobile', 'phone', 'smartphone', 'cell phone'],
+  laptop: ['laptop', 'notebook', 'computer', 'macbook'],
+  charger: ['charger', 'charging cable', 'power adapter', 'usb cable'],
+  powerbank: ['power bank', 'portable charger', 'battery pack'],
+  'power bank': ['power bank', 'portable charger', 'battery pack'],
+  wallet: ['wallet', 'purse', 'card holder', 'money clip'],
+  belt: ['belt', 'waist belt', 'leather belt'],
+  ring: ['ring', 'finger ring', 'band', 'jewelry'],
+  necklace: ['necklace', 'chain', 'pendant', 'jewelry'],
+  bracelet: ['bracelet', 'bangle', 'wristband', 'jewelry'],
+};
+
+function expandSearchTerms(query) {
+  if (!query) return [];
+  const lower = query.toLowerCase().trim();
+  const terms = new Set([lower]);
+  
+  // Check full phrase against synonym map
+  if (SYNONYM_MAP[lower]) {
+    SYNONYM_MAP[lower].forEach(s => terms.add(s));
+  }
+  
+  // Check each word individually
+  lower.split(/\s+/).forEach(word => {
+    if (SYNONYM_MAP[word]) {
+      SYNONYM_MAP[word].forEach(s => terms.add(s));
+    }
+  });
+  
+  return [...terms];
+}
+
+function buildSmartSearchFilter(query, category) {
+  const filter = {};
+  if (query) {
+    const searchTerms = expandSearchTerms(query);
+    const orConditions = [];
+    
+    for (const term of searchTerms) {
+      // Escape regex special chars
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      orConditions.push(
+        { name: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+        { tags: { $in: [new RegExp(escaped, 'i')] } },
+        { brand: { $regex: escaped, $options: 'i' } },
+        { category: { $regex: escaped, $options: 'i' } },
+      );
+    }
+    
+    // Also try individual words from the original query for partial matching
+    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    for (const word of words) {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      orConditions.push({ name: { $regex: escaped, $options: 'i' } });
+    }
+    
+    filter.$or = orConditions;
+  }
+  if (category) filter.category = { $regex: category, $options: 'i' };
+  return filter;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  MAIN DISPATCHER
 // ═══════════════════════════════════════════════════════════════════
@@ -74,16 +167,9 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'search_products': {
         const { query, category, minPrice, maxPrice, sortBy } = args;
-        const filter = {};
-        if (query) {
-          filter.$or = [
-            { name: { $regex: query, $options: 'i' } },
-            { description: { $regex: query, $options: 'i' } },
-            { tags: { $in: [new RegExp(query, 'i')] } },
-            { brand: { $regex: query, $options: 'i' } },
-          ];
-        }
-        if (category) filter.category = { $regex: category, $options: 'i' };
+        
+        // Use smart search with synonym expansion
+        const filter = buildSmartSearchFilter(query, category);
         if (minPrice || maxPrice) {
           filter.price = {};
           if (minPrice) filter.price.$gte = Number(minPrice);
@@ -95,17 +181,39 @@ async function executeToolCall(toolName, args = {}, user) {
         else if (sortBy === 'price_high') sort = { price: -1 };
         else if (sortBy === 'popular') sort = { rating: -1 };
         else if (sortBy === 'newest') sort = { createdAt: -1 };
+        else if (sortBy === 'best_rated') sort = { rating: -1, numReviews: -1 };
+        else if (sortBy === 'trending') sort = { numReviews: -1, rating: -1 };
 
-        const products = await Product.find(filter)
+        let products = await Product.find(filter)
           .sort(sort)
           .limit(20)
-          .select('name price discountedPrice category brand image rating numReviews stock')
+          .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups')
           .lean();
+
+        // If no results and we have a query, try a broader fallback: sort by popularity
+        if (products.length === 0 && query) {
+          // Fallback: return popular/recent products when search yields nothing
+          products = await Product.find(category ? { category: { $regex: category, $options: 'i' } } : {})
+            .sort({ rating: -1, numReviews: -1, createdAt: -1 })
+            .limit(12)
+            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups')
+            .lean();
+
+          if (products.length > 0) {
+            return {
+              success: true,
+              data: { products, count: products.length, fallback: true },
+              message: `No exact matches for "${query}", but here are ${products.length} popular product${products.length !== 1 ? 's' : ''} you might like:`,
+            };
+          }
+        }
 
         return {
           success: true,
           data: { products, count: products.length },
-          message: `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` matching "${query}"` : ''}`,
+          message: products.length > 0
+            ? `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` matching "${query}"` : ''}`
+            : `No products found${query ? ` for "${query}"` : ''}. Try different keywords or browse categories.`,
         };
       }
 

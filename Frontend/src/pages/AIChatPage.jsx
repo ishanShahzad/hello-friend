@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle, Plus, Trash2, Edit3, Check, X, ChevronLeft,
-  Bot, Sparkles, Clock, Search, Menu
+  Bot, Sparkles, Clock, Search, Menu, Zap, Star, ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,6 @@ function AIChatPage() {
 
   const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
 
-  // Load conversations list
   const loadConversations = useCallback(async () => {
     if (!authToken) return;
     try {
@@ -43,7 +42,6 @@ function AIChatPage() {
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // Load a specific conversation
   const loadConversation = useCallback(async (convoId) => {
     if (!authToken || !convoId) return;
     setLoading(true);
@@ -52,6 +50,7 @@ function AIChatPage() {
       const data = await res.json();
       setActiveConvoId(convoId);
       setLoadedMessages(data.messages || []);
+      if (window.innerWidth < 768) setSidebarOpen(false);
     } catch (e) {
       console.error('Failed to load conversation:', e);
     } finally {
@@ -59,7 +58,6 @@ function AIChatPage() {
     }
   }, [authToken]);
 
-  // Create new conversation
   const createNewChat = async () => {
     try {
       const res = await fetch(`${API_BASE}api/ai-chat/conversations`, {
@@ -74,7 +72,6 @@ function AIChatPage() {
     }
   };
 
-  // Delete conversation
   const deleteConversation = async (convoId) => {
     try {
       await fetch(`${API_BASE}api/ai-chat/conversations/${convoId}`, { method: 'DELETE', headers });
@@ -88,7 +85,6 @@ function AIChatPage() {
     }
   };
 
-  // Rename conversation
   const saveRename = async (convoId) => {
     if (!editTitle.trim()) return;
     try {
@@ -103,14 +99,13 @@ function AIChatPage() {
     }
   };
 
-  // Filter conversations by search
   const filtered = conversations.filter(c =>
     !searchQuery || c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.preview?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Group conversations by date
   const grouped = {};
+  const order = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older'];
   filtered.forEach(c => {
     const d = new Date(c.lastActive);
     const now = new Date();
@@ -124,24 +119,45 @@ function AIChatPage() {
     grouped[label].push(c);
   });
 
+  // Not logged in
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'hsl(var(--background))' }}>
-        <div className="text-center space-y-4">
-          <Bot size={48} className="mx-auto" style={{ color: 'hsl(220, 70%, 55%)' }} />
-          <h2 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Sign in to use AI Chat</h2>
-          <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Log in to start chatting with Rozare AI and save your conversations.</p>
-          <button onClick={() => navigate('/login')} className="px-6 py-2 rounded-xl font-medium text-white"
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+        style={{ background: 'hsl(var(--background))' }}>
+        {/* Decorative blobs */}
+        <div className="absolute top-10 left-10 w-72 h-72 rounded-full blur-[120px] opacity-20"
+          style={{ background: 'hsl(220, 70%, 55%)' }} />
+        <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full blur-[120px] opacity-15"
+          style={{ background: 'hsl(280, 60%, 55%)' }} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 z-10 p-8 rounded-3xl"
+          style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))', backdropFilter: 'blur(20px)' }}>
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+            <Bot size={32} className="text-white" />
+          </div>
+          <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Sign in to Chat</h2>
+          <p className="text-sm max-w-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            Log in to start chatting with Rozare AI — your personal shopping assistant with saved conversations.
+          </p>
+          <button onClick={() => navigate('/login')}
+            className="px-8 py-2.5 rounded-xl font-semibold text-white transition-all hover:scale-105"
             style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
             Sign In
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
+    <div className="flex h-screen overflow-hidden relative"
+      style={{ background: 'hsl(var(--background))' }}>
+      {/* Background decorative elements */}
+      <div className="fixed top-0 left-0 w-64 h-64 rounded-full blur-[150px] opacity-10 pointer-events-none"
+        style={{ background: 'hsl(220, 70%, 55%)' }} />
+      <div className="fixed bottom-0 right-0 w-72 h-72 rounded-full blur-[150px] opacity-8 pointer-events-none"
+        style={{ background: 'hsl(280, 60%, 55%)' }} />
+
       {/* ─── Sidebar ─── */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -149,96 +165,133 @@ function AIChatPage() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 300, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col border-r overflow-hidden shrink-0"
-            style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--muted) / 0.2)' }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="flex flex-col overflow-hidden shrink-0 z-10"
+            style={{
+              background: 'hsl(var(--muted) / 0.08)',
+              borderRight: '1px solid hsl(var(--border))',
+              backdropFilter: 'blur(12px)',
+            }}
           >
             {/* Sidebar Header */}
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               <div className="flex items-center gap-2">
-                <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-white/10 transition"
+                <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg transition-all hover:bg-white/10"
                   style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <ChevronLeft size={18} />
                 </button>
                 <div className="flex-1 flex items-center gap-2">
-                  <Bot size={18} style={{ color: 'hsl(220, 70%, 55%)' }} />
-                  <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Chat</span>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                    <Bot size={14} className="text-white" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold block leading-tight" style={{ color: 'hsl(var(--foreground))' }}>AI Chat</span>
+                    <span className="text-[9px]" style={{ color: 'hsl(var(--muted-foreground))' }}>Rozare Assistant</span>
+                  </div>
                 </div>
-                <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition lg:hidden"
+                <button onClick={() => setSidebarOpen(false)}
+                  className="p-1.5 rounded-lg transition-all hover:bg-white/10 md:hidden"
                   style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <X size={16} />
                 </button>
               </div>
 
               {/* New Chat Button */}
-              <button onClick={createNewChat}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all hover:scale-[1.02]"
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={createNewChat}
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
                   background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))',
                   color: 'white',
+                  boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)',
                 }}>
                 <Plus size={16} />
                 New Chat
-              </button>
+                <Zap size={12} className="ml-auto opacity-70" />
+              </motion.button>
 
               {/* Search */}
               <div className="relative">
-                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: 'hsl(var(--muted-foreground))' }} />
                 <input
                   value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search conversations..."
-                  className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs outline-none"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl text-xs outline-none transition-all focus:ring-1"
                   style={{
-                    background: 'hsl(var(--muted) / 0.3)',
+                    background: 'hsl(var(--muted) / 0.15)',
                     color: 'hsl(var(--foreground))',
                     border: '1px solid hsl(var(--border))',
+                    focusRingColor: 'hsl(220, 70%, 55%, 0.4)',
                   }}
                 />
               </div>
             </div>
 
             {/* Conversation List */}
-            <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
+            <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
               {Object.keys(grouped).length === 0 && (
-                <div className="text-center py-8">
-                  <Sparkles size={24} className="mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                  <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No conversations yet</p>
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-2xl flex items-center justify-center"
+                    style={{ background: 'hsl(var(--muted) / 0.2)', border: '1px dashed hsl(var(--border))' }}>
+                    <Sparkles size={20} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                  </div>
+                  <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>No conversations yet</p>
+                  <p className="text-[10px] mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Start a new chat to begin
+                  </p>
                 </div>
               )}
 
-              {Object.entries(grouped).map(([label, convos]) => (
+              {order.filter(l => grouped[l]).map(label => (
                 <div key={label}>
-                  <p className="text-[10px] font-semibold uppercase px-2 mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    {label}
-                  </p>
-                  {convos.map(c => (
-                    <div key={c._id}
+                  <div className="flex items-center gap-2 px-2 mb-1.5 mt-2">
+                    <Clock size={10} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</p>
+                    <div className="flex-1 h-px" style={{ background: 'hsl(var(--border))' }} />
+                  </div>
+                  {grouped[label].map(c => (
+                    <motion.div key={c._id} whileHover={{ x: 2 }}
                       onClick={() => { if (editingId !== c._id) loadConversation(c._id); }}
-                      className={`group flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all mb-0.5 ${
-                        activeConvoId === c._id ? 'ring-1' : 'hover:bg-white/5'
-                      }`}
+                      className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all mb-1`}
                       style={{
-                        background: activeConvoId === c._id ? 'hsl(220, 70%, 55%, 0.12)' : 'transparent',
-                        ringColor: activeConvoId === c._id ? 'hsl(220, 70%, 55%, 0.3)' : 'transparent',
+                        background: activeConvoId === c._id
+                          ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(280, 60%, 55%, 0.08))'
+                          : 'transparent',
+                        border: activeConvoId === c._id
+                          ? '1px solid hsl(220, 70%, 55%, 0.25)'
+                          : '1px solid transparent',
                       }}
                     >
-                      <MessageCircle size={14} style={{ color: activeConvoId === c._id ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }} className="shrink-0" />
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{
+                          background: activeConvoId === c._id
+                            ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.25), hsl(280, 60%, 55%, 0.15))'
+                            : 'hsl(var(--muted) / 0.2)',
+                        }}>
+                        <MessageCircle size={14}
+                          style={{ color: activeConvoId === c._id ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }} />
+                      </div>
                       <div className="flex-1 min-w-0">
                         {editingId === c._id ? (
                           <div className="flex items-center gap-1">
                             <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                              className="flex-1 text-xs px-1.5 py-0.5 rounded outline-none"
-                              style={{ background: 'hsl(var(--muted) / 0.5)', color: 'hsl(var(--foreground))' }}
+                              className="flex-1 text-xs px-2 py-1 rounded-lg outline-none"
+                              style={{ background: 'hsl(var(--muted) / 0.3)', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}
                               onKeyDown={(e) => { if (e.key === 'Enter') saveRename(c._id); if (e.key === 'Escape') setEditingId(null); }}
                               autoFocus onClick={(e) => e.stopPropagation()}
                             />
-                            <button onClick={(e) => { e.stopPropagation(); saveRename(c._id); }} className="p-0.5"><Check size={12} style={{ color: 'hsl(150, 60%, 50%)' }} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-0.5"><X size={12} style={{ color: 'hsl(0, 60%, 55%)' }} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); saveRename(c._id); }}
+                              className="p-1 rounded-lg hover:bg-white/10"><Check size={12} style={{ color: 'hsl(150, 60%, 50%)' }} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
+                              className="p-1 rounded-lg hover:bg-white/10"><X size={12} style={{ color: 'hsl(0, 60%, 55%)' }} /></button>
                           </div>
                         ) : (
                           <>
                             <p className="text-xs font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{c.title}</p>
-                            <p className="text-[10px] truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <p className="text-[10px] truncate mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                               {c.preview || `${c.messageCount} messages`}
                             </p>
                           </>
@@ -247,15 +300,28 @@ function AIChatPage() {
                       {editingId !== c._id && (
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={(e) => { e.stopPropagation(); setEditingId(c._id); setEditTitle(c.title); }}
-                            className="p-1 rounded hover:bg-white/10"><Edit3 size={11} style={{ color: 'hsl(var(--muted-foreground))' }} /></button>
+                            className="p-1.5 rounded-lg hover:bg-white/10 transition"><Edit3 size={11} style={{ color: 'hsl(var(--muted-foreground))' }} /></button>
                           <button onClick={(e) => { e.stopPropagation(); deleteConversation(c._id); }}
-                            className="p-1 rounded hover:bg-white/10"><Trash2 size={11} style={{ color: 'hsl(0, 60%, 55%)' }} /></button>
+                            className="p-1.5 rounded-lg hover:bg-white/10 transition"><Trash2 size={11} style={{ color: 'hsl(0, 60%, 55%)' }} /></button>
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               ))}
+            </div>
+
+            {/* Sidebar Footer */}
+            <div className="px-3 py-2 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                  <Sparkles size={10} className="text-white" />
+                </div>
+                <span className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Powered by <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Rozare AI</span>
+                </span>
+              </div>
             </div>
           </motion.aside>
         )}
@@ -263,30 +329,82 @@ function AIChatPage() {
 
       {/* ─── Main Chat Area ─── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar for mobile */}
+        {/* Top bar */}
         {!sidebarOpen && (
-          <div className="flex items-center gap-2 p-2 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
-            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b"
+            style={{ borderColor: 'hsl(var(--border))', backdropFilter: 'blur(8px)' }}>
+            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl transition-all hover:bg-white/5"
+              style={{ color: 'hsl(var(--muted-foreground))' }}>
               <Menu size={18} />
             </button>
-            <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+              <Bot size={14} className="text-white" />
+            </div>
+            <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
               {conversations.find(c => c._id === activeConvoId)?.title || 'AI Chat'}
             </span>
           </div>
         )}
 
-        {/* Embedded ChatBot filling the main area */}
-        <div className="flex-1 overflow-hidden">
-          <ChatBot
-            embedded={true}
-            conversationId={activeConvoId}
-            initialMessages={loadedMessages}
-            onConversationCreated={(convoId) => {
-              setActiveConvoId(convoId);
-              loadConversations();
-            }}
-          />
-        </div>
+        {/* Chat or Welcome State */}
+        {activeConvoId || loadedMessages !== null ? (
+          <div className="flex-1 overflow-hidden">
+            <ChatBot
+              embedded={true}
+              conversationId={activeConvoId}
+              initialMessages={loadedMessages}
+              onConversationCreated={(convoId) => {
+                setActiveConvoId(convoId);
+                loadConversations();
+              }}
+            />
+          </div>
+        ) : (
+          /* Welcome state */
+          <div className="flex-1 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="text-center max-w-md space-y-6">
+              <div className="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center relative"
+                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 8px 30px hsl(220, 70%, 55%, 0.3)' }}>
+                <Bot size={36} className="text-white" />
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ background: 'hsl(150, 60%, 50%)' }}>
+                  <Sparkles size={10} className="text-white" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Rozare AI Assistant</h2>
+                <p className="text-sm mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Your personal shopping companion. Search products, manage orders, get style advice, and more.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: Search, label: 'Smart Search', desc: 'Find products with AI-powered search' },
+                  { icon: Star, label: 'Style Advice', desc: 'Get personalized fashion tips' },
+                  { icon: MessageCircle, label: 'Order Help', desc: 'Track, cancel, or manage orders' },
+                  { icon: Zap, label: 'Quick Actions', desc: 'Add to cart, wishlist & more' },
+                ].map((item, i) => (
+                  <motion.div key={i} whileHover={{ scale: 1.03 }}
+                    className="p-3 rounded-xl text-left cursor-default transition-all"
+                    style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))' }}>
+                    <item.icon size={16} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                    <p className="text-xs font-semibold mt-1.5" style={{ color: 'hsl(var(--foreground))' }}>{item.label}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={createNewChat}
+                className="px-6 py-3 rounded-xl font-semibold text-white inline-flex items-center gap-2 transition-all"
+                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)' }}>
+                <Plus size={16} /> Start a Conversation
+                <ArrowRight size={14} />
+              </motion.button>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );

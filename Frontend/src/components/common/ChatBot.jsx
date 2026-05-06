@@ -5,7 +5,8 @@ import {
   AlertCircle, Loader2, ExternalLink, Phone, PhoneOff,
   Sparkles, Palette, Clock, ArrowRight, Volume2, VolumeX, Trash2,
   Heart, MapPin, Bell, Ticket, CheckCircle, XCircle, Search,
-  ShoppingBag, BarChart3, Shield, Megaphone, Settings
+  ShoppingBag, BarChart3, Shield, Megaphone, Settings,
+  Plus, Star, Eye, ShoppingCart, Maximize2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -215,6 +216,97 @@ const DataListCard = ({ title, items, renderItem, icon: Icon = Package, color = 
   );
 };
 
+// ─── Product Card (compact, for chat context) ───
+const ProductCardInChat = ({ product, onView, onAddToCart }) => {
+  const hasDiscount = product.discountedPrice && product.discountedPrice > 0 && product.discountedPrice < product.price;
+  const displayPrice = hasDiscount ? product.discountedPrice : product.price;
+  const stars = product.rating ? Math.round(product.rating) : 0;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+      className="flex gap-2.5 p-2 rounded-xl transition-all hover:scale-[1.01]"
+      style={{ background: 'hsl(var(--muted) / 0.3)', border: '1px solid hsl(var(--border))' }}>
+      {/* Product Image */}
+      <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0" style={{ background: 'hsl(var(--muted) / 0.5)' }}>
+        {product.image ? (
+          <img src={product.image} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingBag size={16} style={{ color: 'hsl(var(--muted-foreground))' }} />
+          </div>
+        )}
+      </div>
+      {/* Product Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{product.name}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[11px] font-bold" style={{ color: 'hsl(220, 70%, 55%)' }}>${displayPrice}</span>
+          {hasDiscount && (
+            <span className="text-[9px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>${product.price}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          {stars > 0 && (
+            <div className="flex items-center gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={8} fill={i < stars ? '#f59e0b' : 'transparent'} stroke={i < stars ? '#f59e0b' : '#6b7280'} />
+              ))}
+              <span className="text-[9px] ml-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>({product.numReviews || 0})</span>
+            </div>
+          )}
+          {product.stock > 0 ? (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-full ml-auto" style={{ background: 'hsl(150, 60%, 45%, 0.15)', color: 'hsl(150, 60%, 50%)' }}>In Stock</span>
+          ) : (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-full ml-auto" style={{ background: 'hsl(0, 60%, 45%, 0.15)', color: 'hsl(0, 60%, 55%)' }}>Out of Stock</span>
+          )}
+        </div>
+        {/* Action buttons */}
+        <div className="flex gap-1.5 mt-1.5">
+          {onView && (
+            <button onClick={() => onView(product._id)} className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-lg transition-all hover:scale-105"
+              style={{ background: 'hsl(220, 70%, 55%, 0.15)', color: 'hsl(220, 70%, 55%)' }}>
+              <Eye size={9} /> View
+            </button>
+          )}
+          {onAddToCart && product.stock > 0 && (
+            <button onClick={() => onAddToCart(product._id)} className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-lg transition-all hover:scale-105"
+              style={{ background: 'hsl(150, 60%, 45%, 0.15)', color: 'hsl(150, 60%, 50%)' }}>
+              <ShoppingCart size={9} /> Add to Cart
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// ─── Product Card Grid (for search results) ───
+const ProductCardGrid = ({ products, onViewProduct, onAddToCart, title }) => (
+  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl overflow-hidden mt-2"
+    style={{ background: 'var(--glass-bg, hsl(var(--muted)/0.2))', border: '1px solid var(--glass-border, hsl(var(--border)))' }}>
+    <div className="px-3 py-2 flex items-center gap-2" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.12), hsl(280, 60%, 55%, 0.06))' }}>
+      <ShoppingBag size={14} style={{ color: 'hsl(220, 70%, 55%)' }} />
+      <span className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{title || 'Products'}</span>
+      <span className="text-[10px] ml-auto" style={{ color: 'hsl(var(--muted-foreground))' }}>{products.length} found</span>
+    </div>
+    <div className="p-2 space-y-1.5 max-h-80 overflow-y-auto">
+      {products.slice(0, 8).map((p, i) => (
+        <ProductCardInChat
+          key={p._id || i}
+          product={p}
+          onView={onViewProduct}
+          onAddToCart={onAddToCart}
+        />
+      ))}
+      {products.length > 8 && (
+        <p className="text-[10px] text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          +{products.length - 8} more products...
+        </p>
+      )}
+    </div>
+  </motion.div>
+);
+
 // ═══════════════════════════════════════════════════════
 //  MAIN CHATBOT COMPONENT
 // ═══════════════════════════════════════════════════════
@@ -332,7 +424,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           Accept: 'text/event-stream',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, ...(activeConvoId ? { conversationId: activeConvoId } : {}) }),
       });
 
       if (!resp.ok) {
@@ -543,7 +635,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
             )}
           </div>
 
-          {/* Tool Events: actions executed, navigation, style cards */}
+          {/* Tool Events: actions executed, navigation, style cards, PRODUCT CARDS */}
           {msg.toolEvents?.map((event, i) => {
             if (event.type === 'navigation') {
               return <NavigationCard key={i} label={event.label} />;
@@ -555,14 +647,64 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
               return <OutfitCard key={i} data={event.data} onSearchPiece={(q) => sendMessage(`Search for: ${q}`)} />;
             }
             if (event.type === 'tool_result') {
-              const ToolIcon = TOOL_ICONS[event.tool] || Package;
-              const isSuccess = event.result?.success !== false;
+              const result = event.result;
+              const toolName = event.tool;
+
+              // ── Product cards for search_products, list_my_products, get_wishlist ──
+              const products = result?.data?.products || result?.data?.items;
+              if (products?.length > 0 && (toolName === 'search_products' || toolName === 'list_my_products' || toolName === 'get_wishlist')) {
+                return (
+                  <ProductCardGrid
+                    key={i}
+                    products={products}
+                    title={result?.message || `${products.length} products`}
+                    onViewProduct={(id) => navigate(`/single-product/${id}`)}
+                    onAddToCart={(id) => sendMessage(`Add product ${id} to my cart`)}
+                  />
+                );
+              }
+
+              // ── Single product detail card ──
+              if (toolName === 'get_product_detail' && result?.data?._id) {
+                return (
+                  <div key={i} className="mt-2">
+                    <ProductCardInChat
+                      product={result.data}
+                      onView={(id) => navigate(`/single-product/${id}`)}
+                      onAddToCart={(id) => sendMessage(`Add product ${id} to my cart`)}
+                    />
+                  </div>
+                );
+              }
+
+              // ── Cart items with images ──
+              if (toolName === 'view_cart' && result?.data?.items?.length > 0) {
+                return (
+                  <ProductCardGrid
+                    key={i}
+                    products={result.data.items.map(item => ({
+                      _id: item.productId,
+                      name: item.name,
+                      price: item.originalPrice || item.price,
+                      discountedPrice: item.price,
+                      image: item.image,
+                      stock: 1,
+                    }))}
+                    title={`Cart — ${result.data.items.length} items — $${result.data.total?.toFixed(2)}`}
+                    onViewProduct={(id) => navigate(`/single-product/${id}`)}
+                  />
+                );
+              }
+
+              // ── Default: action result card ──
+              const ToolIcon = TOOL_ICONS[toolName] || Package;
+              const isSuccess = result?.success !== false;
               const color = isSuccess ? 'hsl(150, 60%, 45%)' : 'hsl(0, 60%, 55%)';
               return (
                 <ActionResultCard
                   key={i}
-                  result={event.result}
-                  actionName={event.tool?.replace(/_/g, ' ')}
+                  result={result}
+                  actionName={toolName?.replace(/_/g, ' ')}
                   icon={ToolIcon}
                   color={color}
                 />
@@ -608,13 +750,18 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           <h3 className="text-sm font-bold">{titles.title}</h3>
           <p className="text-[10px] opacity-80">{titles.subtitle}</p>
         </div>
-        <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="Clear chat">
-          <Trash2 size={16} />
+        <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="New chat">
+          <Plus size={16} />
         </button>
         {!embedded && (
-          <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors">
-            <X size={16} />
-          </button>
+          <>
+            <button onClick={() => { setIsOpen(false); navigate('/ai-chat'); }} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="Open full chat">
+              <Maximize2 size={15} />
+            </button>
+            <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors">
+              <X size={16} />
+            </button>
+          </>
         )}
       </div>
 
