@@ -236,13 +236,14 @@ async function executeToolCall(toolName, args = {}, user) {
             .populate('orderItems.productId', 'name image price seller')
             .lean();
 
-          // CRITICAL: Filter order items to only show THIS seller's products
-          orders = orders.map(o => ({
-            ...o,
-            orderItems: (o.orderItems || []).filter(i =>
+          // CRITICAL: Filter order items to only show THIS seller's products + recalculate seller-specific total
+          orders = orders.map(o => {
+            const sellerItems = (o.orderItems || []).filter(i =>
               productIds.some(pid => pid.toString() === (i.productId?._id || i.productId)?.toString())
-            ),
-          }));
+            );
+            const sellerTotal = sellerItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 1), 0);
+            return { ...o, orderItems: sellerItems, _sellerTotal: sellerTotal };
+          });
         } else {
           // Regular user: show their OWN orders only
           const filter = { user: userId };
@@ -261,7 +262,7 @@ async function executeToolCall(toolName, args = {}, user) {
               _id: o._id,
               orderId: o.orderId,
               status: o.orderStatus,
-              total: o.orderSummary?.totalAmount || 0,
+              total: role === 'seller' ? (o._sellerTotal || 0) : (o.orderSummary?.totalAmount || 0),
               buyer: role === 'seller' ? (o.user?.username || 'Guest') : undefined,
               items: (o.orderItems || []).map(i => ({
                 name: i.name || i.productId?.name,
@@ -317,25 +318,38 @@ async function executeToolCall(toolName, args = {}, user) {
 
         if (!order) return { success: false, error: 'Order not found or access denied.' };
 
+        // For sellers: filter items to only their products + compute seller subtotal
+        let items = order.orderItems || [];
+        let summary = order.orderSummary;
+        if (role === 'seller') {
+          const myProductIds = (await Product.find({ seller: userId }).select('_id').lean()).map(p => p._id.toString());
+          items = items.filter(i =>
+            myProductIds.includes((i.productId?._id || i.productId)?.toString())
+          );
+          const sellerSubtotal = items.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 1), 0);
+          summary = { subtotal: sellerSubtotal, totalAmount: sellerSubtotal, note: 'Shows only your products from this order' };
+        }
+
         return {
           success: true,
           data: {
             orderId: order.orderId,
             status: order.orderStatus,
-            items: (order.orderItems || []).map(i => ({
+            buyer: role === 'seller' ? (order.user?.username || 'Guest') : undefined,
+            items: items.map(i => ({
               name: i.name || i.productId?.name,
               price: i.price,
               quantity: i.quantity,
               image: i.image || i.productId?.image,
             })),
-            summary: order.orderSummary,
-            shipping: order.shippingInfo,
+            summary,
+            shipping: role !== 'seller' ? order.shippingInfo : { city: order.shippingInfo?.city, country: order.shippingInfo?.country },
             paymentMethod: order.paymentMethod,
             isPaid: order.isPaid,
             isDelivered: order.isDelivered,
             date: order.createdAt,
           },
-          message: `Order #${order.orderId} — ${order.orderStatus}`,
+          message: `Order #${order.orderId} — ${order.orderStatus}${role === 'seller' ? ' (your products only)' : ''}`,
         };
       }
 
@@ -1155,9 +1169,15 @@ async function executeToolCall(toolName, args = {}, user) {
           .select('orderSummary orderStatus createdAt orderItems')
           .lean();
 
+        // CRITICAL: Calculate revenue from ONLY this seller's items, not the full order total
         const totalRevenue = orders
           .filter(o => o.orderStatus !== 'cancelled')
-          .reduce((sum, o) => sum + (o.orderSummary?.totalAmount || 0), 0);
+          .reduce((sum, o) => {
+            const sellerItemsRevenue = (o.orderItems || [])
+              .filter(i => productIds.some(pid => pid.toString() === i.productId?.toString()))
+              .reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+            return sum + sellerItemsRevenue;
+          }, 0);
 
         const statusCounts = {};
         orders.forEach(o => {
@@ -1217,22 +1237,28 @@ async function executeToolCall(toolName, args = {}, user) {
           .populate('user', 'username email')
           .lean();
 
+        // Filter items & compute seller-specific totals per order
+        const sellerOrders = orders.map(o => {
+          const sellerItems = (o.orderItems || []).filter(i =>
+            productIds.some(pid => pid.toString() === (i.productId?._id || i.productId)?.toString())
+          );
+          const sellerTotal = sellerItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 1), 0);
+          return {
+            orderId: o.orderId,
+            status: o.orderStatus,
+            buyer: o.user?.username || o.guestEmail || 'Guest',
+            total: sellerTotal,
+            itemCount: sellerItems.length,
+            date: o.createdAt,
+            paymentMethod: o.paymentMethod,
+            isPaid: o.isPaid,
+          };
+        });
+
         return {
           success: true,
-          data: {
-            orders: orders.map(o => ({
-              orderId: o.orderId,
-              status: o.orderStatus,
-              buyer: o.user?.username || o.guestEmail || 'Guest',
-              total: o.orderSummary?.totalAmount || 0,
-              itemCount: o.orderItems?.length || 0,
-              date: o.createdAt,
-              paymentMethod: o.paymentMethod,
-              isPaid: o.isPaid,
-            })),
-            count: orders.length,
-          },
-          message: `Found ${orders.length} order${orders.length !== 1 ? 's' : ''}${status ? ` (${status})` : ''} for your store.`,
+          data: { orders: sellerOrders, count: sellerOrders.length },
+          message: `Found ${sellerOrders.length} order${sellerOrders.length !== 1 ? 's' : ''}${status ? ` (${status})` : ''} for your store (your products only).`,
         };
       }
 
