@@ -451,6 +451,88 @@ const userTools = [
       },
     },
   },
+  // ─── CART & ORDER TOOLS ───
+  {
+    type: 'function',
+    function: {
+      name: 'get_product_detail',
+      description: 'Get full details of a specific product by its ID (price, description, stock, colors, options, reviews).',
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'string', description: 'Product ID' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_my_profile',
+      description: 'Get the current user\'s full profile details (name, email, addresses, wishlist count).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_to_cart',
+      description: 'Add a product to the user\'s shopping cart.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'Product ID to add' },
+          selectedColor: { type: 'string', description: 'Optional color choice' },
+        },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'view_cart',
+      description: 'View all items currently in the user\'s shopping cart with prices and totals.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'remove_from_cart',
+      description: 'Remove a product from the user\'s cart.',
+      parameters: {
+        type: 'object',
+        properties: { productId: { type: 'string' } },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'clear_cart',
+      description: 'Remove all items from the user\'s cart.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'place_order',
+      description: 'Place an order. Can order a specific product by ID or checkout the entire cart. Uses the user\'s saved address if available, otherwise requires shipping info. Default payment is Cash on Delivery.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'Optional: specific product ID to order. If omitted, orders entire cart.' },
+          shippingInfo: {
+            type: 'object',
+            description: 'Shipping address. If not provided, uses saved address. Required fields: fullName, address, city. Optional: email, phone, state, postalCode, country.',
+          },
+          paymentMethod: { type: 'string', enum: ['cash_on_delivery', 'stripe'], description: 'Payment method. Default: cash_on_delivery' },
+        },
+      },
+    },
+  },
 ];
 
 const sellerTools = [

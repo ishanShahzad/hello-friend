@@ -26,6 +26,8 @@ const TaxConfig = require('../models/TaxConfig');
 const BroadcastJob = require('../models/BroadcastJob');
 const SellerSubscription = require('../models/SellerSubscription');
 const StoreTrust = require('../models/StoreTrust');
+const Cart = require('../models/Cart');
+const StoreReview = require('../models/StoreReview');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -422,6 +424,365 @@ async function executeToolCall(toolName, args = {}, user) {
           message: coupons.length > 0
             ? `Found ${coupons.length} available coupon${coupons.length !== 1 ? 's' : ''}!`
             : 'No coupons available right now.',
+        };
+      }
+
+      case 'get_product_detail': {
+        const { productId } = args;
+        if (!productId) return { success: false, error: 'Please provide a product ID.' };
+
+        const product = await Product.findById(toId(productId))
+          .populate('seller', 'username')
+          .lean();
+        if (!product) return { success: false, error: 'Product not found.' };
+
+        const store = await Store.findOne({ seller: product.seller?._id }).select('storeName storeSlug verification.isVerified').lean();
+
+        return {
+          success: true,
+          data: {
+            _id: product._id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            discountedPrice: product.discountedPrice,
+            category: product.category,
+            brand: product.brand,
+            stock: product.stock,
+            image: product.image,
+            images: product.images,
+            rating: product.rating,
+            numReviews: product.numReviews,
+            colors: product.colors,
+            optionGroups: product.optionGroups,
+            tags: product.tags,
+            seller: product.seller?.username,
+            storeName: store?.storeName,
+            storeSlug: store?.storeSlug,
+            isVerifiedStore: store?.verification?.isVerified || false,
+            returnPolicy: product.returnPolicy,
+          },
+          message: `${product.name} — $${product.discountedPrice || product.price} | ${product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'} | ⭐ ${product.rating?.toFixed(1) || 'N/A'} (${product.numReviews} reviews)`,
+        };
+      }
+
+      case 'get_my_profile': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const user = await User.findById(userId)
+          .select('username email role currency avatar savedShippingInfo savedAddresses sellerInfo createdAt wishlist')
+          .lean();
+        if (!user) return { success: false, error: 'User not found.' };
+
+        return {
+          success: true,
+          data: {
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            currency: user.currency,
+            avatar: user.avatar,
+            phone: user.sellerInfo?.phoneNumber || '',
+            defaultAddress: user.savedShippingInfo || null,
+            savedAddressCount: (user.savedAddresses || []).length,
+            wishlistCount: (user.wishlist || []).length,
+            memberSince: user.createdAt,
+          },
+          message: `Profile: ${user.username} (${user.email}) — ${user.role} — ${(user.savedAddresses || []).length} addresses, ${(user.wishlist || []).length} wishlist items.`,
+        };
+      }
+
+      case 'add_to_cart': {
+        if (!userId) return { success: false, error: 'You must be logged in to add items to cart.' };
+        const { productId, selectedColor, selectedOptions } = args;
+        if (!productId) return { success: false, error: 'Please provide a productId.' };
+
+        const product = await Product.findById(toId(productId)).select('name price discountedPrice stock image').lean();
+        if (!product) return { success: false, error: 'Product not found.' };
+        if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
+
+        let cart = await Cart.findOne({ user: userId });
+        if (!cart) {
+          cart = new Cart({ user: userId, cartItems: [] });
+        }
+
+        // Check if already in cart
+        const optKey = selectedOptions ? Object.keys(selectedOptions).sort().map(k => `${k}:${selectedOptions[k]}`).join('|') : '';
+        const existing = cart.cartItems.find(item =>
+          item.product.toString() === productId &&
+          (item.selectedColor || null) === (selectedColor || null) &&
+          (item.selectedOptions ? Object.keys(item.selectedOptions.toJSON?.() || item.selectedOptions).sort().map(k => `${k}:${(item.selectedOptions.toJSON?.() || item.selectedOptions)[k]}`).join('|') : '') === optKey
+        );
+        if (existing) {
+          return { success: true, message: `"${product.name}" is already in your cart.` };
+        }
+
+        cart.cartItems.push({
+          product: productId,
+          selectedColor: selectedColor || null,
+          selectedOptions: selectedOptions || undefined,
+        });
+        await cart.populate('cartItems.product');
+        await cart.save();
+
+        const effectivePrice = product.discountedPrice && product.discountedPrice > 0 ? product.discountedPrice : product.price;
+        return {
+          success: true,
+          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice },
+          message: `"${product.name}" added to cart! 🛒 Cart total: $${cart.totalCartPrice?.toFixed(2)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
+        };
+      }
+
+      case 'view_cart': {
+        if (!userId) return { success: false, error: 'You must be logged in to view cart.' };
+        const cart = await Cart.findOne({ user: userId }).populate('cartItems.product').lean();
+        if (!cart || !cart.cartItems?.length) {
+          return { success: true, data: { items: [], total: 0 }, message: 'Your cart is empty. Start shopping! 🛍️' };
+        }
+
+        const items = cart.cartItems.filter(i => i.product).map(item => {
+          const p = item.product;
+          const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
+          return {
+            _id: item._id,
+            productId: p._id,
+            name: p.name,
+            price,
+            originalPrice: p.price,
+            quantity: item.qty || 1,
+            image: p.image,
+            selectedColor: item.selectedColor,
+            subtotal: price * (item.qty || 1),
+          };
+        });
+
+        return {
+          success: true,
+          data: { items, total: cart.totalCartPrice, itemCount: items.length },
+          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: $${cart.totalCartPrice?.toFixed(2)}. Items: ${items.map(i => `${i.name} ($${i.price})`).join(', ')}`,
+        };
+      }
+
+      case 'remove_from_cart': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const { productId } = args;
+        if (!productId) return { success: false, error: 'Please provide productId.' };
+
+        const cart = await Cart.findOne({ user: userId });
+        if (!cart) return { success: false, error: 'Cart is empty.' };
+
+        const before = cart.cartItems.length;
+        cart.cartItems = cart.cartItems.filter(item => !item.product.equals(toId(productId)));
+        if (cart.cartItems.length === before) {
+          return { success: false, error: 'Product not found in cart.' };
+        }
+        await cart.populate('cartItems.product');
+        await cart.save();
+
+        return {
+          success: true,
+          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice },
+          message: `Item removed from cart. ${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''} remaining — $${cart.totalCartPrice?.toFixed(2)}`,
+        };
+      }
+
+      case 'clear_cart': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const cart = await Cart.findOne({ user: userId });
+        if (!cart || !cart.cartItems?.length) return { success: true, message: 'Cart is already empty.' };
+
+        cart.cartItems = [];
+        await cart.save();
+        return { success: true, message: 'Cart cleared! 🗑️' };
+      }
+
+      case 'place_order': {
+        if (!userId) return { success: false, error: 'You must be logged in to place an order.' };
+        const { productId, shippingInfo, paymentMethod } = args;
+
+        // Get user's saved address if shipping info not provided
+        let shipping = shippingInfo;
+        if (!shipping || !shipping.fullName) {
+          const user = await User.findById(userId).select('savedShippingInfo savedAddresses username email sellerInfo').lean();
+          // Try default address first, then first saved address
+          if (user?.savedShippingInfo?.fullName) {
+            shipping = user.savedShippingInfo;
+          } else if (user?.savedAddresses?.length > 0) {
+            const addr = user.savedAddresses.find(a => a.isDefault) || user.savedAddresses[0];
+            shipping = {
+              fullName: addr.fullName,
+              email: addr.email || user.email,
+              phone: addr.phone || user.sellerInfo?.phoneNumber || '',
+              address: addr.address,
+              city: addr.city,
+              state: addr.state || '',
+              postalCode: addr.postalCode || '',
+              country: addr.country || 'Pakistan',
+            };
+          }
+        }
+
+        if (!shipping || !shipping.fullName || !shipping.address || !shipping.city) {
+          return {
+            success: false,
+            error: 'No shipping address found. Please provide your shipping details: fullName, email, phone, address, city, state, postalCode, country.',
+            needsShippingInfo: true,
+          };
+        }
+        if (!shipping.email) shipping.email = (await User.findById(userId).select('email').lean())?.email || '';
+        if (!shipping.phone) shipping.phone = '';
+
+        // Get product(s) to order
+        let orderItems = [];
+        if (productId) {
+          // Single product order
+          const product = await Product.findById(toId(productId)).lean();
+          if (!product) return { success: false, error: 'Product not found.' };
+          if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
+
+          const effectivePrice = product.discountedPrice && product.discountedPrice > 0 ? product.discountedPrice : product.price;
+          orderItems = [{
+            productId: product._id,
+            id: product._id,
+            name: product.name,
+            image: product.image,
+            price: effectivePrice,
+            quantity: 1,
+          }];
+        } else {
+          // Order from cart
+          const cart = await Cart.findOne({ user: userId }).populate('cartItems.product').lean();
+          if (!cart || !cart.cartItems?.length) {
+            return { success: false, error: 'Cart is empty. Add products first or specify a productId.' };
+          }
+          orderItems = cart.cartItems.filter(i => i.product).map(item => {
+            const p = item.product;
+            const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
+            return {
+              productId: p._id,
+              id: p._id,
+              name: p.name,
+              image: p.image,
+              price,
+              quantity: item.qty || 1,
+              selectedColor: item.selectedColor,
+              selectedOptions: item.selectedOptions,
+            };
+          });
+        }
+
+        if (orderItems.length === 0) return { success: false, error: 'No items to order.' };
+
+        const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+        // Get tax
+        let tax = 0;
+        const taxConfig = await TaxConfig.findOne({ isActive: true }).lean();
+        if (taxConfig && taxConfig.type !== 'none') {
+          tax = taxConfig.type === 'percentage' ? subtotal * taxConfig.value / 100 : taxConfig.value;
+        }
+
+        // Get shipping method for the seller
+        const firstSeller = orderItems[0]?.productId;
+        const sellerProduct = await Product.findById(firstSeller).select('seller').lean();
+        let shippingMethod = { name: 'Standard', price: 0, estimatedDays: 5 };
+        if (sellerProduct?.seller) {
+          const sellerShipping = await ShippingMethod.findOne({ seller: sellerProduct.seller }).lean();
+          if (sellerShipping?.methods?.length) {
+            const active = sellerShipping.methods.find(m => m.isActive);
+            if (active) {
+              shippingMethod = { name: active.type, price: active.cost, estimatedDays: active.deliveryDays };
+            }
+          }
+        }
+
+        const totalAmount = subtotal + shippingMethod.price + tax;
+
+        const newOrder = new Order({
+          user: userId,
+          orderId: `ORD-${Date.now()}`,
+          orderItems: orderItems.map(i => ({
+            productId: i.productId || i.id,
+            name: i.name,
+            image: i.image,
+            price: i.price,
+            quantity: i.quantity,
+            selectedColor: i.selectedColor || null,
+            selectedOptions: i.selectedOptions || undefined,
+          })),
+          shippingInfo: {
+            fullName: shipping.fullName,
+            email: shipping.email,
+            phone: shipping.phone || '',
+            address: shipping.address,
+            city: shipping.city,
+            state: shipping.state || '',
+            postalCode: shipping.postalCode || '',
+            country: shipping.country || 'Pakistan',
+          },
+          shippingMethod,
+          orderSummary: {
+            subtotal,
+            shippingCost: shippingMethod.price,
+            tax,
+            couponDiscount: 0,
+            totalAmount,
+          },
+          paymentMethod: paymentMethod || 'cash_on_delivery',
+        });
+
+        // Generate confirmation token
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        newOrder.confirmation = {
+          token,
+          tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+
+        await newOrder.save();
+
+        // Decrement stock
+        for (const item of orderItems) {
+          await Product.findByIdAndUpdate(item.productId || item.id, { $inc: { stock: -item.quantity } });
+        }
+
+        // Clear cart if ordering from cart
+        if (!productId) {
+          await Cart.findOneAndUpdate({ user: userId }, { $set: { cartItems: [] } });
+        }
+
+        return {
+          success: true,
+          data: {
+            orderId: newOrder.orderId,
+            total: totalAmount,
+            items: orderItems.length,
+            paymentMethod: newOrder.paymentMethod,
+            estimatedDelivery: `${shippingMethod.estimatedDays} days`,
+          },
+          message: `🎉 Order placed successfully! Order #${newOrder.orderId} — $${totalAmount.toFixed(2)} — ${orderItems.length} item${orderItems.length !== 1 ? 's' : ''} — ${newOrder.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Stripe'} — Est. delivery: ${shippingMethod.estimatedDays} days`,
+        };
+      }
+
+      case 'get_verification_status': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const store = await Store.findOne({ seller: userId }).select('verification storeName').lean();
+        if (!store) return { success: false, error: 'No store found.' };
+
+        return {
+          success: true,
+          data: {
+            isVerified: store.verification?.isVerified || false,
+            status: store.verification?.status || 'none',
+            appliedAt: store.verification?.appliedAt,
+            rejectionReason: store.verification?.rejectionReason || '',
+          },
+          message: store.verification?.isVerified
+            ? `Store "${store.storeName}" is verified! ✅🛡️`
+            : store.verification?.status === 'pending'
+              ? `Verification pending — submitted ${store.verification.appliedAt ? new Date(store.verification.appliedAt).toLocaleDateString() : 'recently'}.`
+              : store.verification?.status === 'rejected'
+                ? `Verification rejected: ${store.verification.rejectionReason || 'Does not meet requirements.'}`
+                : 'Not yet applied for verification.',
         };
       }
 
