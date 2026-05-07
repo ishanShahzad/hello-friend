@@ -1777,6 +1777,9 @@ exports.streamChat = async (req, res) => {
       ...optimizeMessages(cleanMessages),
     ];
 
+    // Track where new messages start (so we only save NEW messages to history)
+    const newMsgStartIndex = conversationMessages.length;
+
     // ═══ Tool Execution Loop ═══
     // The AI may request tool calls. We execute them server-side, feed results back,
     // and let the AI generate a natural language summary. Max 5 iterations for safety.
@@ -1892,8 +1895,10 @@ exports.streamChat = async (req, res) => {
     if (userId) {
       try {
         const conversationId = body.conversationId || null;
-        // Extract only NEW user+assistant messages from this request (skip system & tool messages)
+        // Extract only NEW user+assistant messages added during THIS request
+        // (everything after newMsgStartIndex — the original history ends there)
         const newMessages = conversationMessages
+          .slice(newMsgStartIndex)
           .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
           .map(m => ({ role: m.role, content: m.content }));
 
@@ -2046,19 +2051,21 @@ exports.chatOnce = async (req, res) => {
       }
     }
 
-    // Save chat history
+    // Save chat history — only the LAST user message + final AI response (not full history)
     if (userId) {
       try {
-        const msgs = conversationMessages
-          .filter(m => m.role === 'user' || m.role === 'assistant')
-          .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }))
-          .filter(m => m.content);
-
-        await ChatHistory.findOneAndUpdate(
-          { user: userId },
-          { $set: { messages: msgs.slice(-100), updatedAt: new Date() } },
-          { upsert: true }
-        );
+        const responseText = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
+        const lastUserMsg = cleanMessages.filter(m => m.role === 'user').pop();
+        const newMessages = [];
+        if (lastUserMsg?.content) {
+          newMessages.push({ role: 'user', content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '' });
+        }
+        if (responseText) {
+          newMessages.push({ role: 'assistant', content: responseText });
+        }
+        if (newMessages.length > 0) {
+          await saveToConversation(userId, body.conversationId || null, newMessages, 'web');
+        }
       } catch (e) { /* non-fatal */ }
     }
 
