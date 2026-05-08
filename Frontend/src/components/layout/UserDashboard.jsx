@@ -250,28 +250,69 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
     return (
         <>
+            {/* Mobile expanding header (replaces drawer) */}
             {isMobile && (
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(true)}
-                    className="fixed top-4 left-4 z-50 bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
-                    <Menu size={20} />
-                </motion.button>
+                <div className="fixed top-4 left-4 right-4 z-50 glass-panel-strong" style={{ borderRadius: 20 }}>
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border"
+                                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+                                {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                            <p className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{currentUser?.username || 'My Account'}</p>
+                        </div>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(o => !o)}
+                            className="p-2 rounded-xl glass-inner" style={{ color: 'hsl(var(--foreground))' }}>
+                            <motion.div key={isSidebarOpen ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
+                                {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                            </motion.div>
+                        </motion.button>
+                    </div>
+                    <AnimatePresence initial={false}>
+                        {isSidebarOpen && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeOut' }}
+                                className="overflow-hidden"
+                                style={{ borderTop: '1px solid var(--glass-border)' }}
+                            >
+                                <div className="px-3 py-3 space-y-1">
+                                    {menuItems.map(item => {
+                                        const isActive = activeTab === item.id;
+                                        return (
+                                            <Link key={item.id} to={item.link} onClick={() => handleTabClick(item.id)}>
+                                                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10"
+                                                    style={isActive ? { background: 'rgba(99,102,241,0.12)', color: 'hsl(var(--foreground))', border: '1px solid rgba(99,102,241,0.25)' } : { color: 'hsl(var(--foreground))' }}>
+                                                    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)', color: isActive ? 'hsl(220,70%,55%)' : 'hsl(var(--muted-foreground))' }}>{item.icon}</span>
+                                                    <span className="flex-1 text-left">{item.label}</span>
+                                                </button>
+                                            </Link>
+                                        );
+                                    })}
+                                    <Link to="/" onClick={() => setIsSidebarOpen(false)}>
+                                        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)' }}><LayoutPanelLeft size={18} /></span>
+                                            <span className="flex-1 text-left">Back to Store</span>
+                                        </button>
+                                    </Link>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             )}
 
-            <AnimatePresence>
-                {isMobile && isSidebarOpen && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-                        onClick={() => setIsSidebarOpen(false)} />
-                )}
-            </AnimatePresence>
-
-            <motion.div
-                initial={isMobile ? { x: '-100%' } : false}
-                animate={isMobile ? { x: isSidebarOpen ? 0 : '-100%' } : { x: 0 }}
-                transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-                className="fixed top-0 left-0 h-full w-64 z-50 shadow-2xl overflow-hidden">
-                <SidebarContent />
-            </motion.div>
+            {!isMobile && (
+                <motion.div
+                    initial={false}
+                    animate={{ x: 0 }}
+                    transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
+                    className="fixed top-0 left-0 h-full w-64 z-50 shadow-2xl overflow-hidden">
+                    <SidebarContent />
+                </motion.div>
+            )}
         </>
     );
 };
