@@ -323,6 +323,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [showChips, setShowChips] = useState(true);
   const [pendingTools, setPendingTools] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
