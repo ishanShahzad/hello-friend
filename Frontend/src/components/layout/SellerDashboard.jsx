@@ -521,6 +521,45 @@ const SellerDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Mobile inline menu — expands header height down */}
+                    {isMobile && (
+                        <AnimatePresence initial={false}>
+                            {isSidebarOpen && (
+                                <motion.div
+                                    key="seller-mobile-menu"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                                    className="overflow-hidden"
+                                    style={{ borderTop: '1px solid var(--glass-border)' }}
+                                >
+                                    <div className="px-3 py-3 space-y-1 max-h-[60vh] overflow-y-auto">
+                                        {getSellerMenuItems({ pendingOrders, lowStockProducts: lowStockProducts + outOfStockProducts }).map(item => {
+                                            const isActive = activeTab === item.id;
+                                            const onClick = () => {
+                                                if (item.action === 'ai-chat') { setAiChatOpen(true); setIsSidebarOpen(false); return; }
+                                                setActiveTab(item.id); setIsSidebarOpen(false);
+                                            };
+                                            const inner = (
+                                                <button onClick={onClick}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10"
+                                                    style={isActive ? { background: 'rgba(16,185,129,0.12)', color: 'hsl(var(--foreground))', border: '1px solid rgba(16,185,129,0.25)' } : { color: 'hsl(var(--foreground))' }}>
+                                                    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)', color: item.action === 'ai-chat' ? 'hsl(150,60%,45%)' : (isActive ? 'hsl(150,60%,45%)' : 'hsl(var(--muted-foreground))') }}>{item.icon}</span>
+                                                    <span className="flex-1 text-left">{item.label}</span>
+                                                    {item.badge > 0 && (
+                                                        <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5" style={{ background: 'hsl(0,72%,55%)' }}>{item.badge > 99 ? '99+' : item.badge}</span>
+                                                    )}
+                                                </button>
+                                            );
+                                            return item.action ? <div key={item.id}>{inner}</div> : <Link key={item.id} to={item.link}>{inner}</Link>;
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    )}
                 </div>
 
                 {/* Subscription Warning Banners */}
