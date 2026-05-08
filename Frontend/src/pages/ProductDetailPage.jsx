@@ -19,9 +19,12 @@ function ProductDetailPage() {
         handleDeleteFromWishlist,
         cartItems,
         handleAddToCart,
+        handleQtyInc,
+        handleQtyDec,
         fetchCart,
         isCartLoading,
-        loadingProductId
+        loadingProductId,
+        qtyUpdateId
     } = useGlobal();
 
     const [product, setProduct] = useState({});
