@@ -6,7 +6,7 @@ import axios from 'axios'
 import Loader from './common/Loader'
 import ProductCard from './common/ProductCard'
 import StoreSearch from './common/StoreSearch'
-import { PackageX, RefreshCw, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PackageX, RefreshCw, Filter, X, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import PersonalizedSections from './common/PersonalizedSections'
 import { useAuth } from '../contexts/AuthContext'
 import CurrencySelector from './common/CurrencySelector'
@@ -330,6 +330,42 @@ function Products() {
         <PersonalizedSections />
 
         <div className='mb-6 mt-8 flex flex-col gap-4'>
+          {/* Product search */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); fetchProducts(); }}
+            className='relative w-full'
+          >
+            <Search size={18} className='absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none' style={{ color: 'hsl(var(--muted-foreground))' }} />
+            <input
+              type='text'
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder='Search products by name, brand, or category…'
+              className='w-full pl-11 pr-28 py-3 rounded-2xl text-sm outline-none transition-all focus:ring-2'
+              style={{
+                background: 'var(--glass-bg-strong)',
+                border: '1px solid var(--glass-border)',
+                color: 'hsl(var(--foreground))',
+                boxShadow: 'var(--glass-shadow-soft)',
+                '--tw-ring-color': 'rgba(14,165,233,0.35)',
+              }}
+            />
+            {search && (
+              <button type='button' onClick={() => { setSearch(''); }}
+                className='absolute right-24 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/10'
+                aria-label='Clear search'>
+                <X size={16} style={{ color: 'hsl(var(--muted-foreground))' }} />
+              </button>
+            )}
+            <button
+              type='submit'
+              className='absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold'
+              style={{ background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }}
+            >
+              Search
+            </button>
+          </form>
+
           <StoreSearch />
           <div className='flex flex-col sm:flex-row justify-between items-center gap-3'>
             <div className='flex items-center gap-3'>
