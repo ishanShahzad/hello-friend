@@ -859,7 +859,20 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3"
         style={{ scrollBehavior: 'smooth', background: 'hsl(var(--background))' }}
       >
-        {messages.map(renderMessage)}
+        {isLoadingHistory ? (
+          <div className="space-y-3 pt-2">
+            {[0, 1, 2].map(i => (
+              <div key={i} className={`flex gap-2 ${i % 2 === 1 ? 'justify-end' : ''}`}>
+                {i % 2 === 0 && <div className="w-7 h-7 rounded-full shrink-0 animate-pulse" style={{ background: 'hsl(var(--muted) / 0.5)' }} />}
+                <div className="space-y-1.5" style={{ maxWidth: '70%' }}>
+                  <div className="h-3 w-40 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.5)' }} />
+                  <div className="h-3 w-56 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.4)' }} />
+                  <div className="h-3 w-24 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.3)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : messages.map(renderMessage)}
 
         {/* Pending tool executions */}
         {pendingTools.filter(t => t.status === 'running').map((t, i) => (
