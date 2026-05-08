@@ -637,9 +637,9 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
       >
         {isAssistant && (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
-            <Bot size={14} className="text-white" />
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-md"
+            style={{ background: 'linear-gradient(135deg, #14B8A6, #0EA5E9, #6366F1)' }}>
+            <Bot size={15} className="text-white" />
           </div>
         )}
 
