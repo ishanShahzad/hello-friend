@@ -311,7 +311,7 @@ const ProductCardGrid = ({ products, onViewProduct, onAddToCart, title }) => (
 //  MAIN CHATBOT COMPONENT
 // ═══════════════════════════════════════════════════════
 
-function ChatBot({ embedded = false, conversationId = null, initialMessages = null, onConversationCreated = null }) {
+function ChatBot({ embedded = false, conversationId = null, initialMessages = null, loadingHistory = false, onConversationCreated = null }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
