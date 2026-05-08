@@ -1913,12 +1913,19 @@ exports.streamChat = async (req, res) => {
     if (userId) {
       try {
         const conversationId = body.conversationId || null;
-        // Extract only NEW user+assistant messages added during THIS request
-        // (everything after newMsgStartIndex — the original history ends there)
-        const newMessages = conversationMessages
+        // Extract NEW messages from this request:
+        // 1. The latest user message (from incoming cleanMessages — was added BEFORE newMsgStartIndex)
+        // 2. Any assistant text messages produced during the tool/response loop (after newMsgStartIndex)
+        const lastUserMsg = cleanMessages.filter(m => m.role === 'user').pop();
+        const newMessages = [];
+        if (lastUserMsg?.content && typeof lastUserMsg.content === 'string' && lastUserMsg.content.trim()) {
+          newMessages.push({ role: 'user', content: lastUserMsg.content });
+        }
+        const newAssistantMsgs = conversationMessages
           .slice(newMsgStartIndex)
-          .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+          .filter(m => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim())
           .map(m => ({ role: m.role, content: m.content }));
+        newMessages.push(...newAssistantMsgs);
 
         const savedConvoId = await saveToConversation(userId, conversationId, newMessages);
         // Send the conversationId back to the client so it can track it
