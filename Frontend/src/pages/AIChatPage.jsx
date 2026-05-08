@@ -10,6 +10,10 @@ import ChatBot from '../components/common/ChatBot';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 
+// Brand gradient (matches Rozare logo: teal → sky → indigo)
+const BRAND_GRADIENT = 'linear-gradient(135deg, #14B8A6 0%, #0EA5E9 50%, #6366F1 100%)';
+const BRAND_PRIMARY = '#0EA5E9';
+
 function AIChatPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -18,7 +22,10 @@ function AIChatPage() {
   const [conversations, setConversations] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(null);
   const [loadedMessages, setLoadedMessages] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Default sidebar: open on desktop, closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
