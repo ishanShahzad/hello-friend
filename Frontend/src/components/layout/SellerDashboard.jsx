@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle, User,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle, User, Sparkles,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -954,24 +954,27 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen px-4 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 sm:p-6 max-w-7xl mx-auto">
             {/* Header with back button */}
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={onClose} className="flex items-center gap-2 text-sm font-medium transition-colors"
+            <div className="flex items-center gap-4 mb-4">
+                <button onClick={onClose} className="flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
                     style={{ color: 'hsl(var(--muted-foreground))' }}>
                     <ChevronLeft size={20} /> <span>Back to Products</span>
                 </button>
             </div>
             <div className="mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                <div className="tag-pill mb-3">
+                    <Sparkles size={12} /> {product._id ? 'Edit Product' : 'New Product'}
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
                     {product._id ? "Edit Product" : "Add New Product"}
-                </h2>
+                </h1>
                 <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {product._id ? 'Update product details below' : 'Fill in the details to list a new product'}
                 </p>
             </div>
 
-                <form onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} onSubmit={handleSubmit} className="space-y-6 pb-8">
+                <form onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} onSubmit={handleSubmit} className="glass-panel p-4 sm:p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Product Name *</label>
