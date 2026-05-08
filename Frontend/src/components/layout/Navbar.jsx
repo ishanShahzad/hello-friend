@@ -63,15 +63,16 @@ function Navbar() {
     ];
 
     return (
-        <>
-            <nav className={`transition-all duration-300 fixed z-50 flex justify-between items-center
+        <nav className={`transition-all duration-300 fixed z-50
                 px-4 sm:px-6 md:px-10 lg:px-14
                 ${isScrolled
-                    ? 'top-0 left-0 right-0 h-[60px] glass-panel-strong backdrop-blur-md'
-                    : 'top-4 left-4 right-4 h-[60px] sm:h-[64px] glass-panel backdrop-blur-sm'
-                }`}
-                style={{ borderRadius: isScrolled ? '0' : '24px' }}
-            >
+                ? 'top-0 left-0 right-0 glass-panel-strong backdrop-blur-md'
+                : 'top-4 left-4 right-4 glass-panel backdrop-blur-sm'
+            }`}
+            style={{ borderRadius: isScrolled ? '0' : '24px' }}
+        >
+            {/* Top row — fixed height */}
+            <div className={`flex justify-between items-center ${isScrolled ? 'h-[60px]' : 'h-[60px] sm:h-[64px]'}`}>
 
                 {/* Left: Logo + Nav Links */}
                 <div className="flex items-center gap-6">
@@ -135,7 +136,7 @@ function Navbar() {
                         </Link>
                     )}
 
-                    {/* Mobile hamburger — toggles expanding panel */}
+                    {/* Mobile hamburger */}
                     <button onClick={() => setMobileMenuOpen(o => !o)}
                         className="md:hidden p-2 rounded-xl glass-button transition-transform"
                         aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -145,114 +146,75 @@ function Navbar() {
                         </motion.div>
                     </button>
                 </div>
-            </nav>
+            </div>
 
-            {/* Mobile Expanding Menu — drops down from navbar, full-width */}
-            <AnimatePresence>
+            {/* Mobile expanding section — extends nav height down */}
+            <AnimatePresence initial={false}>
                 {mobileMenuOpen && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
-                        />
-
-                        {/* Expanded menu panel */}
-                        <motion.div
-                            initial={{ opacity: 0, y: -12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -12 }}
-                            transition={{ duration: 0.22, ease: 'easeOut' }}
-                            className={`md:hidden fixed z-[55] glass-panel-strong overflow-hidden ${
-                                isScrolled
-                                    ? 'top-[68px] left-2 right-2'
-                                    : 'top-[80px] sm:top-[84px] left-4 right-4'
-                            }`}
-                            style={{ borderRadius: '20px', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto' }}
-                        >
-                            {/* User strip */}
-                            {currentUser && (
-                                <div className="px-4 py-3 flex items-center gap-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                                        style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)' }}>
-                                        {currentUser.role === 'admin'
-                                            ? <Crown size={18} color="white" />
-                                            : currentUser.role === 'seller'
-                                                ? <Store size={18} color="white" />
-                                                : <LayoutDashboard size={18} color="white" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
-                                            {currentUser.username}
-                                        </p>
-                                        <p className="text-[11px] capitalize" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                            {currentUser.role || 'user'}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* All buttons — flat list, no sub-dropdowns */}
-                            <nav className="p-2 space-y-1">
-                                {mobileMenuItems.map(item => {
-                                    const Icon = item.icon;
-                                    const active = location.pathname === item.to ||
-                                        (item.to !== '/' && location.pathname.startsWith(item.to));
-                                    const accentColor =
-                                        item.accent === 'gold' ? '#f59e0b' :
-                                        item.accent === 'emerald' ? '#10b981' :
-                                        'hsl(var(--foreground))';
-                                    return (
-                                        <Link key={item.to} to={item.to}
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:bg-white/10 active:scale-[0.98] font-medium text-[15px]"
-                                            style={{
-                                                background: active ? 'var(--glass-bg-strong)' : 'transparent',
-                                                border: active ? '1px solid var(--glass-border)' : '1px solid transparent',
-                                                color: 'hsl(var(--foreground))',
-                                            }}>
-                                            <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                                style={{ background: 'var(--glass-bg)', color: accentColor }}>
-                                                <Icon size={18} />
-                                            </span>
-                                            <span className="flex-1">{item.label}</span>
-                                        </Link>
-                                    );
-                                })}
-
-                                {/* Divider + auth action */}
-                                <div className="h-px my-2" style={{ background: 'hsl(var(--border))' }} />
-
-                                {currentUser ? (
-                                    <button
-                                        onClick={() => { setMobileMenuOpen(false); logout(); }}
-                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:bg-red-500/10 active:scale-[0.98] font-semibold text-[15px]"
-                                        style={{ color: 'hsl(0, 72%, 55%)' }}>
-                                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                            style={{ background: 'rgba(244,63,94,0.12)' }}>
-                                            <LogOut size={18} />
-                                        </span>
-                                        Logout
-                                    </button>
-                                ) : (
-                                    <Link to="/login" onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-semibold text-[15px]"
+                    <motion.div
+                        key="mobile-menu"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                        className="md:hidden overflow-hidden"
+                    >
+                        <div className="py-3 space-y-1 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+                            {mobileMenuItems.map(item => {
+                                const Icon = item.icon;
+                                const active = location.pathname === item.to ||
+                                    (item.to !== '/' && location.pathname.startsWith(item.to));
+                                const accentColor =
+                                    item.accent === 'gold' ? '#f59e0b' :
+                                    item.accent === 'emerald' ? '#10b981' :
+                                    'hsl(var(--foreground))';
+                                return (
+                                    <Link key={item.to} to={item.to}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/10 active:scale-[0.98] font-medium text-[15px]"
                                         style={{
-                                            background: 'var(--logo-gradient)',
-                                            color: 'white',
-                                            boxShadow: 'var(--logo-glow)',
+                                            background: active ? 'var(--glass-bg-strong)' : 'transparent',
+                                            border: active ? '1px solid var(--glass-border)' : '1px solid transparent',
+                                            color: 'hsl(var(--foreground))',
                                         }}>
-                                        <LogIn size={18} /> Login / Sign Up
+                                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                            style={{ background: 'var(--glass-bg)', color: accentColor }}>
+                                            <Icon size={18} />
+                                        </span>
+                                        <span className="flex-1">{item.label}</span>
                                     </Link>
-                                )}
-                            </nav>
-                        </motion.div>
-                    </>
+                                );
+                            })}
+
+                            <div className="h-px my-2" style={{ background: 'hsl(var(--border))' }} />
+
+                            {currentUser ? (
+                                <button
+                                    onClick={() => { setMobileMenuOpen(false); logout(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-red-500/10 active:scale-[0.98] font-semibold text-[15px]"
+                                    style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                    <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                        style={{ background: 'rgba(244,63,94,0.12)' }}>
+                                        <LogOut size={18} />
+                                    </span>
+                                    Logout
+                                </button>
+                            ) : (
+                                <Link to="/login" onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-[15px]"
+                                    style={{
+                                        background: 'var(--logo-gradient)',
+                                        color: 'white',
+                                        boxShadow: 'var(--logo-glow)',
+                                    }}>
+                                    <LogIn size={18} /> Login / Sign Up
+                                </Link>
+                            )}
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
-        </>
+        </nav>
     );
 }
 
