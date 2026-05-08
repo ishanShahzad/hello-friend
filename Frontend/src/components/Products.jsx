@@ -6,7 +6,7 @@ import axios from 'axios'
 import Loader from './common/Loader'
 import ProductCard from './common/ProductCard'
 import StoreSearch from './common/StoreSearch'
-import { PackageX, RefreshCw, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PackageX, RefreshCw, Filter, X, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import PersonalizedSections from './common/PersonalizedSections'
 import { useAuth } from '../contexts/AuthContext'
 import CurrencySelector from './common/CurrencySelector'
@@ -290,29 +290,29 @@ function Products() {
           },
         ]}
       />
-      {/* Mobile Filter Toggle */}
-      <div className='lg:hidden fixed bottom-6 right-6 z-40'>
+      {/* Mobile Filter Toggle (bottom-LEFT to avoid overlap with chat FAB) */}
+      <div className='lg:hidden fixed bottom-5 left-4 z-40'>
         <button
           onClick={() => setIsFilterOpen(true)}
           className='pl-4 pr-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-semibold text-sm glow-soft transition-transform active:scale-95 hover:scale-105'
-          style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+          style={{ background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }}>
           <Filter size={18} />
           Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
         </button>
       </div>
 
-      {/* Mobile Filter Overlay */}
+      {/* Mobile Filter Overlay — sits above navbar so nothing peeks through */}
       <AnimatePresence>
         {isFilterOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] lg:hidden"
               onClick={() => setIsFilterOpen(false)} />
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-              className='fixed top-0 left-0 h-full w-80 max-w-full glass-panel-strong z-40 overflow-y-auto lg:hidden'
-              style={{ borderRadius: '0 28px 28px 0' }}>
+              className='fixed top-0 left-0 h-[100dvh] w-80 max-w-[85vw] sidebar-mobile-solid z-[90] overflow-y-auto lg:hidden flex flex-col'
+              style={{ borderRadius: '0 28px 28px 0', paddingTop: 'env(safe-area-inset-top)' }}>
               <FilterSidebarContent onClose={() => setIsFilterOpen(false)} />
             </motion.aside>
           </>
@@ -330,6 +330,42 @@ function Products() {
         <PersonalizedSections />
 
         <div className='mb-6 mt-8 flex flex-col gap-4'>
+          {/* Product search */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); fetchProducts(); }}
+            className='relative w-full'
+          >
+            <Search size={18} className='absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none' style={{ color: 'hsl(var(--muted-foreground))' }} />
+            <input
+              type='text'
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder='Search products by name, brand, or category…'
+              className='w-full pl-11 pr-28 py-3 rounded-2xl text-sm outline-none transition-all focus:ring-2'
+              style={{
+                background: 'var(--glass-bg-strong)',
+                border: '1px solid var(--glass-border)',
+                color: 'hsl(var(--foreground))',
+                boxShadow: 'var(--glass-shadow-soft)',
+                '--tw-ring-color': 'rgba(14,165,233,0.35)',
+              }}
+            />
+            {search && (
+              <button type='button' onClick={() => { setSearch(''); }}
+                className='absolute right-24 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/10'
+                aria-label='Clear search'>
+                <X size={16} style={{ color: 'hsl(var(--muted-foreground))' }} />
+              </button>
+            )}
+            <button
+              type='submit'
+              className='absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold'
+              style={{ background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }}
+            >
+              Search
+            </button>
+          </form>
+
           <StoreSearch />
           <div className='flex flex-col sm:flex-row justify-between items-center gap-3'>
             <div className='flex items-center gap-3'>

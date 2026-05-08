@@ -162,8 +162,9 @@ const ProductCard = memo(({
             : "glow-soft"
           }`}
           style={stock > 0 && !isInCart ? {
-            background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+            background: 'var(--logo-gradient)',
             color: 'white',
+            boxShadow: 'var(--logo-glow)',
           } : {}}
         >
           {stock === 0 ? <span>Out of Stock</span>

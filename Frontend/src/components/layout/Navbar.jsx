@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import NavDropdown from "../common/Dropdown";
-import { ShoppingCart, Menu, X, Store, Home, LogIn, Sun, Moon, Package, ShoppingBag } from "lucide-react";
+import {
+    ShoppingCart, Menu, X, Home, LogIn, LogOut, Sun, Moon,
+    Package, ShoppingBag, LayoutDashboard, Crown, Store
+} from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import WishlistDropdown from "../common/Wishlist";
 import { useTheme } from "../../contexts/ThemeContext";
 
 function Navbar() {
-    const { currentUser } = useAuth();
-    const { cartItems, toggleCart, dropdownRef, cartBtn, fetchCart } = useGlobal();
+    const { currentUser, logout } = useAuth();
+    const { cartItems, toggleCart, cartBtn, fetchCart } = useGlobal();
     const { isDark, toggleTheme } = useTheme();
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         const onScroll = () => setIsScrolled(window.scrollY >= 20);
@@ -23,10 +27,39 @@ function Navbar() {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    // Close mobile menu on route change
+    useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
+
+    // Lock body scroll while mobile menu open
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            const prev = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = prev; };
+        }
+    }, [mobileMenuOpen]);
+
     const navLinks = [
-        { label: 'Home', to: '/', icon: <Home size={18} /> },
-        { label: 'Marketplace', to: '/marketplace', icon: <ShoppingBag size={18} /> },
-        { label: 'Track Order', to: '/track-order', icon: <Package size={18} /> },
+        { label: 'Home', to: '/', icon: Home },
+        { label: 'Marketplace', to: '/marketplace', icon: ShoppingBag },
+        { label: 'Track Order', to: '/track-order', icon: Package },
+    ];
+
+    // Build mobile menu items
+    const mobileMenuItems = [
+        ...navLinks,
+        ...(currentUser?.role === 'admin'
+            ? [{ label: 'Admin Dashboard', to: '/admin-dashboard/store-overview', icon: Crown, accent: 'gold' }]
+            : []),
+        ...(currentUser?.role === 'seller'
+            ? [{ label: 'Seller Dashboard', to: '/seller-dashboard/store-overview', icon: Store, accent: 'emerald' }]
+            : []),
+        ...(currentUser
+            ? [{ label: 'Your Dashboard', to: '/user-dashboard/account-overview', icon: LayoutDashboard }]
+            : []),
+        ...(currentUser?.role === 'user'
+            ? [{ label: 'Become a Seller', to: '/become-seller', icon: Store }]
+            : []),
     ];
 
     return (
@@ -37,9 +70,7 @@ function Navbar() {
                     ? 'top-0 left-0 right-0 h-[60px] glass-panel-strong backdrop-blur-md'
                     : 'top-4 left-4 right-4 h-[60px] sm:h-[64px] glass-panel backdrop-blur-sm'
                 }`}
-                style={{
-                    borderRadius: isScrolled ? '0' : '24px',
-                }}
+                style={{ borderRadius: isScrolled ? '0' : '24px' }}
             >
 
                 {/* Left: Logo + Nav Links */}
@@ -60,14 +91,13 @@ function Navbar() {
                     </div>
                 </div>
 
-                {/* Center: User Dropdown */}
+                {/* Center: User Dropdown (desktop) */}
                 <div className="hidden md:flex justify-center">
                     {currentUser && <NavDropdown />}
                 </div>
 
                 {/* Right: Cart, Wishlist, Login */}
                 <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Theme Toggle */}
                     <button onClick={toggleTheme}
                         className="p-2 rounded-xl glass-button transition-all duration-300"
                         style={{ color: 'hsl(var(--foreground))' }}
@@ -77,7 +107,6 @@ function Navbar() {
                         </motion.div>
                     </button>
 
-                    {/* Cart Button */}
                     <button ref={cartBtn} onClick={toggleCart}
                         className="relative flex items-center gap-1.5 px-2.5 py-2 rounded-xl glass-button text-sm font-medium"
                         style={{ color: 'hsl(var(--foreground))' }}>
@@ -85,22 +114,20 @@ function Navbar() {
                         <span className="hidden sm:inline">Cart</span>
                         {(cartItems?.cart?.length || 0) > 0 && (
                             <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full shadow-md"
-                                style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                                style={{ background: 'var(--logo-gradient)', color: 'white' }}>
                                 {cartItems?.cart?.length || 0}
                             </span>
                         )}
                     </button>
 
-                    {/* Wishlist */}
                     <WishlistDropdown />
 
-                    {/* Login button (desktop) */}
                     {!currentUser && (
                         <Link to="/login" className="hidden sm:block">
                             <button className="px-4 py-2 rounded-xl font-semibold text-sm transition-all glow-soft"
                                 style={{
                                     background: 'var(--logo-gradient)',
-                                    color: 'hsl(var(--primary-foreground))',
+                                    color: 'white',
                                     boxShadow: 'var(--logo-glow)',
                                 }}>
                                 Login / Sign Up
@@ -108,69 +135,118 @@ function Navbar() {
                         </Link>
                     )}
 
-                    {/* Mobile hamburger */}
-                    <button onClick={() => setMobileMenuOpen(true)}
-                        className="md:hidden p-2 rounded-xl glass-button">
-                        <Menu size={22} />
+                    {/* Mobile hamburger — toggles expanding panel */}
+                    <button onClick={() => setMobileMenuOpen(o => !o)}
+                        className="md:hidden p-2 rounded-xl glass-button transition-transform"
+                        aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        aria-expanded={mobileMenuOpen}>
+                        <motion.div key={mobileMenuOpen ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
+                            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                        </motion.div>
                     </button>
                 </div>
             </nav>
 
-            {/* Mobile Drawer */}
+            {/* Mobile Expanding Menu — drops down from navbar, full-width */}
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <>
+                        {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
-                            onClick={() => setMobileMenuOpen(false)} />
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+                        />
 
+                        {/* Expanded menu panel */}
                         <motion.div
-                            initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-                            transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-                            className="fixed top-0 left-0 h-full w-72 z-[70] flex flex-col sidebar-mobile-solid"
-                            style={{ borderRadius: '0 28px 28px 0' }}>
-
-                            {/* Drawer header */}
-                            <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)' }}>
-                                        <ShoppingBag size={18} color="white" />
+                            initial={{ opacity: 0, y: -12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -12 }}
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                            className={`md:hidden fixed z-[55] glass-panel-strong overflow-hidden ${
+                                isScrolled
+                                    ? 'top-[68px] left-2 right-2'
+                                    : 'top-[80px] sm:top-[84px] left-4 right-4'
+                            }`}
+                            style={{ borderRadius: '20px', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto' }}
+                        >
+                            {/* User strip */}
+                            {currentUser && (
+                                <div className="px-4 py-3 flex items-center gap-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                        style={{ background: 'var(--logo-gradient)', boxShadow: 'var(--logo-glow)' }}>
+                                        {currentUser.role === 'admin'
+                                            ? <Crown size={18} color="white" />
+                                            : currentUser.role === 'seller'
+                                                ? <Store size={18} color="white" />
+                                                : <LayoutDashboard size={18} color="white" />}
                                     </div>
-                                    <span className="text-lg font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Rozare</span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
+                                            {currentUser.username}
+                                        </p>
+                                        <p className="text-[11px] capitalize" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            {currentUser.role || 'user'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <button onClick={() => setMobileMenuOpen(false)}
-                                    className="p-2 rounded-xl glass-button">
-                                    <X size={20} />
-                                </button>
-                            </div>
+                            )}
 
-                            {/* Nav links */}
-                            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                                {navLinks.map(link => (
-                                    <Link key={link.to} to={link.to} onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all font-medium">
-                                        {link.icon}
-                                        {link.label}
-                                    </Link>
-                                ))}
-
-                                <div className="h-px bg-white/15 my-3" />
-
-                                {currentUser
-                                    ? <div className="px-2"><NavDropdown /></div>
-                                    : (
-                                        <Link to="/login" onClick={() => setMobileMenuOpen(false)}
-                                            className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold"
+                            {/* All buttons — flat list, no sub-dropdowns */}
+                            <nav className="p-2 space-y-1">
+                                {mobileMenuItems.map(item => {
+                                    const Icon = item.icon;
+                                    const active = location.pathname === item.to ||
+                                        (item.to !== '/' && location.pathname.startsWith(item.to));
+                                    const accentColor =
+                                        item.accent === 'gold' ? '#f59e0b' :
+                                        item.accent === 'emerald' ? '#10b981' :
+                                        'hsl(var(--foreground))';
+                                    return (
+                                        <Link key={item.to} to={item.to}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:bg-white/10 active:scale-[0.98] font-medium text-[15px]"
                                             style={{
-                                                background: 'var(--logo-gradient)',
-                                                color: 'white',
-                                                boxShadow: 'var(--logo-glow)',
+                                                background: active ? 'var(--glass-bg-strong)' : 'transparent',
+                                                border: active ? '1px solid var(--glass-border)' : '1px solid transparent',
+                                                color: 'hsl(var(--foreground))',
                                             }}>
-                                            <LogIn size={18} /> Login / Sign Up
+                                            <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                                style={{ background: 'var(--glass-bg)', color: accentColor }}>
+                                                <Icon size={18} />
+                                            </span>
+                                            <span className="flex-1">{item.label}</span>
                                         </Link>
-                                    )
-                                }
+                                    );
+                                })}
+
+                                {/* Divider + auth action */}
+                                <div className="h-px my-2" style={{ background: 'hsl(var(--border))' }} />
+
+                                {currentUser ? (
+                                    <button
+                                        onClick={() => { setMobileMenuOpen(false); logout(); }}
+                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:bg-red-500/10 active:scale-[0.98] font-semibold text-[15px]"
+                                        style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                            style={{ background: 'rgba(244,63,94,0.12)' }}>
+                                            <LogOut size={18} />
+                                        </span>
+                                        Logout
+                                    </button>
+                                ) : (
+                                    <Link to="/login" onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-semibold text-[15px]"
+                                        style={{
+                                            background: 'var(--logo-gradient)',
+                                            color: 'white',
+                                            boxShadow: 'var(--logo-glow)',
+                                        }}>
+                                        <LogIn size={18} /> Login / Sign Up
+                                    </Link>
+                                )}
                             </nav>
                         </motion.div>
                     </>
