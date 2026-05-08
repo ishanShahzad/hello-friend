@@ -20,6 +20,24 @@ import Loader from '../common/Loader';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import ChatBotComponent from '../common/ChatBot';
 
+// Shared menu items
+const getAdminMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
+    { id: 'overview', label: 'Store Overview', icon: <BarChart3 size={18} />, link: '/admin-dashboard/store-overview' },
+    { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} />, link: '/admin-dashboard/analytics' },
+    { id: 'users', label: 'User Management', icon: <Users size={18} />, link: '/admin-dashboard/user-management' },
+    { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/admin-dashboard/product-management', badge: lowStockProducts },
+    { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },
+    { id: 'verifications', label: 'Verifications', icon: <CheckCircle size={18} />, link: '/admin-dashboard/store-verifications' },
+    { id: 'subdomains', label: 'Subdomains', icon: <Store size={18} />, link: '/admin-dashboard/subdomains' },
+    { id: 'complaints', label: 'Complaints', icon: <AlertCircle size={18} />, link: '/admin-dashboard/complaints' },
+    { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
+    { id: 'whatsapp', label: 'WhatsApp Verify', icon: <MessageCircle size={18} />, link: '/admin-dashboard/whatsapp-verification' },
+    { id: 'broadcast', label: 'Broadcast', icon: <Megaphone size={18} />, link: '/admin-dashboard/broadcast' },
+    { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
+]);
+
 
 const AdminDashboard = () => {
     const { currentUser } = useAuth();
@@ -320,9 +338,11 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between px-4 sm:px-6 py-3">
                         <div className="flex items-center gap-3">
                             {isMobile && (
-                                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(true)}
+                                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(o => !o)}
                                     className="p-2 rounded-xl glass-inner" style={{ color: 'hsl(var(--foreground))' }}>
-                                    <Menu size={20} />
+                                    <motion.div key={isSidebarOpen ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
+                                        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                                    </motion.div>
                                 </motion.button>
                             )}
                             <div>
@@ -390,46 +410,72 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Mobile inline menu */}
+                    {isMobile && (
+                        <AnimatePresence initial={false}>
+                            {isSidebarOpen && (
+                                <motion.div
+                                    key="admin-mobile-menu"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                                    className="overflow-hidden"
+                                    style={{ borderTop: '1px solid var(--glass-border)' }}
+                                >
+                                    <div className="px-3 py-3 space-y-1 max-h-[60vh] overflow-y-auto">
+                                        {getAdminMenuItems({ pendingOrders, lowStockProducts: lowStockProducts + outOfStockProducts }).map(item => {
+                                            const isActive = activeTab === item.id;
+                                            const onClick = () => {
+                                                if (item.action === 'ai-chat') { setAiChatOpen(true); setIsSidebarOpen(false); return; }
+                                                setActiveTab(item.id); setIsSidebarOpen(false);
+                                            };
+                                            const inner = (
+                                                <button onClick={onClick}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10"
+                                                    style={isActive ? { background: 'rgba(99,102,241,0.12)', color: 'hsl(var(--foreground))', border: '1px solid rgba(99,102,241,0.25)' } : { color: 'hsl(var(--foreground))' }}>
+                                                    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)', color: item.action === 'ai-chat' ? 'hsl(150,60%,45%)' : (isActive ? 'hsl(220,70%,55%)' : 'hsl(var(--muted-foreground))') }}>{item.icon}</span>
+                                                    <span className="flex-1 text-left">{item.label}</span>
+                                                    {item.badge > 0 && (
+                                                        <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1.5" style={{ background: 'hsl(0,72%,55%)' }}>{item.badge > 99 ? '99+' : item.badge}</span>
+                                                    )}
+                                                </button>
+                                            );
+                                            return item.action ? <div key={item.id}>{inner}</div> : <Link key={item.id} to={item.link}>{inner}</Link>;
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    )}
                 </div>
 
                 {/* Page Content */}
                 <div className="flex-1">
-                    <Outlet context={outletContext} />
+                    {aiChatOpen ? (
+                        <div className="p-3 sm:p-4 lg:p-6">
+                            <div className="glass-panel-strong overflow-hidden" style={{ borderRadius: 20, height: 'calc(100vh - 140px)' }}>
+                                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                                    <div className="flex items-center gap-2">
+                                        <Bot size={18} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                                        <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Platform Commander</span>
+                                    </div>
+                                    <button onClick={() => setAiChatOpen(false)} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                                <div className="h-[calc(100%-49px)] overflow-hidden">
+                                    <ChatBotComponent embedded dashboardRole="admin" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <Outlet context={outletContext} />
+                    )}
                 </div>
             </div>
 
-            {/* AI Chat Slide Panel */}
-            <AnimatePresence>
-                {aiChatOpen && (
-                    <motion.div
-                        initial={{ x: '100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '100%' }}
-                        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-                        className="fixed top-0 right-0 h-full w-[400px] max-w-[90vw] z-[60] shadow-2xl"
-                    >
-                        <div className="h-full flex flex-col">
-                            <div className="flex items-center justify-between px-4 py-3 glass-panel-strong" style={{ borderBottom: '1px solid var(--glass-border)', borderRadius: '0 0 0 20px' }}>
-                                <div className="flex items-center gap-2">
-                                    <Bot size={18} style={{ color: 'hsl(220, 70%, 55%)' }} />
-                                    <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>AI Platform Commander</span>
-                                </div>
-                                <button onClick={() => setAiChatOpen(false)} className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <ChatBotComponent embedded dashboardRole="admin" />
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            {aiChatOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55]"
-                    onClick={() => setAiChatOpen(false)} />
-            )}
 
             {createPortal(notificationsDropdown, document.body)}
 
@@ -489,6 +535,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         setActiveTab(tabId);
         if (isMobile) setIsSidebarOpen(false);
     };
+
+    if (isMobile) return null;
 
     return (
         <>
