@@ -859,7 +859,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3"
         style={{ scrollBehavior: 'smooth', background: 'hsl(var(--background))' }}
       >
-        {isLoadingHistory ? (
+        {(isLoadingHistory || loadingHistory) ? (
           <div className="space-y-3 pt-2">
             {[0, 1, 2].map(i => (
               <div key={i} className={`flex gap-2 ${i % 2 === 1 ? 'justify-end' : ''}`}>
