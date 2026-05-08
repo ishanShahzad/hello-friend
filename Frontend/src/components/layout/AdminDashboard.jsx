@@ -444,6 +444,12 @@ const AdminDashboard = () => {
                                             );
                                             return item.action ? <div key={item.id}>{inner}</div> : <Link key={item.id} to={item.link}>{inner}</Link>;
                                         })}
+                                        <Link to="/" onClick={() => setIsSidebarOpen(false)}>
+                                            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10" style={{ color: 'hsl(var(--foreground))' }}>
+                                                <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)', color: 'hsl(220,70%,55%)' }}><Home size={18} /></span>
+                                                <span className="flex-1 text-left">Back to Home</span>
+                                            </button>
+                                        </Link>
                                     </div>
                                 </motion.div>
                             )}
