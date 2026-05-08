@@ -20,6 +20,24 @@ import Loader from '../common/Loader';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import ChatBotComponent from '../common/ChatBot';
 
+// Shared menu items
+const getAdminMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
+    { id: 'overview', label: 'Store Overview', icon: <BarChart3 size={18} />, link: '/admin-dashboard/store-overview' },
+    { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} />, link: '/admin-dashboard/analytics' },
+    { id: 'users', label: 'User Management', icon: <Users size={18} />, link: '/admin-dashboard/user-management' },
+    { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/admin-dashboard/product-management', badge: lowStockProducts },
+    { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },
+    { id: 'verifications', label: 'Verifications', icon: <CheckCircle size={18} />, link: '/admin-dashboard/store-verifications' },
+    { id: 'subdomains', label: 'Subdomains', icon: <Store size={18} />, link: '/admin-dashboard/subdomains' },
+    { id: 'complaints', label: 'Complaints', icon: <AlertCircle size={18} />, link: '/admin-dashboard/complaints' },
+    { id: 'tax', label: 'Tax Config', icon: <DollarSign size={18} />, link: '/admin-dashboard/tax-configuration' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/admin-dashboard/notifications' },
+    { id: 'whatsapp', label: 'WhatsApp Verify', icon: <MessageCircle size={18} />, link: '/admin-dashboard/whatsapp-verification' },
+    { id: 'broadcast', label: 'Broadcast', icon: <Megaphone size={18} />, link: '/admin-dashboard/broadcast' },
+    { id: 'settings', label: 'Settings', icon: <Settings size={18} />, link: '/admin-dashboard/notification-settings' },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
+]);
+
 
 const AdminDashboard = () => {
     const { currentUser } = useAuth();
