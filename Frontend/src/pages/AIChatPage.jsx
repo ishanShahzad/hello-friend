@@ -10,6 +10,10 @@ import ChatBot from '../components/common/ChatBot';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 
+// Brand gradient (matches Rozare logo: teal → sky → indigo)
+const BRAND_GRADIENT = 'linear-gradient(135deg, #14B8A6 0%, #0EA5E9 50%, #6366F1 100%)';
+const BRAND_PRIMARY = '#0EA5E9';
+
 function AIChatPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -18,7 +22,10 @@ function AIChatPage() {
   const [conversations, setConversations] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(null);
   const [loadedMessages, setLoadedMessages] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Default sidebar: open on desktop, closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,26 +129,26 @@ function AIChatPage() {
   // Not logged in
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      <div className="min-h-[100dvh] flex items-center justify-center relative overflow-hidden p-6"
         style={{ background: 'hsl(var(--background))' }}>
-        {/* Decorative blobs */}
-        <div className="absolute top-10 left-10 w-72 h-72 rounded-full blur-[120px] opacity-20"
-          style={{ background: 'hsl(220, 70%, 55%)' }} />
-        <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full blur-[120px] opacity-15"
-          style={{ background: 'hsl(280, 60%, 55%)' }} />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 z-10 p-8 rounded-3xl"
-          style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))', backdropFilter: 'blur(20px)' }}>
-          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+        <div className="absolute top-10 left-10 w-72 h-72 rounded-full blur-[120px] opacity-25"
+          style={{ background: '#14B8A6' }} />
+        <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full blur-[120px] opacity-20"
+          style={{ background: '#6366F1' }} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-5 z-10 p-8 sm:p-10 rounded-3xl max-w-sm w-full"
+          style={{ background: 'hsl(var(--muted) / 0.2)', border: '1px solid hsl(var(--border))', backdropFilter: 'blur(20px)' }}>
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center shadow-lg"
+            style={{ background: BRAND_GRADIENT }}>
             <Bot size={32} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Sign in to Chat</h2>
-          <p className="text-sm max-w-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Sign in to Chat</h2>
+          <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Log in to start chatting with Rozare AI — your personal shopping assistant with saved conversations.
           </p>
           <button onClick={() => navigate('/login')}
-            className="px-8 py-2.5 rounded-xl font-semibold text-white transition-all hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+            className="px-8 py-2.5 rounded-xl font-semibold text-white transition-all hover:scale-105 shadow-lg"
+            style={{ background: BRAND_GRADIENT, boxShadow: '0 8px 24px -6px rgba(14,165,233,0.5)' }}>
             Sign In
           </button>
         </motion.div>
@@ -150,27 +157,39 @@ function AIChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden relative"
+    <div className="flex h-[100dvh] overflow-hidden relative"
       style={{ background: 'hsl(var(--background))' }}>
-      {/* Background decorative elements */}
-      <div className="fixed top-0 left-0 w-64 h-64 rounded-full blur-[150px] opacity-10 pointer-events-none"
-        style={{ background: 'hsl(220, 70%, 55%)' }} />
-      <div className="fixed bottom-0 right-0 w-72 h-72 rounded-full blur-[150px] opacity-8 pointer-events-none"
-        style={{ background: 'hsl(280, 60%, 55%)' }} />
+      {/* Background decorative blobs */}
+      <div className="fixed top-0 left-0 w-64 h-64 rounded-full blur-[150px] opacity-15 pointer-events-none"
+        style={{ background: '#14B8A6' }} />
+      <div className="fixed bottom-0 right-0 w-72 h-72 rounded-full blur-[150px] opacity-15 pointer-events-none"
+        style={{ background: '#6366F1' }} />
 
-      {/* ─── Sidebar ─── */}
+      {/* Mobile sidebar backdrop */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-30 md:hidden"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ─── Sidebar (overlay drawer on mobile, pushed panel on md+) ─── */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.aside
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 300, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+            initial={{ x: -320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -320, opacity: 0 }}
             transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="flex flex-col overflow-hidden shrink-0 z-10"
+            className="flex flex-col overflow-hidden shrink-0 z-40 fixed md:static inset-y-0 left-0 w-[85vw] max-w-[320px] md:w-[300px]"
             style={{
-              background: 'hsl(var(--muted) / 0.08)',
+              background: 'hsl(var(--background) / 0.96)',
               borderRight: '1px solid hsl(var(--border))',
-              backdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(20px)',
             }}
           >
             {/* Sidebar Header */}
@@ -182,7 +201,7 @@ function AIChatPage() {
                 </button>
                 <div className="flex-1 flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                    style={{ background: BRAND_GRADIENT }}>
                     <Bot size={14} className="text-white" />
                   </div>
                   <div>
@@ -202,9 +221,9 @@ function AIChatPage() {
                 onClick={createNewChat}
                 className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))',
+                  background: BRAND_GRADIENT,
                   color: 'white',
-                  boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)',
+                  boxShadow: '0 4px 15px rgba(14,165,233,0.35)',
                 }}>
                 <Plus size={16} />
                 New Chat
@@ -223,7 +242,7 @@ function AIChatPage() {
                     background: 'hsl(var(--muted) / 0.15)',
                     color: 'hsl(var(--foreground))',
                     border: '1px solid hsl(var(--border))',
-                    focusRingColor: 'hsl(220, 70%, 55%, 0.4)',
+                    focusRingColor: 'rgba(14,165,233,0.40)',
                   }}
                 />
               </div>
@@ -258,21 +277,21 @@ function AIChatPage() {
                       className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all mb-1`}
                       style={{
                         background: activeConvoId === c._id
-                          ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(280, 60%, 55%, 0.08))'
+                          ? 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(99,102,241,0.10))'
                           : 'transparent',
                         border: activeConvoId === c._id
-                          ? '1px solid hsl(220, 70%, 55%, 0.25)'
+                          ? '1px solid rgba(14,165,233,0.30)'
                           : '1px solid transparent',
                       }}
                     >
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                         style={{
                           background: activeConvoId === c._id
-                            ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.25), hsl(280, 60%, 55%, 0.15))'
+                            ? 'linear-gradient(135deg, rgba(20,184,166,0.25), rgba(99,102,241,0.15))'
                             : 'hsl(var(--muted) / 0.2)',
                         }}>
                         <MessageCircle size={14}
-                          style={{ color: activeConvoId === c._id ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }} />
+                          style={{ color: activeConvoId === c._id ? '#0EA5E9' : 'hsl(var(--muted-foreground))' }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         {editingId === c._id ? (
@@ -315,7 +334,7 @@ function AIChatPage() {
             <div className="px-3 py-2 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                  style={{ background: BRAND_GRADIENT }}>
                   <Sparkles size={10} className="text-white" />
                 </div>
                 <span className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -329,23 +348,23 @@ function AIChatPage() {
 
       {/* ─── Main Chat Area ─── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        {!sidebarOpen && (
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b"
-            style={{ borderColor: 'hsl(var(--border))', backdropFilter: 'blur(8px)' }}>
-            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl transition-all hover:bg-white/5"
-              style={{ color: 'hsl(var(--muted-foreground))' }}>
-              <Menu size={18} />
-            </button>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
-              <Bot size={14} className="text-white" />
-            </div>
-            <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-              {conversations.find(c => c._id === activeConvoId)?.title || 'AI Chat'}
-            </span>
+        {/* Top bar — always visible on mobile; only visible on desktop when sidebar is collapsed */}
+        <div className={`${sidebarOpen ? 'flex md:hidden' : 'flex'} items-center gap-3 px-4 py-3 border-b shrink-0`}
+          style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--background) / 0.7)', backdropFilter: 'blur(8px)' }}>
+          <button onClick={() => setSidebarOpen(s => !s)}
+            className="p-2 rounded-xl transition-all hover:bg-white/5"
+            style={{ color: 'hsl(var(--muted-foreground))' }}
+            aria-label="Toggle sidebar">
+            <Menu size={18} />
+          </button>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
+            style={{ background: BRAND_GRADIENT }}>
+            <Bot size={15} className="text-white" />
           </div>
-        )}
+          <span className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
+            {conversations.find(c => c._id === activeConvoId)?.title || 'Rozare AI Chat'}
+          </span>
+        </div>
 
         {/* Chat or Welcome State */}
         {activeConvoId || loadedMessages !== null ? (
@@ -366,7 +385,7 @@ function AIChatPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="text-center max-w-md space-y-6">
               <div className="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center relative"
-                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 8px 30px hsl(220, 70%, 55%, 0.3)' }}>
+                style={{ background: BRAND_GRADIENT, boxShadow: '0 8px 30px rgba(14,165,233,0.35)' }}>
                 <Bot size={36} className="text-white" />
                 <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ background: 'hsl(150, 60%, 50%)' }}>
@@ -389,7 +408,7 @@ function AIChatPage() {
                   <motion.div key={i} whileHover={{ scale: 1.03 }}
                     className="p-3 rounded-xl text-left cursor-default transition-all"
                     style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))' }}>
-                    <item.icon size={16} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                    <item.icon size={16} style={{ color: '#0EA5E9' }} />
                     <p className="text-xs font-semibold mt-1.5" style={{ color: 'hsl(var(--foreground))' }}>{item.label}</p>
                     <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.desc}</p>
                   </motion.div>
@@ -398,7 +417,7 @@ function AIChatPage() {
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 onClick={createNewChat}
                 className="px-6 py-3 rounded-xl font-semibold text-white inline-flex items-center gap-2 transition-all"
-                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)' }}>
+                style={{ background: BRAND_GRADIENT, boxShadow: '0 4px 15px rgba(14,165,233,0.35)' }}>
                 <Plus size={16} /> Start a Conversation
                 <ArrowRight size={14} />
               </motion.button>
