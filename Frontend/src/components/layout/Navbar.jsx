@@ -30,14 +30,7 @@ function Navbar() {
     // Close mobile menu on route change
     useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
 
-    // Lock body scroll while mobile menu open
-    useEffect(() => {
-        if (mobileMenuOpen) {
-            const prev = document.body.style.overflow;
-            document.body.style.overflow = 'hidden';
-            return () => { document.body.style.overflow = prev; };
-        }
-    }, [mobileMenuOpen]);
+    // Mobile menu now expands inline within the nav — no body scroll lock needed.
 
     const navLinks = [
         { label: 'Home', to: '/', icon: Home },
