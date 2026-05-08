@@ -373,6 +373,7 @@ function AIChatPage() {
               embedded={true}
               conversationId={activeConvoId}
               initialMessages={loadedMessages}
+              loadingHistory={loading}
               onConversationCreated={(convoId) => {
                 setActiveConvoId(convoId);
                 loadConversations();

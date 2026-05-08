@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useRef, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Share2, RotateCcw, Loader2, Home, Tag, Package, Ticket, Copy, Check, Calendar } from 'lucide-react';
+import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Share2, RotateCcw, Loader2, Home, Tag, Package, Ticket, Copy, Check, Calendar, Plus, Minus, X } from 'lucide-react';
 import Loader from '../components/common/Loader';
 import StoreInfo from '../components/common/StoreInfo';
 import SEOHead from '../components/common/SEOHead';
@@ -19,9 +19,12 @@ function ProductDetailPage() {
         handleDeleteFromWishlist,
         cartItems,
         handleAddToCart,
+        handleQtyInc,
+        handleQtyDec,
         fetchCart,
         isCartLoading,
-        loadingProductId
+        loadingProductId,
+        qtyUpdateId
     } = useGlobal();
 
     const [product, setProduct] = useState({});
@@ -41,11 +44,12 @@ function ProductDetailPage() {
     // Stable key for variant combo (e.g. "Color:Red|Size:L"); used for cart line dedupe
     const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
     const myOptKey = optionsKeyOf(selectedOptions);
-    const isInCart = product && cartItems?.cart?.some((item) =>
+    const cartLineItem = product && cartItems?.cart?.find((item) =>
         item.product?._id === product._id &&
         item.selectedColor === selectedColor &&
         optionsKeyOf(item.selectedOptions) === myOptKey
     );
+    const isInCart = !!cartLineItem;
     // Has the buyer picked all required options?
     const allOptionsSelected = !product.optionGroups?.length || product.optionGroups.every(g => selectedOptions[g.name]);
 
@@ -614,36 +618,58 @@ function ProductDetailPage() {
                             )}
 
                             <motion.div className="flex gap-3 mb-6" variants={fadeIn}>
-                                <motion.button
-                                    disabled={product.stock === 0 || isCartLoading || loadingProductId === id || (product.colors?.length > 0 && !product.optionGroups?.length && !selectedColor) || !allOptionsSelected}
-                                    onClick={() => { handleAddToCart(id, selectedColor, selectedOptions) }}
-                                    whileHover={product.stock > 0 ? { scale: 1.02 } : {}}
-                                    whileTap={product.stock > 0 ? { scale: 0.98 } : {}}
-                                    className="flex-1 px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm"
-                                    style={
-                                        product.stock === 0
-                                            ? { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--muted-foreground))', cursor: 'not-allowed' }
-                                            : isInCart
-                                                ? { background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(16, 185, 129, 0.25)' }
+                                {isInCart && cartLineItem ? (
+                                    <div className="flex-1 flex items-center justify-between px-3 py-2 rounded-xl"
+                                        style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                                        <button
+                                            onClick={() => handleQtyDec(cartLineItem._id)}
+                                            disabled={qtyUpdateId === cartLineItem._id}
+                                            className="p-2 rounded-lg glass-button transition active:scale-90 disabled:opacity-50"
+                                            aria-label="Decrease quantity">
+                                            {cartLineItem.qty <= 1 ? <X size={16} /> : <Minus size={16} />}
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles size={14} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                            <span className="text-sm font-semibold" style={{ color: 'hsl(150, 60%, 40%)' }}>In cart</span>
+                                            <span className="text-base font-bold min-w-[24px] text-center" style={{ color: 'hsl(var(--foreground))' }}>
+                                                {qtyUpdateId === cartLineItem._id ? <Loader2 size={14} className="animate-spin inline" /> : cartLineItem.qty}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleQtyInc(cartLineItem._id)}
+                                            disabled={qtyUpdateId === cartLineItem._id || cartLineItem.qty >= product.stock}
+                                            className="p-2 rounded-lg transition active:scale-90 disabled:opacity-50"
+                                            style={{ background: 'var(--logo-gradient)', color: 'white' }}
+                                            aria-label="Increase quantity">
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <motion.button
+                                        disabled={product.stock === 0 || isCartLoading || loadingProductId === id || (product.colors?.length > 0 && !product.optionGroups?.length && !selectedColor) || !allOptionsSelected}
+                                        onClick={() => { handleAddToCart(id, selectedColor, selectedOptions) }}
+                                        whileHover={product.stock > 0 ? { scale: 1.02 } : {}}
+                                        whileTap={product.stock > 0 ? { scale: 0.98 } : {}}
+                                        className="flex-1 px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm"
+                                        style={
+                                            product.stock === 0
+                                                ? { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--muted-foreground))', cursor: 'not-allowed' }
                                                 : { background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }
-                                    }
-                                >
-                                    {product.stock === 0 ? "Out of Stock" :
-                                        isCartLoading && loadingProductId === id ? (
-                                            <span className="flex items-center gap-2">
-                                                <Loader2 size={16} className="animate-spin" /> Adding...
-                                            </span>
-                                        ) : isInCart ? (
-                                            <span className="flex items-center gap-2">
-                                                <Sparkles size={16} /> Added to Cart
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-2">
-                                                <ShoppingCart size={16} /> Add to Cart
-                                            </span>
-                                        )
-                                    }
-                                </motion.button>
+                                        }
+                                    >
+                                        {product.stock === 0 ? "Out of Stock" :
+                                            isCartLoading && loadingProductId === id ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 size={16} className="animate-spin" /> Adding...
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    <ShoppingCart size={16} /> Add to Cart
+                                                </span>
+                                            )
+                                        }
+                                    </motion.button>
+                                )}
 
                                 <motion.button
                                     disabled={product.stock === 0}

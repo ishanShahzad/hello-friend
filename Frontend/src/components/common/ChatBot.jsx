@@ -311,7 +311,7 @@ const ProductCardGrid = ({ products, onViewProduct, onAddToCart, title }) => (
 //  MAIN CHATBOT COMPONENT
 // ═══════════════════════════════════════════════════════
 
-function ChatBot({ embedded = false, conversationId = null, initialMessages = null, onConversationCreated = null }) {
+function ChatBot({ embedded = false, conversationId = null, initialMessages = null, loadingHistory = false, onConversationCreated = null }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
@@ -323,6 +323,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [showChips, setShowChips] = useState(true);
   const [pendingTools, setPendingTools] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -362,6 +363,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   useEffect(() => {
     if (isOpen && messages.length === 0 && initialMessages === null && !hasLoadedHistory.current && authToken) {
       hasLoadedHistory.current = true;
+      setIsLoadingHistory(true);
       // Try to load the active conversation from the API
       fetch(`${API_BASE}api/ai-chat/conversations`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -399,7 +401,8 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
           setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
           setShowChips(true);
-        });
+        })
+        .finally(() => setIsLoadingHistory(false));
     } else if (isOpen && messages.length === 0 && initialMessages === null && !authToken) {
       // Guest — just show greeting
       const hour = new Date().getHours();
@@ -834,7 +837,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           <>
             <button
               onClick={() => { setIsOpen(false); navigate('/ai-chat'); }}
-              className="hidden sm:inline-flex p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
+              className="inline-flex p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
               title="Open full chat"
               aria-label="Open full chat"
             >
@@ -856,7 +859,20 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3"
         style={{ scrollBehavior: 'smooth', background: 'hsl(var(--background))' }}
       >
-        {messages.map(renderMessage)}
+        {(isLoadingHistory || loadingHistory) ? (
+          <div className="space-y-3 pt-2">
+            {[0, 1, 2].map(i => (
+              <div key={i} className={`flex gap-2 ${i % 2 === 1 ? 'justify-end' : ''}`}>
+                {i % 2 === 0 && <div className="w-7 h-7 rounded-full shrink-0 animate-pulse" style={{ background: 'hsl(var(--muted) / 0.5)' }} />}
+                <div className="space-y-1.5" style={{ maxWidth: '70%' }}>
+                  <div className="h-3 w-40 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.5)' }} />
+                  <div className="h-3 w-56 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.4)' }} />
+                  <div className="h-3 w-24 rounded-full animate-pulse" style={{ background: 'hsl(var(--muted) / 0.3)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : messages.map(renderMessage)}
 
         {/* Pending tool executions */}
         {pendingTools.filter(t => t.status === 'running').map((t, i) => (

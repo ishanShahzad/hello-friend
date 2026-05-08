@@ -168,11 +168,49 @@ function DocsPage() {
           </div>
         </div>
 
+        {/* Mobile sticky topic chip bar */}
+        <div className="lg:hidden sticky top-[80px] z-30 px-3 py-2"
+          style={{ background: 'hsl(var(--background) / 0.85)', backdropFilter: 'blur(10px)', borderBottom: '1px solid hsl(var(--border))' }}>
+          <button
+            onClick={() => setIsSidebarOpen(o => !o)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: 'hsl(var(--muted) / 0.5)', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+          >
+            <span className="flex items-center gap-2 min-w-0 truncate">
+              <Hash size={14} style={{ color: 'hsl(220, 70%, 65%)' }} />
+              <span className="truncate">{SECTIONS.find(s => s.id === activeSection)?.title || 'Sections'}</span>
+            </span>
+            <ChevronRight size={16} className={`shrink-0 transition-transform ${isSidebarOpen ? 'rotate-90' : ''}`} />
+          </button>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl p-2 space-y-1"
+              style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+            >
+              {filteredSections.map(({ id, title, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => scrollToSection(id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-all"
+                  style={{
+                    background: activeSection === id ? 'hsl(220, 70%, 55%, 0.1)' : 'transparent',
+                    color: activeSection === id ? 'hsl(220, 70%, 65%)' : 'hsl(var(--foreground))',
+                  }}
+                >
+                  <Icon size={14} />
+                  <span className="truncate">{title}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </div>
+
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8">
-          {/* Sidebar */}
+        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+          {/* Sidebar (desktop) */}
           <aside className="hidden lg:block w-64 shrink-0">
-            <div className="sticky top-24 space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+            <div className="sticky top-24 space-y-1 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2">
               <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>On this page</p>
               {filteredSections.map(({ id, title, icon: Icon }) => (
                 <button

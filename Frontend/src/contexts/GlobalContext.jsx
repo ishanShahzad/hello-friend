@@ -216,13 +216,6 @@ export const GlobalProvider = ({ children }) => {
 
     const handleQtyInc = async (id) => {
         try {
-            console.log('id::::', id);
-            
-            // Completely block quantity increase for ALL products
-            toast.error('Quantity increase is disabled. Only 1 item per product allowed.');
-            return;
-            
-            /* Old code - keeping for reference
             setQtyUpdateId(id)
             const token = localStorage.getItem('jwtToken')
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/cart/qty-inc/${id}`,
@@ -234,8 +227,6 @@ export const GlobalProvider = ({ children }) => {
                 }
             )
             setCartItems((prev) => ({ ...prev, cart: res.data.cart, totalCartPrice: res.data.totalCartPrice }))
-            console.log(res.data.msg);
-            */
         } catch (error) {
             console.error(error?.response?.data?.msg || 'Failed to increase quantity');
             toast.error(error?.response?.data?.msg || 'Failed to increase quantity');
