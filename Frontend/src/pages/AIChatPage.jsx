@@ -201,7 +201,7 @@ function AIChatPage() {
                 </button>
                 <div className="flex-1 flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: '' }}>
+                    style={{ background: BRAND_GRADIENT }}>
                     <Bot size={14} className="text-white" />
                   </div>
                   <div>
@@ -221,7 +221,7 @@ function AIChatPage() {
                 onClick={createNewChat}
                 className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: '',
+                  background: BRAND_GRADIENT,
                   color: 'white',
                   boxShadow: '0 4px 15px rgba(14,165,233,0.35)',
                 }}>
@@ -334,7 +334,7 @@ function AIChatPage() {
             <div className="px-3 py-2 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: '' }}>
+                  style={{ background: BRAND_GRADIENT }}>
                   <Sparkles size={10} className="text-white" />
                 </div>
                 <span className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -357,7 +357,7 @@ function AIChatPage() {
               <Menu size={18} />
             </button>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: '' }}>
+              style={{ background: BRAND_GRADIENT }}>
               <Bot size={14} className="text-white" />
             </div>
             <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
@@ -385,7 +385,7 @@ function AIChatPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="text-center max-w-md space-y-6">
               <div className="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center relative"
-                style={{ background: '', boxShadow: '0 8px 30px rgba(14,165,233,0.35)' }}>
+                style={{ background: BRAND_GRADIENT, boxShadow: '0 8px 30px rgba(14,165,233,0.35)' }}>
                 <Bot size={36} className="text-white" />
                 <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ background: 'hsl(150, 60%, 50%)' }}>
@@ -417,7 +417,7 @@ function AIChatPage() {
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 onClick={createNewChat}
                 className="px-6 py-3 rounded-xl font-semibold text-white inline-flex items-center gap-2 transition-all"
-                style={{ background: '', boxShadow: '0 4px 15px rgba(14,165,233,0.35)' }}>
+                style={{ background: BRAND_GRADIENT, boxShadow: '0 4px 15px rgba(14,165,233,0.35)' }}>
                 <Plus size={16} /> Start a Conversation
                 <ArrowRight size={14} />
               </motion.button>
