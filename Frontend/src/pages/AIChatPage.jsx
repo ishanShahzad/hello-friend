@@ -129,26 +129,26 @@ function AIChatPage() {
   // Not logged in
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      <div className="min-h-[100dvh] flex items-center justify-center relative overflow-hidden p-6"
         style={{ background: 'hsl(var(--background))' }}>
-        {/* Decorative blobs */}
-        <div className="absolute top-10 left-10 w-72 h-72 rounded-full blur-[120px] opacity-20"
-          style={{ background: 'hsl(220, 70%, 55%)' }} />
-        <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full blur-[120px] opacity-15"
-          style={{ background: 'hsl(280, 60%, 55%)' }} />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 z-10 p-8 rounded-3xl"
-          style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))', backdropFilter: 'blur(20px)' }}>
-          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+        <div className="absolute top-10 left-10 w-72 h-72 rounded-full blur-[120px] opacity-25"
+          style={{ background: '#14B8A6' }} />
+        <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full blur-[120px] opacity-20"
+          style={{ background: '#6366F1' }} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-5 z-10 p-8 sm:p-10 rounded-3xl max-w-sm w-full"
+          style={{ background: 'hsl(var(--muted) / 0.2)', border: '1px solid hsl(var(--border))', backdropFilter: 'blur(20px)' }}>
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center shadow-lg"
+            style={{ background: BRAND_GRADIENT }}>
             <Bot size={32} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Sign in to Chat</h2>
-          <p className="text-sm max-w-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Sign in to Chat</h2>
+          <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Log in to start chatting with Rozare AI — your personal shopping assistant with saved conversations.
           </p>
           <button onClick={() => navigate('/login')}
-            className="px-8 py-2.5 rounded-xl font-semibold text-white transition-all hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+            className="px-8 py-2.5 rounded-xl font-semibold text-white transition-all hover:scale-105 shadow-lg"
+            style={{ background: BRAND_GRADIENT, boxShadow: '0 8px 24px -6px rgba(14,165,233,0.5)' }}>
             Sign In
           </button>
         </motion.div>
