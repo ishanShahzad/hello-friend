@@ -201,7 +201,7 @@ function AIChatPage() {
                 </button>
                 <div className="flex-1 flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                    style={{ background: '' }}>
                     <Bot size={14} className="text-white" />
                   </div>
                   <div>
@@ -221,9 +221,9 @@ function AIChatPage() {
                 onClick={createNewChat}
                 className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))',
+                  background: '',
                   color: 'white',
-                  boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)',
+                  boxShadow: '0 4px 15px rgba(14,165,233,0.35)',
                 }}>
                 <Plus size={16} />
                 New Chat
@@ -242,7 +242,7 @@ function AIChatPage() {
                     background: 'hsl(var(--muted) / 0.15)',
                     color: 'hsl(var(--foreground))',
                     border: '1px solid hsl(var(--border))',
-                    focusRingColor: 'hsl(220, 70%, 55%, 0.4)',
+                    focusRingColor: 'rgba(14,165,233,0.40)',
                   }}
                 />
               </div>
@@ -277,21 +277,21 @@ function AIChatPage() {
                       className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all mb-1`}
                       style={{
                         background: activeConvoId === c._id
-                          ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.15), hsl(280, 60%, 55%, 0.08))'
+                          ? 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(99,102,241,0.10))'
                           : 'transparent',
                         border: activeConvoId === c._id
-                          ? '1px solid hsl(220, 70%, 55%, 0.25)'
+                          ? '1px solid rgba(14,165,233,0.30)'
                           : '1px solid transparent',
                       }}
                     >
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                         style={{
                           background: activeConvoId === c._id
-                            ? 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.25), hsl(280, 60%, 55%, 0.15))'
+                            ? 'linear-gradient(135deg, rgba(20,184,166,0.25), rgba(99,102,241,0.15))'
                             : 'hsl(var(--muted) / 0.2)',
                         }}>
                         <MessageCircle size={14}
-                          style={{ color: activeConvoId === c._id ? 'hsl(220, 70%, 55%)' : 'hsl(var(--muted-foreground))' }} />
+                          style={{ color: activeConvoId === c._id ? '#0EA5E9' : 'hsl(var(--muted-foreground))' }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         {editingId === c._id ? (
@@ -334,7 +334,7 @@ function AIChatPage() {
             <div className="px-3 py-2 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                  style={{ background: '' }}>
                   <Sparkles size={10} className="text-white" />
                 </div>
                 <span className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -357,7 +357,7 @@ function AIChatPage() {
               <Menu size={18} />
             </button>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+              style={{ background: '' }}>
               <Bot size={14} className="text-white" />
             </div>
             <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
@@ -385,7 +385,7 @@ function AIChatPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="text-center max-w-md space-y-6">
               <div className="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center relative"
-                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 8px 30px hsl(220, 70%, 55%, 0.3)' }}>
+                style={{ background: '', boxShadow: '0 8px 30px rgba(14,165,233,0.35)' }}>
                 <Bot size={36} className="text-white" />
                 <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ background: 'hsl(150, 60%, 50%)' }}>
@@ -408,7 +408,7 @@ function AIChatPage() {
                   <motion.div key={i} whileHover={{ scale: 1.03 }}
                     className="p-3 rounded-xl text-left cursor-default transition-all"
                     style={{ background: 'hsl(var(--muted) / 0.15)', border: '1px solid hsl(var(--border))' }}>
-                    <item.icon size={16} style={{ color: 'hsl(220, 70%, 55%)' }} />
+                    <item.icon size={16} style={{ color: '#0EA5E9' }} />
                     <p className="text-xs font-semibold mt-1.5" style={{ color: 'hsl(var(--foreground))' }}>{item.label}</p>
                     <p className="text-[10px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.desc}</p>
                   </motion.div>
@@ -417,7 +417,7 @@ function AIChatPage() {
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 onClick={createNewChat}
                 className="px-6 py-3 rounded-xl font-semibold text-white inline-flex items-center gap-2 transition-all"
-                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))', boxShadow: '0 4px 15px hsl(220, 70%, 55%, 0.3)' }}>
+                style={{ background: '', boxShadow: '0 4px 15px rgba(14,165,233,0.35)' }}>
                 <Plus size={16} /> Start a Conversation
                 <ArrowRight size={14} />
               </motion.button>
