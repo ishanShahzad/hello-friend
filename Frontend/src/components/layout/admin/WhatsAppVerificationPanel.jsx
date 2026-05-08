@@ -894,7 +894,7 @@ const SellerNotificationTab = () => {
     const fetchAdminNumbers = useCallback(async () => {
         try {
             const { data } = await axios.get(`${API}api/whatsapp/admin-numbers`, { headers: authHeaders() });
-            setAdminNumbers(data.numbers || []);
+            setAdminNumbers(data.data || data.numbers || []);
         } catch { /* ignore */ }
         finally { setAdminNumbersLoading(false); }
     }, []);
