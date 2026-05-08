@@ -354,6 +354,13 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="flex items-center gap-2 sm:gap-3">
+                            {/* Home Button */}
+                            <Link to="/" title="Back to Home">
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                    className="p-2.5 rounded-xl glass-inner" style={{ color: 'hsl(220, 70%, 55%)' }}>
+                                    <Home size={18} />
+                                </motion.button>
+                            </Link>
                             {/* Notifications Bell */}
                             <div className="relative">
                                 <motion.button
