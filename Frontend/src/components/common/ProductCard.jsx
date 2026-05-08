@@ -154,30 +154,49 @@ const ProductCard = memo(({
         </div>
 
         {/* Add to cart button */}
-        <button
-          onClick={() => stock > 0 && handleAddToCartClick()}
-          disabled={stock === 0 || loadingProductId === _id}
-          className={`relative py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-semibold text-center text-xs sm:text-sm overflow-hidden transition-all active:scale-[0.98] hover:scale-[1.02] ${
-            stock === 0 ? "glass-inner cursor-not-allowed opacity-50"
-            : isInCart ? "glass-button text-red-500 border-red-300/30"
-            : "glow-soft"
-          }`}
-          style={stock > 0 && !isInCart ? {
-            background: 'var(--logo-gradient)',
-            color: 'white',
-            boxShadow: 'var(--logo-glow)',
-          } : {}}
-        >
-          {stock === 0 ? <span>Out of Stock</span>
-            : isCartLoading && loadingProductId === _id ? (
-              <span className="flex items-center justify-center gap-1"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">{isInCart ? 'Removing...' : 'Adding...'}</span></span>
-            ) : isInCart ? (
-              <span className="flex items-center justify-center gap-1"><X size={14} /> <span className="hidden sm:inline">Remove</span></span>
-            ) : (
-              <span className="flex items-center justify-center gap-1"><ShoppingCart size={14} /> <span className="hidden sm:inline">Add to Cart</span><span className="sm:hidden">Add</span></span>
-            )
-          }
-        </button>
+        {isInCart && cartItem ? (
+          <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-xl glass-inner">
+            <button
+              onClick={() => handleQtyDec(cartItem._id)}
+              disabled={qtyUpdateId === cartItem._id}
+              className="p-1.5 rounded-lg glass-button transition active:scale-90 disabled:opacity-50"
+              aria-label="Decrease quantity">
+              {cartItem.qty <= 1 ? <X size={14} /> : <Minus size={14} />}
+            </button>
+            <span className="font-bold text-sm select-none" style={{ color: 'hsl(var(--foreground))' }}>
+              {qtyUpdateId === cartItem._id ? <Loader2 size={14} className="animate-spin" /> : cartItem.qty}
+            </span>
+            <button
+              onClick={() => handleQtyInc(cartItem._id)}
+              disabled={qtyUpdateId === cartItem._id || cartItem.qty >= stock}
+              className="p-1.5 rounded-lg transition active:scale-90 disabled:opacity-50"
+              style={{ background: 'var(--logo-gradient)', color: 'white' }}
+              aria-label="Increase quantity">
+              <Plus size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => stock > 0 && handleAddToCartClick()}
+            disabled={stock === 0 || loadingProductId === _id}
+            className={`relative py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-semibold text-center text-xs sm:text-sm overflow-hidden transition-all active:scale-[0.98] hover:scale-[1.02] ${
+              stock === 0 ? "glass-inner cursor-not-allowed opacity-50" : "glow-soft"
+            }`}
+            style={stock > 0 ? {
+              background: 'var(--logo-gradient)',
+              color: 'white',
+              boxShadow: 'var(--logo-glow)',
+            } : {}}
+          >
+            {stock === 0 ? <span>Out of Stock</span>
+              : isCartLoading && loadingProductId === _id ? (
+                <span className="flex items-center justify-center gap-1"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Adding...</span></span>
+              ) : (
+                <span className="flex items-center justify-center gap-1"><ShoppingCart size={14} /> <span className="hidden sm:inline">Add to Cart</span><span className="sm:hidden">Add</span></span>
+              )
+            }
+          </button>
+        )}
 
         <div className="mt-2 flex justify-center opacity-60 group-hover:opacity-100 transition-opacity">
           <Link to={`/single-product/${_id}`} className="text-xs sm:text-sm font-medium flex items-center gap-0.5 transition-colors"
