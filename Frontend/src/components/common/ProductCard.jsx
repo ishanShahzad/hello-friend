@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, ShoppingCart, Eye, Star, Zap, ChevronRight, Loader2, X } from "lucide-react";
+import { Heart, ShoppingCart, Eye, Star, Zap, ChevronRight, Loader2, X, Plus, Minus } from "lucide-react";
 import { useGlobal } from "../../contexts/GlobalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
