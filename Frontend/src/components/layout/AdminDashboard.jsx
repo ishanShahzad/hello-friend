@@ -536,6 +536,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
         if (isMobile) setIsSidebarOpen(false);
     };
 
+    if (isMobile) return null;
+
     return (
         <>
             {/* Mobile Overlay */}
