@@ -157,27 +157,39 @@ function AIChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden relative"
+    <div className="flex h-[100dvh] overflow-hidden relative"
       style={{ background: 'hsl(var(--background))' }}>
-      {/* Background decorative elements */}
-      <div className="fixed top-0 left-0 w-64 h-64 rounded-full blur-[150px] opacity-10 pointer-events-none"
-        style={{ background: 'hsl(220, 70%, 55%)' }} />
-      <div className="fixed bottom-0 right-0 w-72 h-72 rounded-full blur-[150px] opacity-8 pointer-events-none"
-        style={{ background: 'hsl(280, 60%, 55%)' }} />
+      {/* Background decorative blobs */}
+      <div className="fixed top-0 left-0 w-64 h-64 rounded-full blur-[150px] opacity-15 pointer-events-none"
+        style={{ background: '#14B8A6' }} />
+      <div className="fixed bottom-0 right-0 w-72 h-72 rounded-full blur-[150px] opacity-15 pointer-events-none"
+        style={{ background: '#6366F1' }} />
 
-      {/* ─── Sidebar ─── */}
+      {/* Mobile sidebar backdrop */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-30 md:hidden"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ─── Sidebar (overlay drawer on mobile, pushed panel on md+) ─── */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.aside
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 300, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+            initial={{ x: -320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -320, opacity: 0 }}
             transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="flex flex-col overflow-hidden shrink-0 z-10"
+            className="flex flex-col overflow-hidden shrink-0 z-40 fixed md:static inset-y-0 left-0 w-[85vw] max-w-[320px] md:w-[300px]"
             style={{
-              background: 'hsl(var(--muted) / 0.08)',
+              background: 'hsl(var(--background) / 0.96)',
               borderRight: '1px solid hsl(var(--border))',
-              backdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(20px)',
             }}
           >
             {/* Sidebar Header */}
