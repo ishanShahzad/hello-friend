@@ -772,41 +772,79 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     );
   };
 
+  // ─── Brand gradient (matches Rozare logo: teal → sky → indigo) ───
+  const BRAND_GRADIENT = 'linear-gradient(135deg, #14B8A6 0%, #0EA5E9 50%, #6366F1 100%)';
+  const BRAND_GRADIENT_SOFT = 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,165,233,0.10), rgba(99,102,241,0.10))';
+
   // ─── Chat Window ───
   const chatWindow = (
     <motion.div
-      initial={embedded ? false : { opacity: 0, y: 20, scale: 0.95 }}
+      initial={embedded ? false : { opacity: 0, y: 20, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      className={`flex flex-col ${embedded ? 'h-full' : 'h-[560px] w-[380px]'} rounded-2xl overflow-hidden shadow-2xl`}
+      exit={{ opacity: 0, y: 20, scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+      className={`flex flex-col overflow-hidden ${
+        embedded
+          ? 'h-full w-full rounded-none sm:rounded-2xl'
+          : 'h-[100dvh] w-screen rounded-none sm:h-[640px] sm:w-[400px] sm:max-w-[calc(100vw-2rem)] sm:rounded-3xl'
+      }`}
       style={{
         background: 'hsl(var(--background))',
         border: '1px solid hsl(var(--border))',
+        boxShadow: embedded ? 'none' : '0 25px 60px -15px rgba(15,23,42,0.35), 0 0 0 1px rgba(255,255,255,0.04)',
       }}
     >
       {/* Header */}
-      <div className="px-4 py-3 flex items-center gap-3"
-        style={{
-          background: 'linear-gradient(135deg, hsl(220, 70%, 50%), hsl(280, 60%, 50%))',
-          color: 'white',
-        }}>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255,255,255,0.2)' }}>
+      <div
+        className="px-4 py-3 sm:py-3.5 flex items-center gap-3 relative overflow-hidden"
+        style={{ background: BRAND_GRADIENT, color: 'white' }}
+      >
+        {/* Decorative orb */}
+        <div
+          className="absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-25 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.6), transparent 70%)' }}
+        />
+        <div
+          className="w-10 h-10 rounded-2xl flex items-center justify-center backdrop-blur-sm shrink-0 relative"
+          style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}
+        >
           <Bot size={20} />
+          <span
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+            style={{ background: '#22c55e' }}
+            title="Online"
+          />
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold">{titles.title}</h3>
-          <p className="text-[10px] opacity-80">{titles.subtitle}</p>
+        <div className="flex-1 min-w-0 relative">
+          <h3 className="text-sm font-bold tracking-tight leading-tight truncate">{titles.title}</h3>
+          <p className="text-[11px] opacity-90 leading-tight truncate flex items-center gap-1">
+            <Sparkles size={10} className="opacity-90" />
+            {titles.subtitle}
+          </p>
         </div>
-        <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="New chat">
+        <button
+          onClick={clearChat}
+          className="p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
+          title="New chat"
+          aria-label="New chat"
+        >
           <Plus size={16} />
         </button>
         {!embedded && (
           <>
-            <button onClick={() => { setIsOpen(false); navigate('/ai-chat'); }} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="Open full chat">
+            <button
+              onClick={() => { setIsOpen(false); navigate('/ai-chat'); }}
+              className="hidden sm:inline-flex p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
+              title="Open full chat"
+              aria-label="Open full chat"
+            >
               <Maximize2 size={15} />
             </button>
-            <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
+              aria-label="Close chat"
+            >
               <X size={16} />
             </button>
           </>
@@ -814,17 +852,24 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ scrollBehavior: 'smooth' }}>
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3"
+        style={{ scrollBehavior: 'smooth', background: 'hsl(var(--background))' }}
+      >
         {messages.map(renderMessage)}
 
         {/* Pending tool executions */}
         {pendingTools.filter(t => t.status === 'running').map((t, i) => (
-          <motion.div key={`pending-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="flex items-center gap-2 p-2 rounded-xl"
-            style={{ background: 'hsl(220, 70%, 55%, 0.08)', border: '1px solid hsl(220, 70%, 55%, 0.15)' }}>
-            <Loader2 size={12} className="animate-spin" style={{ color: 'hsl(220, 70%, 55%)' }} />
-            <span className="text-[11px]" style={{ color: 'hsl(220, 70%, 55%)' }}>
-              Executing {t.tool?.replace(/_/g, ' ')}...
+          <motion.div
+            key={`pending-${i}`}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 p-2.5 rounded-xl ml-9"
+            style={{ background: BRAND_GRADIENT_SOFT, border: '1px solid rgba(14,165,233,0.18)' }}
+          >
+            <Loader2 size={12} className="animate-spin" style={{ color: '#0EA5E9' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#0EA5E9' }}>
+              Executing {t.tool?.replace(/_/g, ' ')}…
             </span>
           </motion.div>
         ))}
@@ -839,17 +884,26 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-3 pb-2"
+            className="px-3 sm:px-4 pb-2"
           >
+            <p
+              className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5"
+              style={{ color: 'hsl(var(--muted-foreground))' }}
+            >
+              <Sparkles size={10} /> Suggested
+            </p>
             <div className="flex gap-1.5 flex-wrap">
               {chips.slice(0, 4).map((chip, i) => (
-                <button key={i} onClick={() => sendMessage(chip.msg)}
-                  className="text-[10px] px-2.5 py-1.5 rounded-full transition-all hover:scale-105"
+                <button
+                  key={i}
+                  onClick={() => sendMessage(chip.msg)}
+                  className="text-[11px] px-3 py-1.5 rounded-full transition-all hover:scale-[1.03] active:scale-95 font-medium"
                   style={{
-                    background: 'hsl(var(--muted) / 0.5)',
+                    background: 'hsl(var(--muted) / 0.6)',
                     color: 'hsl(var(--foreground))',
                     border: '1px solid hsl(var(--border))',
-                  }}>
+                  }}
+                >
                   {chip.label}
                 </button>
               ))}
@@ -859,35 +913,55 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       </AnimatePresence>
 
       {/* Input */}
-      <div className="p-3 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={isLoading ? 'AI is thinking...' : 'Ask me anything...'}
-            disabled={isLoading}
-            className="flex-1 px-3 py-2 rounded-xl text-sm outline-none transition-all"
+      <div
+        className="p-3 sm:p-4 border-t"
+        style={{
+          borderColor: 'hsl(var(--border))',
+          background: 'hsl(var(--background))',
+          paddingBottom: embedded ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
+        }}
+      >
+        <form
+          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+          className="flex gap-2 items-end"
+        >
+          <div
+            className="flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 transition-all focus-within:ring-2"
             style={{
-              background: 'hsl(var(--muted) / 0.3)',
-              color: 'hsl(var(--foreground))',
+              background: 'hsl(var(--muted) / 0.45)',
               border: '1px solid hsl(var(--border))',
+              '--tw-ring-color': 'rgba(14,165,233,0.35)',
             }}
-          />
+          >
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={isLoading ? 'AI is thinking…' : 'Ask Rozare anything…'}
+              disabled={isLoading}
+              className="flex-1 bg-transparent text-sm outline-none min-w-0 placeholder:opacity-60"
+              style={{ color: 'hsl(var(--foreground))' }}
+            />
+          </div>
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="p-2 rounded-xl transition-all disabled:opacity-40"
+            className="h-11 w-11 shrink-0 rounded-2xl flex items-center justify-center transition-all disabled:opacity-40 hover:scale-[1.04] active:scale-95"
             style={{
-              background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))',
+              background: BRAND_GRADIENT,
               color: 'white',
+              boxShadow: '0 6px 18px -4px rgba(14,165,233,0.5)',
             }}
+            aria-label="Send message"
           >
-            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} />}
           </button>
         </form>
-        <p className="text-[9px] text-center mt-1.5 opacity-40" style={{ color: 'hsl(var(--muted-foreground))' }}>
-          Powered by Rozare AI • Actions are role-secured
+        <p
+          className="text-[10px] text-center mt-2 opacity-60"
+          style={{ color: 'hsl(var(--muted-foreground))' }}
+        >
+          Powered by Rozare AI · Actions are role-secured
         </p>
       </div>
     </motion.div>
@@ -898,28 +972,63 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
 
   // ─── Floating mode ───
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <>
+      {/* Mobile backdrop when open */}
       <AnimatePresence>
-        {isOpen && chatWindow}
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 sm:hidden"
+            aria-hidden="true"
+          />
+        )}
       </AnimatePresence>
 
-      {!isOpen && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg"
-          style={{
-            background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))',
-            color: 'white',
-          }}
-        >
-          <MessageCircle size={24} />
-        </motion.button>
-      )}
-    </div>
+      {/* Chat panel: full-screen sheet on mobile, floating card on desktop */}
+      <div
+        className={`fixed z-50 ${
+          isOpen
+            ? 'inset-0 sm:inset-auto sm:bottom-5 sm:right-5'
+            : 'bottom-4 right-4 sm:bottom-5 sm:right-5'
+        }`}
+      >
+        <AnimatePresence>{isOpen && chatWindow}</AnimatePresence>
+
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0, rotate: -45 }}
+            animate={{ scale: 1, rotate: 0 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setIsOpen(true)}
+            className="group relative h-14 w-14 sm:h-15 sm:w-15 rounded-full flex items-center justify-center"
+            style={{
+              background: BRAND_GRADIENT,
+              color: 'white',
+              boxShadow: '0 12px 32px -8px rgba(14,165,233,0.55), 0 0 0 1px rgba(255,255,255,0.15)',
+            }}
+            aria-label="Open Rozare AI chat"
+          >
+            {/* Pulse ring */}
+            <span
+              className="absolute inset-0 rounded-full animate-ping opacity-30"
+              style={{ background: BRAND_GRADIENT }}
+            />
+            <MessageCircle size={24} className="relative" />
+            {/* Sparkle badge */}
+            <span
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white"
+              style={{ background: '#f59e0b' }}
+            >
+              <Sparkles size={9} className="text-white" />
+            </span>
+          </motion.button>
+        )}
+      </div>
+    </>
   );
 }
 
