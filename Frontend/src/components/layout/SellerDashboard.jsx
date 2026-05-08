@@ -436,9 +436,11 @@ const SellerDashboard = () => {
                     <div className="flex items-center justify-between px-4 sm:px-6 py-3">
                         <div className="flex items-center gap-3">
                             {isMobile && (
-                                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(true)}
+                                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsSidebarOpen(o => !o)}
                                     className="p-2 rounded-xl glass-inner" style={{ color: 'hsl(var(--foreground))' }}>
-                                    <Menu size={20} />
+                                    <motion.div key={isSidebarOpen ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
+                                        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                                    </motion.div>
                                 </motion.button>
                             )}
                             <div>
