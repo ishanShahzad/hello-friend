@@ -643,19 +643,19 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           </div>
         )}
 
-        <div className={`max-w-[85%] ${isUser ? 'order-first' : ''}`}>
-          <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-            isUser
-              ? 'rounded-br-md'
-              : 'rounded-bl-md'
+        <div className={`max-w-[85%] sm:max-w-[80%] ${isUser ? 'order-first' : ''}`}>
+          <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+            isUser ? 'rounded-br-md shadow-md' : 'rounded-bl-md'
           }`} style={{
             background: isUser
-              ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))'
+              ? 'linear-gradient(135deg, #14B8A6, #0EA5E9, #6366F1)'
               : msg.isError
-                ? 'hsl(0, 50%, 15%)'
-                : 'hsl(var(--muted) / 0.5)',
+                ? 'hsl(var(--destructive) / 0.1)'
+                : 'hsl(var(--muted) / 0.55)',
             color: isUser ? 'white' : 'hsl(var(--foreground))',
-            border: msg.isError ? '1px solid hsl(0, 50%, 30%)' : 'none',
+            border: msg.isError
+              ? '1px solid hsl(var(--destructive) / 0.3)'
+              : isUser ? 'none' : '1px solid hsl(var(--border) / 0.6)',
           }}>
             {msg.isStreaming && !msg.content ? (
               <div className="flex items-center gap-2">
