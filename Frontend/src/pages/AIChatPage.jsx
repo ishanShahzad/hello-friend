@@ -348,23 +348,23 @@ function AIChatPage() {
 
       {/* ─── Main Chat Area ─── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        {!sidebarOpen && (
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b"
-            style={{ borderColor: 'hsl(var(--border))', backdropFilter: 'blur(8px)' }}>
-            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl transition-all hover:bg-white/5"
-              style={{ color: 'hsl(var(--muted-foreground))' }}>
-              <Menu size={18} />
-            </button>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: BRAND_GRADIENT }}>
-              <Bot size={14} className="text-white" />
-            </div>
-            <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-              {conversations.find(c => c._id === activeConvoId)?.title || 'AI Chat'}
-            </span>
+        {/* Top bar — always visible on mobile; only visible on desktop when sidebar is collapsed */}
+        <div className={`${sidebarOpen ? 'flex md:hidden' : 'flex'} items-center gap-3 px-4 py-3 border-b shrink-0`}
+          style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--background) / 0.7)', backdropFilter: 'blur(8px)' }}>
+          <button onClick={() => setSidebarOpen(s => !s)}
+            className="p-2 rounded-xl transition-all hover:bg-white/5"
+            style={{ color: 'hsl(var(--muted-foreground))' }}
+            aria-label="Toggle sidebar">
+            <Menu size={18} />
+          </button>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
+            style={{ background: BRAND_GRADIENT }}>
+            <Bot size={15} className="text-white" />
           </div>
-        )}
+          <span className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
+            {conversations.find(c => c._id === activeConvoId)?.title || 'Rozare AI Chat'}
+          </span>
+        </div>
 
         {/* Chat or Welcome State */}
         {activeConvoId || loadedMessages !== null ? (
