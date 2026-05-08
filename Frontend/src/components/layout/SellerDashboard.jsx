@@ -1189,82 +1189,104 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     </div>
 
 
-                    <div className="glass-inner rounded-xl p-4 space-y-3">
-                        <div className="flex items-center gap-3">
-                            <input type="checkbox" checked={!(product.returnPolicy?.useStorePolicy ?? true)}
-                                onChange={e => setProduct({ ...product, returnPolicy: { ...(product.returnPolicy || {}), useStorePolicy: !e.target.checked } })}
-                                className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
-                            <div><p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Custom Return Policy</p>
-                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Override store default for this product</p></div>
-                        </div>
-                        {!(product.returnPolicy?.useStorePolicy ?? true) && (
-                            <div className="space-y-3 pt-2">
-                                <div className="flex items-center gap-3">
-                                    <input type="checkbox" checked={product.returnPolicy?.returnsEnabled || false}
-                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnsEnabled: e.target.checked } })}
-                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
-                                    <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Allow Returns</span>
-                                </div>
-                                {product.returnPolicy?.returnsEnabled && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Days</label>
-                                            <input type="number" min={1} value={product.returnPolicy?.returnDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-2" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Refund Type</label>
-                                            <select value={product.returnPolicy?.refundType || 'none'} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, refundType: e.target.value } })} className="glass-input text-sm py-2 cursor-pointer">
-                                                <option value="none">No Refund</option><option value="full_refund">Full Refund</option><option value="replacement_only">Replacement</option><option value="store_credit">Store Credit</option>
-                                            </select>
-                                        </div>
+                    {/* Custom Return Policy Toggle Card */}
+                    {(() => {
+                        const customOn = !(product.returnPolicy?.useStorePolicy ?? true);
+                        return (
+                            <div className="rounded-2xl p-5 transition-all" style={{ background: customOn ? 'linear-gradient(135deg, rgba(16,185,129,0.10), rgba(99,102,241,0.06))' : 'rgba(255,255,255,0.04)', border: `1px solid ${customOn ? 'rgba(16,185,129,0.3)' : 'var(--glass-border)'}` }}>
+                                <button type="button" onClick={() => setProduct({ ...product, returnPolicy: { ...(product.returnPolicy || {}), useStorePolicy: customOn ? true : false } })}
+                                    className="w-full flex items-start gap-4 text-left">
+                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: customOn ? 'linear-gradient(135deg, hsl(150,60%,45%), hsl(170,50%,40%))' : 'rgba(0,0,0,0.05)', color: customOn ? 'white' : 'hsl(var(--muted-foreground))' }}>
+                                        <Truck size={20} />
                                     </div>
-                                )}
-                                <div className="flex items-center gap-3">
-                                    <input type="checkbox" checked={product.returnPolicy?.warrantyEnabled || false}
-                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyEnabled: e.target.checked } })}
-                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(45, 80%, 45%)' }} />
-                                    <span className="text-sm" style={{ color: 'hsl(var(--foreground))' }}>Warranty</span>
-                                    {product.returnPolicy?.warrantyEnabled && (
-                                        <input type="number" min={1} placeholder="Months" value={product.returnPolicy?.warrantyDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-1.5 w-24" />
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Featured Checkbox — gated by plan tier featured limits */}
-                    <div className="flex items-start gap-3 glass-inner rounded-xl p-4" style={!canFeature ? { opacity: 0.85 } : undefined}>
-                        <input id="featured" type="checkbox" disabled={uploadingImages || !canFeature || (!product.isFeatured && !featuredStats.allowed)}
-                            checked={!!product.isFeatured && canFeature}
-                            onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
-                            className="h-4 w-4 rounded mt-0.5" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <label htmlFor="featured" className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))', cursor: canFeature ? 'pointer' : 'not-allowed' }}>
-                                    Feature this product on homepage
-                                </label>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                    style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    <Crown size={10} /> PREMIUM
-                                </span>
-                                {canFeature && (
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                        style={{ background: featuredStats.current >= featuredStats.max ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', color: featuredStats.current >= featuredStats.max ? 'hsl(0,72%,55%)' : 'hsl(150,60%,45%)' }}>
-                                        {featuredStats.current}/{featuredStats.max} used
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Custom Return Policy</p>
+                                        <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Override the store-default policy for this product only.</p>
+                                    </div>
+                                    <span className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 mt-1" style={{ background: customOn ? 'hsl(150,60%,45%)' : 'rgba(0,0,0,0.15)' }}>
+                                        <span className="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform" style={{ transform: customOn ? 'translateX(22px)' : 'translateX(2px)' }} />
                                     </span>
-                                )}
-                            </div>
-                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {canFeature
-                                    ? (!featuredStats.allowed && !product.isFeatured
-                                        ? `You've reached your limit of ${featuredStats.max} featured products. Upgrade your plan to feature more.`
-                                        : `Adds a Featured badge to your product. Your plan allows up to ${featuredStats.max} featured products.`)
-                                    : (
-                                        <>Available with an active subscription. <Link to="/seller-dashboard/subscription" className="underline font-semibold" style={{ color: 'hsl(270, 60%, 55%)' }}>Upgrade now →</Link></>
+                                </button>
+                                <AnimatePresence initial={false}>
+                                    {customOn && (
+                                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                            <div className="space-y-3 pt-4 mt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                                <label className="flex items-center gap-3 cursor-pointer">
+                                                    <input type="checkbox" checked={product.returnPolicy?.returnsEnabled || false}
+                                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnsEnabled: e.target.checked } })}
+                                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(150, 60%, 45%)' }} />
+                                                    <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Allow Returns</span>
+                                                </label>
+                                                {product.returnPolicy?.returnsEnabled && (
+                                                    <div className="grid grid-cols-2 gap-3 pl-7">
+                                                        <div>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Days</label>
+                                                            <input type="number" min={1} value={product.returnPolicy?.returnDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, returnDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-2" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Refund Type</label>
+                                                            <select value={product.returnPolicy?.refundType || 'none'} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, refundType: e.target.value } })} className="glass-input text-sm py-2 cursor-pointer">
+                                                                <option value="none">No Refund</option><option value="full_refund">Full Refund</option><option value="replacement_only">Replacement</option><option value="store_credit">Store Credit</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <label className="flex items-center gap-3 cursor-pointer">
+                                                    <input type="checkbox" checked={product.returnPolicy?.warrantyEnabled || false}
+                                                        onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyEnabled: e.target.checked } })}
+                                                        className="h-4 w-4 rounded" style={{ accentColor: 'hsl(45, 80%, 45%)' }} />
+                                                    <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Warranty</span>
+                                                    {product.returnPolicy?.warrantyEnabled && (
+                                                        <input type="number" min={1} placeholder="Months" value={product.returnPolicy?.warrantyDuration || ''} onChange={e => setProduct({ ...product, returnPolicy: { ...product.returnPolicy, warrantyDuration: parseInt(e.target.value) || 0 } })} className="glass-input text-sm py-1.5 w-24" />
+                                                    )}
+                                                </label>
+                                            </div>
+                                        </motion.div>
                                     )}
-                            </p>
-                        </div>
-                    </div>
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Featured Toggle Card — gated by plan tier featured limits */}
+                    {(() => {
+                        const featOn = !!product.isFeatured && canFeature;
+                        const disabled = uploadingImages || !canFeature || (!product.isFeatured && !featuredStats.allowed);
+                        return (
+                            <div className="rounded-2xl p-5 transition-all" style={{ background: featOn ? 'linear-gradient(135deg, rgba(245,158,11,0.10), rgba(139,92,246,0.06))' : 'rgba(255,255,255,0.04)', border: `1px solid ${featOn ? 'rgba(245,158,11,0.3)' : 'var(--glass-border)'}`, opacity: !canFeature ? 0.85 : 1 }}>
+                                <button type="button" disabled={disabled}
+                                    onClick={() => setProduct({ ...product, isFeatured: !product.isFeatured })}
+                                    className="w-full flex items-start gap-4 text-left disabled:cursor-not-allowed">
+                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: featOn ? 'linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))' : 'rgba(0,0,0,0.05)', color: featOn ? 'white' : 'hsl(var(--muted-foreground))' }}>
+                                        <Star size={20} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Feature on Homepage</p>
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                                <Crown size={10} /> PREMIUM
+                                            </span>
+                                            {canFeature && (
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: featuredStats.current >= featuredStats.max ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', color: featuredStats.current >= featuredStats.max ? 'hsl(0,72%,55%)' : 'hsl(150,60%,45%)' }}>
+                                                    {featuredStats.current}/{featuredStats.max} used
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            {canFeature
+                                                ? (!featuredStats.allowed && !product.isFeatured
+                                                    ? `You've reached your limit of ${featuredStats.max} featured products. Upgrade your plan to feature more.`
+                                                    : `Adds a Featured badge to your product. Your plan allows up to ${featuredStats.max} featured products.`)
+                                                : (<>Available with an active subscription. <Link to="/seller-dashboard/subscription" className="underline font-semibold" style={{ color: 'hsl(270, 60%, 55%)' }}>Upgrade now →</Link></>)}
+                                        </p>
+                                    </div>
+                                    <span className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 mt-1" style={{ background: featOn ? 'hsl(45,80%,50%)' : 'rgba(0,0,0,0.15)', opacity: disabled ? 0.5 : 1 }}>
+                                        <span className="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform" style={{ transform: featOn ? 'translateX(22px)' : 'translateX(2px)' }} />
+                                    </span>
+                                </button>
+                            </div>
+                        );
+                    })()}
 
                     {/* Action Buttons */}
                     <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
