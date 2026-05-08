@@ -837,7 +837,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           <>
             <button
               onClick={() => { setIsOpen(false); navigate('/ai-chat'); }}
-              className="hidden sm:inline-flex p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
+              className="inline-flex p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition-colors relative"
               title="Open full chat"
               aria-label="Open full chat"
             >
