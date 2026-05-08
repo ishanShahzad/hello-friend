@@ -290,29 +290,29 @@ function Products() {
           },
         ]}
       />
-      {/* Mobile Filter Toggle */}
-      <div className='lg:hidden fixed bottom-6 right-6 z-40'>
+      {/* Mobile Filter Toggle (bottom-LEFT to avoid overlap with chat FAB) */}
+      <div className='lg:hidden fixed bottom-5 left-4 z-40'>
         <button
           onClick={() => setIsFilterOpen(true)}
           className='pl-4 pr-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-semibold text-sm glow-soft transition-transform active:scale-95 hover:scale-105'
-          style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
+          style={{ background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }}>
           <Filter size={18} />
           Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
         </button>
       </div>
 
-      {/* Mobile Filter Overlay */}
+      {/* Mobile Filter Overlay — sits above navbar so nothing peeks through */}
       <AnimatePresence>
         {isFilterOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] lg:hidden"
               onClick={() => setIsFilterOpen(false)} />
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-              className='fixed top-0 left-0 h-full w-80 max-w-full glass-panel-strong z-40 overflow-y-auto lg:hidden'
-              style={{ borderRadius: '0 28px 28px 0' }}>
+              className='fixed top-0 left-0 h-[100dvh] w-80 max-w-[85vw] sidebar-mobile-solid z-[90] overflow-y-auto lg:hidden flex flex-col'
+              style={{ borderRadius: '0 28px 28px 0', paddingTop: 'env(safe-area-inset-top)' }}>
               <FilterSidebarContent onClose={() => setIsFilterOpen(false)} />
             </motion.aside>
           </>
