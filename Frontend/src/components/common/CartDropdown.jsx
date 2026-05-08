@@ -116,7 +116,7 @@ const CartDropdown = () => {
                               <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatPrice(displayPrice)}</span>
                               {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(price)}</span>}
                             </div>
-                            <QuantitySelector qty={qty} onIncrement={() => handleQtyInc(item._id)} onDecrement={() => handleQtyDec(item._id)} disableIncrease={true} />
+                            <QuantitySelector qty={qty} onIncrement={() => handleQtyInc(item._id)} onDecrement={() => handleQtyDec(item._id)} />
                           </div>
                           <div className="flex flex-col items-end justify-between shrink-0">
                             <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }}
