@@ -696,6 +696,9 @@ const SellerSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpe
         if (isMobile) setIsSidebarOpen(false);
     };
 
+    // On mobile we use the inline expanding menu in the dashboard header instead.
+    if (isMobile) return null;
+
     return (
         <>
             {/* Mobile Overlay */}
