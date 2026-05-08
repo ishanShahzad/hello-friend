@@ -18,7 +18,8 @@ const ProductCard = memo(({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const isInWishlist = wishlistItems?.some((item) => item?._id === _id);
-  const isInCart = cartItems?.cart?.some((item) => item?.product?._id === _id);
+  const cartItem = cartItems?.cart?.find((item) => item?.product?._id === _id);
+  const isInCart = !!cartItem;
   const displayPrice = discountedPrice || price;
   const originalDisplayPrice = discountedPrice ? price : null;
   const discountPercentage = originalDisplayPrice && displayPrice < originalDisplayPrice
