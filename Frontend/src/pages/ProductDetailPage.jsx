@@ -44,11 +44,12 @@ function ProductDetailPage() {
     // Stable key for variant combo (e.g. "Color:Red|Size:L"); used for cart line dedupe
     const optionsKeyOf = (opts) => opts ? Object.keys(opts).filter(k => opts[k]).sort().map(k => `${k}:${opts[k]}`).join('|') : '';
     const myOptKey = optionsKeyOf(selectedOptions);
-    const isInCart = product && cartItems?.cart?.some((item) =>
+    const cartLineItem = product && cartItems?.cart?.find((item) =>
         item.product?._id === product._id &&
         item.selectedColor === selectedColor &&
         optionsKeyOf(item.selectedOptions) === myOptKey
     );
+    const isInCart = !!cartLineItem;
     // Has the buyer picked all required options?
     const allOptionsSelected = !product.optionGroups?.length || product.optionGroups.every(g => selectedOptions[g.name]);
 
