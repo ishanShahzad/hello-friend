@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, Package, Eye, Share2, ChevronRight, Home, Globe, MapPin, Users, Ticket, Copy, Check, Calendar, Percent, DollarSign } from 'lucide-react';
+import { Store, Package, Eye, Share2, ChevronRight, Home, Globe, MapPin, Users, Ticket, Copy, Check, Calendar, Percent, DollarSign, Search, Tag } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import ProductCard from '../components/common/ProductCard';
@@ -21,6 +21,26 @@ const StorePage = () => {
     const [trustStatus, setTrustStatus] = useState({ isTrusted: false, trustCount: 0 });
     const [storeCoupons, setStoreCoupons] = useState([]);
     const [copiedCoupon, setCopiedCoupon] = useState(null);
+    const [productSearch, setProductSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+
+    const categories = useMemo(() => {
+        const set = new Set();
+        products.forEach(p => { if (p.category) set.add(p.category); });
+        return Array.from(set);
+    }, [products]);
+
+    const filteredProducts = useMemo(() => {
+        const q = productSearch.trim().toLowerCase();
+        return products.filter(p => {
+            const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
+            const matchSearch = !q
+                || p.name?.toLowerCase().includes(q)
+                || p.brand?.toLowerCase().includes(q)
+                || p.description?.toLowerCase().includes(q);
+            return matchCat && matchSearch;
+        });
+    }, [products, productSearch, selectedCategory]);
 
     useEffect(() => {
         fetchStore();
@@ -498,20 +518,56 @@ const StorePage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-4">
                         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
                             Products
                         </h2>
                         <span className="tag-pill text-sm font-medium">
-                            {products.length} {products.length === 1 ? 'item' : 'items'}
+                            {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}
                         </span>
                     </div>
+
+                    {/* Search + Categories */}
+                    {products.length > 0 && (
+                        <div className="glass-panel p-3 sm:p-4 mb-5 space-y-3">
+                            <div className="search-input-wrapper">
+                                <div className="search-input-icon"><Search size={16} /></div>
+                                <input
+                                    type="text"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    placeholder="Search products in this store..."
+                                    className="glass-input glass-input-search w-full"
+                                />
+                            </div>
+                            {categories.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    <motion.button whileTap={{ scale: 0.96 }} onClick={() => setSelectedCategory('all')}
+                                        className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5"
+                                        style={selectedCategory === 'all'
+                                            ? { background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }
+                                            : { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                        <Tag size={12} /> All
+                                    </motion.button>
+                                    {categories.map(cat => (
+                                        <motion.button key={cat} whileTap={{ scale: 0.96 }} onClick={() => setSelectedCategory(cat)}
+                                            className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                                            style={selectedCategory === cat
+                                                ? { background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }
+                                                : { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                        </motion.button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {productsLoading ? (
                         <div className="flex justify-center items-center h-64">
                             <Loader />
                         </div>
-                    ) : products.length === 0 ? (
+                    ) : filteredProducts.length === 0 ? (
                         <motion.div
                             className="flex flex-col items-center justify-center h-64 glass-panel"
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -521,12 +577,16 @@ const StorePage = () => {
                             <div className="glass-inner p-5 rounded-2xl mb-4">
                                 <Package size={40} style={{ color: 'hsl(var(--muted-foreground))' }} />
                             </div>
-                            <p className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>No products yet</p>
-                            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>This store hasn't added any products</p>
+                            <p className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                {products.length === 0 ? 'No products yet' : 'No products match your filters'}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {products.length === 0 ? "This store hasn't added any products" : 'Try a different search or category'}
+                            </p>
                         </motion.div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                            {products.map((product, idx) => (
+                            {filteredProducts.map((product, idx) => (
                                 <motion.div
                                     key={product._id}
                                     initial={{ opacity: 0, y: 20 }}

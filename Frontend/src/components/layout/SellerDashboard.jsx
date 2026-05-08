@@ -452,6 +452,13 @@ const SellerDashboard = () => {
                         </div>
 
                         <div className="flex items-center gap-2 sm:gap-3">
+                            {/* Home Button */}
+                            <Link to="/" title="Back to Home">
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                    className="p-2.5 rounded-xl glass-inner" style={{ color: 'hsl(150, 60%, 45%)' }}>
+                                    <LayoutPanelLeft size={18} />
+                                </motion.button>
+                            </Link>
                             {/* Notifications Bell */}
                             <div className="relative">
                                 <motion.button
@@ -555,6 +562,12 @@ const SellerDashboard = () => {
                                             );
                                             return item.action ? <div key={item.id}>{inner}</div> : <Link key={item.id} to={item.link}>{inner}</Link>;
                                         })}
+                                        <Link to="/" onClick={() => setIsSidebarOpen(false)}>
+                                            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/10" style={{ color: 'hsl(var(--foreground))' }}>
+                                                <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--glass-bg)', color: 'hsl(150,60%,45%)' }}><LayoutPanelLeft size={18} /></span>
+                                                <span className="flex-1 text-left">Back to Home</span>
+                                            </button>
+                                        </Link>
                                     </div>
                                 </motion.div>
                             )}
@@ -941,7 +954,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen px-4 sm:px-6 lg:px-8">
             {/* Header with back button */}
             <div className="flex items-center gap-4 mb-6">
                 <button onClick={onClose} className="flex items-center gap-2 text-sm font-medium transition-colors"

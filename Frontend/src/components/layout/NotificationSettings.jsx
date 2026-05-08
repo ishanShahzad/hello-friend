@@ -137,11 +137,11 @@ const NotificationSettings = () => {
                 <motion.div key={section.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: si * 0.1 }}
                     className="glass-panel water-shimmer overflow-hidden">
-                    <div className="p-5 sm:p-6" style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <div className="p-5 sm:p-6">
                         <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{section.title}</h3>
                         <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{section.description}</p>
                     </div>
-                    <div className="divide-y" style={{ borderColor: 'var(--glass-border-subtle)' }}>
+                    <div>
                         {section.items.map(item => (
                             <div key={item.key} className="flex items-center justify-between px-5 sm:px-6 py-4">
                                 <div className="flex items-center gap-3">
