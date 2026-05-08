@@ -625,7 +625,7 @@ function ProductDetailPage() {
                                             ? { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--muted-foreground))', cursor: 'not-allowed' }
                                             : isInCart
                                                 ? { background: 'rgba(16, 185, 129, 0.15)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(16, 185, 129, 0.25)' }
-                                                : { background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.35)' }
+                                                : { background: 'var(--logo-gradient)', color: 'white', boxShadow: 'var(--logo-glow)' }
                                     }
                                 >
                                     {product.stock === 0 ? "Out of Stock" :
