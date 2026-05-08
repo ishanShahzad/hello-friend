@@ -363,6 +363,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   useEffect(() => {
     if (isOpen && messages.length === 0 && initialMessages === null && !hasLoadedHistory.current && authToken) {
       hasLoadedHistory.current = true;
+      setIsLoadingHistory(true);
       // Try to load the active conversation from the API
       fetch(`${API_BASE}api/ai-chat/conversations`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -400,7 +401,8 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
           setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
           setShowChips(true);
-        });
+        })
+        .finally(() => setIsLoadingHistory(false));
     } else if (isOpen && messages.length === 0 && initialMessages === null && !authToken) {
       // Guest — just show greeting
       const hour = new Date().getHours();
