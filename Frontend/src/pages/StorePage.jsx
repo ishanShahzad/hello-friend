@@ -21,6 +21,26 @@ const StorePage = () => {
     const [trustStatus, setTrustStatus] = useState({ isTrusted: false, trustCount: 0 });
     const [storeCoupons, setStoreCoupons] = useState([]);
     const [copiedCoupon, setCopiedCoupon] = useState(null);
+    const [productSearch, setProductSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+
+    const categories = useMemo(() => {
+        const set = new Set();
+        products.forEach(p => { if (p.category) set.add(p.category); });
+        return Array.from(set);
+    }, [products]);
+
+    const filteredProducts = useMemo(() => {
+        const q = productSearch.trim().toLowerCase();
+        return products.filter(p => {
+            const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
+            const matchSearch = !q
+                || p.name?.toLowerCase().includes(q)
+                || p.brand?.toLowerCase().includes(q)
+                || p.description?.toLowerCase().includes(q);
+            return matchCat && matchSearch;
+        });
+    }, [products, productSearch, selectedCategory]);
 
     useEffect(() => {
         fetchStore();
