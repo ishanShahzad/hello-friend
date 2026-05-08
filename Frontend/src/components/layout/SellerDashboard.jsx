@@ -13,6 +13,26 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
+import ChatBotComponent from '../common/ChatBot';
+
+// Shared menu items (used by desktop sidebar + mobile inline menu)
+const getSellerMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
+    { id: 'home', label: 'Dashboard', icon: <BarChart3 size={18} />, link: '/seller-dashboard/seller-home' },
+    { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} />, link: '/seller-dashboard/analytics' },
+    { id: 'overview', label: 'Store Overview', icon: <Store size={18} />, link: '/seller-dashboard/store-overview' },
+    { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/seller-dashboard/product-management', badge: lowStockProducts },
+    { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/seller-dashboard/order-management', badge: pendingOrders },
+    { id: 'shipping', label: 'Shipping', icon: <Truck size={18} />, link: '/seller-dashboard/shipping-configuration' },
+    { id: 'coupons', label: 'Coupons', icon: <Star size={18} />, link: '/seller-dashboard/coupons' },
+    { id: 'subdomain', label: 'Subdomain', icon: <LayoutPanelLeft size={18} />, link: '/seller-dashboard/subdomain' },
+    { id: 'subscription', label: 'Subscription', icon: <Crown size={18} />, link: '/seller-dashboard/subscription' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, link: '/seller-dashboard/notifications' },
+    { id: 'profile', label: 'Seller Profile', icon: <User size={18} />, link: '/seller-dashboard/profile' },
+    { id: 'store', label: 'Store Settings', icon: <Settings size={18} />, link: '/seller-dashboard/store-settings' },
+    { id: 'notif-settings', label: 'Notif Settings', icon: <Settings size={18} />, link: '/seller-dashboard/notification-settings' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle size={18} />, link: '/seller-dashboard/whatsapp-settings' },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
+]);
 
 const SellerDashboard = () => {
     const { currentUser } = useAuth();
