@@ -941,7 +941,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen px-4 sm:px-6 lg:px-8">
             {/* Header with back button */}
             <div className="flex items-center gap-4 mb-6">
                 <button onClick={onClose} className="flex items-center gap-2 text-sm font-medium transition-colors"

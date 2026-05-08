@@ -38,7 +38,7 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                 )}
 
                 {/* Hover Actions */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute top-3 left-3 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                         onClick={() => onEditProduct(product)}
                         className="p-2 rounded-xl shadow-lg"

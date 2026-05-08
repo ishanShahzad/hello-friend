@@ -151,7 +151,7 @@ const UserDashboard = () => {
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
             {/* Main Content */}
-            <div className={`flex-1 ${!isMobile ? 'ml-64' : 'pt-8'} `}>
+            <div className={`flex-1 ${!isMobile ? 'ml-64' : 'pt-24'} `}>
                 <Outlet context={outletContext} />
             </div>
 
