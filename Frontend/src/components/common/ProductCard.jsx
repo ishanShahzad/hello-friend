@@ -9,7 +9,7 @@ const ProductCard = memo(({
   _id, name, image, images, category, price, discountedPrice,
   stock, rating, numReviews, isFeatured, idx,
 }) => {
-  const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
+  const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, handleQtyInc, handleQtyDec, isCartLoading, loadingProductId, qtyUpdateId } = useGlobal();
   const { currentUser } = useAuth();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
