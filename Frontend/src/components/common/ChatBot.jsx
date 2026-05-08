@@ -763,9 +763,9 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         </div>
 
         {isUser && (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: 'hsl(var(--muted))' }}>
-            <User size={14} style={{ color: 'hsl(var(--foreground))' }} />
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+            style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+            <User size={15} style={{ color: 'hsl(var(--foreground))' }} />
           </div>
         )}
       </motion.div>
