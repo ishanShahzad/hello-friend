@@ -238,4 +238,10 @@ const buildStyles = (p) => StyleSheet.create({
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   productWrapper: { flex: 1, marginBottom: spacing.sm },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.xl },
+  searchInput: { flex: 1, color: p.colors.text, fontSize: fontSize.sm, paddingVertical: 4 },
+  catChip: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  catChipActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  catChipText: { fontSize: fontSize.xs, color: p.colors.textSecondary, fontWeight: fontWeight.semibold },
+  catChipTextActive: { color: '#fff' },
 });
