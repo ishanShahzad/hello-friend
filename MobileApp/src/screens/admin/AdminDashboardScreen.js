@@ -298,7 +298,7 @@ const buildStyles = (p) => StyleSheet.create({
   activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   viewAllText: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
   activityRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
-  activityRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(0,0,0,0.06)' },
+  activityRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: p.glass.borderSubtle },
   activityDot: { width: 8, height: 8, borderRadius: 4, marginRight: spacing.md },
   activityInfo: { flex: 1 },
   activityOrderId: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: p.colors.text },
