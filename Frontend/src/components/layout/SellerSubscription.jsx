@@ -170,16 +170,19 @@ const SellerSubscription = () => {
 
     const starterFeatures = [
         'Store & products visible to all customers',
-        '15 product listings',
+        'Unlimited product listings',
         'Secure payment processing',
         'Custom subdomain for your store',
-        '25 AI messages/day',
+        '100 AI messages/day',
         'Order management & customer insights',
+        'Manage your store, orders & products from WhatsApp by chatting with AI',
+        'Get WhatsApp notifications when you receive a new order',
         'Rozare WhatsApp order confirmation automation',
         'Featured product highlighting (6 products)',
     ];
 
     const bonusFeatures = [
+        'Smart description generator with AI',
         'Advanced analytics & growth insights',
         'Smart tag AI generator for products',
         'Priority support & early access to new features',
