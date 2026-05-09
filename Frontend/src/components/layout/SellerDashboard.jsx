@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
     BarChart3, Package, X, Menu, LayoutPanelLeft, ShoppingBag,
     Star, Store, Truck, Bell, Settings, ChevronLeft, Search, Loader2,
-    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle, User, Sparkles,
+    TrendingUp, AlertTriangle, CheckCircle, Clock, DollarSign, Info, Bot, Crown, Lock, MessageCircle, User, Sparkles, Wand2, RotateCcw, Tag,
 } from 'lucide-react';
 import axios from 'axios';
 import GlassBackground from '../common/GlassBackground';
@@ -14,6 +14,7 @@ import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatBotComponent from '../common/ChatBot';
+import { PRESET_CATEGORIES } from '../../utils/categories';
 
 // Shared menu items (used by desktop sidebar + mobile inline menu)
 const getSellerMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
@@ -933,6 +934,70 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
 
+    // Category combobox
+    const [catOpen, setCatOpen] = useState(false);
+    const [showOtherInput, setShowOtherInput] = useState(false);
+    const catWrapRef = useRef(null);
+    useEffect(() => {
+        const onClickOutside = (e) => {
+            if (catWrapRef.current && !catWrapRef.current.contains(e.target)) setCatOpen(false);
+        };
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, []);
+    const categoryQuery = product.category || '';
+    const filteredCategories = PRESET_CATEGORIES.filter(c =>
+        c.toLowerCase().includes(categoryQuery.toLowerCase())
+    );
+    const exactMatch = PRESET_CATEGORIES.some(c => c.toLowerCase() === categoryQuery.toLowerCase());
+
+    // AI improve description
+    const [improvingDesc, setImprovingDesc] = useState(false);
+    const [previousDescription, setPreviousDescription] = useState(null);
+    const improveDescription = async () => {
+        if (!product.description?.trim()) { toast.error('Write a description first'); return; }
+        setImprovingDesc(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/improve-description`,
+                { name: product.name, description: product.description, category: product.category, brand: product.brand },
+                { headers: { Authorization: `Bearer ${token}` } });
+            setPreviousDescription(product.description);
+            setProduct({ ...product, description: res.data.description });
+            toast.success('Description improved');
+        } catch (e) {
+            toast.error(e.response?.data?.msg || 'Failed to improve description');
+        } finally { setImprovingDesc(false); }
+    };
+    const revertDescription = () => {
+        if (previousDescription !== null) {
+            setProduct({ ...product, description: previousDescription });
+            setPreviousDescription(null);
+            toast.info('Reverted to original description');
+        }
+    };
+
+    // AI generate tags
+    const [generatingTags, setGeneratingTags] = useState(false);
+    const generateAiTags = async () => {
+        if (!product.name?.trim() && !product.description?.trim()) {
+            toast.error('Add a name or description first'); return;
+        }
+        setGeneratingTags(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/generate-tags`,
+                { name: product.name, description: product.description, category: product.category, brand: product.brand },
+                { headers: { Authorization: `Bearer ${token}` } });
+            const incoming = res.data.tags || [];
+            const merged = [...new Set([...(product.tags || []), ...incoming])];
+            setProduct({ ...product, tags: merged });
+            toast.success(`Added ${incoming.length} AI tag${incoming.length === 1 ? '' : 's'}`);
+        } catch (e) {
+            toast.error(e.response?.data?.msg || 'Failed to generate tags');
+        } finally { setGeneratingTags(false); }
+    };
+
     const handleAddTag = () => {
         if (newTag.trim() && !product.tags.includes(newTag.trim())) {
             setProduct({ ...product, tags: [...product.tags, newTag.trim()] });
@@ -988,11 +1053,52 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 onChange={(e) => setProduct({ ...product, brand: e.target.value })}
                                 className={inputClass} placeholder="Enter brand name" />
                         </div>
-                        <div>
+                        <div ref={catWrapRef} className="relative">
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Category *</label>
                             <input type="text" required disabled={uploadingImages} value={product.category}
-                                onChange={(e) => setProduct({ ...product, category: e.target.value })}
-                                className={inputClass} placeholder="Enter category" />
+                                onFocus={() => setCatOpen(true)}
+                                onChange={(e) => { setProduct({ ...product, category: e.target.value }); setCatOpen(true); setShowOtherInput(false); }}
+                                className={inputClass} placeholder="Tap to choose or type a category" autoComplete="off" />
+                            <AnimatePresence>
+                                {catOpen && (
+                                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
+                                        className="absolute z-30 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl glass-panel p-2 shadow-xl">
+                                        {filteredCategories.length === 0 && !showOtherInput && (
+                                            <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
+                                        )}
+                                        {filteredCategories.map((c) => (
+                                            <button type="button" key={c}
+                                                onClick={() => { setProduct({ ...product, category: c }); setCatOpen(false); setShowOtherInput(false); }}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-colors flex items-center justify-between"
+                                                style={{ color: 'hsl(var(--foreground))' }}>
+                                                <span>{c}</span>
+                                                {product.category?.toLowerCase() === c.toLowerCase() && <CheckCircle size={14} style={{ color: 'hsl(150,60%,45%)' }} />}
+                                            </button>
+                                        ))}
+                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                            {!showOtherInput ? (
+                                                <button type="button" onClick={() => { setShowOtherInput(true); setProduct({ ...product, category: exactMatch ? '' : product.category }); }}
+                                                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                    style={{ color: 'hsl(280, 60%, 60%)' }}>
+                                                    <Sparkles size={14} /> Other (custom category)
+                                                </button>
+                                            ) : (
+                                                <div className="flex gap-2 p-1">
+                                                    <input type="text" autoFocus value={product.category}
+                                                        onChange={(e) => setProduct({ ...product, category: e.target.value })}
+                                                        placeholder="Type your category"
+                                                        className="glass-input flex-1 text-sm" />
+                                                    <button type="button" onClick={() => { setCatOpen(false); setShowOtherInput(false); }}
+                                                        className="px-3 py-2 rounded-xl text-white font-medium text-sm"
+                                                        style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(170,50%,40%))' }}>
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Stock *</label>
@@ -1029,9 +1135,31 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     {/* Description */}
                     <div>
                         <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Description *</label>
-                        <textarea required disabled={uploadingImages} value={product.description}
-                            onChange={(e) => setProduct({ ...product, description: e.target.value })}
-                            rows={3} className={inputClass} placeholder="Enter product description" />
+                        <textarea required disabled={uploadingImages || improvingDesc} value={product.description}
+                            onChange={(e) => { setProduct({ ...product, description: e.target.value }); if (previousDescription !== null) setPreviousDescription(null); }}
+                            rows={4} className={inputClass} placeholder="Enter product description" />
+                        {product.description?.trim() && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                <motion.button type="button" disabled={improvingDesc || uploadingImages}
+                                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                    onClick={improveDescription}
+                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-white font-semibold text-xs disabled:opacity-60"
+                                    style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 50%), hsl(320, 60%, 55%))' }}>
+                                    {improvingDesc ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                                    {improvingDesc ? 'Improving…' : 'Improve with AI'}
+                                </motion.button>
+                                {previousDescription !== null && (
+                                    <motion.button type="button" disabled={uploadingImages}
+                                        initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={revertDescription}
+                                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-inner font-semibold text-xs"
+                                        style={{ color: 'hsl(var(--foreground))' }}>
+                                        <RotateCcw size={14} /> Revert
+                                    </motion.button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Main Image */}
@@ -1168,11 +1296,22 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
 
                     {/* Tags */}
                     <div>
-                        <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Tags</label>
+                        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                            <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>Tags</label>
+                            <motion.button type="button" disabled={generatingTags || uploadingImages}
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                onClick={generateAiTags}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white font-semibold text-xs disabled:opacity-60"
+                                style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 50%), hsl(320, 60%, 55%))' }}>
+                                {generatingTags ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                                {generatingTags ? 'Generating…' : 'Generate Tags with AI'}
+                            </motion.button>
+                        </div>
                         <div className="flex gap-2">
                             <input type="text" disabled={uploadingImages} value={newTag}
                                 onChange={(e) => setNewTag(e.target.value)}
-                                className={`${inputClass} flex-1`} placeholder="Enter tag" />
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                                className={`${inputClass} flex-1`} placeholder="Enter a tag" />
                             <motion.button type="button" disabled={uploadingImages} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                                 onClick={handleAddTag}
                                 className="px-4 py-2 rounded-xl text-white font-medium text-sm"
