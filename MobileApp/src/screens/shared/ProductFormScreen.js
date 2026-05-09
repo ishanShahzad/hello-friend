@@ -449,6 +449,85 @@ export default function ProductFormScreen({ navigation, route }) {
           <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Category Picker Modal */}
+      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowCategoryPicker(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: spacing.lg }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: palette.colors.surface, borderRadius: borderRadius.xl, padding: spacing.lg, maxHeight: '75%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={{ ...typography.h4, color: palette.colors.text }}>Choose Category</Text>
+              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+                <Ionicons name="close" size={22} color={palette.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.inputContainer, { marginBottom: spacing.md }]}>
+              <Ionicons name="search" size={16} color={palette.colors.textSecondary} style={{ marginLeft: spacing.md }} />
+              <TextInput
+                style={styles.input}
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+                placeholder="Search categories..."
+                placeholderTextColor={palette.colors.textSecondary}
+                autoFocus
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+              {filteredCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => { updateField('category', cat); setShowCategoryPicker(false); }}
+                  style={{ paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.glass.borderSubtle, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: fontSize.md, color: palette.colors.text }}>{cat}</Text>
+                  {formData.category?.toLowerCase() === cat.toLowerCase() && (
+                    <Ionicons name="checkmark-circle" size={18} color={palette.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+              {filteredCategories.length === 0 && (
+                <Text style={{ color: palette.colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', paddingVertical: spacing.lg }}>
+                  No matches. Use "Other" to add a custom category.
+                </Text>
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              onPress={() => { setShowCategoryPicker(false); setOtherCategory(isPresetCategory(formData.category) ? '' : (formData.category || '')); setShowOtherModal(true); }}
+              style={{ marginTop: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.15)', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+              <Ionicons name="add-circle-outline" size={18} color={palette.colors.primary} />
+              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.primary }}>Other (custom)</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Custom (Other) Category Modal */}
+      <Modal visible={showOtherModal} transparent animationType="fade" onRequestClose={() => setShowOtherModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: spacing.lg }}>
+          <View style={{ backgroundColor: palette.colors.surface, borderRadius: borderRadius.xl, padding: spacing.lg }}>
+            <Text style={{ ...typography.h4, color: palette.colors.text, marginBottom: spacing.md }}>Custom Category</Text>
+            <View style={[styles.inputContainer, { marginBottom: spacing.md }]}>
+              <TextInput
+                style={styles.input}
+                value={otherCategory}
+                onChangeText={setOtherCategory}
+                placeholder="Enter category name"
+                placeholderTextColor={palette.colors.textSecondary}
+                autoFocus
+                maxLength={40}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <TouchableOpacity onPress={() => setShowOtherModal(false)} style={{ flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center' }}>
+                <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { const v = otherCategory.trim(); if (!v) return; updateField('category', v); setShowOtherModal(false); }}
+                style={{ flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: palette.colors.primary, alignItems: 'center' }}>
+                <Text style={{ color: 'white', fontWeight: fontWeight.bold }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GlassBackground>
   );
 }
