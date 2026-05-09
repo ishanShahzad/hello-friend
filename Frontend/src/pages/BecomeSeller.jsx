@@ -409,7 +409,9 @@ export default function BecomeSeller() {
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-3" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Become a Seller - FREE
           </h1>
-          <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Join thousands of successful sellers and start your e-commerce journey today</p>
+          <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            The first marketplace where you can <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>run your entire store by chatting with AI</span> — on the app or WhatsApp.
+          </p>
           <p className="text-xl font-bold" style={{ color: 'hsl(150, 60%, 45%)' }}>
             <Sparkles size={18} className="inline mr-1" /> Create your store for FREE - No hidden costs!
           </p>
