@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import CurrencySelector from './common/CurrencySelector'
 import { useCurrency } from '../contexts/CurrencyContext'
 import SEOHead from './common/SEOHead'
+import { PRESET_CATEGORIES, isPresetCategory } from '../utils/categories'
 
 const PRODUCTS_PER_PAGE = 24
 
