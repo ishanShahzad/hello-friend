@@ -201,7 +201,7 @@ export default function StoreScreen({ route, navigation }) {
   return (
     <GlassBackground>
       <FlatList
-        data={products} keyExtractor={(item) => item._id} numColumns={2}
+        data={filteredProducts} keyExtractor={(item) => item._id} numColumns={2}
         columnWrapperStyle={styles.row} contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader} renderItem={renderProduct}
         ListEmptyComponent={() => <EmptyProducts onAdd={null} />}
