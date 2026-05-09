@@ -934,6 +934,70 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
 
+    // Category combobox
+    const [catOpen, setCatOpen] = useState(false);
+    const [showOtherInput, setShowOtherInput] = useState(false);
+    const catWrapRef = useRef(null);
+    useEffect(() => {
+        const onClickOutside = (e) => {
+            if (catWrapRef.current && !catWrapRef.current.contains(e.target)) setCatOpen(false);
+        };
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, []);
+    const categoryQuery = product.category || '';
+    const filteredCategories = PRESET_CATEGORIES.filter(c =>
+        c.toLowerCase().includes(categoryQuery.toLowerCase())
+    );
+    const exactMatch = PRESET_CATEGORIES.some(c => c.toLowerCase() === categoryQuery.toLowerCase());
+
+    // AI improve description
+    const [improvingDesc, setImprovingDesc] = useState(false);
+    const [previousDescription, setPreviousDescription] = useState(null);
+    const improveDescription = async () => {
+        if (!product.description?.trim()) { toast.error('Write a description first'); return; }
+        setImprovingDesc(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/improve-description`,
+                { name: product.name, description: product.description, category: product.category, brand: product.brand },
+                { headers: { Authorization: `Bearer ${token}` } });
+            setPreviousDescription(product.description);
+            setProduct({ ...product, description: res.data.description });
+            toast.success('Description improved');
+        } catch (e) {
+            toast.error(e.response?.data?.msg || 'Failed to improve description');
+        } finally { setImprovingDesc(false); }
+    };
+    const revertDescription = () => {
+        if (previousDescription !== null) {
+            setProduct({ ...product, description: previousDescription });
+            setPreviousDescription(null);
+            toast.info('Reverted to original description');
+        }
+    };
+
+    // AI generate tags
+    const [generatingTags, setGeneratingTags] = useState(false);
+    const generateAiTags = async () => {
+        if (!product.name?.trim() && !product.description?.trim()) {
+            toast.error('Add a name or description first'); return;
+        }
+        setGeneratingTags(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/generate-tags`,
+                { name: product.name, description: product.description, category: product.category, brand: product.brand },
+                { headers: { Authorization: `Bearer ${token}` } });
+            const incoming = res.data.tags || [];
+            const merged = [...new Set([...(product.tags || []), ...incoming])];
+            setProduct({ ...product, tags: merged });
+            toast.success(`Added ${incoming.length} AI tag${incoming.length === 1 ? '' : 's'}`);
+        } catch (e) {
+            toast.error(e.response?.data?.msg || 'Failed to generate tags');
+        } finally { setGeneratingTags(false); }
+    };
+
     const handleAddTag = () => {
         if (newTag.trim() && !product.tags.includes(newTag.trim())) {
             setProduct({ ...product, tags: [...product.tags, newTag.trim()] });
