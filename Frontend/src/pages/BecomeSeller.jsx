@@ -340,12 +340,34 @@ export default function BecomeSeller() {
   };
 
   const benefits = [
-    { icon: <TrendingUp size={28} />, title: 'Grow Your Business', description: 'Reach millions of customers and scale your sales', color: 'hsl(220, 70%, 55%)' },
-    { icon: <Shield size={28} />, title: 'Secure Platform', description: 'Safe payments and buyer protection guaranteed', color: 'hsl(200, 80%, 50%)' },
-    { icon: <BarChart3 size={28} />, title: 'Analytics & Insights', description: 'Track performance with powerful analytics tools', color: 'hsl(150, 60%, 45%)' },
+    { icon: <Bot size={28} />, title: 'Run Your Store with AI', description: 'Add products, set prices, reply to customers, and manage orders just by chatting — on the app or WhatsApp.', color: 'hsl(280, 70%, 60%)' },
+    { icon: <TrendingUp size={28} />, title: 'Reach Global Buyers', description: 'Multi-currency checkout, mobile + web storefronts, and SEO baked in to help you scale fast.', color: 'hsl(220, 70%, 55%)' },
+    { icon: <Shield size={28} />, title: 'Secure & Trusted', description: 'Stripe-powered payments, verified store badges, and a built-in trust system that protects buyers and sellers.', color: 'hsl(200, 80%, 50%)' },
   ];
 
-  const features = ['Full store management dashboard', 'Product listing & inventory control', 'Order management system', 'Secure payment processing', 'Real-time sales analytics', 'Customer communication tools', 'Marketing & promotion features', '24/7 seller support'];
+  const aiSuperpowers = [
+    { icon: <Wand2 size={20} />, title: 'AI Description Polish', desc: 'Turn rough notes into compelling product copy in one click.' },
+    { icon: <Tag size={20} />, title: 'Smart Tag Generator', desc: 'Auto-generate SEO tags so your products get discovered.' },
+    { icon: <MessageCircle size={20} />, title: 'WhatsApp Commerce', desc: 'Manage your entire store by chatting with AI on WhatsApp.' },
+    { icon: <Mic size={20} />, title: 'Voice Assistant', desc: 'Talk to your AI co-pilot — hands-free store management.' },
+    { icon: <LineChart size={20} />, title: 'Insights On Demand', desc: 'Ask "How are sales this week?" and get instant answers.' },
+    { icon: <Megaphone size={20} />, title: 'Marketing Help', desc: 'AI drafts coupons, promotions, and customer broadcasts.' },
+  ];
+
+  const features = [
+    'Full store dashboard with real-time analytics',
+    'Unlimited product listings & inventory control',
+    'AI product description & smart tagging',
+    'WhatsApp store management with AI',
+    'Voice-powered AI assistant',
+    'Stripe-powered secure checkout',
+    'Multi-currency support (USD, EUR, GBP, PKR)',
+    'Custom store subdomain (yourstore.rozare.com)',
+    'Order management & shipping tools',
+    'Coupon & discount engine',
+    'Push & WhatsApp notifications',
+    'Mobile app for sellers (iOS & Android)',
+  ];
 
   return (
     <div className="min-h-screen py-12 px-4">
