@@ -1296,11 +1296,22 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
 
                     {/* Tags */}
                     <div>
-                        <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Tags</label>
+                        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                            <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>Tags</label>
+                            <motion.button type="button" disabled={generatingTags || uploadingImages}
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                onClick={generateAiTags}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white font-semibold text-xs disabled:opacity-60"
+                                style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 50%), hsl(320, 60%, 55%))' }}>
+                                {generatingTags ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                                {generatingTags ? 'Generating…' : 'Generate Tags with AI'}
+                            </motion.button>
+                        </div>
                         <div className="flex gap-2">
                             <input type="text" disabled={uploadingImages} value={newTag}
                                 onChange={(e) => setNewTag(e.target.value)}
-                                className={`${inputClass} flex-1`} placeholder="Enter tag" />
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                                className={`${inputClass} flex-1`} placeholder="Enter a tag" />
                             <motion.button type="button" disabled={uploadingImages} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                                 onClick={handleAddTag}
                                 className="px-4 py-2 rounded-xl text-white font-medium text-sm"
