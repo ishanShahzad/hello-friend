@@ -1053,11 +1053,52 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 onChange={(e) => setProduct({ ...product, brand: e.target.value })}
                                 className={inputClass} placeholder="Enter brand name" />
                         </div>
-                        <div>
+                        <div ref={catWrapRef} className="relative">
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Category *</label>
                             <input type="text" required disabled={uploadingImages} value={product.category}
-                                onChange={(e) => setProduct({ ...product, category: e.target.value })}
-                                className={inputClass} placeholder="Enter category" />
+                                onFocus={() => setCatOpen(true)}
+                                onChange={(e) => { setProduct({ ...product, category: e.target.value }); setCatOpen(true); setShowOtherInput(false); }}
+                                className={inputClass} placeholder="Tap to choose or type a category" autoComplete="off" />
+                            <AnimatePresence>
+                                {catOpen && (
+                                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
+                                        className="absolute z-30 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl glass-panel p-2 shadow-xl">
+                                        {filteredCategories.length === 0 && !showOtherInput && (
+                                            <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
+                                        )}
+                                        {filteredCategories.map((c) => (
+                                            <button type="button" key={c}
+                                                onClick={() => { setProduct({ ...product, category: c }); setCatOpen(false); setShowOtherInput(false); }}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-colors flex items-center justify-between"
+                                                style={{ color: 'hsl(var(--foreground))' }}>
+                                                <span>{c}</span>
+                                                {product.category?.toLowerCase() === c.toLowerCase() && <CheckCircle size={14} style={{ color: 'hsl(150,60%,45%)' }} />}
+                                            </button>
+                                        ))}
+                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                            {!showOtherInput ? (
+                                                <button type="button" onClick={() => { setShowOtherInput(true); setProduct({ ...product, category: exactMatch ? '' : product.category }); }}
+                                                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                    style={{ color: 'hsl(280, 60%, 60%)' }}>
+                                                    <Sparkles size={14} /> Other (custom category)
+                                                </button>
+                                            ) : (
+                                                <div className="flex gap-2 p-1">
+                                                    <input type="text" autoFocus value={product.category}
+                                                        onChange={(e) => setProduct({ ...product, category: e.target.value })}
+                                                        placeholder="Type your category"
+                                                        className="glass-input flex-1 text-sm" />
+                                                    <button type="button" onClick={() => { setCatOpen(false); setShowOtherInput(false); }}
+                                                        className="px-3 py-2 rounded-xl text-white font-medium text-sm"
+                                                        style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(170,50%,40%))' }}>
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Stock *</label>
