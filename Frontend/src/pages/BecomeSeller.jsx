@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
+import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon, AlertCircle, Loader2, Bot, Wand2, Mic, Zap, Tag, LineChart, Smartphone, Languages, CreditCard, Globe2, Megaphone, PackageSearch, Bell } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -340,12 +340,34 @@ export default function BecomeSeller() {
   };
 
   const benefits = [
-    { icon: <TrendingUp size={28} />, title: 'Grow Your Business', description: 'Reach millions of customers and scale your sales', color: 'hsl(220, 70%, 55%)' },
-    { icon: <Shield size={28} />, title: 'Secure Platform', description: 'Safe payments and buyer protection guaranteed', color: 'hsl(200, 80%, 50%)' },
-    { icon: <BarChart3 size={28} />, title: 'Analytics & Insights', description: 'Track performance with powerful analytics tools', color: 'hsl(150, 60%, 45%)' },
+    { icon: <Bot size={28} />, title: 'Run Your Store with AI', description: 'Add products, set prices, reply to customers, and manage orders just by chatting — on the app or WhatsApp.', color: 'hsl(280, 70%, 60%)' },
+    { icon: <TrendingUp size={28} />, title: 'Reach Global Buyers', description: 'Multi-currency checkout, mobile + web storefronts, and SEO baked in to help you scale fast.', color: 'hsl(220, 70%, 55%)' },
+    { icon: <Shield size={28} />, title: 'Secure & Trusted', description: 'Stripe-powered payments, verified store badges, and a built-in trust system that protects buyers and sellers.', color: 'hsl(200, 80%, 50%)' },
   ];
 
-  const features = ['Full store management dashboard', 'Product listing & inventory control', 'Order management system', 'Secure payment processing', 'Real-time sales analytics', 'Customer communication tools', 'Marketing & promotion features', '24/7 seller support'];
+  const aiSuperpowers = [
+    { icon: <Wand2 size={20} />, title: 'AI Description Polish', desc: 'Turn rough notes into compelling product copy in one click.' },
+    { icon: <Tag size={20} />, title: 'Smart Tag Generator', desc: 'Auto-generate SEO tags so your products get discovered.' },
+    { icon: <MessageCircle size={20} />, title: 'WhatsApp Commerce', desc: 'Manage your entire store by chatting with AI on WhatsApp.' },
+    { icon: <Mic size={20} />, title: 'Voice Assistant', desc: 'Talk to your AI co-pilot — hands-free store management.' },
+    { icon: <LineChart size={20} />, title: 'Insights On Demand', desc: 'Ask "How are sales this week?" and get instant answers.' },
+    { icon: <Megaphone size={20} />, title: 'Marketing Help', desc: 'AI drafts coupons, promotions, and customer broadcasts.' },
+  ];
+
+  const features = [
+    'Full store dashboard with real-time analytics',
+    'Unlimited product listings & inventory control',
+    'AI product description & smart tagging',
+    'WhatsApp store management with AI',
+    'Voice-powered AI assistant',
+    'Stripe-powered secure checkout',
+    'Multi-currency support (USD, EUR, GBP, PKR)',
+    'Custom store subdomain (yourstore.rozare.com)',
+    'Order management & shipping tools',
+    'Coupon & discount engine',
+    'Push & WhatsApp notifications',
+    'Mobile app for sellers (iOS & Android)',
+  ];
 
   return (
     <div className="min-h-screen py-12 px-4">
@@ -387,7 +409,9 @@ export default function BecomeSeller() {
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-3" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Become a Seller - FREE
           </h1>
-          <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Join thousands of successful sellers and start your e-commerce journey today</p>
+          <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            The first marketplace where you can <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>run your entire store by chatting with AI</span> — on the app or WhatsApp.
+          </p>
           <p className="text-xl font-bold" style={{ color: 'hsl(150, 60%, 45%)' }}>
             <Sparkles size={18} className="inline mr-1" /> Create your store for FREE - No hidden costs!
           </p>
@@ -403,6 +427,36 @@ export default function BecomeSeller() {
                   <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{b.description}</p>
                 </motion.div>
               ))}
+            </motion.div>
+
+            {/* AI Superpowers — the headline differentiator */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="glass-panel p-8 mb-8 relative overflow-hidden">
+              <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-20 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, hsl(280, 70%, 60%), transparent 70%)' }} />
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 60%), hsl(220, 70%, 55%))' }}>
+                  <Bot size={22} className="text-white" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-full" style={{ background: 'hsl(280, 70%, 60%, 0.15)', color: 'hsl(280, 70%, 60%)' }}>AI Powered</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                Your AI Co-Pilot for Selling
+              </h2>
+              <p className="text-sm sm:text-base mb-6 max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Stop wrestling with spreadsheets and dashboards. Just <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>tell Rozare AI what you want</span> — in the app, by voice, or even on WhatsApp — and it gets done.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiSuperpowers.map((s, i) => (
+                  <motion.div key={i} whileHover={{ y: -3 }} className="glass-inner p-4 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2" style={{ color: 'hsl(280, 70%, 60%)' }}>
+                      {s.icon}
+                      <h4 className="font-bold text-sm" style={{ color: 'hsl(var(--foreground))' }}>{s.title}</h4>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-8 mb-8">
