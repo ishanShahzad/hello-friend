@@ -373,11 +373,26 @@ export default function ProductFormScreen({ navigation, route }) {
 
           {/* Smart Tags */}
           <GlassPanel variant="card" style={styles.section}>
-            <Text style={styles.sectionTitle}>Smart Tags</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+              <Text style={styles.sectionTitle}>Smart Tags</Text>
+              <Text style={{ fontSize: fontSize.xs, color: tagsAtLimit ? palette.colors.error : palette.colors.textSecondary }}>
+                {tags.length}/{MAX_TAGS}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleGenerateTagsAI}
+              disabled={generatingTags || tagsAtLimit}
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(139,92,246,0.18)', marginBottom: spacing.md, opacity: (generatingTags || tagsAtLimit) ? 0.5 : 1 }}>
+              {generatingTags ? <ActivityIndicator size="small" color="#8B5CF6" /> : <Ionicons name="sparkles" size={16} color="#8B5CF6" />}
+              <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#8B5CF6' }}>
+                {tagsAtLimit ? 'Tag limit reached' : 'Generate Tags with AI'}
+              </Text>
+            </TouchableOpacity>
             <SmartTagGenerator
               productId={isEditMode ? product._id : null}
               currentTags={tags}
-              onTagsUpdated={setTags}
+              onTagsUpdated={handleTagsUpdated}
               productData={{ name: formData.name, description: formData.description, category: formData.category, brand: formData.brand }}
             />
           </GlassPanel>
