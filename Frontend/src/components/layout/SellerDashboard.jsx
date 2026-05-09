@@ -929,10 +929,15 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 };
 
 // ============================
+const MAX_TAGS = 15;
+const MAX_DESCRIPTION_LENGTH = 2000;
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, featuredStats = { current: 0, max: 3, allowed: true } }) => {
     const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
+    const tagsAtLimit = (product.tags?.length || 0) >= MAX_TAGS;
+    const descLength = product.description?.length || 0;
+    const descAtLimit = descLength >= MAX_DESCRIPTION_LENGTH;
 
     // Category combobox
     const [catOpen, setCatOpen] = useState(false);
@@ -990,17 +995,25 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                 { name: product.name, description: product.description, category: product.category, brand: product.brand },
                 { headers: { Authorization: `Bearer ${token}` } });
             const incoming = res.data.tags || [];
-            const merged = [...new Set([...(product.tags || []), ...incoming])];
+            const merged = [...new Set([...(product.tags || []), ...incoming])].slice(0, MAX_TAGS);
+            const added = merged.length - (product.tags?.length || 0);
             setProduct({ ...product, tags: merged });
-            toast.success(`Added ${incoming.length} AI tag${incoming.length === 1 ? '' : 's'}`);
+            if (added > 0) toast.success(`Added ${added} AI tag${added === 1 ? '' : 's'}`);
+            else toast.info(`Tag limit reached (${MAX_TAGS} max)`);
         } catch (e) {
             toast.error(e.response?.data?.msg || 'Failed to generate tags');
         } finally { setGeneratingTags(false); }
     };
 
     const handleAddTag = () => {
-        if (newTag.trim() && !product.tags.includes(newTag.trim())) {
-            setProduct({ ...product, tags: [...product.tags, newTag.trim()] });
+        const trimmed = newTag.trim();
+        if (!trimmed) return;
+        if ((product.tags?.length || 0) >= MAX_TAGS) {
+            toast.info(`Tag limit reached (${MAX_TAGS} max)`);
+            return;
+        }
+        if (!product.tags.includes(trimmed)) {
+            setProduct({ ...product, tags: [...product.tags, trimmed] });
             setNewTag("");
         }
     };
