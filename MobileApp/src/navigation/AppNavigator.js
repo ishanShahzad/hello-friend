@@ -51,6 +51,8 @@ import AdminTaxConfigurationScreen from '../screens/admin/AdminTaxConfigurationS
 import AdminSubdomainManagementScreen from '../screens/admin/AdminSubdomainManagementScreen';
 import AdminComplaintsScreen from '../screens/admin/AdminComplaintsScreen';
 import AdminSubscriptionsScreen from '../screens/admin/AdminSubscriptionsScreen';
+import AdminBroadcastScreen from '../screens/admin/AdminBroadcastScreen';
+import AdminWhatsAppVerificationScreen from '../screens/admin/AdminWhatsAppVerificationScreen';
 
 // Seller Screens
 import SellerDashboardScreen from '../screens/seller/SellerDashboardScreen';
@@ -61,6 +63,7 @@ import SellerSubscriptionScreen from '../screens/seller/SellerSubscriptionScreen
 import SellerSubdomainManagementScreen from '../screens/seller/SellerSubdomainManagementScreen';
 import SellerCouponManagementScreen from '../screens/seller/SellerCouponManagementScreen';
 import SellerWhatsAppSettingsScreen from '../screens/seller/SellerWhatsAppSettingsScreen';
+import SellerComplaintsScreen from '../screens/seller/SellerComplaintsScreen';
 
 // Shared Screens
 import ProductManagementScreen from '../screens/shared/ProductManagementScreen';
@@ -86,6 +89,7 @@ import AdminAnalyticsScreen from '../screens/admin/AdminAnalyticsScreen';
 import NotificationSettingsScreen from '../screens/shared/NotificationSettingsScreen';
 import SellerHomeScreen from '../screens/seller/SellerHomeScreen';
 import UserDashboardScreen from '../screens/UserDashboardScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 
 // Informational Screens
 import FAQScreen from '../screens/FAQScreen';
@@ -143,6 +147,8 @@ const GuardedAdminAnalytics = createRoleGuard(AdminAnalyticsScreen, ['admin']);
 const GuardedAdminSubdomainManagement = createRoleGuard(AdminSubdomainManagementScreen, ['admin']);
 const GuardedAdminComplaints = createRoleGuard(AdminComplaintsScreen, ['admin']);
 const GuardedAdminSubscriptions = createRoleGuard(AdminSubscriptionsScreen, ['admin']);
+const GuardedAdminBroadcast = createRoleGuard(AdminBroadcastScreen, ['admin']);
+const GuardedAdminWhatsApp = createRoleGuard(AdminWhatsAppVerificationScreen, ['admin']);
 
 // Guarded seller screens (seller or admin)
 const GuardedSellerDashboard = createRoleGuard(SellerDashboardScreen, ['seller', 'admin']);
@@ -161,6 +167,7 @@ const GuardedSellerSubscription = createRoleGuard(SellerSubscriptionScreen, ['se
 const GuardedSellerSubdomainManagement = createRoleGuard(SellerSubdomainManagementScreen, ['seller', 'admin']);
 const GuardedSellerCouponManagement = createRoleGuard(SellerCouponManagementScreen, ['seller', 'admin']);
 const GuardedSellerWhatsAppSettings = createRoleGuard(SellerWhatsAppSettingsScreen, ['seller', 'admin']);
+const GuardedSellerComplaints = createRoleGuard(SellerComplaintsScreen, ['seller', 'admin']);
 
 // Helper function to calculate cart item count - exported for testing
 export const calculateCartItemCount = (cartItems) => {
@@ -427,6 +434,8 @@ export default function AppNavigator() {
       <Stack.Screen name="AdminSubdomainManagement" component={GuardedAdminSubdomainManagement} options={{ headerShown: false }} />
       <Stack.Screen name="AdminComplaints" component={GuardedAdminComplaints} options={{ headerShown: false }} />
       <Stack.Screen name="AdminSubscriptions" component={GuardedAdminSubscriptions} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminBroadcast" component={GuardedAdminBroadcast} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminWhatsAppVerification" component={GuardedAdminWhatsApp} options={{ headerShown: false }} />
 
       {/* Seller Dashboard (role-guarded: seller or admin) */}
       <Stack.Screen name="SellerDashboard" component={GuardedSellerDashboard} options={{ headerShown: false }} />
@@ -443,6 +452,8 @@ export default function AppNavigator() {
       <Stack.Screen name="SellerSubdomainManagement" component={GuardedSellerSubdomainManagement} options={{ headerShown: false }} />
       <Stack.Screen name="SellerCouponManagement" component={GuardedSellerCouponManagement} options={{ headerShown: false }} />
       <Stack.Screen name="SellerWhatsAppSettings" component={GuardedSellerWhatsAppSettings} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerComplaints" component={GuardedSellerComplaints} options={{ headerShown: false }} />
+      <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
       <Stack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ headerShown: false }} />
 
       {/* Shared Screens (role-guarded: seller or admin) */}
