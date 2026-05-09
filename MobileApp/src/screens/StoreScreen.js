@@ -35,6 +35,23 @@ export default function StoreScreen({ route, navigation }) {
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [trustSheetVisible, setTrustSheetVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const categories = React.useMemo(() => {
+    const set = new Set();
+    products.forEach(p => { if (p.category) set.add(p.category); });
+    return ['All', ...Array.from(set)];
+  }, [products]);
+
+  const filteredProducts = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter(p => {
+      if (activeCategory !== 'All' && p.category !== activeCategory) return false;
+      if (!q) return true;
+      return (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    });
+  }, [products, search, activeCategory]);
 
   const fetchStore = useCallback(async () => {
     if (!slug) { setIsLoading(false); return; }
