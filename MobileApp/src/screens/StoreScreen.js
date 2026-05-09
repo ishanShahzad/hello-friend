@@ -162,8 +162,39 @@ export default function StoreScreen({ route, navigation }) {
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
         <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text }}>Products</Text>
-        <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{products.length} items</Text>
+        <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{filteredProducts.length} of {products.length}</Text>
       </View>
+
+      {products.length > 0 && (
+        <View style={{ paddingHorizontal: spacing.md, marginTop: spacing.md }}>
+          <GlassPanel variant="card" style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color={palette.colors.textSecondary} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search in this store..."
+              placeholderTextColor={palette.colors.textSecondary}
+              style={styles.searchInput}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} /></TouchableOpacity>
+            )}
+          </GlassPanel>
+
+          {categories.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.xs }}>
+              {categories.map(cat => {
+                const active = cat === activeCategory;
+                return (
+                  <TouchableOpacity key={cat} onPress={() => setActiveCategory(cat)} style={[styles.catChip, active && styles.catChipActive]}>
+                    <Text style={[styles.catChipText, active && styles.catChipTextActive]} numberOfLines={1}>{cat}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      )}
     </View>
   );
 
