@@ -317,11 +317,27 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
       }));
       const clientActions = response.clientActions || [];
 
-      // Handle client-side actions (navigate, etc.)
+      // Handle client-side actions (navigate, style advice, outfit suggestions)
       for (const ca of clientActions) {
-        if (ca.action === 'navigate' && ca.args?.route && navigation) {
-          // Try to navigate within the app
+        if (ca.action === 'navigate' && ca.args?.route) {
+          if (navigation) {
+            // Best-effort in-app navigation by route name match
+            try {
+              const route = String(ca.args.route).replace(/^\//, '');
+              const map = {
+                '': 'Home', 'home': 'Home', 'cart': 'Cart', 'wishlist': 'Wishlist',
+                'orders': 'Orders', 'profile': 'Profile', 'settings': 'Settings',
+                'notifications': 'Notifications', 'stores': 'Stores',
+              };
+              const target = map[route.toLowerCase()];
+              if (target) navigation.navigate(target);
+            } catch {}
+          }
           toolResults.push({ name: 'navigate', result: { navigated: true, label: ca.args.label || ca.args.route } });
+        } else if (ca.action === 'show_style_advice') {
+          toolResults.push({ name: 'show_style_advice', result: { styleAdvice: ca.args } });
+        } else if (ca.action === 'suggest_outfit') {
+          toolResults.push({ name: 'suggest_outfit', result: { outfitSuggestion: ca.args } });
         }
       }
 
