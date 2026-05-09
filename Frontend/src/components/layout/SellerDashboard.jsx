@@ -1127,9 +1127,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={convertPrice(product.price).toFixed(2)}
-                                    onChange={(e) => setProduct({ ...product, price: convertToUSD(parseFloat(e.target.value) || 0) })}
-                                    className={`${inputClass} pl-9`} placeholder={`Price in ${currency}`} />
+                                    value={product.price ? convertPrice(product.price).toFixed(2) : ''}
+                                    onChange={(e) => setProduct({ ...product, price: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    className={`${inputClass} pl-9`} placeholder={`0.00`} />
                             </div>
                         </div>
                         <div>
