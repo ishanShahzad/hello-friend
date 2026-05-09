@@ -534,6 +534,8 @@ const SellerSubscription = () => {
                                 'Custom subdomain for your store',
                                 '100 AI messages/day',
                                 'Order management & customer insights',
+                                'Manage your store, orders & products from WhatsApp by chatting with AI',
+                                'Get WhatsApp notifications when you receive a new order',
                                 'Rozare WhatsApp order confirmation automation',
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
@@ -583,8 +585,10 @@ const SellerSubscription = () => {
                                 'Unlimited product listings',
                                 'Secure payment processing',
                                 'Custom subdomain for your store',
-                                '100 AI messages/day',
+                                '250 AI messages/day',
                                 'Order management & customer insights',
+                                'Manage your store, orders & products from WhatsApp by chatting with AI',
+                                'Get WhatsApp notifications when you receive a new order',
                                 'Rozare WhatsApp order confirmation automation',
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
@@ -649,6 +653,8 @@ const SellerSubscription = () => {
                                 { icon: <Shield size={13} />, text: 'Custom subdomain for your store' },
                                 { icon: <Bot size={13} />, text: '100 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
+                                { icon: <MessageCircle size={13} />, text: 'Manage store, orders & products from WhatsApp via AI' },
+                                { icon: <Bell size={13} />, text: 'WhatsApp notifications for new orders' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
                                 { icon: <Sparkles size={13} />, text: 'Featured product highlighting (6 products)' },
                             ].map((f, i) => (
@@ -729,16 +735,16 @@ const SellerSubscription = () => {
                         </div>
 
                         <div className="space-y-2 mb-5">
-                            <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(150, 60%, 45%)' }}>
-                                <Check size={13} /> All Starter Features
-                            </p>
+                            <p className="text-xs font-bold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Core Features</p>
                             {[
                                 { icon: <Store size={13} />, text: 'Store & products visible to all customers' },
                                 { icon: <Package size={13} />, text: 'Unlimited product listings' },
                                 { icon: <CreditCard size={13} />, text: 'Secure payment processing' },
                                 { icon: <Shield size={13} />, text: 'Custom subdomain for your store' },
-                                { icon: <Bot size={13} />, text: '100 AI messages/day' },
+                                { icon: <Bot size={13} />, text: '250 AI messages/day' },
                                 { icon: <Users size={13} />, text: 'Order management & insights' },
+                                { icon: <MessageCircle size={13} />, text: 'Manage store, orders & products from WhatsApp via AI' },
+                                { icon: <Bell size={13} />, text: 'WhatsApp notifications for new orders' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
                                 { icon: <Sparkles size={13} />, text: 'Featured product highlighting (12 products)' },
                             ].map((f, i) => (
