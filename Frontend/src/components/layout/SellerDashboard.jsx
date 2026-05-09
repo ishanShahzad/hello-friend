@@ -1075,7 +1075,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                             <AnimatePresence>
                                 {catOpen && (
                                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-                                        className="absolute z-30 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl glass-panel p-2 shadow-xl">
+                                        className="absolute z-50 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl p-2 shadow-2xl border"
+                                        style={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', borderColor: 'var(--glass-border)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
                                         {filteredCategories.length === 0 && !showOtherInput && (
                                             <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
                                         )}
