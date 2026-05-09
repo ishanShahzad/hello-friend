@@ -1147,9 +1147,15 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
 
                     {/* Description */}
                     <div>
-                        <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Description *</label>
+                        <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                            <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>Description *</label>
+                            <span className="text-[10px] font-medium" style={{ color: descAtLimit ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>
+                                {descLength} / {MAX_DESCRIPTION_LENGTH}
+                            </span>
+                        </div>
                         <textarea required disabled={uploadingImages || improvingDesc} value={product.description}
-                            onChange={(e) => { setProduct({ ...product, description: e.target.value }); if (previousDescription !== null) setPreviousDescription(null); }}
+                            maxLength={MAX_DESCRIPTION_LENGTH}
+                            onChange={(e) => { setProduct({ ...product, description: e.target.value.slice(0, MAX_DESCRIPTION_LENGTH) }); if (previousDescription !== null) setPreviousDescription(null); }}
                             rows={4} className={inputClass} placeholder="Enter product description" />
                         {product.description?.trim() && (
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -1310,24 +1316,28 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     {/* Tags */}
                     <div>
                         <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                            <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>Tags</label>
-                            <motion.button type="button" disabled={generatingTags || uploadingImages}
-                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                            <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                Tags <span className="text-[10px] normal-case font-normal" style={{ color: tagsAtLimit ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>({product.tags?.length || 0}/{MAX_TAGS})</span>
+                            </label>
+                            <motion.button type="button" disabled={generatingTags || uploadingImages || tagsAtLimit}
+                                whileHover={{ scale: tagsAtLimit ? 1 : 1.02 }} whileTap={{ scale: tagsAtLimit ? 1 : 0.98 }}
                                 onClick={generateAiTags}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white font-semibold text-xs disabled:opacity-60"
+                                title={tagsAtLimit ? `Tag limit reached (${MAX_TAGS} max)` : 'Generate tags with AI'}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 50%), hsl(320, 60%, 55%))' }}>
                                 {generatingTags ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
                                 {generatingTags ? 'Generating…' : 'Generate Tags with AI'}
                             </motion.button>
                         </div>
                         <div className="flex gap-2">
-                            <input type="text" disabled={uploadingImages} value={newTag}
+                            <input type="text" disabled={uploadingImages || tagsAtLimit} value={newTag}
                                 onChange={(e) => setNewTag(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
-                                className={`${inputClass} flex-1`} placeholder="Enter a tag" />
-                            <motion.button type="button" disabled={uploadingImages} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                className={`${inputClass} flex-1`} placeholder={tagsAtLimit ? `Maximum ${MAX_TAGS} tags reached` : 'Enter a tag'} />
+                            <motion.button type="button" disabled={uploadingImages || tagsAtLimit}
+                                whileHover={{ scale: tagsAtLimit ? 1 : 1.02 }} whileTap={{ scale: tagsAtLimit ? 1 : 0.98 }}
                                 onClick={handleAddTag}
-                                className="px-4 py-2 rounded-xl text-white font-medium text-sm"
+                                className="px-4 py-2 rounded-xl text-white font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' }}>
                                 Add
                             </motion.button>
