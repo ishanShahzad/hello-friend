@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Linking, Share,
+  View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Linking, Share, TextInput, ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +35,23 @@ export default function StoreScreen({ route, navigation }) {
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [trustSheetVisible, setTrustSheetVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const categories = React.useMemo(() => {
+    const set = new Set();
+    products.forEach(p => { if (p.category) set.add(p.category); });
+    return ['All', ...Array.from(set)];
+  }, [products]);
+
+  const filteredProducts = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter(p => {
+      if (activeCategory !== 'All' && p.category !== activeCategory) return false;
+      if (!q) return true;
+      return (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    });
+  }, [products, search, activeCategory]);
 
   const fetchStore = useCallback(async () => {
     if (!slug) { setIsLoading(false); return; }
@@ -145,15 +162,46 @@ export default function StoreScreen({ route, navigation }) {
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
         <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: palette.colors.text }}>Products</Text>
-        <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{products.length} items</Text>
+        <Text style={{ fontSize: fontSize.sm, color: palette.colors.textSecondary }}>{filteredProducts.length} of {products.length}</Text>
       </View>
+
+      {products.length > 0 && (
+        <View style={{ paddingHorizontal: spacing.md, marginTop: spacing.md }}>
+          <GlassPanel variant="card" style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color={palette.colors.textSecondary} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search in this store..."
+              placeholderTextColor={palette.colors.textSecondary}
+              style={styles.searchInput}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={18} color={palette.colors.textSecondary} /></TouchableOpacity>
+            )}
+          </GlassPanel>
+
+          {categories.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.xs }}>
+              {categories.map(cat => {
+                const active = cat === activeCategory;
+                return (
+                  <TouchableOpacity key={cat} onPress={() => setActiveCategory(cat)} style={[styles.catChip, active && styles.catChipActive]}>
+                    <Text style={[styles.catChipText, active && styles.catChipTextActive]} numberOfLines={1}>{cat}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      )}
     </View>
   );
 
   return (
     <GlassBackground>
       <FlatList
-        data={products} keyExtractor={(item) => item._id} numColumns={2}
+        data={filteredProducts} keyExtractor={(item) => item._id} numColumns={2}
         columnWrapperStyle={styles.row} contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader} renderItem={renderProduct}
         ListEmptyComponent={() => <EmptyProducts onAdd={null} />}
@@ -190,4 +238,10 @@ const buildStyles = (p) => StyleSheet.create({
   listContent: { paddingBottom: spacing.xxl, flexGrow: 1 },
   row: { paddingHorizontal: spacing.sm, gap: spacing.sm },
   productWrapper: { flex: 1, marginBottom: spacing.sm },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.xl },
+  searchInput: { flex: 1, color: p.colors.text, fontSize: fontSize.sm, paddingVertical: 4 },
+  catChip: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999, backgroundColor: p.glass.bgSubtle, borderWidth: 1, borderColor: p.glass.borderSubtle },
+  catChipActive: { backgroundColor: p.colors.primary, borderColor: p.colors.primary },
+  catChipText: { fontSize: fontSize.xs, color: p.colors.textSecondary, fontWeight: fontWeight.semibold },
+  catChipTextActive: { color: '#fff' },
 });
