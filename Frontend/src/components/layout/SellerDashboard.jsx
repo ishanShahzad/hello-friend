@@ -14,6 +14,7 @@ import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatBotComponent from '../common/ChatBot';
+import { PRESET_CATEGORIES } from '../../utils/categories';
 
 // Shared menu items (used by desktop sidebar + mobile inline menu)
 const getSellerMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
