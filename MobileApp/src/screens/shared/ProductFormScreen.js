@@ -216,16 +216,90 @@ export default function ProductFormScreen({ navigation, route }) {
           <GlassPanel variant="card" style={styles.section}>
             <Text style={styles.sectionTitle}>Product Details</Text>
             {renderInput('name', 'Product Name', { placeholder: 'Enter product name', required: true })}
-            {renderInput('description', 'Description', { placeholder: 'Describe your product...', multiline: true })}
+
+            {/* Description with AI improver */}
+            <View style={styles.inputGroup}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Text style={styles.label}>Description</Text>
+                <Text style={{ fontSize: fontSize.xs, color: (formData.description?.length || 0) >= MAX_DESCRIPTION_LENGTH ? palette.colors.error : palette.colors.textSecondary }}>
+                  {formData.description?.length || 0}/{MAX_DESCRIPTION_LENGTH}
+                </Text>
+              </View>
+              <View style={[styles.inputContainer, { alignItems: 'flex-start' }]}>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.description}
+                  onChangeText={(v) => updateField('description', v.slice(0, MAX_DESCRIPTION_LENGTH))}
+                  placeholder="Describe your product..."
+                  placeholderTextColor={palette.colors.textSecondary}
+                  multiline
+                  numberOfLines={5}
+                  textAlignVertical="top"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                <TouchableOpacity
+                  onPress={handleImproveDescription}
+                  disabled={improvingDesc || !formData.description?.trim()}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(139,92,246,0.18)', opacity: (improvingDesc || !formData.description?.trim()) ? 0.5 : 1 }}>
+                  {improvingDesc ? <ActivityIndicator size="small" color="#8B5CF6" /> : <Ionicons name="sparkles" size={14} color="#8B5CF6" />}
+                  <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#8B5CF6' }}>Improve with AI</Text>
+                </TouchableOpacity>
+                {previousDescription != null && (
+                  <TouchableOpacity
+                    onPress={handleRevertDescription}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                    <Ionicons name="arrow-undo" size={14} color={palette.colors.text} />
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: palette.colors.text }}>Revert</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             <View style={styles.row}>
-              <View style={{ flex: 1 }}>{renderInput('price', 'Price', { placeholder: '0.00', keyboardType: 'decimal-pad', required: true, prefix: '$' })}</View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Price <Text style={{ color: palette.colors.error }}>*</Text></Text>
+                  <View style={[styles.inputContainer, touched.price && errors.price && styles.inputError]}>
+                    <Text style={styles.inputPrefix}>$</Text>
+                    <TextInput
+                      style={[styles.input, { paddingLeft: spacing.xs }]}
+                      value={formData.price}
+                      onChangeText={(v) => updateField('price', v.replace(/[^0-9.]/g, ''))}
+                      onBlur={() => setTouched(p => ({ ...p, price: true }))}
+                      placeholder="0.00"
+                      placeholderTextColor={palette.colors.textSecondary}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                  {touched.price && errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+                </View>
+              </View>
               <View style={{ flex: 1 }}>{renderInput('discountedPrice', 'Sale Price', { placeholder: '0.00', keyboardType: 'decimal-pad', prefix: '$' })}</View>
             </View>
             {renderInput('stock', 'Stock', { placeholder: '0', keyboardType: 'number-pad', required: true })}
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>{renderInput('category', 'Category', { placeholder: 'e.g., Electronics' })}</View>
-              <View style={{ flex: 1 }}>{renderInput('brand', 'Brand', { placeholder: 'e.g., Apple' })}</View>
+
+            {/* Category combobox */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Category</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => { setCategorySearch(''); setShowCategoryPicker(true); }}
+                style={[styles.inputContainer, { paddingHorizontal: spacing.md, paddingVertical: spacing.md, justifyContent: 'space-between' }]}>
+                <Text style={{ flex: 1, fontSize: fontSize.md, color: formData.category ? palette.colors.text : palette.colors.textSecondary }} numberOfLines={1}>
+                  {formData.category || 'Choose a category'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={palette.colors.textSecondary} />
+              </TouchableOpacity>
+              {formData.category && !isPresetCategory(formData.category) && (
+                <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary, marginTop: 4 }}>Custom category</Text>
+              )}
             </View>
+
+            {renderInput('brand', 'Brand', { placeholder: 'e.g., Apple' })}
           </GlassPanel>
 
           {/* Product Options (Size, Color, Material, etc.) */}
