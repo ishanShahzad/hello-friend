@@ -177,26 +177,55 @@ function Products() {
         </form>
       </div>
 
-      {/* Categories */}
+      {/* Categories — fixed preset list + Other */}
       <div>
         <label className='block text-xs font-semibold uppercase tracking-wider mb-3' style={{ color: 'hsl(var(--muted-foreground))' }}>Categories</label>
-        {!categories || categories.length === 0
-          ? <p className='text-sm italic' style={{ color: 'hsl(var(--muted-foreground))' }}>No categories available</p>
-          : <div className='flex flex-col gap-1'>
-            {categories.map(category => (
-              <label key={category} className='glass-checkbox-label flex items-center gap-3 cursor-pointer py-2 px-3 rounded-xl transition-all hover:bg-white/10'>
-                <span className='glass-checkbox-box relative w-5 h-5 rounded-lg border border-white/25 bg-white/8 backdrop-blur-sm flex items-center justify-center shrink-0 transition-all'>
-                  <input type='checkbox' value={category} {...register('categories')}
-                    className='absolute inset-0 opacity-0 cursor-pointer peer' />
-                  <svg className='w-3 h-3 hidden peer-checked:block' style={{ color: 'hsl(var(--primary))' }} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="2 6 5 9 10 3" />
-                  </svg>
-                </span>
-                <span className='text-sm font-medium'>{category}</span>
-              </label>
-            ))}
-          </div>
-        }
+        {(() => {
+          const otherCategories = (categories || []).filter(c => !isPresetCategory(c))
+          const isPresetSelected = (c) => filterCategories.some(s => s.toLowerCase() === c.toLowerCase())
+          const isOtherSelected = otherCategories.length > 0 && otherCategories.every(c => filterCategories.includes(c))
+          const togglePreset = (c) => {
+            const exists = isPresetSelected(c)
+            const next = exists
+              ? filterCategories.filter(s => s.toLowerCase() !== c.toLowerCase())
+              : [...filterCategories, c]
+            setValue('categories', next, { shouldDirty: true })
+          }
+          const toggleOther = () => {
+            const without = filterCategories.filter(c => isPresetCategory(c))
+            const next = isOtherSelected ? without : [...without, ...otherCategories]
+            setValue('categories', next, { shouldDirty: true })
+          }
+          return (
+            <div className='flex flex-col gap-1'>
+              {PRESET_CATEGORIES.map(category => (
+                <label key={category} className='glass-checkbox-label flex items-center gap-3 cursor-pointer py-2 px-3 rounded-xl transition-all hover:bg-white/10'>
+                  <span className='glass-checkbox-box relative w-5 h-5 rounded-lg border border-white/25 bg-white/8 backdrop-blur-sm flex items-center justify-center shrink-0 transition-all'>
+                    <input type='checkbox' checked={isPresetSelected(category)} onChange={() => togglePreset(category)}
+                      className='absolute inset-0 opacity-0 cursor-pointer peer' />
+                    <svg className='w-3 h-3 hidden peer-checked:block' style={{ color: 'hsl(var(--primary))' }} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="2 6 5 9 10 3" />
+                    </svg>
+                  </span>
+                  <span className='text-sm font-medium'>{category}</span>
+                </label>
+              ))}
+              {otherCategories.length > 0 && (
+                <label className='glass-checkbox-label flex items-center gap-3 cursor-pointer py-2 px-3 rounded-xl transition-all hover:bg-white/10'>
+                  <span className='glass-checkbox-box relative w-5 h-5 rounded-lg border border-white/25 bg-white/8 backdrop-blur-sm flex items-center justify-center shrink-0 transition-all'>
+                    <input type='checkbox' checked={isOtherSelected} onChange={toggleOther}
+                      className='absolute inset-0 opacity-0 cursor-pointer peer' />
+                    <svg className='w-3 h-3 hidden peer-checked:block' style={{ color: 'hsl(var(--primary))' }} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="2 6 5 9 10 3" />
+                    </svg>
+                  </span>
+                  <span className='text-sm font-medium'>Other</span>
+                  <span className='text-[10px] ml-auto opacity-70'>{otherCategories.length}</span>
+                </label>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Brands */}
