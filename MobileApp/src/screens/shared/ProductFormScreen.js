@@ -106,12 +106,59 @@ export default function ProductFormScreen({ navigation, route }) {
 
   const removeImage = useCallback((index) => { setImages(prev => prev.filter((_, i) => i !== index)); }, []);
 
+  const handleImproveDescription = async () => {
+    const desc = formData.description?.trim();
+    if (!desc || desc.length < 10) { Alert.alert('Info', 'Write a short description first (10+ chars)'); return; }
+    setImprovingDesc(true);
+    try {
+      const res = await api.post('/api/ai-assist/improve-description', {
+        name: formData.name, description: desc, category: formData.category, brand: formData.brand,
+      });
+      const improved = res.data?.description || res.data?.improved;
+      if (improved) {
+        setPreviousDescription(desc);
+        const trimmed = improved.slice(0, MAX_DESCRIPTION_LENGTH);
+        setFormData(prev => ({ ...prev, description: trimmed }));
+      } else {
+        Alert.alert('Error', 'No improvement returned');
+      }
+    } catch (e) { Alert.alert('Error', e.response?.data?.message || 'Failed to improve description'); }
+    finally { setImprovingDesc(false); }
+  };
+
+  const handleRevertDescription = () => {
+    if (previousDescription != null) {
+      setFormData(prev => ({ ...prev, description: previousDescription }));
+      setPreviousDescription(null);
+    }
+  };
+
+  const handleGenerateTagsAI = async () => {
+    if (tagsAtLimit) return;
+    if (!formData.name?.trim()) { Alert.alert('Info', 'Add a product name first'); return; }
+    setGeneratingTags(true);
+    try {
+      const res = await api.post('/api/ai-assist/generate-tags', {
+        name: formData.name, description: formData.description, category: formData.category, brand: formData.brand, existingTags: tags,
+      });
+      const newTags = res.data?.tags || [];
+      const merged = [...new Set([...tags, ...newTags])].slice(0, MAX_TAGS);
+      setTags(merged);
+    } catch (e) { Alert.alert('Error', e.response?.data?.message || 'Failed to generate tags'); }
+    finally { setGeneratingTags(false); }
+  };
+
+  const handleTagsUpdated = (next) => {
+    const capped = (next || []).slice(0, MAX_TAGS);
+    setTags(capped);
+  };
+
   const saveProduct = async () => {
     const validation = validateProductForm(formData);
     if (!validation.isValid) { setErrors(validation.errors); setTouched({ name: true, price: true, stock: true }); return; }
     setLoading(true);
     try {
-      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
+      const productData = { name: formData.name.trim(), description: formData.description.trim().slice(0, MAX_DESCRIPTION_LENGTH), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags: tags.slice(0, MAX_TAGS), optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
       if (isEditMode) { await api.put(`/api/products/edit/${product._id}`, { product: productData }); Alert.alert('Success', 'Product updated', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
       else { await api.post('/api/products/add', { product: productData }); Alert.alert('Success', 'Product created', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
     } catch (e) { Alert.alert('Error', e.response?.data?.message || e.response?.data?.msg || 'Failed to save'); }
