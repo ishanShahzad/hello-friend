@@ -14,7 +14,7 @@ function Footer() {
                 <img src="/rozare-logo.svg" alt="Rozare" className="h-8" />
               </Link>
               <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers.
+                Shop and manage your store or brand by chatting with AI — through the app or WhatsApp. The world's first AI-powered marketplace built on trust, designed for independent sellers and thoughtful shoppers.
               </p>
             </div>
 
