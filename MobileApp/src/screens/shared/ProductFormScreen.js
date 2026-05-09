@@ -2,10 +2,10 @@
  * ProductFormScreen — Liquid Glass
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { PRESET_CATEGORIES, isPresetCategory, MAX_TAGS, MAX_DESCRIPTION_LENGTH } from '../../utils/categories';
 
 export const getFormMode = (product) => product && product._id ? 'edit' : 'create';
 
@@ -52,6 +53,27 @@ export default function ProductFormScreen({ navigation, route }) {
   const [isFeatured, setIsFeatured] = useState(!!product?.isFeatured);
   const [canFeature, setCanFeature] = useState(true);
   const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 6, allowed: true, plan: 'free_trial' });
+
+  // Category combobox
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [showOtherModal, setShowOtherModal] = useState(false);
+  const [otherCategory, setOtherCategory] = useState('');
+
+  // AI description improver
+  const [improvingDesc, setImprovingDesc] = useState(false);
+  const [previousDescription, setPreviousDescription] = useState(null);
+
+  // AI tag generator
+  const [generatingTags, setGeneratingTags] = useState(false);
+
+  const filteredCategories = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return PRESET_CATEGORIES;
+    return PRESET_CATEGORIES.filter((c) => c.toLowerCase().includes(q));
+  }, [categorySearch]);
+
+  const tagsAtLimit = tags.length >= MAX_TAGS;
 
   // Fetch featured product stats (entitlement + count/limit).
   useEffect(() => {
