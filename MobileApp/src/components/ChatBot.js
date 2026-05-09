@@ -147,6 +147,54 @@ async function executeToolCall(name, args) {
       case 'get_all_stores': { const res = await api.get(`/api/ai-actions/all-stores${args.limit ? `?limit=${args.limit}` : ''}`); return res.data; }
       case 'update_tax_config': { const res = await api.post('/api/ai-actions/update-tax', args); return res.data; }
       case 'get_tax_config': { const res = await api.get('/api/ai-actions/tax-config'); return res.data; }
+
+      // ─── User-side parity ───
+      case 'get_wishlist': { const res = await api.get('/api/ai-actions/wishlist'); return res.data; }
+      case 'add_to_wishlist': { const res = await api.post('/api/ai-actions/add-to-wishlist', { productId: args.productId }); return res.data; }
+      case 'remove_from_wishlist': { const res = await api.post('/api/ai-actions/remove-from-wishlist', { productId: args.productId }); return res.data; }
+      case 'get_addresses': { const res = await api.get('/api/ai-actions/addresses'); return res.data; }
+      case 'add_address': { const res = await api.post('/api/ai-actions/add-address', { address: args.address }); return res.data; }
+      case 'update_profile': { const res = await api.post('/api/ai-actions/update-profile', { updates: args.updates }); return res.data; }
+      case 'get_notifications': { const res = await api.get('/api/ai-actions/notifications'); return res.data; }
+      case 'mark_notifications_read': { const res = await api.post('/api/ai-actions/mark-notifications-read', {}); return res.data; }
+      case 'get_available_coupons': {
+        let url = '/api/ai-actions/available-coupons?';
+        if (args.storeId) url += `storeId=${args.storeId}&`;
+        if (args.productId) url += `productId=${args.productId}`;
+        const res = await api.get(url);
+        return res.data;
+      }
+      case 'validate_coupon': { const res = await api.post('/api/ai-actions/validate-coupon', { code: args.code, cartTotal: args.cartTotal }); return res.data; }
+      case 'search_stores': {
+        let url = '/api/ai-actions/search-stores?';
+        if (args.query) url += `query=${encodeURIComponent(args.query)}&`;
+        if (args.limit) url += `limit=${args.limit}`;
+        const res = await api.get(url);
+        return res.data;
+      }
+      case 'get_verified_stores': { const res = await api.get('/api/ai-actions/verified-stores'); return res.data; }
+      case 'get_store_details': {
+        let url = '/api/ai-actions/store-details?';
+        if (args.storeId) url += `storeId=${args.storeId}&`;
+        if (args.slug) url += `slug=${encodeURIComponent(args.slug)}`;
+        const res = await api.get(url);
+        return res.data;
+      }
+
+      // ─── Seller-side coupon parity ───
+      case 'create_coupon': { const res = await api.post('/api/ai-actions/create-coupon', { coupon: args.coupon }); return res.data; }
+      case 'get_my_coupons': { const res = await api.get('/api/ai-actions/my-coupons'); return res.data; }
+      case 'update_coupon': { const res = await api.post('/api/ai-actions/update-coupon', args); return res.data; }
+      case 'delete_coupon': { const res = await api.post('/api/ai-actions/delete-coupon', args); return res.data; }
+      case 'toggle_coupon': { const res = await api.post('/api/ai-actions/toggle-coupon', args); return res.data; }
+      case 'get_subscription_status': { const res = await api.get('/api/ai-actions/subscription-status'); return res.data; }
+
+      // ─── Admin broadcast & subscriptions parity ───
+      case 'send_broadcast': { const res = await api.post('/api/ai-actions/send-broadcast', args); return res.data; }
+      case 'get_broadcasts': { const res = await api.get('/api/ai-actions/broadcasts'); return res.data; }
+      case 'cancel_broadcast': { const res = await api.post('/api/ai-actions/cancel-broadcast', args); return res.data; }
+      case 'get_all_subscriptions': { const res = await api.get('/api/ai-actions/all-subscriptions'); return res.data; }
+
       default: return {};
     }
   } catch (e) {
