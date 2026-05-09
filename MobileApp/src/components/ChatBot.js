@@ -439,6 +439,30 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
                   ))}
                 </View>
               )}
+              {tr.name === 'suggest_outfit' && tr.result.outfitSuggestion && (
+                <View style={styles.styleCard}>
+                  <View style={styles.styleCardHeader}>
+                    <Ionicons name="shirt" size={14} color={c.secondary} />
+                    <Text style={styles.styleCardTitle}>
+                      Outfit — {tr.result.outfitSuggestion.occasion || 'Suggested'}
+                    </Text>
+                  </View>
+                  {tr.result.outfitSuggestion.pieces?.map((pc, pi) => (
+                    <View key={pi} style={styles.tipRow}>
+                      <Ionicons name="ellipse" size={8} color={c.secondary} />
+                      <Text style={styles.tipText}>
+                        <Text style={{ fontWeight: '700' }}>{pc.type}: </Text>
+                        {pc.description}
+                      </Text>
+                    </View>
+                  ))}
+                  {tr.result.outfitSuggestion.reasoning && (
+                    <Text style={[styles.styleCardText, { marginTop: 8 }]}>
+                      {tr.result.outfitSuggestion.reasoning}
+                    </Text>
+                  )}
+                </View>
+              )}
               {!['search_products', 'navigate', 'show_style_advice', 'suggest_outfit', 'get_my_orders', 'get_order_detail', 'get_my_complaints'].includes(tr.name) && tr.result?.msg && (
                 <View style={[styles.actionResult, { backgroundColor: c.successSubtle, borderColor: c.successLighter }]}>
                   <Ionicons name="checkmark-circle" size={14} color={c.success} />
