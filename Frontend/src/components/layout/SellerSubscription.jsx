@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Crown, Check, Zap, Shield, Bot, Clock, AlertTriangle,
     CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package,
-    Users, Award, Star, MessageCircle, Gem
+    Users, Award, Star, MessageCircle, Gem, Bell
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
