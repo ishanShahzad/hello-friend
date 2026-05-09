@@ -268,7 +268,7 @@ const buildStyles = (p) => StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   viewStoreBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: p.colors.primary },
-  storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },
+  storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: p.glass.borderSubtle },
   storeName: { fontSize: fontSize.sm, color: p.colors.textSecondary },
 
   /* Stats */
