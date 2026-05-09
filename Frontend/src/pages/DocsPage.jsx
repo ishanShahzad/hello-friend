@@ -6,7 +6,9 @@ import {
   Users, BarChart3, MessageCircle, Sparkles, ChevronRight, Search,
   Star, Zap, Globe, Lock, Heart, ArrowRight, ExternalLink, Hash,
   Package, Settings, Bell, Ticket, Eye, CheckCircle, XCircle,
-  HelpCircle, Palette, TrendingUp, Award, Megaphone, FileText
+  HelpCircle, Palette, TrendingUp, Award, Megaphone, FileText,
+  Lightbulb, Info, AlertTriangle, Wand2, Tag, Image as ImageIcon,
+  RefreshCw, Layers, Gem
 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
@@ -16,20 +18,24 @@ const SECTIONS = [
   { id: 'ai-powered-shopping', title: 'AI-Powered Shopping', icon: Bot },
   { id: 'getting-started', title: 'Getting Started', icon: Zap },
   { id: 'shopping-guide', title: 'Shopping Guide', icon: ShoppingBag },
+  { id: 'cart-and-wishlist', title: 'Cart & Wishlist', icon: Heart },
   { id: 'become-a-seller', title: 'Become a Seller', icon: Store },
   { id: 'seller-guide', title: 'Seller Dashboard Guide', icon: Settings },
+  { id: 'product-management', title: 'Product Management', icon: Package },
   { id: 'ai-for-sellers', title: 'AI for Sellers', icon: BarChart3 },
-  { id: 'whatsapp-integration', title: 'WhatsApp Integration', icon: Smartphone },
+  { id: 'whatsapp-integration', title: 'Manage Store via WhatsApp', icon: Smartphone },
   { id: 'subscription-plans', title: 'Subscription Plans', icon: Award },
   { id: 'payments', title: 'Payments & Checkout', icon: CreditCard },
   { id: 'shipping', title: 'Shipping & Delivery', icon: Truck },
+  { id: 'orders-returns', title: 'Orders, Returns & Refunds', icon: RefreshCw },
+  { id: 'coupons-discounts', title: 'Coupons & Discounts', icon: Ticket },
   { id: 'trust-safety', title: 'Trust & Safety', icon: Shield },
   { id: 'store-verification', title: 'Store Verification', icon: CheckCircle },
-  { id: 'orders-returns', title: 'Orders & Returns', icon: Package },
-  { id: 'coupons-discounts', title: 'Coupons & Discounts', icon: Ticket },
+  { id: 'subdomain', title: 'Custom Subdomain', icon: Globe },
   { id: 'notifications', title: 'Notifications', icon: Bell },
-  { id: 'admin-guide', title: 'Admin Guide', icon: Lock },
-  { id: 'api-reference', title: 'Technical Overview', icon: FileText },
+  { id: 'mobile-app', title: 'Rozare Mobile App', icon: Smartphone },
+  { id: 'currency-multilingual', title: 'Currency & Languages', icon: Globe },
+  { id: 'troubleshooting', title: 'Troubleshooting & Help', icon: HelpCircle },
   { id: 'faq', title: 'Frequently Asked Questions', icon: HelpCircle },
 ];
 
@@ -39,24 +45,19 @@ function DocsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
-  // Intersection observer for active section tracking
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
         });
       },
       { rootMargin: '-100px 0px -60% 0px', threshold: 0.1 }
     );
-
     SECTIONS.forEach(({ id }) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
     });
-
     return () => observer.disconnect();
   }, []);
 
@@ -76,8 +77,8 @@ function DocsPage() {
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Rozare Documentation — Complete Platform Guide',
-    description: 'Complete documentation for Rozare, the world\'s first AI-powered e-commerce platform. Learn how to shop, sell, and manage your store using AI chat on web and WhatsApp.',
+    name: 'Rozare Documentation — Shop & Manage Your Store by Chatting with AI',
+    description: 'Complete guide to Rozare — the AI-powered marketplace where you shop and manage your store or brand by chatting with AI through the app or WhatsApp.',
     url: 'https://www.rozare.com/docs',
     publisher: {
       '@type': 'Organization',
@@ -87,31 +88,11 @@ function DocsPage() {
     mainEntity: {
       '@type': 'FAQPage',
       mainEntity: [
-        {
-          '@type': 'Question',
-          name: 'What is Rozare?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Rozare is the world\'s first AI-powered e-commerce platform where you can shop, sell, and manage everything through natural conversation with an AI assistant — on the website and via WhatsApp.' },
-        },
-        {
-          '@type': 'Question',
-          name: 'How do I become a seller on Rozare?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Visit rozare.com/become-seller, enter your email, verify via OTP, set a password, and your seller account with a free store is created instantly. You can start adding products right away through the dashboard or by chatting with the AI.' },
-        },
-        {
-          '@type': 'Question',
-          name: 'Can I manage my Rozare store from WhatsApp?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Yes! Rozare supports WhatsApp integration. Sellers receive order notifications on WhatsApp and can manage their store, add products, update orders, and get analytics — all by chatting with the Rozare AI on WhatsApp.' },
-        },
-        {
-          '@type': 'Question',
-          name: 'How does AI shopping work on Rozare?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Simply chat with the Rozare AI assistant. Tell it what you\'re looking for, and it will search products, suggest outfits, apply coupons, manage your cart, and place orders for you — all through natural conversation.' },
-        },
-        {
-          '@type': 'Question',
-          name: 'Is Rozare free for sellers?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Rozare offers a free trial for sellers. After the trial, sellers can choose from multiple subscription plans: Starter, Growth, and Pro, each with increasing features and product limits.' },
-        },
+        { '@type': 'Question', name: 'What is Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare is an AI-powered marketplace where you can shop and manage your entire store or brand simply by chatting with an AI assistant — through the website, the mobile app, or WhatsApp.' } },
+        { '@type': 'Question', name: 'How do I become a seller on Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Go to /become-seller, enter your email, verify with the OTP, fill in your store details, and you instantly get a 15-day free trial of all features.' } },
+        { '@type': 'Question', name: 'Can I manage my Rozare store from WhatsApp?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Connect your WhatsApp number in seller settings and chat with the Rozare AI to add products, update stock, manage orders, run analytics, and get instant new-order notifications.' } },
+        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month) or Rozare Elite ($12.99/month). Both plans get a 30-day or 45-day free intro period.' } },
+        { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. The Rozare mobile app (built with React Native / Expo) is available for iOS and Android with full shopping, selling, AI chat, and push notification support.' } },
       ],
     },
   };
@@ -119,17 +100,17 @@ function DocsPage() {
   return (
     <>
       <Helmet>
-        <title>Rozare Docs — Complete Guide to AI-Powered Shopping & Selling</title>
-        <meta name="description" content="Complete documentation for Rozare, the world's first AI-powered e-commerce platform. Learn how to shop with AI, become a seller, manage your store via chat, use WhatsApp integration, and more." />
-        <meta name="keywords" content="Rozare, AI shopping, AI e-commerce, become a seller, WhatsApp shopping, AI store management, online marketplace, chat-based shopping, AI-powered platform" />
+        <title>Rozare Docs — Shop & Manage Your Store by Chatting with AI</title>
+        <meta name="description" content="The complete guide to Rozare — shop and manage your store or brand by chatting with AI through the app or WhatsApp. Learn how to sell, set up payments, ship orders, get verified, and grow with AI." />
+        <meta name="keywords" content="Rozare, AI marketplace, AI shopping, AI commerce, sell online, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller" />
         <link rel="canonical" href="https://www.rozare.com/docs" />
-        <meta property="og:title" content="Rozare Documentation — AI-Powered E-Commerce Platform" />
-        <meta property="og:description" content="The complete guide to Rozare: shop, sell, and manage everything through AI conversation. The world's first AI-powered e-commerce platform." />
+        <meta property="og:title" content="Rozare Documentation — AI-Powered Shopping & Selling" />
+        <meta property="og:description" content="Shop and manage your store or brand by chatting with AI through the app or WhatsApp. The complete Rozare guide." />
         <meta property="og:url" content="https://www.rozare.com/docs" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Rozare Docs — AI-Powered Shopping & Selling" />
-        <meta name="twitter:description" content="Complete documentation for Rozare's AI shopping platform. Learn to shop, sell, and manage via AI chat." />
+        <meta name="twitter:title" content="Rozare Docs — Shop & Manage Your Store by Chatting with AI" />
+        <meta name="twitter:description" content="Complete guide to Rozare's AI marketplace — shop or sell by chatting with AI on app or WhatsApp." />
         <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
       </Helmet>
 
@@ -147,7 +128,7 @@ function DocsPage() {
                 Rozare <span style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 65%), hsl(280, 60%, 65%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Documentation</span>
               </h1>
               <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ color: 'hsl(220, 20%, 70%)' }}>
-                The complete guide to the world's first AI-powered e-commerce platform. Learn how to shop, sell, and manage everything through natural conversation.
+                Shop and manage your store or brand by chatting with AI — through the app or WhatsApp. The complete guide to a modern, conversational marketplace.
               </p>
               <div className="max-w-lg mx-auto relative">
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'hsl(220, 20%, 50%)' }} />
@@ -157,11 +138,7 @@ function DocsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none"
-                  style={{
-                    background: 'hsl(220, 30%, 15%)',
-                    border: '1px solid hsl(220, 30%, 25%)',
-                    color: 'white',
-                  }}
+                  style={{ background: 'hsl(220, 30%, 15%)', border: '1px solid hsl(220, 30%, 25%)', color: 'white' }}
                 />
               </div>
             </motion.div>
@@ -171,11 +148,9 @@ function DocsPage() {
         {/* Mobile sticky topic chip bar */}
         <div className="lg:hidden sticky top-[80px] z-30 px-3 py-2"
           style={{ background: 'hsl(var(--background) / 0.85)', backdropFilter: 'blur(10px)', borderBottom: '1px solid hsl(var(--border))' }}>
-          <button
-            onClick={() => setIsSidebarOpen(o => !o)}
+          <button onClick={() => setIsSidebarOpen(o => !o)}
             className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium"
-            style={{ background: 'hsl(var(--muted) / 0.5)', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}
-          >
+            style={{ background: 'hsl(var(--muted) / 0.5)', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
             <span className="flex items-center gap-2 min-w-0 truncate">
               <Hash size={14} style={{ color: 'hsl(220, 70%, 65%)' }} />
               <span className="truncate">{SECTIONS.find(s => s.id === activeSection)?.title || 'Sections'}</span>
@@ -183,21 +158,16 @@ function DocsPage() {
             <ChevronRight size={16} className={`shrink-0 transition-transform ${isSidebarOpen ? 'rotate-90' : ''}`} />
           </button>
           {isSidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
               className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl p-2 space-y-1"
-              style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
-            >
+              style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}>
               {filteredSections.map(({ id, title, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => scrollToSection(id)}
+                <button key={id} onClick={() => scrollToSection(id)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-all"
                   style={{
                     background: activeSection === id ? 'hsl(220, 70%, 55%, 0.1)' : 'transparent',
                     color: activeSection === id ? 'hsl(220, 70%, 65%)' : 'hsl(var(--foreground))',
-                  }}
-                >
+                  }}>
                   <Icon size={14} />
                   <span className="truncate">{title}</span>
                 </button>
@@ -213,16 +183,13 @@ function DocsPage() {
             <div className="sticky top-24 space-y-1 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2">
               <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>On this page</p>
               {filteredSections.map(({ id, title, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => scrollToSection(id)}
+                <button key={id} onClick={() => scrollToSection(id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-all ${activeSection === id ? 'font-medium' : ''}`}
                   style={{
                     background: activeSection === id ? 'hsl(220, 70%, 55%, 0.1)' : 'transparent',
                     color: activeSection === id ? 'hsl(220, 70%, 65%)' : 'hsl(var(--muted-foreground))',
                     borderLeft: activeSection === id ? '2px solid hsl(220, 70%, 55%)' : '2px solid transparent',
-                  }}
-                >
+                  }}>
                   <Icon size={14} />
                   <span className="truncate">{title}</span>
                 </button>
@@ -234,373 +201,411 @@ function DocsPage() {
           <main className="flex-1 min-w-0 max-w-4xl" ref={contentRef}>
             <div className="space-y-16">
 
-              {/* ═══ WHAT IS ROZARE ═══ */}
+              {/* WHAT IS ROZARE */}
               <DocSection id="what-is-rozare" title="What is Rozare?" icon={Sparkles}>
                 <p>
-                  <strong>Rozare</strong> is the <strong>world's first AI-powered e-commerce platform</strong> that lets you shop, sell, and manage everything through natural conversation. Instead of clicking through menus and filling out forms, you simply <em>talk</em> to your personal AI assistant — and it does the rest.
+                  <strong>Rozare</strong> is a modern, AI-powered marketplace where you can <strong>shop and manage your store or brand by chatting with AI</strong> — through the website, the mobile app, or even WhatsApp. Instead of clicking through long menus, filling out endless forms, or jumping between tools, you simply talk to the Rozare AI in plain language and it does the work for you.
                 </p>
                 <FeatureGrid features={[
-                  { icon: Bot, title: 'AI-First Experience', desc: 'Chat naturally to search, buy, sell, and manage. The AI understands context, remembers your preferences, and takes actions for you.' },
-                  { icon: Smartphone, title: 'WhatsApp Integration', desc: 'Manage your store, place orders, and get real-time notifications — all from WhatsApp. No app download needed.' },
-                  { icon: Globe, title: 'Global Marketplace', desc: '10,000+ products from 500+ sellers across 50+ countries. Multi-currency support and localized shopping.' },
-                  { icon: Shield, title: 'Verified & Trusted', desc: 'Store verification badges, trust scores, reviews, and AI-powered fraud detection keep the platform safe.' },
+                  { icon: Bot, title: 'Chat-First Experience', desc: 'Search products, place orders, add inventory, run discounts, and pull analytics — all by chatting in natural language.' },
+                  { icon: Smartphone, title: 'WhatsApp Storefront', desc: 'Sellers can add products, manage orders, and receive new-order alerts directly in WhatsApp by chatting with the Rozare AI.' },
+                  { icon: Globe, title: 'Multi-Vendor Marketplace', desc: 'Browse stores from independent sellers worldwide, with multi-currency pricing and trust badges on verified shops.' },
+                  { icon: Shield, title: 'Trust & Verification', desc: 'Verified store badges, customer trust counts, store reviews, and a complaint system keep the marketplace safe.' },
                 ]} />
                 <h3>How Rozare is Different</h3>
-                <p>Traditional e-commerce makes you browse, filter, compare, add to cart, fill checkout forms, and track orders manually. On Rozare, you just say:</p>
+                <p>Traditional e-commerce makes you browse, filter, compare, fill checkout forms, and manage inventory through dozens of screens. On Rozare, you just say what you want:</p>
                 <CodeBlock lines={[
                   '"Find me a blue dress under $50"',
-                  '"Show me trending sneakers"',
+                  '"Add 20 units of stock to my white sneakers"',
+                  '"How many orders did I get today and what was my revenue?"',
+                  '"Create a 15% off coupon valid for 7 days"',
                   '"Place an order for this — cash on delivery"',
-                  '"How many orders did I get today?"',
-                  '"Apply 20% discount to all my summer products"',
                 ]} />
-                <p>The AI handles everything — searching, comparing, ordering, managing inventory, analytics, and even giving you business strategies. It's like having a personal shopper AND a business advisor, available 24/7.</p>
+                <p>The same AI works on the web, on the mobile app, and on WhatsApp. Your conversation history syncs across them all.</p>
               </DocSection>
 
-              {/* ═══ AI-POWERED SHOPPING ═══ */}
+              {/* AI-POWERED SHOPPING */}
               <DocSection id="ai-powered-shopping" title="AI-Powered Shopping" icon={Bot}>
                 <p>
-                  The Rozare AI is your personal shopping companion. It's not just a chatbot — it's a <strong>fully integrated assistant</strong> that can execute real actions on your account: search products, manage your cart, place orders, apply coupons, track deliveries, and even give you style advice.
+                  The Rozare AI is your personal shopping companion. It is not a scripted bot — it has real, secure access to the marketplace and can <strong>execute actions on your behalf</strong>: search products, manage your cart, apply coupons, place orders, and track deliveries.
                 </p>
-                <h3>What the AI Can Do for Shoppers</h3>
+                <h3>What the AI can do for shoppers</h3>
                 <ul>
-                  <li><strong>Smart Product Search</strong> — Understands natural language, slang, and even Urdu/Hindi terms. Say "chapal" and it finds sandals. Say "something nice for a date night" and it suggests outfits.</li>
-                  <li><strong>Style & Outfit Advice</strong> — Get personalized fashion recommendations with color palettes, occasion-based styling, and complete outfit suggestions.</li>
-                  <li><strong>Cart Management</strong> — "Add this to my cart", "Remove the shoes", "What's in my cart?" — manage your cart entirely through chat.</li>
-                  <li><strong>One-Chat Ordering</strong> — No need to go through checkout pages. Tell the AI what you want, confirm your address and payment method, and the order is placed.</li>
-                  <li><strong>Order Tracking</strong> — "Where's my order?", "Show me my recent orders", "Cancel my last order" — all through conversation.</li>
-                  <li><strong>Coupon Discovery</strong> — The AI finds available coupons and validates them against your cart automatically.</li>
-                  <li><strong>Wishlist & Favorites</strong> — "Save this for later", "Show my wishlist" — manage your wishlist through chat.</li>
-                  <li><strong>Multilingual Support</strong> — Understands English, Urdu, Hindi, and common slang terms for products.</li>
+                  <li><strong>Smart product search</strong> — Understands natural language and slang. Say "something cosy for winter" or "chapal" and it finds matching items.</li>
+                  <li><strong>Style & outfit advice</strong> — Personalized fashion recommendations, color suggestions, and outfit pairings.</li>
+                  <li><strong>Cart management</strong> — "Add this to my cart", "Remove the shoes", "Increase quantity to 3".</li>
+                  <li><strong>One-chat ordering</strong> — Confirm address and payment in chat; the AI places the order for you.</li>
+                  <li><strong>Order tracking</strong> — "Where is my order?", "Show my last 5 orders", "Cancel order ORD-1234".</li>
+                  <li><strong>Coupon discovery</strong> — Finds active coupons and validates them automatically against your cart.</li>
+                  <li><strong>Wishlist</strong> — "Save this for later" or "Show my wishlist" through chat.</li>
+                  <li><strong>Personalized recommendations</strong> — Uses your past orders and browsing to suggest things you'll love.</li>
                 </ul>
 
-                <h3>How to Access the AI</h3>
+                <h3>How to access the AI</h3>
                 <StepList steps={[
-                  'Click the chat bubble (💬) on any page — it\'s always there in the bottom-right corner.',
-                  'Or visit the full AI Chat page at /ai-chat for a larger conversation view with history sidebar.',
-                  'Or chat via WhatsApp (coming soon) — same AI, same capabilities, on your phone.',
-                  'Type naturally. No commands needed. Just describe what you want.',
+                  'Click the chat bubble in the bottom-right corner — it follows you on every page.',
+                  'Or open the full AI Chat page at /ai-chat for a wider view with conversation history.',
+                  'Or chat with Rozare on WhatsApp once your number is connected.',
+                  'Type or speak naturally. No commands or special syntax required.',
                 ]} />
 
-                <InfoBox type="tip" title="Pro Tip">
-                  The AI remembers your conversation context. If you're discussing dresses and then say "show me something cheaper", it knows you mean cheaper dresses — not cheaper everything.
+                <InfoBox type="tip" title="Pro tip">
+                  The AI keeps track of conversation context. After discussing dresses, you can simply say "show me something cheaper" and it will know you mean cheaper dresses.
                 </InfoBox>
               </DocSection>
 
-              {/* ═══ GETTING STARTED ═══ */}
+              {/* GETTING STARTED */}
               <DocSection id="getting-started" title="Getting Started" icon={Zap}>
-                <h3>Creating an Account</h3>
+                <h3>Creating an account</h3>
                 <StepList steps={[
-                  'Visit rozare.com and click "Sign Up" in the top navigation.',
-                  'Enter your email, create a username, and set a secure password.',
-                  'Verify your email address via the OTP sent to your inbox.',
-                  'You\'re in! Start shopping immediately or set up your profile.',
+                  'Visit rozare.com and click "Sign Up".',
+                  'Enter your email and a username.',
+                  'Verify your email with the 6-digit OTP sent to your inbox.',
+                  'Set a secure password and you are in.',
+                  'Optional: continue with Google for one-click signup.',
                 ]} />
 
-                <h3>Setting Up Your Profile</h3>
-                <p>A complete profile helps the AI personalize your experience:</p>
+                <h3>Setting up your profile</h3>
                 <ul>
-                  <li><strong>Username</strong> — How you'll appear on the platform</li>
-                  <li><strong>Shipping Address</strong> — Save your default address for one-click ordering</li>
-                  <li><strong>Currency Preference</strong> — Set your preferred currency (USD, PKR, EUR, etc.)</li>
-                  <li><strong>Saved Addresses</strong> — Add multiple addresses (home, office, etc.) for quick checkout</li>
+                  <li><strong>Username</strong> — How you appear on the platform.</li>
+                  <li><strong>Default shipping address</strong> — Saved once, auto-filled at every checkout.</li>
+                  <li><strong>Currency preference</strong> — Choose USD, EUR, PKR, GBP and more — prices convert automatically.</li>
+                  <li><strong>Saved addresses</strong> — Add multiple addresses (home, office, family) for fast checkout.</li>
                 </ul>
 
-                <InfoBox type="info" title="Quick Start">
-                  You can skip profile setup and start shopping immediately. The AI will ask for your shipping details when you're ready to place an order.
+                <InfoBox type="info" title="Quick start">
+                  You can skip profile setup entirely and start shopping right away. The AI will ask for your shipping details only when you place your first order.
                 </InfoBox>
 
-                <h3>Browsing Without an Account</h3>
-                <p>Guests can browse products, search the catalog, and get style advice from the AI. However, to place orders, manage a wishlist, or get personalized recommendations, you'll need to sign in.</p>
+                <h3>Browsing without an account</h3>
+                <p>Guests can browse products, search the catalog, view stores, and chat with the Rozare AI for product discovery and style advice. To save a wishlist, place orders, or get personalized recommendations, you'll need to sign in. Your guest cart automatically syncs to your account when you log in.</p>
               </DocSection>
 
-              {/* ═══ SHOPPING GUIDE ═══ */}
+              {/* SHOPPING GUIDE */}
               <DocSection id="shopping-guide" title="Shopping Guide" icon={ShoppingBag}>
-                <h3>Finding Products</h3>
-                <p>There are multiple ways to discover products on Rozare:</p>
+                <h3>Finding products</h3>
                 <ul>
-                  <li><strong>AI Search</strong> — Ask the AI: "Show me wireless earbuds under $30" or "Find me a birthday gift for my sister"</li>
-                  <li><strong>Catalog Browse</strong> — Visit the home page to browse all products with filters for category, price, and rating</li>
-                  <li><strong>Store Pages</strong> — Visit /marketplace to browse all stores, or /marketplace/trusted for verified stores only</li>
-                  <li><strong>Direct Search</strong> — Use the search bar on the products page</li>
+                  <li><strong>AI search</strong> — Ask the AI: "Show me wireless earbuds under $30" or "Find a birthday gift for my sister".</li>
+                  <li><strong>Category filters</strong> — On the home page, use the category checkboxes (Electronics, Fashion, Home &amp; Kitchen, etc.) plus the "Other" group for custom categories.</li>
+                  <li><strong>Store pages</strong> — Visit /stores to browse all stores or /stores/trusted for verified ones. Each store page has its own search bar and category filter.</li>
+                  <li><strong>Direct search</strong> — The search bar at the top of the products grid filters by name, brand, description, and tags.</li>
                 </ul>
 
-                <h3>Placing an Order</h3>
-                <p>You can place orders two ways:</p>
-                <h4>1. Through the AI (Recommended)</h4>
+                <h3>Placing an order</h3>
+                <h4>Through the AI (recommended)</h4>
                 <CodeBlock lines={[
                   'You: "I want to order the blue wireless earbuds"',
-                  'AI: "Great choice! The XSound Pro Earbuds are $24.99. They come in Blue and Black. Which color?"',
+                  'AI: "Great choice. The XSound Pro Earbuds are $24.99. Which color?"',
                   'You: "Blue"',
-                  'AI: "Payment method? Cash on Delivery or Stripe?"',
-                  'You: "COD"',
-                  'AI: "I\'ll ship to your saved address: 123 Main St, Lahore. Ready to confirm?"',
-                  'You: "Yes, place it"',
-                  'AI: "🎉 Order #ORD-1234 placed! $24.99 via COD. Est. delivery: 5 days"',
+                  'AI: "Cash on Delivery or card via Stripe?"',
+                  'You: "Card"',
+                  'AI: "I will ship to your saved address. Confirm to place the order."',
+                  'You: "Confirm"',
+                  'AI: "Order ORD-1234 placed. Estimated delivery: 5 days."',
                 ]} />
 
-                <h4>2. Through the Website</h4>
+                <h4>Through the website or app</h4>
                 <StepList steps={[
-                  'Browse products and click on one to view details.',
-                  'Select color/size options and click "Add to Cart".',
-                  'Go to /checkout and enter your shipping details.',
-                  'Choose payment method (Cash on Delivery or Stripe).',
-                  'Confirm and place your order.',
+                  'Click a product to open its detail page.',
+                  'Pick variants (size, color) and click "Add to Cart".',
+                  'Open the cart, review items, then go to checkout.',
+                  'Confirm or edit the shipping address. Apply a coupon if you have one.',
+                  'Choose Cash on Delivery or Stripe (card).',
+                  'Place the order. You will receive a confirmation email and notification.',
                 ]} />
 
-                <h3>Order Tracking</h3>
-                <p>Track your orders at any time:</p>
+                <h3>Order tracking</h3>
                 <ul>
-                  <li><strong>Via AI</strong>: "Show me my orders" or "What's the status of my last order?"</li>
-                  <li><strong>Via website</strong>: Visit /track-order or check your profile</li>
-                  <li><strong>Order statuses</strong>: Pending → Confirmed → Processing → Shipped → Delivered</li>
+                  <li><strong>Via AI</strong> — "Where is my last order?" or "Show all my orders".</li>
+                  <li><strong>Via website</strong> — Visit /track-order or your dashboard.</li>
+                  <li><strong>Statuses</strong> — Pending → Confirmed → Processing → Shipped → Delivered.</li>
                 </ul>
               </DocSection>
 
-              {/* ═══ BECOME A SELLER ═══ */}
+              {/* CART & WISHLIST */}
+              <DocSection id="cart-and-wishlist" title="Cart & Wishlist" icon={Heart}>
+                <h3>Cart</h3>
+                <ul>
+                  <li>Add to cart from the product card, the product detail page, or the chatbot.</li>
+                  <li>Increase or decrease quantity directly from the cart, the product card, or the product detail page.</li>
+                  <li>Guests can build a cart locally; signing in syncs it to your account automatically.</li>
+                  <li>Cart respects per-product stock limits. You'll be notified if a product runs out before checkout.</li>
+                </ul>
+
+                <h3>Wishlist</h3>
+                <ul>
+                  <li>Tap the heart icon on any product to save it to your wishlist.</li>
+                  <li>Open your wishlist from the user dashboard or via "Show my wishlist" in chat.</li>
+                  <li>Move items from wishlist to cart in one tap.</li>
+                </ul>
+              </DocSection>
+
+              {/* BECOME A SELLER */}
               <DocSection id="become-a-seller" title="Become a Seller" icon={Store}>
-                <p>Anyone can become a seller on Rozare. It's free to sign up, and you get a fully customizable online store with AI-powered management tools.</p>
-                
-                <h3>How to Sign Up as a Seller</h3>
+                <p>Anyone can sell on Rozare. Sign-up is free and you start with a <strong>15-day free trial of every feature</strong>.</p>
+
+                <h3>How to sign up as a seller</h3>
                 <StepList steps={[
-                  'Visit rozare.com/become-seller',
-                  'Enter your email address and click "Get Started"',
-                  'Verify your email with the 6-digit OTP code sent to your inbox',
-                  'Create a password for your account',
-                  'Your seller account is created! You\'re redirected to your seller dashboard.',
-                  'Your free store is automatically created. Start adding products immediately.',
+                  'Visit /become-seller.',
+                  'Step 1 — Enter your email and click "Get Started".',
+                  'Step 2 — Verify your email with the 6-digit OTP.',
+                  'Step 3 — Fill in your business details: store name, description, category, country.',
+                  'Step 4 — Set your seller password and complete sign-up.',
+                  'Your store is created instantly and your 15-day free trial begins. You can start adding products immediately.',
                 ]} />
 
-                <h3>What You Get as a Seller</h3>
+                <h3>What you get as a seller</h3>
                 <FeatureGrid features={[
-                  { icon: Store, title: 'Free Online Store', desc: 'A fully customizable storefront with your own slug (rozare.com/store/your-name), logo, banner, description, and social links.' },
-                  { icon: Bot, title: 'AI Business Partner', desc: 'An AI assistant that manages your products, analyzes sales, suggests growth strategies, and handles orders — all through chat.' },
-                  { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Revenue tracking, top products, order status breakdown, stock alerts, and customer insights — in real-time.' },
-                  { icon: Smartphone, title: 'WhatsApp Management', desc: 'Get order notifications on WhatsApp. Add products, update orders, check analytics — all from your phone.' },
-                  { icon: Ticket, title: 'Coupon System', desc: 'Create unlimited coupons with percentage/fixed discounts, min order amounts, max uses, expiry dates, and per-user limits.' },
-                  { icon: Truck, title: 'Shipping Control', desc: 'Configure free, standard, and fast shipping methods with custom costs and delivery timelines.' },
+                  { icon: Store, title: 'Free Online Store', desc: 'A fully customizable storefront with your own slug, optional custom subdomain, logo, banner, description, and social links.' },
+                  { icon: Bot, title: 'AI Business Partner', desc: 'A built-in AI assistant that adds products, updates stock, runs analytics, manages orders, creates coupons, and gives growth advice.' },
+                  { icon: BarChart3, title: 'Real-Time Analytics', desc: 'Revenue, top products, order trends, customer insights, low-stock alerts and period comparisons.' },
+                  { icon: Smartphone, title: 'WhatsApp Management', desc: 'Manage your full store from WhatsApp by chatting with AI. Get instant alerts on every new order.' },
+                  { icon: Ticket, title: 'Coupons & Discounts', desc: 'Percent or fixed-amount coupons with min order amount, max uses, expiry, and per-user limits.' },
+                  { icon: Truck, title: 'Shipping Control', desc: 'Configure free, standard, and express shipping methods with custom costs and delivery windows.' },
                 ]} />
 
                 <h3>Requirements</h3>
                 <ul>
-                  <li>A valid email address</li>
-                  <li>At least one product to sell</li>
-                  <li>No upfront fees — start with a free trial</li>
-                  <li>Optional: Apply for store verification to get a trust badge</li>
+                  <li>A valid email address.</li>
+                  <li>An active store (created during signup) — required before listing products.</li>
+                  <li>No upfront fees during the 15-day free trial.</li>
+                  <li>Optional: Apply for verification once your store is live.</li>
                 </ul>
-
-                <InfoBox type="tip" title="Already have an account?">
-                  If you already have a Rozare buyer account, you can request a role change to seller through the admin team or create a new seller account.
-                </InfoBox>
               </DocSection>
 
-              {/* ═══ SELLER DASHBOARD GUIDE ═══ */}
+              {/* SELLER DASHBOARD */}
               <DocSection id="seller-guide" title="Seller Dashboard Guide" icon={Settings}>
-                <p>The seller dashboard is your command center. Access it at <code>/seller/dashboard</code> after logging in as a seller.</p>
+                <p>The seller dashboard is your command center. Open it at <code>/seller/dashboard</code> after logging in as a seller.</p>
 
-                <h3>Dashboard Sections</h3>
+                <h3>Dashboard tabs</h3>
                 <ul>
-                  <li><strong>Overview</strong> — Quick stats: total revenue, orders, products, store views, trust count</li>
-                  <li><strong>Products</strong> — Add, edit, delete products. Bulk discount and price updates. Stock management.</li>
-                  <li><strong>Orders</strong> — View all orders containing your products. Update status (Confirmed → Processing → Shipped → Delivered). Filter by status.</li>
-                  <li><strong>Coupons</strong> — Create, manage, toggle, and delete discount coupons.</li>
-                  <li><strong>Store Settings</strong> — Update store name, description, logo, banner, return policy, social links.</li>
-                  <li><strong>Shipping</strong> — Configure shipping methods (free, standard, fast) with costs and delivery times.</li>
-                  <li><strong>Analytics</strong> — Detailed revenue charts, top-selling products, order trends, customer demographics.</li>
-                  <li><strong>Subscription</strong> — View your current plan, trial status, and upgrade options.</li>
+                  <li><strong>Overview</strong> — Live revenue, orders, products, store views, trust count, low-stock alerts and pending order badges.</li>
+                  <li><strong>Products</strong> — Add, edit, delete, and bulk-update products. Includes bulk discount and bulk price tools.</li>
+                  <li><strong>Orders</strong> — Every order containing your products. Update status, view full order detail, contact the customer.</li>
+                  <li><strong>Coupons</strong> — Create, toggle, edit, and delete discount coupons.</li>
+                  <li><strong>Analytics</strong> — Revenue charts, order trends, top products, status pie chart, growth metrics with period comparison.</li>
+                  <li><strong>Store Settings</strong> — Update store name, description, logo, banner, return &amp; warranty policy, social links.</li>
+                  <li><strong>Shipping</strong> — Configure shipping methods and per-method costs &amp; delivery times.</li>
+                  <li><strong>Tax</strong> — View applied platform tax (set platform-wide, applied at checkout).</li>
+                  <li><strong>WhatsApp</strong> — Connect and verify your WhatsApp number, choose which notifications to receive.</li>
+                  <li><strong>Subdomain</strong> — Claim and manage your custom store subdomain.</li>
+                  <li><strong>Subscription</strong> — View your trial status, plan, billing history, and upgrade/downgrade.</li>
+                  <li><strong>Notifications</strong> — Notification settings and full notification history.</li>
+                  <li><strong>Profile</strong> — Manage your personal seller profile and security settings.</li>
                 </ul>
 
-                <h3>Adding a Product</h3>
-                <StepList steps={[
-                  'Go to Products → Add Product (or tell the AI: "I want to add a product")',
-                  'Fill in: Product name, price, category, brand, stock quantity',
-                  'Optional: Add description, images, tags, colors, size options, discounted price',
-                  'Click Save. Your product is instantly live in the marketplace.',
-                ]} />
-
-                <h3>Managing Orders</h3>
-                <p>When a customer orders one of your products:</p>
-                <StepList steps={[
-                  'You receive a notification (in-app + WhatsApp if configured)',
-                  'The order appears in your Orders tab with status "Pending"',
-                  'Update the status as you process it: Confirmed → Processing → Shipped → Delivered',
-                  'The customer is notified of each status change',
-                ]} />
-
-                <InfoBox type="important" title="Multi-Seller Orders">
-                  If a customer orders products from multiple sellers in one order, each seller only sees their own products from that order. You never see another seller's items, prices, or revenue. Everything is fully isolated.
+                <h3>Multi-seller orders</h3>
+                <InfoBox type="important" title="Data isolation">
+                  When a customer orders products from multiple sellers in one checkout, each seller only sees their own products, prices, and revenue from that order. You will never see another seller's data.
                 </InfoBox>
               </DocSection>
 
-              {/* ═══ AI FOR SELLERS ═══ */}
-              <DocSection id="ai-for-sellers" title="AI for Sellers" icon={BarChart3}>
-                <p>The Rozare AI isn't just for shoppers — it's your <strong>personal business advisor</strong>. It has full access to your store data and can execute any action on your behalf.</p>
+              {/* PRODUCT MANAGEMENT */}
+              <DocSection id="product-management" title="Product Management" icon={Package}>
+                <p>Adding and editing products is designed to be fast — and the AI can do most of it for you.</p>
 
-                <h3>What the AI Can Do for Sellers</h3>
+                <h3>Adding a product</h3>
+                <StepList steps={[
+                  'Open the Products tab and click "Add Product" (or just say "add a product" to the AI).',
+                  'Fill in: product name, brand, category, price, stock, and at least one image.',
+                  'Pick a category from the preset list or click "Other" to add a custom category.',
+                  'Write a description (up to 2000 characters). When you are done, tap "Improve with AI" to polish it — and "Revert" to undo.',
+                  'Add up to 15 tags manually, or tap "Generate Tags with AI" to auto-create them based on your product name and description.',
+                  'Optional: add an offer price, color/size variants, additional images, and mark as featured.',
+                  'Save. The product is live instantly in the marketplace.',
+                ]} />
+
+                <h3>AI helpers in the product form</h3>
+                <FeatureGrid features={[
+                  { icon: Wand2, title: 'Improve with AI', desc: 'Rewrites your description into clean, persuasive marketplace copy. Use Revert to restore the original.' },
+                  { icon: Tag, title: 'Generate Tags with AI', desc: 'Creates relevant search tags from your product name and description. Disabled once the 15-tag limit is reached.' },
+                  { icon: Layers, title: 'Smart Categories', desc: 'Type to filter the preset list, or pick "Other" to add a custom one — used by the marketplace filter sidebar too.' },
+                  { icon: ImageIcon, title: 'Image Upload', desc: 'Upload from your device or paste an image URL. Powered by Cloudinary for fast, optimized delivery.' },
+                ]} />
+
+                <h3>Bulk operations</h3>
                 <ul>
-                  <li><strong>Product Management</strong> — "Add a product called Summer Dress, $49.99, category: Dresses"</li>
-                  <li><strong>Bulk Operations</strong> — "Apply 20% discount to all my electronics" or "Raise prices by $5 on shoes"</li>
-                  <li><strong>Analytics On-Demand</strong> — "How much revenue did I make this month?" or "What are my top-selling products?"</li>
-                  <li><strong>Order Management</strong> — "Show me pending orders" or "Mark order #ORD-1234 as shipped"</li>
-                  <li><strong>Coupon Creation</strong> — "Create a 15% off coupon valid for 7 days, max 100 uses"</li>
-                  <li><strong>Growth Strategies</strong> — "Give me tips to increase sales" — the AI analyzes your data and gives personalized advice</li>
-                  <li><strong>Stock Alerts</strong> — The AI proactively warns you about low-stock products</li>
-                  <li><strong>Store Updates</strong> — "Update my store description to..." or "Change my return policy"</li>
+                  <li><strong>Bulk discount</strong> — Apply a percentage or fixed discount across selected products in one action.</li>
+                  <li><strong>Bulk price update</strong> — Raise or lower prices on selected products by a fixed amount.</li>
+                  <li>Both work via the dashboard UI or by chatting with the AI ("apply 20% discount to all my electronics").</li>
                 </ul>
 
-                <h3>Dual Mode: Seller + Buyer</h3>
-                <p>Sellers can also shop on Rozare. The AI intelligently detects whether you're managing your store or shopping:</p>
+                <h3>Featured products</h3>
+                <p>Highlight your best products on the marketplace. Starter sellers can feature up to 6 products; Elite sellers up to 12.</p>
+              </DocSection>
+
+              {/* AI FOR SELLERS */}
+              <DocSection id="ai-for-sellers" title="AI for Sellers" icon={BarChart3}>
+                <p>The Rozare AI doubles as your <strong>business advisor</strong>. It has secure access to your store data and can take real actions on your behalf.</p>
+
+                <h3>What the AI can do for sellers</h3>
+                <ul>
+                  <li><strong>Product management</strong> — "Add a product called Summer Dress, $49.99, category Dresses, 30 in stock".</li>
+                  <li><strong>Smart description generator</strong> — Rewrites raw descriptions into polished marketing copy (Elite plan; included for everyone during the 15-day trial).</li>
+                  <li><strong>Bulk operations</strong> — "Apply 20% off to all my electronics" or "Raise shoe prices by $5".</li>
+                  <li><strong>On-demand analytics</strong> — "What was my revenue this month?", "Top 5 selling products", "How am I doing vs last month?".</li>
+                  <li><strong>Order management</strong> — "Show pending orders", "Mark ORD-1234 as shipped", "Cancel ORD-1235".</li>
+                  <li><strong>Coupon creation</strong> — "Create SAVE15 — 15% off, expires in 30 days, max 100 uses".</li>
+                  <li><strong>Growth strategies</strong> — Personalized recommendations based on your real sales data.</li>
+                  <li><strong>Stock alerts</strong> — Proactively warns you about low or out-of-stock products.</li>
+                  <li><strong>Store updates</strong> — "Update my store description" or "Change my return policy".</li>
+                </ul>
+
+                <h3>Dual mode: seller + buyer</h3>
+                <p>Sellers can also shop on Rozare. The AI intelligently detects which mode you're in:</p>
                 <CodeBlock lines={[
-                  '// Seller mode (default):',
-                  '"Show my products" → Shows YOUR store\'s products',
-                  '"My orders" → Shows orders containing YOUR products',
+                  '// Seller mode (default for sellers):',
+                  '"Show my products" — shows YOUR store listings',
+                  '"My orders" — shows orders containing YOUR products',
                   '',
                   '// Buyer mode (auto-detected):',
-                  '"Find me a laptop bag" → Searches ALL products on Rozare',
-                  '"Add to cart" → Adds to YOUR shopping cart',
-                  '"Place order" → Places order as a buyer',
+                  '"Find me a laptop bag" — searches ALL marketplace products',
+                  '"Add to cart" — adds to YOUR shopping cart',
+                  '"Place order" — places an order as a buyer',
                 ]} />
 
-                <InfoBox type="tip" title="Switch Modes">
-                  If the AI isn't sure which mode you're in, it'll ask: "Do you want to see your store's listings, or are you looking to buy for yourself?" You can also say "as a buyer" or "for my store" to switch explicitly.
-                </InfoBox>
+                <h3>AI usage limits</h3>
+                <ul>
+                  <li><strong>Guests</strong> — 5 messages per day.</li>
+                  <li><strong>Buyers</strong> — 20 messages per day.</li>
+                  <li><strong>Sellers (free trial &amp; Starter)</strong> — 100 messages per day.</li>
+                  <li><strong>Sellers (Elite)</strong> — 250 messages per day.</li>
+                </ul>
               </DocSection>
 
-              {/* ═══ WHATSAPP INTEGRATION ═══ */}
-              <DocSection id="whatsapp-integration" title="WhatsApp Integration" icon={Smartphone}>
-                <p>Rozare brings your entire store to WhatsApp. Get notifications, manage orders, add products, and check analytics — all without opening a browser.</p>
+              {/* WHATSAPP INTEGRATION */}
+              <DocSection id="whatsapp-integration" title="Manage Your Store via WhatsApp" icon={Smartphone}>
+                <p>Rozare brings your entire store to WhatsApp. Add products, manage orders, ask for analytics, and get instant new-order notifications — all without opening a browser.</p>
 
-                <h3>For Sellers</h3>
+                <h3>For sellers</h3>
                 <ul>
-                  <li><strong>Order Notifications</strong> — Instant WhatsApp alerts when you receive a new order</li>
-                  <li><strong>AI Store Management</strong> — Chat with the Rozare AI on WhatsApp to manage your store</li>
-                  <li><strong>Product Management</strong> — Add, edit, or delete products via WhatsApp chat</li>
-                  <li><strong>Analytics</strong> — Ask "How are my sales today?" and get instant stats</li>
-                  <li><strong>Order Updates</strong> — Mark orders as shipped/delivered from WhatsApp</li>
+                  <li><strong>New-order notifications</strong> — Instant WhatsApp message every time a customer places an order on one of your products.</li>
+                  <li><strong>Full AI store management</strong> — Chat with the Rozare AI on WhatsApp to add, edit, or remove products, update stock, mark orders shipped, run discounts, and more.</li>
+                  <li><strong>Analytics on the go</strong> — "How many orders today?" or "What's my best seller this week?" — get answers in seconds on WhatsApp.</li>
+                  <li><strong>Order confirmation automation</strong> — Customers can confirm Cash-on-Delivery orders right from WhatsApp.</li>
                 </ul>
 
-                <h3>For Shoppers</h3>
+                <h3>For shoppers</h3>
                 <ul>
-                  <li><strong>Order Updates</strong> — Get delivery status updates on WhatsApp</li>
-                  <li><strong>AI Shopping</strong> — Search products, get recommendations, and place orders via WhatsApp chat</li>
-                  <li><strong>Order Tracking</strong> — Ask "Where's my order?" on WhatsApp</li>
+                  <li>Get order status updates on WhatsApp.</li>
+                  <li>Search products, get recommendations, and place orders by chatting with Rozare on WhatsApp.</li>
                 </ul>
 
-                <h3>Setting Up WhatsApp</h3>
+                <h3>Setting up WhatsApp</h3>
                 <StepList steps={[
-                  'Go to your Seller Dashboard → Settings → WhatsApp',
-                  'Enter your WhatsApp number',
-                  'Verify with the OTP sent to your WhatsApp',
-                  'Choose which notifications you want to receive',
-                  'Start chatting with the AI on WhatsApp to manage your store!',
+                  'Open Seller Dashboard → WhatsApp.',
+                  'Enter your WhatsApp number with country code.',
+                  'Verify with the OTP sent to your WhatsApp.',
+                  'Choose which notifications you want to receive (orders, low stock, customer messages, etc.).',
+                  'Done. Start chatting with the Rozare AI directly from WhatsApp.',
                 ]} />
 
-                <InfoBox type="info" title="Same AI, Any Channel">
-                  The Rozare AI is the same whether you access it from the website chat, the full AI page, or WhatsApp. Your conversation history and capabilities are identical across all channels.
+                <InfoBox type="info" title="Same AI, every channel">
+                  The Rozare AI is identical whether you reach it on the website chat, the full AI page, the mobile app, or WhatsApp — same capabilities, shared conversation context.
                 </InfoBox>
               </DocSection>
 
-              {/* ═══ SUBSCRIPTION PLANS ═══ */}
+              {/* SUBSCRIPTION PLANS */}
               <DocSection id="subscription-plans" title="Subscription Plans" icon={Award}>
-                <p>Rozare offers flexible plans for sellers of all sizes. Every new seller starts with a free trial.</p>
+                <p>Every new seller gets a <strong>15-day free trial of every feature</strong> — including all Elite-tier perks. After the trial, choose Rozare Starter or Rozare Elite. Both plans include a generous free intro period.</p>
 
                 <div className="grid md:grid-cols-3 gap-4 my-6">
-                  <PlanCard name="Starter" price="Free Trial" features={[
-                    'Up to 25 products', 'Basic analytics', 'Standard support',
-                    'AI store assistant', 'Manual shipping setup', 'Basic coupons',
+                  <PlanCard name="Free Trial" price="15 days" features={[
+                    'Every feature unlocked',
+                    'Unlimited product listings',
+                    'Smart description generator with AI',
+                    '100 AI messages/day',
+                    'Manage store via WhatsApp by chatting with AI',
+                    'WhatsApp notifications for new orders',
+                    'Analytics, smart tags, coupons, bulk tools',
+                    'No credit card required',
                   ]} />
-                  <PlanCard name="Growth" price="$19/mo" featured features={[
-                    'Up to 200 products', 'Advanced analytics', 'Priority support',
-                    'AI business advisor', 'WhatsApp integration', 'Unlimited coupons',
-                    'Bulk operations', 'Store verification eligible',
+                  <PlanCard name="Rozare Starter" price="$5.99/mo" features={[
+                    '30-day free intro period',
+                    'Store visible to all customers',
+                    'Unlimited product listings',
+                    'Custom subdomain',
+                    '100 AI messages/day',
+                    'Manage store via WhatsApp by chatting with AI',
+                    'WhatsApp notifications for new orders',
+                    'WhatsApp order confirmation automation',
+                    'Featured products (6)',
+                    'Bonus Elite features for 6 months',
                   ]} />
-                  <PlanCard name="Pro" price="$49/mo" features={[
-                    'Unlimited products', 'Full analytics suite', 'Dedicated support',
-                    'AI growth strategies', 'WhatsApp + priority processing',
-                    'Custom branding options', 'API access', 'Team member accounts',
+                  <PlanCard name="Rozare Elite" price="$12.99/mo" featured features={[
+                    '45-day free intro period',
+                    'Everything in Starter',
+                    'Smart description generator with AI',
+                    '250 AI messages/day',
+                    'Advanced analytics & growth insights',
+                    'Smart tag AI generator',
+                    'Coupon & discount management',
+                    'Bulk discount & promotional tools',
+                    'Priority support',
+                    'Featured products (12)',
                   ]} />
                 </div>
 
-                <InfoBox type="tip" title="Free Trial">
-                  All new sellers get a free trial period to explore the platform. No credit card required. You can upgrade anytime from your Subscription page.
+                <InfoBox type="tip" title="Bonus features for Starter">
+                  Rozare Starter includes bonus Elite features (advanced analytics, smart tags, coupons, bulk tools, priority support) <strong>for the first 6 months</strong>. Upgrade to Elite at any time to keep them permanently.
                 </InfoBox>
+
+                <h3>Manage your subscription</h3>
+                <ul>
+                  <li>Open Seller Dashboard → Subscription.</li>
+                  <li>Upgrade Starter → Elite anytime — instant access.</li>
+                  <li>Downgrade Elite → Starter — takes effect at the end of your billing cycle.</li>
+                  <li>Cancel anytime — your store stays active until the end of your paid period.</li>
+                </ul>
               </DocSection>
 
-              {/* ═══ PAYMENTS ═══ */}
+              {/* PAYMENTS */}
               <DocSection id="payments" title="Payments & Checkout" icon={CreditCard}>
-                <h3>Payment Methods</h3>
+                <h3>Payment methods</h3>
                 <ul>
                   <li><strong>Cash on Delivery (COD)</strong> — Pay when your order arrives. Available in supported regions.</li>
-                  <li><strong>Stripe</strong> — Secure online payment via credit/debit card. Powered by Stripe for bank-grade security.</li>
+                  <li><strong>Stripe</strong> — Secure card payments via Stripe (Visa, Mastercard, Amex, and more).</li>
                 </ul>
 
-                <h3>Checkout Process</h3>
-                <p>Rozare offers two checkout experiences:</p>
+                <h3>Two checkout experiences</h3>
                 <ul>
-                  <li><strong>AI Checkout</strong> — Tell the AI "place my order" and it handles everything: address confirmation, payment method selection, and order placement — all in one conversation.</li>
-                  <li><strong>Traditional Checkout</strong> — Standard checkout flow at /checkout with form fields for shipping info and payment.</li>
+                  <li><strong>AI checkout</strong> — Tell the AI to place your order; it confirms address and payment in chat.</li>
+                  <li><strong>Traditional checkout</strong> — Standard form-based flow at <code>/checkout</code> with smart auto-fill from your saved address.</li>
                 </ul>
 
-                <h3>For Sellers: Receiving Payments</h3>
-                <p>Revenue from your sales is tracked in your dashboard analytics. Payment disbursement details are managed through your seller account settings.</p>
+                <h3>Tax &amp; shipping</h3>
+                <p>Tax is calculated at checkout based on platform settings. Shipping costs come from the seller's chosen shipping method. Both are clearly displayed before you confirm.</p>
+
+                <h3>For sellers: receiving payments</h3>
+                <p>Stripe payments are processed directly to your connected payment account. Your earned balance and revenue history are visible in the Analytics tab of the dashboard.</p>
               </DocSection>
 
-              {/* ═══ SHIPPING ═══ */}
+              {/* SHIPPING */}
               <DocSection id="shipping" title="Shipping & Delivery" icon={Truck}>
-                <h3>Shipping Methods</h3>
-                <p>Sellers configure their own shipping methods. Common options include:</p>
+                <h3>Shipping methods</h3>
+                <p>Each seller configures their own shipping methods. Common options:</p>
                 <ul>
-                  <li><strong>Free Shipping</strong> — No cost, typically 5-7 days</li>
-                  <li><strong>Standard Shipping</strong> — Moderate cost, 3-5 days</li>
-                  <li><strong>Express/Fast Shipping</strong> — Higher cost, 1-2 days</li>
+                  <li><strong>Free shipping</strong> — No cost, typically 5–7 days.</li>
+                  <li><strong>Standard shipping</strong> — Moderate cost, 3–5 days.</li>
+                  <li><strong>Express shipping</strong> — Higher cost, 1–2 days.</li>
                 </ul>
 
-                <h3>For Sellers: Setting Up Shipping</h3>
+                <h3>For sellers</h3>
                 <StepList steps={[
-                  'Go to Seller Dashboard → Shipping',
-                  'Add shipping methods (free, standard, fast)',
-                  'Set cost and estimated delivery days for each',
-                  'Toggle methods active/inactive as needed',
-                  'Or tell the AI: "Set up standard shipping at $5 with 3-day delivery"',
+                  'Open Seller Dashboard → Shipping.',
+                  'Add as many shipping methods as you like.',
+                  'Set cost and estimated delivery days for each.',
+                  'Toggle methods on/off without deleting them.',
+                  'Or just say "set up standard shipping at $5 with 3-day delivery" to the AI.',
                 ]} />
+
+                <h3>For buyers</h3>
+                <p>At checkout you'll see every shipping method offered by the sellers in your cart, with cost and ETA. Pick one per seller and continue.</p>
               </DocSection>
 
-              {/* ═══ TRUST & SAFETY ═══ */}
-              <DocSection id="trust-safety" title="Trust & Safety" icon={Shield}>
-                <h3>How Rozare Keeps You Safe</h3>
-                <ul>
-                  <li><strong>Store Verification</strong> — Stores can apply for verification. Verified stores get a ✅ badge, indicating they've been reviewed by the Rozare team.</li>
-                  <li><strong>Trust Scores</strong> — Every store has a trust count based on customer endorsements.</li>
-                  <li><strong>Store Reviews</strong> — Customers can rate and review stores.</li>
-                  <li><strong>Complaint System</strong> — Report issues directly to the Rozare team. Categories: product issues, delivery problems, refund requests, seller complaints.</li>
-                  <li><strong>Role-Based Security</strong> — The AI strictly enforces role boundaries. Users can't access seller tools. Sellers can't access other sellers' data. Every action is authenticated.</li>
-                  <li><strong>Data Isolation</strong> — Sellers only see their own products, orders, and revenue — even in multi-seller orders.</li>
-                </ul>
-              </DocSection>
-
-              {/* ═══ STORE VERIFICATION ═══ */}
-              <DocSection id="store-verification" title="Store Verification" icon={CheckCircle}>
-                <p>Getting your store verified adds a ✅ badge and builds customer trust.</p>
-                <h3>How to Apply</h3>
-                <StepList steps={[
-                  'Go to your Seller Dashboard → Store Settings → Verification',
-                  'Or tell the AI: "Apply for verification"',
-                  'Provide your contact details and a brief message about your store',
-                  'The Rozare admin team reviews your application',
-                  'If approved, your store gets a verified badge visible to all customers',
-                ]} />
-                <h3>Requirements</h3>
-                <ul>
-                  <li>Active store with at least a few products listed</li>
-                  <li>Complete store profile (name, description, logo)</li>
-                  <li>Valid contact information</li>
-                  <li>No policy violations on your account</li>
-                </ul>
-              </DocSection>
-
-              {/* ═══ ORDERS & RETURNS ═══ */}
-              <DocSection id="orders-returns" title="Orders & Returns" icon={Package}>
-                <h3>Order Lifecycle</h3>
+              {/* ORDERS & RETURNS */}
+              <DocSection id="orders-returns" title="Orders, Returns & Refunds" icon={RefreshCw}>
+                <h3>Order lifecycle</h3>
                 <div className="flex flex-wrap items-center gap-2 my-4">
                   {['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered'].map((s, i) => (
                     <React.Fragment key={s}>
@@ -609,107 +614,155 @@ function DocsPage() {
                     </React.Fragment>
                   ))}
                 </div>
+                <p>You'll get a notification at every status change — in-app, by email, and via WhatsApp if connected.</p>
 
-                <h3>Cancelling an Order</h3>
-                <p>You can cancel an order if it hasn't been delivered yet:</p>
+                <h3>Cancelling an order</h3>
                 <ul>
-                  <li><strong>Via AI</strong>: "Cancel my order #ORD-1234"</li>
-                  <li><strong>Via dashboard</strong>: Find the order and click Cancel</li>
-                  <li>Orders that are already "Delivered" or "Cancelled" cannot be cancelled again</li>
+                  <li><strong>Via AI</strong> — "Cancel my order ORD-1234".</li>
+                  <li><strong>Via dashboard</strong> — Open the order and click "Cancel" while still cancellable.</li>
+                  <li>Orders that are already Delivered or Cancelled cannot be cancelled again.</li>
                 </ul>
 
-                <h3>Returns & Refunds</h3>
-                <p>Return policies are set by each seller individually. Check the seller's store page for their return policy before purchasing. To request a return, submit a complaint through the AI or the complaint form.</p>
+                <h3>Returns &amp; warranty</h3>
+                <p>Each seller defines their own return and warranty policy in the Store Settings tab — buyers can see it on the store page and on each product. Per-product overrides are also supported. To request a return or refund, submit a complaint via the AI ("I want to return order ORD-1234") or through the contact form.</p>
+
+                <h3>Complaint system</h3>
+                <p>If something goes wrong, file a complaint and the Rozare team will help mediate between you and the seller. Categories include product issues, delivery problems, refund requests, and seller disputes.</p>
               </DocSection>
 
-              {/* ═══ COUPONS ═══ */}
+              {/* COUPONS */}
               <DocSection id="coupons-discounts" title="Coupons & Discounts" icon={Ticket}>
-                <h3>For Shoppers</h3>
+                <h3>For shoppers</h3>
                 <ul>
-                  <li>Ask the AI: "Are there any coupons available?" to see active coupons</li>
-                  <li>Apply coupons at checkout or tell the AI: "Apply coupon SAVE20"</li>
-                  <li>The AI automatically validates expiry dates, minimum order amounts, and usage limits</li>
+                  <li>Ask the AI: "Are there coupons available right now?"</li>
+                  <li>Apply a coupon at checkout, or say "Apply coupon SAVE20".</li>
+                  <li>The AI auto-validates expiry, min order amount, and per-user usage limits.</li>
                 </ul>
 
-                <h3>For Sellers: Creating Coupons</h3>
-                <p>Create coupons through your dashboard or via the AI:</p>
+                <h3>For sellers</h3>
+                <p>Create coupons in the Coupons tab or by chatting:</p>
                 <CodeBlock lines={[
-                  '"Create a coupon SUMMER20, 20% off, expires in 30 days, max 100 uses"',
+                  '"Create SUMMER20 — 20% off, expires in 30 days, max 100 uses"',
                   '"Make a $10 off coupon for orders over $50"',
                   '"Disable coupon WINTER10"',
-                  '"Show me all my coupons"',
+                  '"Show me all my coupons and their usage"',
                 ]} />
-                <p>Coupon options include: percentage or fixed discount, min order amount, max discount cap, expiry date, max total uses, and per-user use limits.</p>
+                <p>Coupon options: percent or fixed discount, min order amount, max discount cap, expiry date, max total uses, and per-user limits. Coupons are scoped to your store only.</p>
               </DocSection>
 
-              {/* ═══ NOTIFICATIONS ═══ */}
-              <DocSection id="notifications" title="Notifications" icon={Bell}>
-                <p>Stay updated with multi-channel notifications:</p>
+              {/* TRUST & SAFETY */}
+              <DocSection id="trust-safety" title="Trust & Safety" icon={Shield}>
+                <h3>How Rozare keeps you safe</h3>
                 <ul>
-                  <li><strong>In-App</strong> — Bell icon in the top navigation shows unread count</li>
-                  <li><strong>Push Notifications</strong> — Browser push notifications for important updates</li>
-                  <li><strong>WhatsApp</strong> — Order updates and alerts delivered to your WhatsApp</li>
-                  <li><strong>Email</strong> — Order confirmations and account-related emails</li>
+                  <li><strong>Store verification</strong> — Stores can apply for verification. Verified stores get a trusted badge.</li>
+                  <li><strong>Trust counts</strong> — Customers can endorse stores, and the count is shown publicly.</li>
+                  <li><strong>Store reviews</strong> — Buyers can rate and review stores after purchase.</li>
+                  <li><strong>Complaint system</strong> — File a complaint and the Rozare team will help resolve it.</li>
+                  <li><strong>Role-based security</strong> — Server-side checks make sure buyers cannot access seller tools and sellers cannot see other sellers' data.</li>
+                  <li><strong>Data isolation</strong> — In multi-seller orders, each seller sees only their own portion.</li>
+                  <li><strong>Encrypted communications</strong> — All traffic is HTTPS; authentication uses JWT tokens.</li>
                 </ul>
-                <p>Manage your notifications through the AI: "Show my notifications" or "Mark all as read".</p>
               </DocSection>
 
-              {/* ═══ ADMIN GUIDE ═══ */}
-              <DocSection id="admin-guide" title="Admin Guide" icon={Lock}>
-                <p>Rozare admins have full platform control through the admin dashboard and the AI Platform Commander.</p>
-                <h3>Admin Capabilities</h3>
-                <ul>
-                  <li><strong>User Management</strong> — Search, view, block/unblock, delete users, change roles</li>
-                  <li><strong>Order Oversight</strong> — View all orders platform-wide, cancel any order</li>
-                  <li><strong>Store Management</strong> — View all stores, approve/reject/revoke verifications</li>
-                  <li><strong>Complaint Resolution</strong> — View, respond to, and resolve all complaints</li>
-                  <li><strong>Broadcast Notifications</strong> — Send platform-wide announcements to all users or targeted audiences</li>
-                  <li><strong>Tax Configuration</strong> — Set platform-wide tax (percentage or fixed amount)</li>
-                  <li><strong>Subscription Management</strong> — View all seller subscriptions and statuses</li>
-                  <li><strong>Platform Analytics</strong> — Total users, revenue, orders, stores, growth metrics</li>
-                </ul>
-                <p>All admin actions are available through both the dashboard UI and the AI chat.</p>
-              </DocSection>
-
-              {/* ═══ TECHNICAL OVERVIEW ═══ */}
-              <DocSection id="api-reference" title="Technical Overview" icon={FileText}>
-                <h3>Technology Stack</h3>
-                <ul>
-                  <li><strong>Frontend</strong> — React + Vite, Tailwind CSS, Framer Motion</li>
-                  <li><strong>Backend</strong> — Node.js, Express.js, MongoDB (Mongoose)</li>
-                  <li><strong>AI</strong> — OpenRouter API (Gemini 2.5 Flash) with server-side tool execution</li>
-                  <li><strong>Mobile</strong> — React Native / Expo</li>
-                  <li><strong>WhatsApp</strong> — Evolution API integration</li>
-                  <li><strong>Payments</strong> — Stripe integration</li>
-                  <li><strong>Media</strong> — Cloudinary for image uploads</li>
-                  <li><strong>Hosting</strong> — Heroku (backend), Vercel (frontend)</li>
-                </ul>
-
-                <h3>AI Architecture</h3>
-                <p>The Rozare AI uses a <strong>server-side tool execution loop</strong>:</p>
+              {/* STORE VERIFICATION */}
+              <DocSection id="store-verification" title="Store Verification" icon={CheckCircle}>
+                <p>A verified badge builds buyer trust and improves visibility.</p>
+                <h3>How to apply</h3>
                 <StepList steps={[
-                  'User sends a message via SSE (Server-Sent Events) streaming',
-                  'The AI model decides which tool(s) to call based on the request',
-                  'Tools are executed server-side against MongoDB (not on the client)',
-                  'Results are fed back to the AI model',
-                  'The AI generates a natural language summary and streams it back',
-                  'This loop repeats up to 5 times per request for complex multi-step operations',
+                  'Open Seller Dashboard → Store Settings → Verification.',
+                  'Or just tell the AI: "Apply for verification".',
+                  'Provide your contact details and a short message about your store.',
+                  'The Rozare team reviews your application.',
+                  'When approved, your store gets a verified badge that shows on your store page and product cards.',
                 ]} />
-                <p>Security: Every tool call is validated against the user's role. Even if the AI hallucinates a tool, the server-side allowlist blocks unauthorized access.</p>
+                <h3>Requirements</h3>
+                <ul>
+                  <li>Active store with at least a few products listed.</li>
+                  <li>Complete store profile (name, description, logo).</li>
+                  <li>Valid contact information.</li>
+                  <li>No outstanding policy violations on your account.</li>
+                </ul>
               </DocSection>
 
-              {/* ═══ FAQ ═══ */}
+              {/* SUBDOMAIN */}
+              <DocSection id="subdomain" title="Custom Subdomain" icon={Globe}>
+                <p>Sellers can claim their own custom subdomain like <code>yourstore.rozare.com</code> for a more professional storefront.</p>
+                <ul>
+                  <li>Open Seller Dashboard → Subdomain.</li>
+                  <li>Pick an available name and claim it.</li>
+                  <li>Your store automatically becomes accessible at the new URL — no DNS work needed.</li>
+                  <li>Subdomains are linked to your subscription. They are disabled in development and preview environments.</li>
+                </ul>
+              </DocSection>
+
+              {/* NOTIFICATIONS */}
+              <DocSection id="notifications" title="Notifications" icon={Bell}>
+                <p>Stay in the loop on every channel:</p>
+                <ul>
+                  <li><strong>In-app</strong> — Bell icon in the top navigation shows your unread count and a dropdown of recent activity.</li>
+                  <li><strong>Push notifications</strong> — Mobile app push for new orders, status updates, and customer messages.</li>
+                  <li><strong>WhatsApp</strong> — Order alerts, status updates, and confirmations delivered to your WhatsApp.</li>
+                  <li><strong>Email</strong> — Branded order confirmations, account, and security emails (powered by Brevo).</li>
+                </ul>
+                <p>Tune your preferences in Notification Settings — turn channels on or off per event type.</p>
+              </DocSection>
+
+              {/* MOBILE APP */}
+              <DocSection id="mobile-app" title="Rozare Mobile App" icon={Smartphone}>
+                <p>The Rozare mobile app (iOS &amp; Android, built with React Native / Expo) brings the full marketplace and seller dashboard to your phone.</p>
+                <h3>Mobile features</h3>
+                <ul>
+                  <li>Browse products, place orders, and chat with the AI from your phone.</li>
+                  <li>Liquid-glass design with light and dark themes that match your system preference.</li>
+                  <li>Push notifications for orders, deliveries, and chat replies.</li>
+                  <li>Pull-to-refresh on every data screen.</li>
+                  <li>Onboarding walkthrough on first launch.</li>
+                  <li>Voice search and voice mode in chat.</li>
+                  <li>Sellers get quick-action grids on the home screen, store trust controls, and bulk operations.</li>
+                </ul>
+              </DocSection>
+
+              {/* CURRENCY & LANGUAGE */}
+              <DocSection id="currency-multilingual" title="Currency & Languages" icon={Globe}>
+                <ul>
+                  <li><strong>Multi-currency</strong> — Pick your display currency from the navbar (USD, EUR, GBP, PKR and more). Prices convert automatically across the site.</li>
+                  <li><strong>Conversational AI in your language</strong> — The AI understands English, Urdu, Hindi, and common product slang in those languages.</li>
+                  <li><strong>Local checkout</strong> — Prices shown in your currency, payment processed in the seller's settlement currency by Stripe.</li>
+                </ul>
+              </DocSection>
+
+              {/* TROUBLESHOOTING */}
+              <DocSection id="troubleshooting" title="Troubleshooting & Help" icon={HelpCircle}>
+                <h3>Common issues</h3>
+                <ul>
+                  <li><strong>"I can't add a product"</strong> — Check that you have an active store, that your trial or subscription is active, and that all required fields are filled.</li>
+                  <li><strong>"My order isn't showing up"</strong> — Refresh, check the Orders tab, or ask the AI: "Show my recent orders". Make sure you're logged in as the right user.</li>
+                  <li><strong>"AI says I've hit the limit"</strong> — You've reached your daily message cap. Limits reset daily. Upgrade to Elite for 250 messages/day.</li>
+                  <li><strong>"I can't add more tags"</strong> — Each product is limited to 15 tags. Remove some to add new ones.</li>
+                  <li><strong>"WhatsApp didn't send the OTP"</strong> — Wait 60 seconds, then resend. Confirm your number includes the country code.</li>
+                  <li><strong>"My description was changed by the AI"</strong> — Use the "Revert" button to restore your original text.</li>
+                </ul>
+
+                <h3>Contact support</h3>
+                <p>Visit <Link to="/contact" style={{ color: 'hsl(220, 70%, 65%)' }}>/contact</Link> to send us a message, or open the in-app chatbot and say "I need help with…" — the AI will collect details and create a support ticket for you.</p>
+              </DocSection>
+
+              {/* FAQ */}
               <DocSection id="faq" title="Frequently Asked Questions" icon={HelpCircle}>
-                <FAQItem q="Is Rozare free to use for shoppers?" a="Yes! Shopping on Rozare is completely free. You only pay for the products you buy. There are no membership fees for shoppers." />
-                <FAQItem q="How much does it cost to sell on Rozare?" a="New sellers start with a free trial. After the trial, you can choose from Starter (free tier with limits), Growth ($19/mo), or Pro ($49/mo) plans." />
-                <FAQItem q="Can I use Rozare from my phone?" a="Yes! Rozare has a responsive website that works on all devices. There's also a React Native mobile app, and you can manage everything via WhatsApp." />
-                <FAQItem q="How does the AI know about my store?" a="The AI has real-time access to your store data through secure server-side tools. It can see your products, orders, analytics, coupons, and settings — only for YOUR store." />
-                <FAQItem q="Can another seller see my data?" a="Absolutely not. The AI enforces strict data isolation. Each seller can only see their own products, orders, revenue, and store data. Even in multi-seller orders, each seller only sees their own portion." />
-                <FAQItem q="Is my data safe?" a="Yes. All data is encrypted in transit (HTTPS) and at rest. Authentication uses JWT tokens. The AI never stores or shares personal data outside your session." />
-                <FAQItem q="What payment methods are available?" a="Currently Cash on Delivery (COD) and Stripe (credit/debit cards). More payment methods are coming soon." />
-                <FAQItem q="How do I get my store verified?" a="Apply through your seller dashboard or tell the AI 'Apply for verification'. The Rozare team reviews applications and grants verified badges to qualifying stores." />
-                <FAQItem q="Can I manage my store from WhatsApp?" a="Yes! Connect your WhatsApp number in seller settings. You'll get order notifications and can manage your store by chatting with the Rozare AI on WhatsApp." />
-                <FAQItem q="What makes Rozare different from other e-commerce platforms?" a="Rozare is the world's first AI-powered e-commerce platform. Instead of clicking through menus, you chat naturally with an AI that can search, buy, sell, manage inventory, analyze sales, and give growth strategies — all through conversation, on web or WhatsApp." />
+                <FAQItem q="Is Rozare free for shoppers?" a="Yes. Shopping is completely free. You only pay for the products you buy. There are no membership fees." />
+                <FAQItem q="How much does it cost to sell on Rozare?" a="Every new seller gets a 15-day free trial of every feature. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro)." />
+                <FAQItem q="Can I really run my whole store from WhatsApp?" a="Yes. Once you connect your WhatsApp number in seller settings, you can chat with the Rozare AI to add products, update stock, manage orders, run discounts, pull analytics, and you'll get instant notifications for every new order." />
+                <FAQItem q="Does Rozare have a mobile app?" a="Yes. The Rozare mobile app is available for iOS and Android with full shopping, selling, AI chat, push notifications, voice search, and a polished liquid-glass design." />
+                <FAQItem q="How does the AI know about my store?" a="The AI calls secure server-side tools that read and write only your store's data. Other sellers cannot see your data, and you cannot see theirs." />
+                <FAQItem q="Is my data safe?" a="Yes. All traffic is encrypted (HTTPS). Authentication uses JWT tokens. Personal data is never sold or shared with third parties outside what's required to fulfil your order." />
+                <FAQItem q="What payment methods are available?" a="Currently Cash on Delivery and Stripe (Visa, Mastercard, Amex and more). Additional methods are added over time." />
+                <FAQItem q="What's the difference between Starter and Elite?" a="Both plans include unlimited listings, a custom subdomain, WhatsApp store management, new-order WhatsApp notifications, and the core marketplace features. Elite adds 250 AI messages/day (vs 100), the smart description generator with AI, advanced analytics, smart tag AI, coupon and bulk tools permanently, priority support, and 12 featured products (vs 6)." />
+                <FAQItem q="What happens after my 15-day free trial ends?" a="If you don't subscribe, your store and products are temporarily hidden until you subscribe — your data is preserved. Subscribe to Starter or Elite to instantly reactivate everything." />
+                <FAQItem q="Can I cancel anytime?" a="Yes. Cancel from Seller Dashboard → Subscription. Your store stays active until the end of your current billing period." />
+                <FAQItem q="What's the maximum number of tags per product?" a="15 tags per product. Both manual entry and AI generation respect this limit." />
+                <FAQItem q="How long can my product description be?" a="Up to 2000 characters. A live counter is shown in the form." />
+                <FAQItem q="Can I sell physical and digital products?" a="Today, Rozare focuses on physical products with shipping. Digital product support may expand in the future." />
+                <FAQItem q="What makes Rozare different from other marketplaces?" a="Rozare is built around chatting with AI. You can shop or run your entire store and brand by talking — on the website, the mobile app, or WhatsApp. No other marketplace gives you a full conversational store-management AI alongside a multi-vendor shopping experience." />
               </DocSection>
 
             </div>
@@ -717,7 +770,7 @@ function DocsPage() {
             {/* Bottom CTA */}
             <div className="mt-20 mb-8 text-center p-8 rounded-2xl" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.1), hsl(280, 60%, 55%, 0.1))', border: '1px solid hsl(220, 70%, 55%, 0.2)' }}>
               <h2 className="text-2xl font-bold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Ready to Get Started?</h2>
-              <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>Join thousands of shoppers and sellers on the world's first AI-powered marketplace.</p>
+              <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>Join the marketplace where you can shop and run your store just by chatting with AI.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 <Link to="/signup" className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
                   Start Shopping
@@ -748,7 +801,10 @@ function DocSection({ id, title, icon: Icon, children }) {
       <div className="prose prose-sm md:prose-base max-w-none space-y-4
         [&>p]:leading-relaxed [&>ul]:space-y-2 [&>ul>li]:leading-relaxed
         [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3
-        [&>h4]:text-base [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2"
+        [&>h4]:text-base [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
+        [&>ul]:list-disc [&>ul]:pl-5
+        [&>p>code]:px-1.5 [&>p>code]:py-0.5 [&>p>code]:rounded [&>p>code]:bg-[hsl(var(--muted))] [&>p>code]:text-[0.85em]
+        [&_li>code]:px-1.5 [&_li>code]:py-0.5 [&_li>code]:rounded [&_li>code]:bg-[hsl(var(--muted))] [&_li>code]:text-[0.85em]"
         style={{ color: 'hsl(var(--foreground))' }}>
         {children}
       </div>
@@ -801,15 +857,16 @@ function CodeBlock({ lines }) {
 
 function InfoBox({ type, title, children }) {
   const styles = {
-    tip: { bg: 'hsl(150, 60%, 45%, 0.08)', border: 'hsl(150, 60%, 45%, 0.3)', icon: '💡', color: 'hsl(150, 60%, 55%)' },
-    info: { bg: 'hsl(220, 70%, 55%, 0.08)', border: 'hsl(220, 70%, 55%, 0.3)', icon: 'ℹ️', color: 'hsl(220, 70%, 65%)' },
-    important: { bg: 'hsl(40, 80%, 50%, 0.08)', border: 'hsl(40, 80%, 50%, 0.3)', icon: '⚠️', color: 'hsl(40, 80%, 55%)' },
+    tip: { bg: 'hsl(150, 60%, 45%, 0.08)', border: 'hsl(150, 60%, 45%, 0.3)', Icon: Lightbulb, color: 'hsl(150, 60%, 55%)' },
+    info: { bg: 'hsl(220, 70%, 55%, 0.08)', border: 'hsl(220, 70%, 55%, 0.3)', Icon: Info, color: 'hsl(220, 70%, 65%)' },
+    important: { bg: 'hsl(40, 80%, 50%, 0.08)', border: 'hsl(40, 80%, 50%, 0.3)', Icon: AlertTriangle, color: 'hsl(40, 80%, 55%)' },
   };
   const s = styles[type] || styles.info;
+  const Icon = s.Icon;
   return (
     <div className="rounded-xl p-4 my-4" style={{ background: s.bg, borderLeft: `3px solid ${s.border}` }}>
       <div className="flex items-center gap-2 mb-1">
-        <span>{s.icon}</span>
+        <Icon size={14} style={{ color: s.color }} />
         <span className="text-sm font-semibold" style={{ color: s.color }}>{title}</span>
       </div>
       <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--foreground))' }}>{children}</p>
@@ -821,13 +878,12 @@ function PlanCard({ name, price, features, featured }) {
   return (
     <div className={`p-5 rounded-xl ${featured ? 'ring-2' : ''}`}
       style={{
-        background: featured ? 'hsl(220, 70%, 55%, 0.08)' : 'hsl(var(--muted) / 0.3)',
+        background: featured ? 'hsl(270, 60%, 55%, 0.08)' : 'hsl(var(--muted) / 0.3)',
         border: '1px solid hsl(var(--border))',
-        ringColor: featured ? 'hsl(220, 70%, 55%)' : undefined,
       }}>
-      {featured && <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'hsl(220, 70%, 55%, 0.2)', color: 'hsl(220, 70%, 65%)' }}>Most Popular</span>}
+      {featured && <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'hsl(270, 60%, 55%, 0.2)', color: 'hsl(270, 60%, 65%)' }}>Most Popular</span>}
       <h3 className="text-lg font-bold mt-2" style={{ color: 'hsl(var(--foreground))' }}>{name}</h3>
-      <p className="text-2xl font-bold mb-4" style={{ color: 'hsl(220, 70%, 65%)' }}>{price}</p>
+      <p className="text-2xl font-bold mb-4" style={{ color: featured ? 'hsl(270, 60%, 65%)' : 'hsl(220, 70%, 65%)' }}>{price}</p>
       <ul className="space-y-2">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2 text-sm">
