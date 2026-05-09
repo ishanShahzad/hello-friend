@@ -141,6 +141,8 @@ export default function AdminDashboardScreen({ navigation }) {
     { icon: 'globe-outline', color: '#0ea5e9', label: 'Subdomains', onPress: () => navigation.navigate('AdminSubdomainManagement') },
     { icon: 'chatbubbles-outline', color: '#f97316', label: 'Complaints', onPress: () => navigation.navigate('AdminComplaints') },
     { icon: 'card-outline', color: '#10b981', label: 'Subscriptions', onPress: () => navigation.navigate('AdminSubscriptions') },
+    { icon: 'megaphone-outline', color: '#a855f7', label: 'Broadcast', onPress: () => navigation.navigate('AdminBroadcast') },
+    { icon: 'logo-whatsapp', color: '#22C55E', label: 'WhatsApp', onPress: () => navigation.navigate('AdminWhatsAppVerification') },
     { icon: 'notifications-outline', color: palette.colors.warning, label: 'Notifications', onPress: () => navigation.navigate('AdminNotifications') },
     { icon: 'options-outline', color: palette.colors.gray, label: 'Settings', onPress: () => navigation.navigate('NotificationSettings') },
   ];
