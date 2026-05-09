@@ -1135,9 +1135,31 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     {/* Description */}
                     <div>
                         <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Description *</label>
-                        <textarea required disabled={uploadingImages} value={product.description}
-                            onChange={(e) => setProduct({ ...product, description: e.target.value })}
-                            rows={3} className={inputClass} placeholder="Enter product description" />
+                        <textarea required disabled={uploadingImages || improvingDesc} value={product.description}
+                            onChange={(e) => { setProduct({ ...product, description: e.target.value }); if (previousDescription !== null) setPreviousDescription(null); }}
+                            rows={4} className={inputClass} placeholder="Enter product description" />
+                        {product.description?.trim() && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                <motion.button type="button" disabled={improvingDesc || uploadingImages}
+                                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                    onClick={improveDescription}
+                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-white font-semibold text-xs disabled:opacity-60"
+                                    style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 50%), hsl(320, 60%, 55%))' }}>
+                                    {improvingDesc ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                                    {improvingDesc ? 'Improving…' : 'Improve with AI'}
+                                </motion.button>
+                                {previousDescription !== null && (
+                                    <motion.button type="button" disabled={uploadingImages}
+                                        initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={revertDescription}
+                                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-inner font-semibold text-xs"
+                                        style={{ color: 'hsl(var(--foreground))' }}>
+                                        <RotateCcw size={14} /> Revert
+                                    </motion.button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Main Image */}
