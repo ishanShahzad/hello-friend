@@ -429,6 +429,36 @@ export default function BecomeSeller() {
               ))}
             </motion.div>
 
+            {/* AI Superpowers — the headline differentiator */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="glass-panel p-8 mb-8 relative overflow-hidden">
+              <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-20 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, hsl(280, 70%, 60%), transparent 70%)' }} />
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, hsl(280, 70%, 60%), hsl(220, 70%, 55%))' }}>
+                  <Bot size={22} className="text-white" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-full" style={{ background: 'hsl(280, 70%, 60%, 0.15)', color: 'hsl(280, 70%, 60%)' }}>AI Powered</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                Your AI Co-Pilot for Selling
+              </h2>
+              <p className="text-sm sm:text-base mb-6 max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Stop wrestling with spreadsheets and dashboards. Just <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>tell Rozare AI what you want</span> — in the app, by voice, or even on WhatsApp — and it gets done.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiSuperpowers.map((s, i) => (
+                  <motion.div key={i} whileHover={{ y: -3 }} className="glass-inner p-4 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2" style={{ color: 'hsl(280, 70%, 60%)' }}>
+                      {s.icon}
+                      <h4 className="font-bold text-sm" style={{ color: 'hsl(var(--foreground))' }}>{s.title}</h4>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-8 mb-8">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
                 <Sparkles size={24} style={{ color: 'hsl(45, 93%, 47%)' }} /> What You'll Get
