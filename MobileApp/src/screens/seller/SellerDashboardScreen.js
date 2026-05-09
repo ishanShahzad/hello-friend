@@ -131,6 +131,7 @@ export default function SellerDashboardScreen({ navigation }) {
     { icon: 'diamond-outline', color: '#8b5cf6', label: 'Plan', onPress: () => navigation.navigate('SellerSubscription') },
     { icon: 'logo-whatsapp', color: '#22C55E', label: 'WhatsApp', onPress: () => navigation.navigate('SellerWhatsAppSettings') },
     { icon: 'chatbubbles-outline', color: '#f97316', label: 'Complaints', onPress: () => navigation.navigate('SellerComplaints') },
+    { icon: 'person-circle-outline', color: '#06b6d4', label: 'Profile', onPress: () => navigation.navigate('SellerProfile') },
   ];
 
   return (

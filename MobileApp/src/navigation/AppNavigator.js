@@ -100,6 +100,8 @@ import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TrackOrderScreen from '../screens/TrackOrderScreen';
 import NotificationPreferencesScreen from '../screens/NotificationPreferencesScreen';
 import SavedAddressesScreen from '../screens/SavedAddressesScreen';
+import DocsScreen from '../screens/DocsScreen';
+import SellerProfileScreen from '../screens/seller/SellerProfileScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -168,6 +170,7 @@ const GuardedSellerSubdomainManagement = createRoleGuard(SellerSubdomainManageme
 const GuardedSellerCouponManagement = createRoleGuard(SellerCouponManagementScreen, ['seller', 'admin']);
 const GuardedSellerWhatsAppSettings = createRoleGuard(SellerWhatsAppSettingsScreen, ['seller', 'admin']);
 const GuardedSellerComplaints = createRoleGuard(SellerComplaintsScreen, ['seller', 'admin']);
+const GuardedSellerProfile = createRoleGuard(SellerProfileScreen, ['seller', 'admin']);
 
 // Helper function to calculate cart item count - exported for testing
 export const calculateCartItemCount = (cartItems) => {
@@ -453,6 +456,7 @@ export default function AppNavigator() {
       <Stack.Screen name="SellerCouponManagement" component={GuardedSellerCouponManagement} options={{ headerShown: false }} />
       <Stack.Screen name="SellerWhatsAppSettings" component={GuardedSellerWhatsAppSettings} options={{ headerShown: false }} />
       <Stack.Screen name="SellerComplaints" component={GuardedSellerComplaints} options={{ headerShown: false }} />
+      <Stack.Screen name="SellerProfile" component={GuardedSellerProfile} options={{ headerShown: false }} />
       <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
       <Stack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ headerShown: false }} />
 
@@ -489,6 +493,7 @@ export default function AppNavigator() {
       <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Docs" component={DocsScreen} options={{ headerShown: false }} />
 
       {/* Payment Result Screens */}
       <Stack.Screen
