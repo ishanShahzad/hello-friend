@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
+import { Store, ArrowLeft, Sparkles, CheckCircle, CheckCircle2, TrendingUp, Shield, BarChart3, Phone, MapPin, Globe, Instagram, Facebook, Twitter, Youtube, ArrowRight, MessageCircle, Edit3, Mail, Lock, User as UserIcon, AlertCircle, Loader2, Bot, Wand2, Mic, Zap, Tag, LineChart, Smartphone, Languages, CreditCard, Globe2, Megaphone, PackageSearch, Bell } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
