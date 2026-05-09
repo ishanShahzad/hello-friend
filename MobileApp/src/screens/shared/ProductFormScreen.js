@@ -2,10 +2,10 @@
  * ProductFormScreen — Liquid Glass
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import GlassBackground from '../../components/common/GlassBackground';
 import GlassPanel from '../../components/common/GlassPanel';
 import { spacing, fontSize, borderRadius, fontWeight, typography } from '../../styles/theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { PRESET_CATEGORIES, isPresetCategory, MAX_TAGS, MAX_DESCRIPTION_LENGTH } from '../../utils/categories';
 
 export const getFormMode = (product) => product && product._id ? 'edit' : 'create';
 
@@ -53,6 +54,27 @@ export default function ProductFormScreen({ navigation, route }) {
   const [canFeature, setCanFeature] = useState(true);
   const [featuredStats, setFeaturedStats] = useState({ current: 0, max: 6, allowed: true, plan: 'free_trial' });
 
+  // Category combobox
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [showOtherModal, setShowOtherModal] = useState(false);
+  const [otherCategory, setOtherCategory] = useState('');
+
+  // AI description improver
+  const [improvingDesc, setImprovingDesc] = useState(false);
+  const [previousDescription, setPreviousDescription] = useState(null);
+
+  // AI tag generator
+  const [generatingTags, setGeneratingTags] = useState(false);
+
+  const filteredCategories = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return PRESET_CATEGORIES;
+    return PRESET_CATEGORIES.filter((c) => c.toLowerCase().includes(q));
+  }, [categorySearch]);
+
+  const tagsAtLimit = tags.length >= MAX_TAGS;
+
   // Fetch featured product stats (entitlement + count/limit).
   useEffect(() => {
     if (isAdmin) { setCanFeature(true); setFeaturedStats({ current: 0, max: 999, allowed: true, plan: 'admin' }); return; }
@@ -84,12 +106,59 @@ export default function ProductFormScreen({ navigation, route }) {
 
   const removeImage = useCallback((index) => { setImages(prev => prev.filter((_, i) => i !== index)); }, []);
 
+  const handleImproveDescription = async () => {
+    const desc = formData.description?.trim();
+    if (!desc || desc.length < 10) { Alert.alert('Info', 'Write a short description first (10+ chars)'); return; }
+    setImprovingDesc(true);
+    try {
+      const res = await api.post('/api/ai-assist/improve-description', {
+        name: formData.name, description: desc, category: formData.category, brand: formData.brand,
+      });
+      const improved = res.data?.description || res.data?.improved;
+      if (improved) {
+        setPreviousDescription(desc);
+        const trimmed = improved.slice(0, MAX_DESCRIPTION_LENGTH);
+        setFormData(prev => ({ ...prev, description: trimmed }));
+      } else {
+        Alert.alert('Error', 'No improvement returned');
+      }
+    } catch (e) { Alert.alert('Error', e.response?.data?.message || 'Failed to improve description'); }
+    finally { setImprovingDesc(false); }
+  };
+
+  const handleRevertDescription = () => {
+    if (previousDescription != null) {
+      setFormData(prev => ({ ...prev, description: previousDescription }));
+      setPreviousDescription(null);
+    }
+  };
+
+  const handleGenerateTagsAI = async () => {
+    if (tagsAtLimit) return;
+    if (!formData.name?.trim()) { Alert.alert('Info', 'Add a product name first'); return; }
+    setGeneratingTags(true);
+    try {
+      const res = await api.post('/api/ai-assist/generate-tags', {
+        name: formData.name, description: formData.description, category: formData.category, brand: formData.brand, existingTags: tags,
+      });
+      const newTags = res.data?.tags || [];
+      const merged = [...new Set([...tags, ...newTags])].slice(0, MAX_TAGS);
+      setTags(merged);
+    } catch (e) { Alert.alert('Error', e.response?.data?.message || 'Failed to generate tags'); }
+    finally { setGeneratingTags(false); }
+  };
+
+  const handleTagsUpdated = (next) => {
+    const capped = (next || []).slice(0, MAX_TAGS);
+    setTags(capped);
+  };
+
   const saveProduct = async () => {
     const validation = validateProductForm(formData);
     if (!validation.isValid) { setErrors(validation.errors); setTouched({ name: true, price: true, stock: true }); return; }
     setLoading(true);
     try {
-      const productData = { name: formData.name.trim(), description: formData.description.trim(), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags, optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
+      const productData = { name: formData.name.trim(), description: formData.description.trim().slice(0, MAX_DESCRIPTION_LENGTH), price: parseFloat(formData.price), discountedPrice: formData.discountedPrice ? parseFloat(formData.discountedPrice) : null, stock: parseInt(formData.stock), category: formData.category.trim(), brand: formData.brand.trim(), images, tags: tags.slice(0, MAX_TAGS), optionGroups: optionGroups.filter(g => g.name && g.values.length > 0), isFeatured: canFeature ? isFeatured : false };
       if (isEditMode) { await api.put(`/api/products/edit/${product._id}`, { product: productData }); Alert.alert('Success', 'Product updated', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
       else { await api.post('/api/products/add', { product: productData }); Alert.alert('Success', 'Product created', [{ text: 'OK', onPress: () => navigation.goBack() }]); }
     } catch (e) { Alert.alert('Error', e.response?.data?.message || e.response?.data?.msg || 'Failed to save'); }
@@ -147,16 +216,90 @@ export default function ProductFormScreen({ navigation, route }) {
           <GlassPanel variant="card" style={styles.section}>
             <Text style={styles.sectionTitle}>Product Details</Text>
             {renderInput('name', 'Product Name', { placeholder: 'Enter product name', required: true })}
-            {renderInput('description', 'Description', { placeholder: 'Describe your product...', multiline: true })}
+
+            {/* Description with AI improver */}
+            <View style={styles.inputGroup}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Text style={styles.label}>Description</Text>
+                <Text style={{ fontSize: fontSize.xs, color: (formData.description?.length || 0) >= MAX_DESCRIPTION_LENGTH ? palette.colors.error : palette.colors.textSecondary }}>
+                  {formData.description?.length || 0}/{MAX_DESCRIPTION_LENGTH}
+                </Text>
+              </View>
+              <View style={[styles.inputContainer, { alignItems: 'flex-start' }]}>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.description}
+                  onChangeText={(v) => updateField('description', v.slice(0, MAX_DESCRIPTION_LENGTH))}
+                  placeholder="Describe your product..."
+                  placeholderTextColor={palette.colors.textSecondary}
+                  multiline
+                  numberOfLines={5}
+                  textAlignVertical="top"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                <TouchableOpacity
+                  onPress={handleImproveDescription}
+                  disabled={improvingDesc || !formData.description?.trim()}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(139,92,246,0.18)', opacity: (improvingDesc || !formData.description?.trim()) ? 0.5 : 1 }}>
+                  {improvingDesc ? <ActivityIndicator size="small" color="#8B5CF6" /> : <Ionicons name="sparkles" size={14} color="#8B5CF6" />}
+                  <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#8B5CF6' }}>Improve with AI</Text>
+                </TouchableOpacity>
+                {previousDescription != null && (
+                  <TouchableOpacity
+                    onPress={handleRevertDescription}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                    <Ionicons name="arrow-undo" size={14} color={palette.colors.text} />
+                    <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: palette.colors.text }}>Revert</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             <View style={styles.row}>
-              <View style={{ flex: 1 }}>{renderInput('price', 'Price', { placeholder: '0.00', keyboardType: 'decimal-pad', required: true, prefix: '$' })}</View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Price <Text style={{ color: palette.colors.error }}>*</Text></Text>
+                  <View style={[styles.inputContainer, touched.price && errors.price && styles.inputError]}>
+                    <Text style={styles.inputPrefix}>$</Text>
+                    <TextInput
+                      style={[styles.input, { paddingLeft: spacing.xs }]}
+                      value={formData.price}
+                      onChangeText={(v) => updateField('price', v.replace(/[^0-9.]/g, ''))}
+                      onBlur={() => setTouched(p => ({ ...p, price: true }))}
+                      placeholder="0.00"
+                      placeholderTextColor={palette.colors.textSecondary}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                  {touched.price && errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+                </View>
+              </View>
               <View style={{ flex: 1 }}>{renderInput('discountedPrice', 'Sale Price', { placeholder: '0.00', keyboardType: 'decimal-pad', prefix: '$' })}</View>
             </View>
             {renderInput('stock', 'Stock', { placeholder: '0', keyboardType: 'number-pad', required: true })}
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>{renderInput('category', 'Category', { placeholder: 'e.g., Electronics' })}</View>
-              <View style={{ flex: 1 }}>{renderInput('brand', 'Brand', { placeholder: 'e.g., Apple' })}</View>
+
+            {/* Category combobox */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Category</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => { setCategorySearch(''); setShowCategoryPicker(true); }}
+                style={[styles.inputContainer, { paddingHorizontal: spacing.md, paddingVertical: spacing.md, justifyContent: 'space-between' }]}>
+                <Text style={{ flex: 1, fontSize: fontSize.md, color: formData.category ? palette.colors.text : palette.colors.textSecondary }} numberOfLines={1}>
+                  {formData.category || 'Choose a category'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={palette.colors.textSecondary} />
+              </TouchableOpacity>
+              {formData.category && !isPresetCategory(formData.category) && (
+                <Text style={{ fontSize: fontSize.xs, color: palette.colors.textSecondary, marginTop: 4 }}>Custom category</Text>
+              )}
             </View>
+
+            {renderInput('brand', 'Brand', { placeholder: 'e.g., Apple' })}
           </GlassPanel>
 
           {/* Product Options (Size, Color, Material, etc.) */}
@@ -230,11 +373,26 @@ export default function ProductFormScreen({ navigation, route }) {
 
           {/* Smart Tags */}
           <GlassPanel variant="card" style={styles.section}>
-            <Text style={styles.sectionTitle}>Smart Tags</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+              <Text style={styles.sectionTitle}>Smart Tags</Text>
+              <Text style={{ fontSize: fontSize.xs, color: tagsAtLimit ? palette.colors.error : palette.colors.textSecondary }}>
+                {tags.length}/{MAX_TAGS}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleGenerateTagsAI}
+              disabled={generatingTags || tagsAtLimit}
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, backgroundColor: 'rgba(139,92,246,0.18)', marginBottom: spacing.md, opacity: (generatingTags || tagsAtLimit) ? 0.5 : 1 }}>
+              {generatingTags ? <ActivityIndicator size="small" color="#8B5CF6" /> : <Ionicons name="sparkles" size={16} color="#8B5CF6" />}
+              <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#8B5CF6' }}>
+                {tagsAtLimit ? 'Tag limit reached' : 'Generate Tags with AI'}
+              </Text>
+            </TouchableOpacity>
             <SmartTagGenerator
               productId={isEditMode ? product._id : null}
               currentTags={tags}
-              onTagsUpdated={setTags}
+              onTagsUpdated={handleTagsUpdated}
               productData={{ name: formData.name, description: formData.description, category: formData.category, brand: formData.brand }}
             />
           </GlassPanel>
@@ -291,6 +449,85 @@ export default function ProductFormScreen({ navigation, route }) {
           <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Category Picker Modal */}
+      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowCategoryPicker(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: spacing.lg }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: palette.colors.surface, borderRadius: borderRadius.xl, padding: spacing.lg, maxHeight: '75%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={{ ...typography.h4, color: palette.colors.text }}>Choose Category</Text>
+              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+                <Ionicons name="close" size={22} color={palette.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.inputContainer, { marginBottom: spacing.md }]}>
+              <Ionicons name="search" size={16} color={palette.colors.textSecondary} style={{ marginLeft: spacing.md }} />
+              <TextInput
+                style={styles.input}
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+                placeholder="Search categories..."
+                placeholderTextColor={palette.colors.textSecondary}
+                autoFocus
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+              {filteredCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => { updateField('category', cat); setShowCategoryPicker(false); }}
+                  style={{ paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.glass.borderSubtle, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: fontSize.md, color: palette.colors.text }}>{cat}</Text>
+                  {formData.category?.toLowerCase() === cat.toLowerCase() && (
+                    <Ionicons name="checkmark-circle" size={18} color={palette.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+              {filteredCategories.length === 0 && (
+                <Text style={{ color: palette.colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', paddingVertical: spacing.lg }}>
+                  No matches. Use "Other" to add a custom category.
+                </Text>
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              onPress={() => { setShowCategoryPicker(false); setOtherCategory(isPresetCategory(formData.category) ? '' : (formData.category || '')); setShowOtherModal(true); }}
+              style={{ marginTop: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: 'rgba(99,102,241,0.15)', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+              <Ionicons name="add-circle-outline" size={18} color={palette.colors.primary} />
+              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: palette.colors.primary }}>Other (custom)</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Custom (Other) Category Modal */}
+      <Modal visible={showOtherModal} transparent animationType="fade" onRequestClose={() => setShowOtherModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: spacing.lg }}>
+          <View style={{ backgroundColor: palette.colors.surface, borderRadius: borderRadius.xl, padding: spacing.lg }}>
+            <Text style={{ ...typography.h4, color: palette.colors.text, marginBottom: spacing.md }}>Custom Category</Text>
+            <View style={[styles.inputContainer, { marginBottom: spacing.md }]}>
+              <TextInput
+                style={styles.input}
+                value={otherCategory}
+                onChangeText={setOtherCategory}
+                placeholder="Enter category name"
+                placeholderTextColor={palette.colors.textSecondary}
+                autoFocus
+                maxLength={40}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <TouchableOpacity onPress={() => setShowOtherModal(false)} style={{ flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center' }}>
+                <Text style={{ color: palette.colors.text, fontWeight: fontWeight.semibold }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { const v = otherCategory.trim(); if (!v) return; updateField('category', v); setShowOtherModal(false); }}
+                style={{ flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, backgroundColor: palette.colors.primary, alignItems: 'center' }}>
+                <Text style={{ color: 'white', fontWeight: fontWeight.bold }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GlassBackground>
   );
 }

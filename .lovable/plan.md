@@ -1,129 +1,101 @@
+# Mobile Parity Implementation Plan
 
+This is a large, multi-loop effort to bring the React Native app to full feature parity with the web app for **users, sellers, and admins**. Below is the audit, the gap list, and the staged implementation plan.
 
-# WhatsApp Order Auto-Verification (Polls, no typing) — Full Plan
+## 1. Audit Summary (web → mobile)
 
-Buyer confirms by tapping a **WhatsApp poll** (Yes / No) — never types. Admin links WhatsApp once via QR scan. Auto-confirmed orders are labeled in seller dashboard. Gated as a Rozare Starter bonus feature.
+### User-facing flows
+| Web | Mobile | Status |
+|---|---|---|
+| Home / Products / Categories | HomeScreen | OK — verify category filter parity |
+| Product Detail (variants, reviews, related) | ProductDetailScreen | Partial — verify variants, store-trust, reviews |
+| Cart / Checkout / Stripe | Cart + Checkout + PaymentSuccess | OK — verify coupon entry, shipping address auto-fill, tax calc |
+| Order tracking / Order detail / Confirmation | OrdersScreen, OrderDetail, TrackOrder | OK |
+| Wishlist / Trusted Stores / Stores Listing / Store Page | Present | Verify search + category buttons inside store |
+| User Dashboard (profile, addresses, stats) | UserDashboardScreen | OK |
+| Notifications inbox + preferences | NotificationsScreen + Preferences | OK |
+| AI Chatbot (voice, history, actions) | ChatBot.js | Verify parity with new prompts |
+| Docs / FAQ / About / Contact / Privacy / Terms / Become Seller | All present | Verify content sync |
+| **Subdomain stores** | Missing | Gap |
+| **AI Chat full page** | Embedded only | Gap |
 
-## Library decision
+### Seller flows
+| Web | Mobile | Status |
+|---|---|---|
+| Seller Home / Dashboard / Analytics | Present | OK |
+| Product Management (add/edit with categories combobox, AI improve, AI tags, limits) | ProductFormScreen | **GAP** — needs new category picker, AI improve description, AI generate tags, max-tag/desc enforcement |
+| Order Management & Detail | Present | OK |
+| Coupons / Shipping / Tax | Present | OK |
+| Store Settings / Overview / Profile | Present | OK |
+| Subscriptions | Present | Verify new Elite features (250 msg, Smart Description, WhatsApp mgmt) |
+| Subdomain Management | Present | OK |
+| Notifications + Settings | Present | Verify removal of black divider lines |
+| **Seller WhatsApp Settings** | Missing | Gap |
+| **Bulk discount / Bulk price update** | Missing | Gap |
+| **Complaints inbox (seller side)** | Missing | Gap |
 
-**Evolution API** — chosen because **poll vote webhooks are stable** (per your research). `whatsapp-web.js` polls send fine but vote-receiving is fragile. Both are free; Evolution wins on the receive side, which is the whole point.
+### Admin flows
+| Web | Mobile | Status |
+|---|---|---|
+| Admin Dashboard / Analytics | Present | OK |
+| User Management | Present | OK |
+| Subscriptions overview | Present | OK |
+| Subdomain Management | Present | OK |
+| Tax Configuration | Present | OK |
+| Notifications + Settings | Present | Verify divider fix |
+| Store Verification | Present | OK |
+| Complaints Management | Present | OK |
+| **Admin Broadcast Panel (WhatsApp/push broadcasts)** | Missing | Gap |
+| **WhatsApp Verification Panel** | Missing | Gap |
 
-**Hosting (free):** Evolution API is a Docker container — Heroku can't run it. Deploy free on **Railway** ($5 credit/mo, enough for this) or **Render** free web service. After implementation I'll give you a copy-paste Docker deploy guide. Our Heroku backend talks to Evolution via REST + receives webhooks.
+## 2. Implementation Stages
 
-## Confirmation flow (poll-only, no typing)
+The work will be executed in **5 stages**, each as a discrete task tracked in the task list. Each stage ends with a manual smoke-test checklist for the user (since the agent cannot run the RN app).
 
-When an order is placed, buyer receives **two WhatsApp messages**:
+### Stage 1 — Seller Product Form parity (highest user impact)
+- Replace category text input with searchable combobox using `Frontend/src/utils/categories.js` (mirrored to `MobileApp/src/utils/categories.js`).
+- Add "Other" option that opens a custom-category modal.
+- Add `Improve with AI` button next to Description with `Revert` option (reuse `/api/ai-assist/improve-description`).
+- Add `Generate Tags with AI` button (reuse `/api/ai-assist/generate-tags`).
+- Enforce `MAX_TAGS = 15`, `MAX_DESCRIPTION_LENGTH = 2000` with disabled buttons + counters.
+- Fix price input cursor (mirror web fix: empty when 0).
 
-1. **Order summary text** — "Hi {buyerName}, your order #ROZ-12345 from {storeName}:" + line items (name × qty — price) + **Total: {amount}**.
-2. **Poll** — *"Confirm your order?"* with options **✅ Yes, confirm** / **❌ No, cancel** (single-select).
+### Stage 2 — Seller WhatsApp + Bulk + Complaints
+- New `SellerWhatsAppSettingsScreen` (connect number, AI chat toggle, message templates).
+- New `BulkDiscountModal` and `BulkPriceUpdateModal` accessible from Product Management.
+- New `SellerComplaintsScreen` (inbox of complaints filed against seller's store, reply flow).
 
-Buyer taps option → Evolution sends `poll.vote` webhook → backend matches phone + pollMessageId to pending order → runs existing `confirmOrder` / `declineOrder` logic with `confirmedVia: 'whatsapp'`.
+### Stage 3 — Admin Broadcast + WhatsApp Verification
+- New `AdminBroadcastScreen` with audience filters, channel selection (push/WhatsApp/email), schedule, templates.
+- New `AdminWhatsAppVerificationScreen` to approve/deny seller WhatsApp number requests.
 
-## Queue & rate-limiting
+### Stage 4 — User-side gaps
+- Verify and patch StorePage parity in mobile `StoreScreen`: search bar + category chips for seller-defined categories.
+- Add full-screen `AIChatScreen` route (currently only FAB ChatBot).
+- Verify product detail variants, related products, reviews list parity.
 
-- FIFO queue persisted in MongoDB (survives Heroku restarts).
-- **Random 8–25s delay** between sends to mimic human behavior (mitigates ban risk).
-- Retry logic: 3 attempts on send failure with exponential backoff.
-- Max 60 messages/hour soft cap as extra safety.
+### Stage 5 — Polish & production-ready pass
+- Remove black divider lines under notification toggle sections (both seller + admin notification settings).
+- Sync all subscription copy with new pricing/features.
+- Add empty states, loading skeletons, pull-to-refresh on every data screen lacking it.
+- Run accessibility pass (touch targets ≥44px, contrast).
+- Verify dark-mode tokens on every new screen.
+- Update `AppNavigator.js` with all new routes + deep links.
+- Update push notification handlers for any new event types.
 
-## Admin Dashboard — WhatsApp Verification panel
+## 3. Technical Notes
+- All new screens use `useTheme()` + `useThemedStyles` (dark-mode compliant).
+- Use `expo-blur` + `expo-linear-gradient` for Liquid Glass per memory.
+- Use `StyleSheet.create`, no Tailwind, no solid black borders.
+- Reuse Backend endpoints — no backend changes expected except possibly exposing seller-complaints listing if missing.
+- Files touched will be primarily under `MobileApp/src/screens/`, `MobileApp/src/components/`, `MobileApp/src/navigation/AppNavigator.js`, and a new `MobileApp/src/utils/categories.js`.
 
-New section in `AdminDashboard.jsx`:
-- **Status pill**: Disconnected / Awaiting QR scan / Connected as +92xxx (with last-seen timestamp).
-- **Link WhatsApp** button → modal showing live QR code (auto-refreshed every 5s, expires after ~60s with re-generate option). Step-by-step instructions: "Open WhatsApp → Settings → Linked Devices → Link a Device → Scan".
-- **Disconnect** button (with confirm).
-- **Recent activity list** (last 20 messages): order ID, buyer phone (masked), status (queued / sent / voted ✅ / voted ❌ / failed), timestamp.
-- Honest disclaimer card: "This automates a personal WhatsApp account. Use a dedicated business number to be safe."
+## 4. Out of Scope (per memory)
+- No Spin Wheel / Spin & Win.
+- No backend rewrites unless an endpoint is missing.
+- No web-side changes unless a shared util needs extracting.
 
-## Seller Dashboard — confirmation badge
+## 5. Deliverable per stage
+After each stage I will: (a) summarize what changed, (b) list files touched, (c) give you a manual smoke-test checklist to run on the device since I cannot execute the RN app.
 
-On every order row in `SellerDashboard.jsx` (web) and `OrderManagementScreen.js` (mobile):
-- When `order.confirmation.confirmedVia === 'whatsapp'` → green pill **"✓ Confirmed via Rozare WhatsApp"** next to status.
-- When voted No → red pill **"Declined via WhatsApp"**.
-- When still pending → yellow pill **"Awaiting WhatsApp reply"**.
-
-## Subscription gating (Rozare Starter bonus)
-
-- New helper `sellerHasWhatsAppVerify(userId)` — true on `trial` OR `bonusFeaturesActive` (mirrors Featured-Products gating).
-- On order placement: check each unique seller in the order; if ≥1 entitled seller AND admin has WhatsApp linked → enqueue.
-- Add **"Automated WhatsApp order verification (poll-based, no buyer typing)"** to bonus list on:
-  - Web: `SellerSubscription.jsx`
-  - Mobile: `SellerSubscriptionScreen.js`
-
-## Backend architecture
-
-```text
-Order placed → orderController.placeOrder
-                      ↓
-            sellerHasWhatsAppVerify? + WhatsApp connected?
-                      ↓ yes
-         WhatsAppPendingMessage saved (status: queued)
-                      ↓
-              queueProcessor (8–25s delay)
-                      ↓
-         Evolution API: send text → send poll
-                      ↓
-              status: sent, store pollMessageId
-                      ↓
-         Buyer taps poll option in WhatsApp
-                      ↓
-       Evolution webhook → /api/whatsapp/webhook
-                      ↓
-          Match pollMessageId → pending message → order
-                      ↓
-       Run existing confirmOrder/declineOrder logic
-       (sends seller email + push notification)
-                      ↓
-         confirmation.confirmedVia = 'whatsapp'
-```
-
-## File touch list
-
-**New files**
-- `Backend/services/whatsapp/evolutionClient.js` — REST wrapper (createInstance, getQR, sendText, sendPoll, logout, status)
-- `Backend/services/whatsapp/queue.js` — FIFO processor with random delay + retries
-- `Backend/services/whatsapp/webhookHandler.js` — parses `poll.vote` events, matches pending messages
-- `Backend/services/whatsapp/messageBuilder.js` — formats order summary text
-- `Backend/models/WhatsAppConfig.js` — singleton: status, linkedNumber, instanceName, linkedAt, lastSeen
-- `Backend/models/WhatsAppPendingMessage.js` — orderId, phone, pollMessageId, status, attempts, timestamps
-- `Backend/controllers/whatsappController.js` — admin endpoints + webhook receiver
-- `Backend/routes/whatsappRoutes.js`
-- `Frontend/src/components/layout/admin/WhatsAppVerificationPanel.jsx`
-
-**Modified files**
-- `Backend/server.js` — mount `/api/whatsapp`, boot queue processor on dyno start
-- `Backend/controllers/orderController.js` — enqueue hook in `placeOrder` + Stripe webhook path
-- `Backend/controllers/orderConfirmationController.js` — accept `confirmedVia: 'whatsapp'`
-- `Backend/controllers/subscriptionController.js` — add `sellerHasWhatsAppVerify` helper
-- `Backend/models/Order.js` — extend `confirmedVia` enum to include `'whatsapp'`
-- `Frontend/src/components/layout/AdminDashboard.jsx` — mount WhatsApp panel
-- `Frontend/src/components/layout/SellerDashboard.jsx` — WhatsApp confirmation pill on order rows
-- `Frontend/src/components/layout/SellerSubscription.jsx` — bonus list line
-- `MobileApp/src/screens/seller/SellerSubscriptionScreen.js` — bonus list line
-- `MobileApp/src/screens/shared/OrderManagementScreen.js` — WhatsApp confirmation pill
-
-## Secrets required (after Evolution deployed)
-
-I'll request these via the secrets tool **after** you've deployed Evolution on Railway/Render:
-- `EVOLUTION_API_URL` — your Railway/Render URL (e.g., `https://rozare-evolution.up.railway.app`)
-- `EVOLUTION_API_KEY` — global API key set during Evolution deploy
-- `EVOLUTION_INSTANCE_NAME` — e.g., `rozare-main`
-- `EVOLUTION_WEBHOOK_SECRET` — shared secret to verify incoming webhooks
-
-## Heroku notes
-
-- **No Puppeteer, no buildpacks needed** — Evolution runs externally, our backend just makes HTTP calls.
-- Existing dyno handles it. Just redeploy backend after implementation.
-- Webhook URL to register with Evolution: `https://your-heroku-app.herokuapp.com/api/whatsapp/webhook`
-
-## Implementation order
-
-1. Models + Evolution REST client + message builder
-2. Queue processor + webhook handler + order placement hook
-3. Admin endpoints + WhatsApp Verification panel UI
-4. Seller dashboard confirmation pills (web + mobile)
-5. Subscription bonus list updates (web + mobile)
-6. Post-deploy: Evolution Docker setup guide + secrets request
-
-Approve and I'll implement everything in one pass.
-
+Approve this and I will start with **Stage 1 (Seller Product Form parity)** immediately.
