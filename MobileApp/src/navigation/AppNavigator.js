@@ -12,8 +12,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { View, Text, StyleSheet, Animated, Platform, Alert } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selection as hapticSelection } from '../utils/haptics';
+
+// Glass tab-bar background — BlurView on iOS, opaque-glass fallback on Android.
+function GlassTabBarBackground({ isDark, palette }) {
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView
+        tint={isDark ? 'dark' : 'light'}
+        intensity={60}
+        style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: palette.glass.borderSubtle }]}
+      />
+    );
+  }
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          backgroundColor: isDark ? 'rgba(20,26,46,0.96)' : 'rgba(255,255,255,0.96)',
+          borderTopWidth: 1,
+          borderTopColor: palette.glass.borderSubtle,
+        },
+      ]}
+    />
+  );
+}
 import { 
   colors, 
   spacing, 
