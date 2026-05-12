@@ -541,9 +541,8 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   // Tab Bar Styles
   tabBar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
     paddingTop: spacing.sm,
     position: 'absolute',
     left: 0,
@@ -552,7 +551,7 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
   },
   tabBarLabel: {
