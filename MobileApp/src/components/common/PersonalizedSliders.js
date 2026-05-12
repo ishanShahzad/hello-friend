@@ -127,9 +127,10 @@ export default function PersonalizedSliders({ navigation }) {
     return unsub;
   }, [fetchData]);
 
+  if (loading && !expanded) return null;
   if (loading) {
     return (
-      <View>
+      <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.md }}>
         <View style={[styles.sectionHeader, { paddingHorizontal: spacing.lg }]}>
           <View style={[styles.sectionIcon, { backgroundColor: colors.primarySubtle }]}>
             <Ionicons name="sparkles" size={18} color={colors.primary} />
