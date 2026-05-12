@@ -2,7 +2,7 @@ const SellerSubscription = require('../models/SellerSubscription');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
-const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+const { stripe } = require('../config/stripe');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 

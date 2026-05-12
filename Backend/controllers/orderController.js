@@ -2,7 +2,7 @@
 const Cart = require('../models/Cart');
 const Order = require('../models/Order');
 const Product = require('../models/Product')
-const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null
+const { stripe } = require('../config/stripe');
 const TaxConfig = require('../models/TaxConfig');
 const { calculateTax } = require('./taxController');
 const { recordCouponUsage } = require('./couponController');

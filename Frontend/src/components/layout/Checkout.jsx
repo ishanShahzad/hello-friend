@@ -14,7 +14,13 @@ import PhoneField, { isValidPhone } from "../common/PhoneField";
 
 export default function Checkout() {
 
-  const stripePromise = loadStripe("pk_test_51S0fa9AOCHgy4FXgLSOoaKPtariwAu7V28J1DQbxngB0JFfkgu6sa3lrW927fNt9R0cIEusKnXQvXitM9g9CHhVo004rZ7qzsA")
+  // Stripe configuration with live/test mode support
+  const STRIPE_MODE = import.meta.env.VITE_STRIPE_MODE || 'test';
+  const STRIPE_PUBLISHABLE_KEY = STRIPE_MODE === 'live'
+    ? import.meta.env.VITE_STRIPE_LIVE_PUBLISHABLE_KEY
+    : import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY;
+  
+  const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
   const steps = ["Cart", "Shipping", "Payment"];
   const [currentStep, setCurrentStep] = useState(0);

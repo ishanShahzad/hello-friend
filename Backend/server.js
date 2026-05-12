@@ -6,7 +6,24 @@ const rateLimit = require('express-rate-limit')
 const express = require('express')
 const app = express()
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1))
-const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null
+
+// ── Stripe Configuration with Live/Test Mode Support ──
+const STRIPE_MODE = process.env.STRIPE_MODE || 'test'; // 'test' or 'live'
+const STRIPE_SECRET_KEY = STRIPE_MODE === 'live' 
+  ? process.env.STRIPE_LIVE_SECRET_KEY 
+  : process.env.STRIPE_TEST_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = STRIPE_MODE === 'live'
+  ? process.env.STRIPE_LIVE_WEBHOOK_SECRET
+  : process.env.STRIPE_TEST_WEBHOOK_SECRET;
+
+const stripe = STRIPE_SECRET_KEY ? require('stripe')(STRIPE_SECRET_KEY) : null;
+
+if (stripe) {
+  console.log(`✅ Stripe initialized in ${STRIPE_MODE.toUpperCase()} mode`);
+} else {
+  console.warn('⚠️  Stripe not configured - payment features disabled');
+}
+
 const mongoose = require('mongoose')
 const Order = require('./models/Order')
 const Product = require('./models/Product')
@@ -25,7 +42,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     event = stripe.webhooks.constructEvent(
       req.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+      STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);

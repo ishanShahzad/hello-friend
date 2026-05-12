@@ -2,7 +2,7 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { sendEmail } = require('./mailController');
-const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+const { stripe } = require('../config/stripe');
 
 const SUBDOMAIN_PRICE_CENTS = 1500; // $15.00
 const SUBDOMAIN_OWNERSHIP_YEARS = 3;

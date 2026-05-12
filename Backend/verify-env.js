@@ -16,8 +16,6 @@ const requiredVars = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
   'clientID',
   'clientSecret',
   'GOOGLE_CALLBACK_URL',
@@ -26,10 +24,24 @@ const requiredVars = [
   'BREVO_SENDER_EMAIL'
 ];
 
+const conditionalVars = [
+  {
+    name: 'Stripe (Test Mode)',
+    condition: () => !process.env.STRIPE_MODE || process.env.STRIPE_MODE === 'test',
+    vars: ['STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET']
+  },
+  {
+    name: 'Stripe (Live Mode)',
+    condition: () => process.env.STRIPE_MODE === 'live',
+    vars: ['STRIPE_LIVE_SECRET_KEY', 'STRIPE_LIVE_WEBHOOK_SECRET']
+  }
+];
+
 const optionalVars = [
   'HF_API_KEY',
   'TRUST_PROXY_HOPS',
-  'PORT'
+  'PORT',
+  'STRIPE_MODE'
 ];
 
 console.log('🔍 Verifying Environment Variables...\n');
@@ -38,6 +50,8 @@ let missingRequired = [];
 let missingOptional = [];
 let foundRequired = [];
 let foundOptional = [];
+let missingConditional = [];
+let foundConditional = [];
 
 // Check required variables
 requiredVars.forEach(varName => {
@@ -47,6 +61,26 @@ requiredVars.forEach(varName => {
   } else {
     missingRequired.push(varName);
     console.log(`❌ ${varName}: MISSING (Required)`);
+  }
+});
+
+console.log('\n--- Conditional Variables (Stripe) ---\n');
+
+// Check conditional variables
+conditionalVars.forEach(group => {
+  if (group.condition()) {
+    console.log(`📦 ${group.name} - Active`);
+    group.vars.forEach(varName => {
+      if (process.env[varName]) {
+        foundConditional.push(varName);
+        console.log(`   ✅ ${varName}: Set`);
+      } else {
+        missingConditional.push(varName);
+        console.log(`   ❌ ${varName}: MISSING (Required for this mode)`);
+      }
+    });
+  } else {
+    console.log(`⏭️  ${group.name} - Skipped (not active)`);
   }
 });
 
@@ -68,18 +102,31 @@ console.log('\n' + '='.repeat(50));
 console.log('📊 SUMMARY');
 console.log('='.repeat(50));
 console.log(`✅ Required variables found: ${foundRequired.length}/${requiredVars.length}`);
+console.log(`✅ Conditional variables found: ${foundConditional.length}/${foundConditional.length + missingConditional.length}`);
 console.log(`⚠️  Optional variables found: ${foundOptional.length}/${optionalVars.length}`);
 
-if (missingRequired.length > 0) {
+const allMissing = [...missingRequired, ...missingConditional];
+
+if (allMissing.length > 0) {
   console.log('\n❌ MISSING REQUIRED VARIABLES:');
-  missingRequired.forEach(varName => {
-    console.log(`   - ${varName}`);
-  });
+  if (missingRequired.length > 0) {
+    console.log('\n   Core Variables:');
+    missingRequired.forEach(varName => {
+      console.log(`   - ${varName}`);
+    });
+  }
+  if (missingConditional.length > 0) {
+    console.log('\n   Stripe Variables (for current mode):');
+    missingConditional.forEach(varName => {
+      console.log(`   - ${varName}`);
+    });
+  }
   console.log('\n⚠️  Your application may not work correctly!');
   console.log('📝 Please set these variables in your .env file or Heroku Config Vars.\n');
   process.exit(1);
 } else {
   console.log('\n✅ All required environment variables are set!');
+  console.log(`🔐 Stripe Mode: ${process.env.STRIPE_MODE || 'test'} (default)`);
   console.log('🚀 Your application should work correctly.\n');
   
   if (missingOptional.length > 0) {
