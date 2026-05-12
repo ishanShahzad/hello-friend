@@ -322,10 +322,7 @@ export default function HomeScreen({ navigation }) {
         onClose={() => setShowAutocomplete(false)}
       />
 
-      {/* Personalized Sliders — Recently Viewed, Picked for You, Price Drops, Trending */}
-      {!hasActiveFilters && !searchQuery && (
-        <PersonalizedSliders navigation={navigation} />
-      )}
+      {/* Personalized Sliders rendered once below TrustedStores */}
 
       {/* Quick Stats Banner */}
       <View style={styles.statsBanner}>
