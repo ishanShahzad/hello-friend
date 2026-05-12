@@ -284,8 +284,9 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const { palette, isDark } = useTheme();
   const themedTabBar = {
-    backgroundColor: isDark ? 'rgba(20,26,46,0.92)' : 'rgba(255,255,255,0.82)',
-    borderTopColor: palette.glass.borderSubtle,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderTopColor: 'transparent',
   };
 
   return (
@@ -296,6 +297,7 @@ function MainTabs() {
         },
       }}
       screenOptions={({ route }) => ({
+        tabBarBackground: () => <GlassTabBarBackground isDark={isDark} palette={palette} />,
         tabBarIcon: ({ focused, color, size }) => {
           return (
             <View style={styles.tabIconContainer}>
