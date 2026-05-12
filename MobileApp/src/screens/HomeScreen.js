@@ -709,7 +709,7 @@ const buildStyles = (p) => StyleSheet.create({
   statLabel: { fontSize: fontSize.xs, color: p.colors.textSecondary },
   statDivider: { width: 1, backgroundColor: p.colors.light },
   // Categories
-  categoriesSection: { paddingTop: spacing.xl, paddingBottom: spacing.md, backgroundColor: p.colors.white, marginTop: spacing.md },
+  categoriesSection: { paddingTop: spacing.lg, paddingBottom: spacing.md, marginTop: spacing.sm },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: p.colors.dark },
   sectionLink: { fontSize: fontSize.sm, color: p.colors.primary, fontWeight: fontWeight.semibold },
