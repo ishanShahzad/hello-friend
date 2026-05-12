@@ -384,8 +384,10 @@ export default function HomeScreen({ navigation }) {
       {/* Trusted Stores Slider */}
       <TrustedStoresSection navigation={navigation} />
 
-      {/* Personalized Sliders */}
-      <PersonalizedSliders navigation={navigation} />
+      {/* Personalized Sliders (collapsible — matches website) */}
+      {!hasActiveFilters && !searchQuery && (
+        <PersonalizedSliders navigation={navigation} />
+      )}
 
       {/* Browse Stores Banner */}
       <TouchableOpacity style={styles.storesBanner} onPress={() => navigation.navigate('Marketplace')} activeOpacity={0.9}>
