@@ -194,4 +194,17 @@ const makeStyles = (palette) => { const colors = palette.colors; const glass = p
   cardPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   cardOriginalPrice: { fontSize: fontSize.xs, color: colors.textSecondary, textDecorationLine: 'line-through' },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+    backgroundColor: glass.bg,
+    borderWidth: 1,
+    borderColor: glass.border,
+  },
+  toggleText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
 }); };
