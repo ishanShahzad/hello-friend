@@ -87,6 +87,7 @@ export default function PersonalizedSliders({ navigation }) {
   const [priceDrops, setPriceDrops] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -126,9 +127,10 @@ export default function PersonalizedSliders({ navigation }) {
     return unsub;
   }, [fetchData]);
 
+  if (loading && !expanded) return null;
   if (loading) {
     return (
-      <View>
+      <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.md }}>
         <View style={[styles.sectionHeader, { paddingHorizontal: spacing.lg }]}>
           <View style={[styles.sectionIcon, { backgroundColor: colors.primarySubtle }]}>
             <Ionicons name="sparkles" size={18} color={colors.primary} />
@@ -144,11 +146,33 @@ export default function PersonalizedSliders({ navigation }) {
   if (!hasAnything) return null;
 
   return (
-    <View>
-      <Section sectionKey="recent" icon="time-outline" title="Recently Viewed" subtitle="Continue where you left off" color={colors.info} products={recentlyViewed} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section sectionKey="picked" icon="sparkles" title="Picked for You" subtitle="Based on what you've explored" color={colors.primary} products={picked} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section sectionKey="drops" icon="pricetag" title="Price Drops" subtitle="Hot deals right now" color={colors.error} products={priceDrops} formatPrice={formatPrice} navigation={navigation} palette={palette} />
-      <Section sectionKey="trending" icon="trending-up" title="Trending Now" subtitle="Most popular products" color={colors.success} products={trending} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+    <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.md, gap: spacing.sm }}>
+      {/* Toggle pill — matches website's "Show Personalized Picks" */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => setExpanded((v) => !v)}
+        style={styles.toggleBtn}
+        accessibilityLabel={expanded ? 'Hide personalized picks' : 'Show personalized picks'}
+      >
+        <Ionicons name="grid-outline" size={16} color={colors.primary} />
+        <Text style={styles.toggleText}>
+          {expanded ? 'Hide Personalized Picks' : 'Show Personalized Picks'}
+        </Text>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
+
+      {expanded && (
+        <View>
+          <Section sectionKey="recent" icon="time-outline" title="Recently Viewed" subtitle="Continue where you left off" color={colors.info} products={recentlyViewed} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+          <Section sectionKey="picked" icon="sparkles" title="Picked for You" subtitle="Based on what you've explored" color={colors.primary} products={picked} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+          <Section sectionKey="drops" icon="pricetag" title="Price Drops" subtitle="Hot deals right now" color={colors.error} products={priceDrops} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+          <Section sectionKey="trending" icon="trending-up" title="Trending Now" subtitle="Most popular products" color={colors.success} products={trending} formatPrice={formatPrice} navigation={navigation} palette={palette} />
+        </View>
+      )}
     </View>
   );
 }
@@ -170,4 +194,17 @@ const makeStyles = (palette) => { const colors = palette.colors; const glass = p
   cardPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   cardOriginalPrice: { fontSize: fontSize.xs, color: colors.textSecondary, textDecorationLine: 'line-through' },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+    backgroundColor: glass.bg,
+    borderWidth: 1,
+    borderColor: glass.border,
+  },
+  toggleText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
 }); };

@@ -1,6 +1,6 @@
 /**
- * OnboardingWalkthrough — First-time user walkthrough
- * Shows key app features with swipeable pages and skip/done actions.
+ * OnboardingWalkthrough — Liquid Glass first-run experience
+ * Matches website's refractive glass aesthetic: aurora background + glass content card.
  */
 
 import React, { useState, useRef } from 'react';
@@ -14,8 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { spacing, fontSize, fontWeight, borderRadius, shadows } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import GlassBackground from './common/GlassBackground';
+import GlassPanel from './common/GlassPanel';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const ONBOARDING_KEY = 'onboarding_completed';
 
@@ -23,46 +25,41 @@ const slides = [
   {
     id: '1',
     icon: 'storefront',
-    iconColor: '#6366f1',
-    bgGradient: ['#eef2ff', '#e0e7ff'],
+    accent: '#6366f1',
     title: 'Discover Stores',
-    subtitle: 'Browse trusted stores from verified sellers. Find unique products across categories.',
-    features: ['Verified seller badges', 'Store trust ratings', 'Category filters'],
+    subtitle: 'Browse trusted stores from verified sellers across every category.',
+    features: ['Verified seller badges', 'Store trust ratings', 'Smart category filters'],
   },
   {
     id: '2',
     icon: 'cart',
-    iconColor: '#10b981',
-    bgGradient: ['#ecfdf5', '#d1fae5'],
-    title: 'Easy Shopping',
-    subtitle: 'Add to cart, apply coupons, and checkout seamlessly — even as a guest.',
+    accent: '#8b5cf6',
+    title: 'Effortless Shopping',
+    subtitle: 'Add to cart, apply coupons, and checkout securely — even as a guest.',
     features: ['Guest checkout', 'Multiple payment methods', 'Coupon discounts'],
   },
   {
     id: '3',
-    icon: 'location',
-    iconColor: '#f59e0b',
-    bgGradient: ['#fffbeb', '#fef3c7'],
-    title: 'Track Orders',
-    subtitle: 'Real-time order tracking from confirmation to delivery, right in the app.',
-    features: ['Live status updates', 'Shipping details', 'Order history'],
+    icon: 'navigate',
+    accent: '#3b82f6',
+    title: 'Live Order Tracking',
+    subtitle: 'Real-time updates from confirmation to delivery, right inside the app.',
+    features: ['Live status updates', 'Shipping details', 'Full order history'],
   },
   {
     id: '4',
     icon: 'rocket',
-    iconColor: '#8b5cf6',
-    bgGradient: ['#f5f3ff', '#ede9fe'],
-    title: 'Sell Your Products',
-    subtitle: 'Become a seller, set up your store, manage inventory, and grow your business.',
-    features: ['Store analytics', 'Subscription plans', 'Coupon management'],
+    accent: '#a855f7',
+    title: 'Sell on Rozare',
+    subtitle: 'Launch a store, manage inventory, and grow your business with AI tools.',
+    features: ['Store analytics', 'AI assistant', 'Coupon & subscription tools'],
   },
   {
     id: '5',
-    icon: 'notifications',
-    iconColor: '#3b82f6',
-    bgGradient: ['#eff6ff', '#dbeafe'],
-    title: 'Stay Updated',
-    subtitle: 'Get instant push notifications for orders, deals, and stock alerts.',
+    icon: 'sparkles',
+    accent: '#ec4899',
+    title: 'Stay in the Loop',
+    subtitle: 'Instant push alerts for orders, deals, and stock — never miss a beat.',
     features: ['Order notifications', 'Price drop alerts', 'Wishlist updates'],
   },
 ];
@@ -100,9 +97,7 @@ export default function OnboardingWalkthrough({ onComplete }) {
     }
   };
 
-  const handleSkip = () => {
-    handleDone();
-  };
+  const handleSkip = () => handleDone();
 
   const handleDone = async () => {
     await markOnboardingComplete();
@@ -115,158 +110,192 @@ export default function OnboardingWalkthrough({ onComplete }) {
     }
   }).current;
 
-  const renderSlide = ({ item, index }) => {
-    const dotColor = colors.primary;
-    return (
+  const renderSlide = ({ item }) => (
     <View style={[styles.slide, { width }]}>
-      <LinearGradient colors={item.bgGradient} style={styles.slideGradient}>
-        {/* Icon */}
-        <View style={[styles.iconCircle, { backgroundColor: item.iconColor + '20' }]}>
-          <Ionicons name={item.icon} size={64} color={item.iconColor} />
+      <GlassPanel variant="floating" style={styles.glassCard}>
+        {/* Glass icon tile with brand gradient halo */}
+        <View style={styles.iconWrap}>
+          <LinearGradient
+            colors={[item.accent + '33', item.accent + '11']}
+            style={styles.iconHalo}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          />
+          <View style={[styles.iconTile, { borderColor: item.accent + '55' }]}>
+            <Ionicons name={item.icon} size={48} color={item.accent} />
+          </View>
         </View>
 
-        {/* Content */}
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.subtitle}>{item.subtitle}</Text>
 
-        {/* Features */}
         <View style={styles.featuresContainer}>
           {item.features.map((feature, i) => (
             <View key={i} style={styles.featureRow}>
-              <View style={[styles.featureDot, { backgroundColor: item.iconColor }]} />
+              <View style={[styles.featureDot, { backgroundColor: item.accent }]} />
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
         </View>
-      </LinearGradient>
+      </GlassPanel>
     </View>
-    );
-  };
+  );
 
   const isLast = currentIndex === slides.length - 1;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      {/* Skip button */}
-      <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-        <Text style={styles.skipText}>{isLast ? '' : 'Skip'}</Text>
-      </TouchableOpacity>
-
-      {/* Slides */}
-      <Animated.FlatList
-        ref={flatListRef}
-        data={slides}
-        renderItem={renderSlide}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        bounces={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
+    <GlassBackground>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* Skip pill */}
+        {!isLast && (
+          <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.8}>
+            <View style={styles.skipPill}>
+              <Text style={styles.skipText}>Skip</Text>
+            </View>
+          </TouchableOpacity>
         )}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-      />
 
-      {/* Bottom controls */}
-      <View style={styles.bottomContainer}>
-        {/* Pagination dots */}
-        <View style={styles.pagination}>
-          {slides.map((_, i) => {
-            const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
-            const dotWidth = scrollX.interpolate({
-              inputRange,
-              outputRange: [8, 24, 8],
-              extrapolate: 'clamp',
-            });
-            const dotOpacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.3, 1, 0.3],
-              extrapolate: 'clamp',
-            });
-            return (
-              <Animated.View
-                key={i}
-                style={[styles.dot, { width: dotWidth, opacity: dotOpacity, backgroundColor: colors.primary }]}
-              />
-            );
-          })}
+        {/* Slides */}
+        <Animated.FlatList
+          ref={flatListRef}
+          data={slides}
+          renderItem={renderSlide}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false }
+          )}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+        />
+
+        {/* Bottom controls */}
+        <View style={styles.bottomContainer}>
+          <View style={styles.pagination}>
+            {slides.map((_, i) => {
+              const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
+              const dotWidth = scrollX.interpolate({
+                inputRange,
+                outputRange: [8, 28, 8],
+                extrapolate: 'clamp',
+              });
+              const dotOpacity = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.3, 1, 0.3],
+                extrapolate: 'clamp',
+              });
+              return (
+                <Animated.View
+                  key={i}
+                  style={[styles.dot, { width: dotWidth, opacity: dotOpacity, backgroundColor: colors.primary }]}
+                />
+              );
+            })}
+          </View>
+
+          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
+            <LinearGradient
+              colors={palette.gradients.primary}
+              style={styles.nextBtnGradient}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.nextBtnText}>{isLast ? 'Get Started' : 'Next'}</Text>
+              <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-
-        {/* Next / Get Started button */}
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-          <LinearGradient colors={palette.gradients.primary} style={styles.nextBtnGradient}>
-            <Text style={styles.nextBtnText}>{isLast ? 'Get Started' : 'Next'}</Text>
-            <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={20} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
       </View>
-    </View>
+    </GlassBackground>
   );
 }
 
 const makeStyles = (palette) => { const colors = palette.colors; return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1 },
   skipBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 16,
-    right: 20,
+    top: Platform.OS === 'ios' ? 56 : 20,
+    right: spacing.lg,
     zIndex: 10,
+  },
+  skipPill: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    backgroundColor: palette.glass.bgStrong,
+    borderWidth: 1,
+    borderColor: palette.glass.borderStrong,
   },
   skipText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
-    color: colors.textSecondary,
+    color: colors.text,
   },
   slide: {
     flex: 1,
-  },
-  slideGradient: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xxxl,
+    paddingHorizontal: spacing.lg,
   },
-  iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  glassCard: {
+    width: '100%',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    alignItems: 'center',
+    borderRadius: 28,
+  },
+  iconWrap: {
+    width: 128,
+    height: 128,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xxl,
-    ...shadows.lg,
+    marginBottom: spacing.xl,
+  },
+  iconHalo: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 64,
+  },
+  iconTile: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: palette.glass.bgStrong,
+    borderWidth: 1,
   },
   title: {
     fontSize: fontSize.title,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.extrabold,
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
   },
   featuresContainer: {
     alignSelf: 'stretch',
-    gap: spacing.md,
+    gap: spacing.sm + 2,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: palette.glass.bgSubtle,
+    borderWidth: 1,
+    borderColor: palette.glass.borderSubtle,
   },
   featureDot: {
     width: 8,
@@ -274,14 +303,14 @@ const makeStyles = (palette) => { const colors = palette.colors; return StyleShe
     borderRadius: 4,
   },
   featureText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     color: colors.text,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semibold,
   },
   bottomContainer: {
-    paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.xxl,
-    gap: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    gap: spacing.lg,
   },
   pagination: {
     flexDirection: 'row',
@@ -309,5 +338,6 @@ const makeStyles = (palette) => { const colors = palette.colors; return StyleShe
     color: '#fff',
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
+    letterSpacing: 0.3,
   },
 }); };

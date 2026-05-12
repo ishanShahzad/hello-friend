@@ -12,8 +12,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { View, Text, StyleSheet, Animated, Platform, Alert } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selection as hapticSelection } from '../utils/haptics';
+
+// Glass tab-bar background — BlurView on iOS, opaque-glass fallback on Android.
+function GlassTabBarBackground({ isDark, palette }) {
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView
+        tint={isDark ? 'dark' : 'light'}
+        intensity={60}
+        style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: palette.glass.borderSubtle }]}
+      />
+    );
+  }
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          backgroundColor: isDark ? 'rgba(20,26,46,0.96)' : 'rgba(255,255,255,0.96)',
+          borderTopWidth: 1,
+          borderTopColor: palette.glass.borderSubtle,
+        },
+      ]}
+    />
+  );
+}
 import { 
   colors, 
   spacing, 
@@ -258,8 +284,9 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const { palette, isDark } = useTheme();
   const themedTabBar = {
-    backgroundColor: isDark ? 'rgba(20,26,46,0.92)' : 'rgba(255,255,255,0.82)',
-    borderTopColor: palette.glass.borderSubtle,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderTopColor: 'transparent',
   };
 
   return (
@@ -270,6 +297,7 @@ function MainTabs() {
         },
       }}
       screenOptions={({ route }) => ({
+        tabBarBackground: () => <GlassTabBarBackground isDark={isDark} palette={palette} />,
         tabBarIcon: ({ focused, color, size }) => {
           return (
             <View style={styles.tabIconContainer}>
@@ -513,9 +541,8 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   // Tab Bar Styles
   tabBar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
     paddingTop: spacing.sm,
     position: 'absolute',
     left: 0,
@@ -524,7 +551,7 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
   },
   tabBarLabel: {
