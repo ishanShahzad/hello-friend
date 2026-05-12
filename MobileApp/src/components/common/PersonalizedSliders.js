@@ -87,6 +87,7 @@ export default function PersonalizedSliders({ navigation }) {
   const [priceDrops, setPriceDrops] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
