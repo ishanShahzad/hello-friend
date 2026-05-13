@@ -496,10 +496,14 @@ exports.handleWebhook = async (event) => {
 
                 await sub.save();
 
-                // Reactivate store
+                // Reactivate store + clear blocked / removal markers
                 await Store.findOneAndUpdate(
                     { seller: sellerId },
-                    { isActive: true }
+                    {
+                        isActive: true,
+                        blockedAt: null,
+                        'subdomainPurchase.removalScheduledAt': null,
+                    }
                 );
 
                 // Send confirmation email
