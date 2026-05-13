@@ -397,7 +397,8 @@ exports.getOrders = async (req, res) => {
     console.log('User role:', role);
     console.log('User ID:', userId);
 
-    let query = {}
+    // Hide awaiting-payment Stripe orders from seller/admin dashboards.
+    let query = { awaitingPayment: { $ne: true } }
     if (search) {
         query.$or = [
             { "shippingInfo.fullName": { $regex: search, $options: 'i' } },
