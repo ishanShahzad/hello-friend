@@ -59,6 +59,21 @@ import AdminBroadcastPanel from '../components/layout/admin/AdminBroadcastPanel'
 import AIChatPage from '../pages/AIChatPage'
 import DocsPage from '../pages/DocsPage'
 
+// On the main domain in production, /docs must redirect to https://docs.rozare.com.
+// In local/preview environments we render the DocsPage in-place.
+function DocsRouteGate() {
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isLocal = host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host);
+    const isPreview = ['lovableproject.com', 'lovable.app', 'vercel.app', 'netlify.app', 'pages.dev']
+        .some(d => host.endsWith(d));
+    if (!isLocal && !isPreview) {
+        const target = `${window.location.protocol}//docs.${host.replace(/^www\./, '')}${window.location.search}`;
+        window.location.replace(target);
+        return null;
+    }
+    return <DocsPage />;
+}
+
 function AppRoutes() {
     const navigate = useNavigate()
 
