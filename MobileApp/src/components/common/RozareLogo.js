@@ -49,7 +49,7 @@ export default function RozareLogo({ width = 140, height = 36, showText = true }
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Circle cx="40" cy="18" r="2" fill="white" />
+        <Circle cx="42" cy="15" r="2" fill="white" />
 
         {showText && (
           <SvgText
