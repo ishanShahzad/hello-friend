@@ -47,12 +47,26 @@ const subdomainDetector = async (req, res, next) => {
             req.subdomainStore = store;
         } else {
             // Check if the store exists but is blocked/inactive
-            const blockedStore = await Store.findOne({
-                storeSlug: subdomain,
-            });
+            const blockedStore = await Store.findOne({ storeSlug: subdomain });
             if (blockedStore && !blockedStore.isActive) {
-                req.subdomainStoreBlocked = true;
-                req.subdomainStoreName = blockedStore.storeName;
+                // Lazy release: free the slug if blocked + past removal window + not purchased
+                const now = new Date();
+                const purchased = blockedStore.subdomainPurchase?.isPurchased &&
+                    blockedStore.subdomainPurchase?.expiresAt &&
+                    new Date(blockedStore.subdomainPurchase.expiresAt) > now;
+                const removeAt = blockedStore.subdomainPurchase?.removalScheduledAt;
+                if (!purchased && removeAt && new Date(removeAt) <= now) {
+                    blockedStore.storeSlug = `released-${blockedStore._id.toString().slice(-8)}-${Date.now()}`;
+                    blockedStore.subdomainPurchase = {
+                        ...(blockedStore.subdomainPurchase?.toObject?.() || {}),
+                        removalScheduledAt: null,
+                    };
+                    await blockedStore.save();
+                    // Slug is now free — fall through as "not found"
+                } else {
+                    req.subdomainStoreBlocked = true;
+                    req.subdomainStoreName = blockedStore.storeName;
+                }
             }
         }
         

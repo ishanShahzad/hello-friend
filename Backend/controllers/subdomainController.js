@@ -134,16 +134,33 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
             });
         }
 
+        const now = new Date();
+        const removalAt = store.subdomainPurchase?.removalScheduledAt;
+        const isPurchased = !!(store.subdomainPurchase?.isPurchased &&
+            store.subdomainPurchase?.expiresAt &&
+            new Date(store.subdomainPurchase.expiresAt) > now);
+        const blocked = store.isActive === false;
+        const daysUntilRemoval = (blocked && !isPurchased && removalAt)
+            ? Math.max(0, Math.ceil((new Date(removalAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+            : null;
+
         res.status(200).json({
             msg: 'Subdomain analytics fetched',
             subdomain: {
                 slug: store.storeSlug,
                 url: `${store.storeSlug}.rozare.com`,
-                isActive: store.verification?.isVerified || false,
+                isActive: !blocked && (store.verification?.isVerified || false),
+                blocked,
+                blockedAt: store.blockedAt || null,
+                daysUntilRemoval,
+                isPurchased,
                 verificationStatus: store.verification?.status || 'none',
                 createdAt: store.createdAt,
                 storeName: store.storeName,
                 logo: store.logo,
+                lastSlugChangeAt: store.lastSlugChangeAt || null,
+                lastNameChangeAt: store.lastNameChangeAt || null,
+                lastTypeChangeAt: store.lastTypeChangeAt || null,
             },
             analytics: {
                 totalViews,

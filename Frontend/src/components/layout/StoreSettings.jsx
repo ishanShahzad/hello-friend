@@ -337,18 +337,7 @@ const StoreSettings = () => {
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{storeData.storeName.length}/50 characters</p>
                     </div>
 
-                    {/* Store URL (path-based, always active) */}
-                    {storeData.storeSlug && (
-                        <div className="glass-inner rounded-xl p-3 flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>Store URL:</span>
-                            <a href={`/store/${storeData.storeSlug}`} target="_blank" rel="noreferrer"
-                                className="text-sm font-medium hover:underline flex items-center gap-1"
-                                style={{ color: 'hsl(var(--primary))' }}>
-                                {window.location.origin}/store/{storeData.storeSlug}
-                                <ExternalLink size={12} />
-                            </a>
-                        </div>
-                    )}
+                    {/* Path-based store URL removed — stores are reachable only via their subdomain (see Custom Subdomain section below). */}
 
                     {/* ─── Subdomain Section ─── */}
                     <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
@@ -663,11 +652,11 @@ const StoreSettings = () => {
                         </motion.button>
 
                         {hasStore && storeData.storeSlug && (
-                            <Link to={`/store/${storeData.storeSlug}`} target="_blank"
+                            <a href={`https://${storeData.storeSlug}.rozare.com`} target="_blank" rel="noreferrer"
                                 className="px-4 sm:px-6 py-3 rounded-xl text-white font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
                                 style={{ background: 'linear-gradient(135deg, hsl(260, 60%, 55%), hsl(280, 50%, 55%))', boxShadow: '0 0 20px -4px hsl(260, 60%, 55%, 0.3)' }}>
                                 <Eye size={20} /><span className="hidden sm:inline">Preview Store</span><span className="sm:hidden">Preview</span>
-                            </Link>
+                            </a>
                         )}
 
                         {hasStore && (

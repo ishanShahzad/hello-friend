@@ -43,6 +43,20 @@ const StorePage = () => {
     }, [products, productSearch, selectedCategory]);
 
     useEffect(() => {
+        // Path-based URLs are deprecated. In production, redirect to the
+        // store's subdomain. Only keep this route alive on localhost / preview hosts.
+        const host = window.location.hostname;
+        const isLocalLike = host === 'localhost'
+            || /^\d+\.\d+\.\d+\.\d+$/.test(host)
+            || host.endsWith('lovableproject.com')
+            || host.endsWith('lovable.app')
+            || host.endsWith('vercel.app');
+        if (slug && !isLocalLike) {
+            const parts = host.split('.');
+            const root = parts.length >= 2 ? parts.slice(-2).join('.') : host;
+            window.location.replace(`${window.location.protocol}//${slug}.${root}`);
+            return;
+        }
         fetchStore();
         fetchProducts();
         incrementViewCount();
@@ -186,7 +200,7 @@ const StorePage = () => {
                     description={store?.description
                         ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Rozare marketplace. Verified seller, secure checkout, worldwide shipping.`
                         : `Shop unique products from ${store?.storeName} on Rozare. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
-                    canonical={`/store/${slug}`}
+                    canonical={`https://${slug}.rozare.com`}
                     ogImage={store?.logo || undefined}
                     ogImageAlt={`${store?.storeName} — Shop on Rozare Marketplace`}
                     keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, rozare store, verified seller, trusted store, online shop, independent seller`}
@@ -195,7 +209,7 @@ const StorePage = () => {
                         '@type': 'Store',
                         name: store?.storeName,
                         description: store?.description,
-                        url: `https://rozare.com/store/${slug}`,
+                        url: `https://${slug}.rozare.com`,
                         logo: store?.logo,
                         image: store?.banner || store?.logo,
                         ...(store?.address?.city && {

@@ -129,6 +129,12 @@ const storeSchema = new mongoose.Schema({
       default: ''
     }
   },
+  // Change-cooldown tracking
+  lastSlugChangeAt: { type: Date, default: null },
+  lastNameChangeAt: { type: Date, default: null },
+  lastTypeChangeAt: { type: Date, default: null },
+  // Mirrored from subscription so middleware/UI knows the store is currently blocked
+  blockedAt: { type: Date, default: null },
   // Subdomain purchase / ownership
   subdomainPurchase: {
     isPurchased: {

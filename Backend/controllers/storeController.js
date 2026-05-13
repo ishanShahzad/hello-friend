@@ -61,7 +61,47 @@ const generateUniqueSlug = async (storeName) => {
     return slug;
 };
 
-// Check if subdomain/slug is available
+// ── Change cooldown windows ───────────────────────────────────────────
+const COOLDOWN_DAYS = { storeSlug: 30, storeName: 7, sellerType: 30 };
+const FIELD_LABELS = { storeSlug: 'subdomain', storeName: 'name', sellerType: 'type' };
+const daysBetween = (later, earlier) =>
+    Math.ceil((later.getTime() - earlier.getTime()) / (1000 * 60 * 60 * 24));
+function checkCooldown(field, lastAt) {
+    if (!lastAt) return null;
+    const cooldown = COOLDOWN_DAYS[field];
+    const next = new Date(new Date(lastAt).getTime() + cooldown * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    if (now >= next) return null;
+    return {
+        field,
+        label: FIELD_LABELS[field],
+        cooldownDays: cooldown,
+        daysRemaining: Math.max(1, daysBetween(next, now)),
+        nextAllowedAt: next.toISOString(),
+    };
+}
+
+// Lazily release a slug if the owner is blocked, not subdomain-purchased,
+// and the 7-day removal window has passed. Returns true if released.
+async function releaseExpiredSlug(store) {
+    if (!store) return false;
+    const purchased = store.subdomainPurchase?.isPurchased &&
+        store.subdomainPurchase?.expiresAt &&
+        new Date(store.subdomainPurchase.expiresAt) > new Date();
+    const removeAt = store.subdomainPurchase?.removalScheduledAt;
+    if (!purchased && removeAt && new Date(removeAt) <= new Date() && store.storeSlug) {
+        // Free the slug — keep store record but mark subdomain as released
+        store.storeSlug = `released-${store._id.toString().slice(-8)}-${Date.now()}`;
+        store.subdomainPurchase = {
+            ...(store.subdomainPurchase?.toObject?.() || {}),
+            removalScheduledAt: null,
+        };
+        await store.save();
+        return true;
+    }
+    return false;
+}
+exports._releaseExpiredSlug = releaseExpiredSlug;
 exports.checkSubdomainAvailability = async (req, res) => {
     try {
         const { slug } = req.params;
@@ -83,8 +123,14 @@ exports.checkSubdomainAvailability = async (req, res) => {
         }
 
         // Check if slug is taken
-        const existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
-        
+        let existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
+
+        // If a store has the slug but is past its blocked-removal window, free it
+        if (existingStore) {
+            const released = await releaseExpiredSlug(existingStore);
+            if (released) existingStore = null;
+        }
+
         if (existingStore) {
             // If it's the current user's store, it's "available" for them
             if (req.user && existingStore.seller.toString() === req.user.id) {
@@ -280,6 +326,40 @@ exports.updateStore = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found. Please create a store first.' });
         }
 
+        // Detect intended changes (against current values) before applying
+        const wantsNameChange = !!storeName && storeName.trim().toLowerCase() !== store.storeName.toLowerCase();
+        const wantsSlugChange = !!storeSlug && storeSlug.toLowerCase() !== store.storeSlug;
+        const wantsTypeChange = sellerType !== undefined &&
+            (sellerType === 'store' || sellerType === 'brand') &&
+            sellerType !== (store.sellerType || 'store');
+
+        // Block changes while the store is blocked (subscription ended)
+        if ((wantsNameChange || wantsSlugChange || wantsTypeChange) && store.isActive === false) {
+            return res.status(423).json({
+                msg: 'Your store is blocked. Reactivate your subscription before changing this.',
+                blocked: true,
+            });
+        }
+
+        // Enforce per-field cooldowns
+        for (const [want, field] of [
+            [wantsNameChange, 'storeName'],
+            [wantsSlugChange, 'storeSlug'],
+            [wantsTypeChange, 'sellerType'],
+        ]) {
+            if (!want) continue;
+            const lastAt = field === 'storeName' ? store.lastNameChangeAt
+                : field === 'storeSlug' ? store.lastSlugChangeAt
+                : store.lastTypeChangeAt;
+            const cd = checkCooldown(field, lastAt);
+            if (cd) {
+                return res.status(423).json({
+                    msg: `You can change your ${cd.label} again in ${cd.daysRemaining} day(s).`,
+                    cooldown: cd,
+                });
+            }
+        }
+
         // Validate store name if provided
         if (storeName) {
             if (storeName.trim().length < 3) {
@@ -290,7 +370,7 @@ exports.updateStore = async (req, res) => {
             }
 
             // Check if store name already exists (case-insensitive), excluding current store
-            if (storeName.trim().toLowerCase() !== store.storeName.toLowerCase()) {
+            if (wantsNameChange) {
                 const duplicateStore = await Store.findOne({ 
                     storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') },
                     _id: { $ne: store._id }
@@ -300,6 +380,7 @@ exports.updateStore = async (req, res) => {
                 }
             }
             store.storeName = storeName.trim();
+            if (wantsNameChange) store.lastNameChangeAt = new Date();
         }
 
         // Handle custom slug/subdomain update if provided
@@ -336,29 +417,31 @@ exports.updateStore = async (req, res) => {
                 };
             }
 
-            // Check if available
-            const duplicateSlug = await Store.findOne({ 
+            // Check if available (lazy-release stale blocked slugs)
+            let duplicateSlug = await Store.findOne({ 
                 storeSlug: storeSlug.toLowerCase(),
                 _id: { $ne: store._id }
             });
+            if (duplicateSlug) {
+                const released = await releaseExpiredSlug(duplicateSlug);
+                if (released) duplicateSlug = null;
+            }
             if (duplicateSlug) {
                 return res.status(409).json({ msg: 'This subdomain is already taken by another store' });
             }
             
             store.storeSlug = storeSlug.toLowerCase();
-        } else if (storeName && !storeSlug && storeName !== store.storeName) {
-            // Generate new slug if store name changed and no custom slug provided
-            // But only if subdomain isn't purchased (don't lose purchased subdomain on store rename)
-            if (!store.subdomainPurchase?.isPurchased || !store.subdomainPurchase?.expiresAt || new Date(store.subdomainPurchase.expiresAt) <= new Date()) {
-                store.storeSlug = await generateUniqueSlug(storeName);
-            }
+            store.lastSlugChangeAt = new Date();
         }
+        // Note: we no longer auto-regenerate the slug from the store name —
+        // the subdomain is now an independent, cooldown-protected field.
 
         // Update other fields
         if (description !== undefined) store.description = description;
         if (logo !== undefined) store.logo = logo;
         if (banner !== undefined) store.banner = banner;
         if (sellerType !== undefined && (sellerType === 'store' || sellerType === 'brand')) {
+            if (wantsTypeChange) store.lastTypeChangeAt = new Date();
             store.sellerType = sellerType;
         }
         if (socialLinks !== undefined) {

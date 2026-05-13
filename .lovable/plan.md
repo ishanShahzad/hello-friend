@@ -1,101 +1,105 @@
-# Mobile Parity Implementation Plan
+## Goal
 
-This is a large, multi-loop effort to bring the React Native app to full feature parity with the web app for **users, sellers, and admins**. Below is the audit, the gap list, and the staged implementation plan.
+Make subdomains the only public URL for a store/brand, auto-create a subdomain on store creation, enforce per-field change cooldowns with a confirmation modal, and surface a clear blocked-state countdown everywhere.
 
-## 1. Audit Summary (web → mobile)
+---
 
-### User-facing flows
-| Web | Mobile | Status |
-|---|---|---|
-| Home / Products / Categories | HomeScreen | OK — verify category filter parity |
-| Product Detail (variants, reviews, related) | ProductDetailScreen | Partial — verify variants, store-trust, reviews |
-| Cart / Checkout / Stripe | Cart + Checkout + PaymentSuccess | OK — verify coupon entry, shipping address auto-fill, tax calc |
-| Order tracking / Order detail / Confirmation | OrdersScreen, OrderDetail, TrackOrder | OK |
-| Wishlist / Trusted Stores / Stores Listing / Store Page | Present | Verify search + category buttons inside store |
-| User Dashboard (profile, addresses, stats) | UserDashboardScreen | OK |
-| Notifications inbox + preferences | NotificationsScreen + Preferences | OK |
-| AI Chatbot (voice, history, actions) | ChatBot.js | Verify parity with new prompts |
-| Docs / FAQ / About / Contact / Privacy / Terms / Become Seller | All present | Verify content sync |
-| **Subdomain stores** | Missing | Gap |
-| **AI Chat full page** | Embedded only | Gap |
+## 1. Remove path-based store URLs
 
-### Seller flows
-| Web | Mobile | Status |
-|---|---|---|
-| Seller Home / Dashboard / Analytics | Present | OK |
-| Product Management (add/edit with categories combobox, AI improve, AI tags, limits) | ProductFormScreen | **GAP** — needs new category picker, AI improve description, AI generate tags, max-tag/desc enforcement |
-| Order Management & Detail | Present | OK |
-| Coupons / Shipping / Tax | Present | OK |
-| Store Settings / Overview / Profile | Present | OK |
-| Subscriptions | Present | Verify new Elite features (250 msg, Smart Description, WhatsApp mgmt) |
-| Subdomain Management | Present | OK |
-| Notifications + Settings | Present | Verify removal of black divider lines |
-| **Seller WhatsApp Settings** | Missing | Gap |
-| **Bulk discount / Bulk price update** | Missing | Gap |
-| **Complaints inbox (seller side)** | Missing | Gap |
+**Frontend**
+- `StoreSettings.jsx`: delete the "Store URL: /store/..." block (lines 340–351) and change the "Preview Store" button (line 666) to open `https://{slug}.rozare.com`.
+- `SellerSubdomainManagement.jsx`: keep, already uses subdomain URL.
+- Replace navigation in `StoreCard`, `StoreSearch`, `StoreInfo`, `TrustedStoresPage`, `AdminSubdomainManagement` to use `getStoreSubdomainUrl(slug)` (subdomain URL in prod, `/store/:slug` only in localhost).
+- `StorePage.jsx`: in production, redirect to `https://{slug}.rozare.com` on mount; otherwise render normally (so localhost dev still works).
+- Keep the `/store/:slug` route as a localhost-only fallback (zero impact in production thanks to the redirect).
+- Update SEO `canonical` and JSON-LD `url` to the subdomain form.
 
-### Admin flows
-| Web | Mobile | Status |
-|---|---|---|
-| Admin Dashboard / Analytics | Present | OK |
-| User Management | Present | OK |
-| Subscriptions overview | Present | OK |
-| Subdomain Management | Present | OK |
-| Tax Configuration | Present | OK |
-| Notifications + Settings | Present | Verify divider fix |
-| Store Verification | Present | OK |
-| Complaints Management | Present | OK |
-| **Admin Broadcast Panel (WhatsApp/push broadcasts)** | Missing | Gap |
-| **WhatsApp Verification Panel** | Missing | Gap |
+---
 
-## 2. Implementation Stages
+## 2. Auto-generate subdomain at store creation
 
-The work will be executed in **5 stages**, each as a discrete task tracked in the task list. Each stage ends with a manual smoke-test checklist for the user (since the agent cannot run the RN app).
+Already implemented (`generateUniqueSlug`) but the create form lets the seller specify one — keep both paths. Verified no further change needed beyond UI clarification: subdomain field on first creation seeds the value from the typed store name and is editable.
 
-### Stage 1 — Seller Product Form parity (highest user impact)
-- Replace category text input with searchable combobox using `Frontend/src/utils/categories.js` (mirrored to `MobileApp/src/utils/categories.js`).
-- Add "Other" option that opens a custom-category modal.
-- Add `Improve with AI` button next to Description with `Revert` option (reuse `/api/ai-assist/improve-description`).
-- Add `Generate Tags with AI` button (reuse `/api/ai-assist/generate-tags`).
-- Enforce `MAX_TAGS = 15`, `MAX_DESCRIPTION_LENGTH = 2000` with disabled buttons + counters.
-- Fix price input cursor (mirror web fix: empty when 0).
+---
 
-### Stage 2 — Seller WhatsApp + Bulk + Complaints
-- New `SellerWhatsAppSettingsScreen` (connect number, AI chat toggle, message templates).
-- New `BulkDiscountModal` and `BulkPriceUpdateModal` accessible from Product Management.
-- New `SellerComplaintsScreen` (inbox of complaints filed against seller's store, reply flow).
+## 3. Cooldown rules + warning modal
 
-### Stage 3 — Admin Broadcast + WhatsApp Verification
-- New `AdminBroadcastScreen` with audience filters, channel selection (push/WhatsApp/email), schedule, templates.
-- New `AdminWhatsAppVerificationScreen` to approve/deny seller WhatsApp number requests.
+**Backend — `Store` model (new fields, all default `null`)**
 
-### Stage 4 — User-side gaps
-- Verify and patch StorePage parity in mobile `StoreScreen`: search bar + category chips for seller-defined categories.
-- Add full-screen `AIChatScreen` route (currently only FAB ChatBot).
-- Verify product detail variants, related products, reviews list parity.
+```text
+lastSlugChangeAt   Date
+lastNameChangeAt   Date
+lastTypeChangeAt   Date
+blockedAt          Date     // mirrored from subscription so middleware knows
+```
 
-### Stage 5 — Polish & production-ready pass
-- Remove black divider lines under notification toggle sections (both seller + admin notification settings).
-- Sync all subscription copy with new pricing/features.
-- Add empty states, loading skeletons, pull-to-refresh on every data screen lacking it.
-- Run accessibility pass (touch targets ≥44px, contrast).
-- Verify dark-mode tokens on every new screen.
-- Update `AppNavigator.js` with all new routes + deep links.
-- Update push notification handlers for any new event types.
+**Backend — `storeController.updateStore`**
 
-## 3. Technical Notes
-- All new screens use `useTheme()` + `useThemedStyles` (dark-mode compliant).
-- Use `expo-blur` + `expo-linear-gradient` for Liquid Glass per memory.
-- Use `StyleSheet.create`, no Tailwind, no solid black borders.
-- Reuse Backend endpoints — no backend changes expected except possibly exposing seller-complaints listing if missing.
-- Files touched will be primarily under `MobileApp/src/screens/`, `MobileApp/src/components/`, `MobileApp/src/navigation/AppNavigator.js`, and a new `MobileApp/src/utils/categories.js`.
+Enforce:
+- `storeSlug` change: must be ≥ 30 days since `lastSlugChangeAt`
+- `storeName` change: must be ≥ 7 days since `lastNameChangeAt`
+- `sellerType` change: must be ≥ 30 days since `lastTypeChangeAt`
 
-## 4. Out of Scope (per memory)
-- No Spin Wheel / Spin & Win.
-- No backend rewrites unless an endpoint is missing.
-- No web-side changes unless a shared util needs extracting.
+If blocked by cooldown, respond `423` with `{ field, daysRemaining, nextAllowedAt }`.
+On a successful change, stamp the corresponding `lastXChangeAt = now`.
 
-## 5. Deliverable per stage
-After each stage I will: (a) summarize what changed, (b) list files touched, (c) give you a manual smoke-test checklist to run on the device since I cannot execute the RN app.
+Same rules in `subdomainController.adminUpdateSubdomain` are skipped (admin override).
 
-Approve this and I will start with **Stage 1 (Seller Product Form parity)** immediately.
+**Frontend — confirmation modal**
+
+In `StoreSettings.jsx` and `SellerSubdomainManagement.jsx`, before saving a name/type/slug change, show a modal:
+
+> "After this change you won't be able to change your **{field}** again for **{X days}**. Continue?"
+
+After save, on `423` response, show inline error with remaining days.
+
+---
+
+## 4. Blocked-state surfacing
+
+When a seller's subscription is `blocked`:
+- `subscriptionController` already sets `store.isActive = false` and (per phantom-order fixes) marks `subdomainPurchase.removalScheduledAt = blockedAt + 7 days` when not purchased. Verify and add `store.blockedAt = blockedAt`. On reactivate (paid), clear `blockedAt` and `removalScheduledAt`, set `isActive = true`.
+- `subdomainController.getSellerSubdomainAnalytics` returns extra fields:
+  ```text
+  blocked: boolean
+  blockedAt: Date | null
+  daysUntilRemoval: number | null     // computed from removalScheduledAt
+  isPurchased: boolean
+  ```
+- After `removalScheduledAt` passes (cron in subscription check or lazy on read), if not purchased: clear `storeSlug` and free the subdomain so anyone can claim it.
+
+**Frontend**
+- `StoreSettings.jsx`: replace the green "Active" pill with a red "Blocked — subdomain releases in N day(s)" pill when `blocked`. Disable subdomain/name/type edits while blocked.
+- `SellerSubdomainManagement.jsx`: same status pill + countdown banner in the Status Card and Edit Subdomain card. Show "Resolve by subscribing" CTA → `/seller-dashboard/subscription`.
+
+---
+
+## 5. Reclaim verification
+
+Confirm via existing logic:
+- After `removalScheduledAt` and not purchased → release slug.
+- Released slug becomes `available: true` in `checkSubdomainAvailability`, so any new seller can claim it.
+- Add a small lazy cleanup at the top of `checkSubdomainAvailability` and the subdomain detector to release expired blocked, non-purchased slugs on read.
+
+---
+
+## Files touched
+
+**Backend**
+- `Backend/models/Store.js` (new fields)
+- `Backend/controllers/storeController.js` (cooldown enforcement, slug release)
+- `Backend/controllers/subdomainController.js` (analytics payload, slug release)
+- `Backend/controllers/subscriptionController.js` (set/clear `blockedAt`, `removalScheduledAt`)
+- `Backend/middleware/subdomainDetector.js` (lazy slug release)
+
+**Frontend**
+- `Frontend/src/components/layout/StoreSettings.jsx`
+- `Frontend/src/components/layout/SellerSubdomainManagement.jsx`
+- `Frontend/src/components/layout/AdminSubdomainManagement.jsx`
+- `Frontend/src/components/common/StoreCard.jsx`
+- `Frontend/src/components/common/StoreSearch.jsx`
+- `Frontend/src/components/common/StoreInfo.jsx`
+- `Frontend/src/pages/TrustedStoresPage.jsx`
+- `Frontend/src/pages/StorePage.jsx` (production redirect + canonical)
+
+No DB migration needed (MongoDB; new fields default to `null`).
