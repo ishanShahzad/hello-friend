@@ -83,7 +83,11 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       order.paymentResult.paymentIntentId = paymentIntentId;
       order.paymentResult.emailAddress = email;
 
-      // Auto-confirm online-paid orders — buyer already committed by paying
+      // Auto-confirm online-paid orders — buyer already committed by paying.
+      // Also clear the `awaitingPayment` gate so the order becomes visible to
+      // sellers / users / admins.
+      const wasAwaiting = order.awaitingPayment === true;
+      order.awaitingPayment = false;
       order.orderStatus = 'confirmed';
       if (order.confirmation) {
         order.confirmation.confirmedAt = new Date();
@@ -92,6 +96,42 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       await order.save();
       console.log("✅ Order updated & auto-confirmed:", order.orderId);
+
+      // If this order was awaiting payment, send seller "new order" notifications
+      // now (we deliberately deferred them at place-time so abandoned checkouts
+      // don't spam sellers).
+      if (wasAwaiting) {
+        try {
+          const { newOrderSellerEmail } = require('./utils/emailTemplates');
+          const { notifySeller } = require('./services/whatsapp/sellerNotificationService');
+          const sellerTemplates = require('./services/whatsapp/sellerMessageTemplates');
+          const sellerIds = [...new Set((order.orderItems || []).map(i => {
+            // orderItems on the saved order don't always carry seller; look it up via product
+            return i.seller?.toString();
+          }).filter(Boolean))];
+          // Fallback: derive sellers from products
+          let resolvedSellerIds = sellerIds;
+          if (resolvedSellerIds.length === 0) {
+            const productIds = (order.orderItems || []).map(i => i.productId).filter(Boolean);
+            const products = await Product.find({ _id: { $in: productIds } }).select('seller');
+            resolvedSellerIds = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+          }
+          for (const sellerId of resolvedSellerIds) {
+            const sellerUser = await User.findById(sellerId);
+            if (sellerUser?.email) {
+              const sellerEmailData = newOrderSellerEmail(order, sellerUser.username);
+              await sendEmail({ to: sellerUser.email, ...sellerEmailData }).catch(e =>
+                console.error('Seller new-order email failed:', e.message)
+              );
+            }
+            notifySeller(sellerId, 'new_order', sellerTemplates.new_order(order)).catch(e =>
+              console.error('[whatsapp] seller new order notification failed:', e.message)
+            );
+          }
+        } catch (notifyErr) {
+          console.error('Failed to send post-payment seller notifications:', notifyErr.message);
+        }
+      }
 
       try {
         const user = await User.findById(order.user);
