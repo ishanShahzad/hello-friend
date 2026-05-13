@@ -288,7 +288,7 @@ exports.adminUpdateSubdomain = async (req, res) => {
 
         const sanitized = newSlug.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');
 
-        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
         if (reserved.includes(sanitized)) {
             return res.status(400).json({ msg: 'This subdomain is reserved' });
         }

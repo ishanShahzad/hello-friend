@@ -19,8 +19,8 @@ export const getSubdomain = () => {
     if (parts.length > 2) {
         const subdomain = parts[0];
         
-        // Skip common subdomains
-        if (['www', 'api', 'admin', 'app'].includes(subdomain.toLowerCase())) {
+        // Skip common subdomains (incl. reserved system subdomains like docs)
+        if (RESERVED_SUBDOMAINS.includes(subdomain.toLowerCase())) {
             return null;
         }
         
@@ -28,6 +28,31 @@ export const getSubdomain = () => {
     }
     
     return null;
+};
+
+// Subdomains that are NOT stores — system/reserved
+export const RESERVED_SUBDOMAINS = ['www', 'api', 'admin', 'app', 'docs', 'help', 'blog', 'mail', 'cdn', 'static'];
+
+// Detect if current host is the docs subdomain (docs.rozare.com)
+export const isDocsSubdomain = () => {
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    return parts.length > 2 && parts[0].toLowerCase() === 'docs';
+};
+
+// Build the docs URL — subdomain in production, /docs path locally
+export const getDocsUrl = (path = '') => {
+    const host = window.location.hostname;
+    const protocol = window.location.protocol;
+    if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        return `/docs${path}`;
+    }
+    const skipDomains = ['lovableproject.com', 'lovable.app', 'vercel.app', 'netlify.app', 'pages.dev'];
+    if (skipDomains.some(d => host.endsWith(d))) {
+        return `/docs${path}`;
+    }
+    const mainDomain = getMainDomain();
+    return `${protocol}//docs.${mainDomain}${path}`;
 };
 
 export const isSubdomain = () => {
