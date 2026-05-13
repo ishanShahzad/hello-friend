@@ -123,8 +123,14 @@ exports.checkSubdomainAvailability = async (req, res) => {
         }
 
         // Check if slug is taken
-        const existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
-        
+        let existingStore = await Store.findOne({ storeSlug: slug.toLowerCase() });
+
+        // If a store has the slug but is past its blocked-removal window, free it
+        if (existingStore) {
+            const released = await releaseExpiredSlug(existingStore);
+            if (released) existingStore = null;
+        }
+
         if (existingStore) {
             // If it's the current user's store, it's "available" for them
             if (req.user && existingStore.seller.toString() === req.user.id) {
