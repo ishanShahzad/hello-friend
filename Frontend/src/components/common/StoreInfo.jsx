@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Store, ExternalLink, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import TrustButton from './TrustButton';
 import VerifiedBadge from './VerifiedBadge';
+import { getStoreSubdomainUrl } from '../../utils/subdomainHelper';
 
 const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername, storeId, trustCount: initialTrustCount = 0, verification }) => {
     const [trustCount, setTrustCount] = useState(initialTrustCount);
@@ -31,7 +31,7 @@ const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername, storeId, t
         >
             <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>Sold by</p>
 
-            <Link to={`/store/${storeSlug}`} className="block group">
+            <a href={getStoreSubdomainUrl(storeSlug)} className="block group">
                 <div className="flex items-center gap-3 mb-3">
                     {storeLogo ? (
                         <img
@@ -76,9 +76,9 @@ const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername, storeId, t
                         </div>
                     </div>
                 </div>
-            </Link>
+            </a>
 
-            <Link to={`/store/${storeSlug}`}>
+            <a href={getStoreSubdomainUrl(storeSlug)}>
                 <motion.button
                     whileHover={{ scale: 1.02, y: -1 }}
                     whileTap={{ scale: 0.98 }}
@@ -89,7 +89,7 @@ const StoreInfo = ({ storeName, storeSlug, storeLogo, sellerUsername, storeId, t
                     Visit Store
                     <ExternalLink size={13} />
                 </motion.button>
-            </Link>
+            </a>
         </motion.div>
     );
 };

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import VerifiedBadge from './VerifiedBadge';
+import { navigateToStore } from '../../utils/subdomainHelper';
 
 const TypeBadge = ({ type }) => {
     const isBrand = type === 'brand';
@@ -54,7 +55,7 @@ const StoreSearch = () => {
         finally { setLoading(false); }
     };
 
-    const handleStoreClick = (storeSlug) => { navigate(`/store/${storeSlug}`); setQuery(''); setIsOpen(false); };
+    const handleStoreClick = (storeSlug) => { setQuery(''); setIsOpen(false); navigateToStore(storeSlug, navigate); };
 
     const handleKeyDown = (e) => {
         if (!isOpen || suggestions.length === 0) return;
