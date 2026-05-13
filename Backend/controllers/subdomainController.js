@@ -134,7 +134,6 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
             });
         }
 
-        const now = new Date();
         const removalAt = store.subdomainPurchase?.removalScheduledAt;
         const isPurchased = !!(store.subdomainPurchase?.isPurchased &&
             store.subdomainPurchase?.expiresAt &&

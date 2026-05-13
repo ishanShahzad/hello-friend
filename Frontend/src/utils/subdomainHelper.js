@@ -68,3 +68,16 @@ export const getStoreSubdomainUrl = (storeSlug) => {
     
     return `${protocol}//${storeSlug}.${mainDomain}`;
 };
+
+// Navigate to a store using the appropriate URL strategy.
+// In production -> full page load to subdomain. In local -> SPA navigate.
+export const navigateToStore = (storeSlug, navigate) => {
+    const url = getStoreSubdomainUrl(storeSlug);
+    if (url.startsWith('http')) {
+        window.location.href = url;
+    } else if (typeof navigate === 'function') {
+        navigate(url);
+    } else {
+        window.location.href = url;
+    }
+};

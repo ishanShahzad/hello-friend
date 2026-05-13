@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
+import { getStoreSubdomainUrl } from '../../utils/subdomainHelper';
 
 const AdminSubdomainManagement = () => {
     const { formatPrice } = useCurrency();
@@ -246,7 +247,7 @@ const AdminSubdomainManagement = () => {
                                         style={{ background: store.isSubdomainActive ? 'hsl(0, 72%, 55%)' : 'hsl(150, 60%, 45%)' }}>
                                         {store.isSubdomainActive ? 'Deactivate' : 'Activate'}
                                     </motion.button>
-                                    <a href={`/store/${store.storeSlug}`} target="_blank" rel="noreferrer"
+                                    <a href={getStoreSubdomainUrl(store.storeSlug)} target="_blank" rel="noreferrer"
                                         className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                         <ExternalLink size={14} />
                                     </a>

@@ -17,6 +17,10 @@ const StoreSettings = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showCooldownModal, setShowCooldownModal] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState([]); // [{ field, label, days }]
+    const [originals, setOriginals] = useState({ storeName: '', storeSlug: '', sellerType: 'store' });
+    const [blockedInfo, setBlockedInfo] = useState({ blocked: false, daysUntilRemoval: null, isPurchased: false });
     
     // Subdomain state
     const [customSubdomain, setCustomSubdomain] = useState('');
@@ -62,18 +66,32 @@ const StoreSettings = () => {
             const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
             const defaultReturnPolicy = { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' };
             const slug = res.data.store.storeSlug || '';
+            const sName = res.data.store.storeName || '';
+            const sType = res.data.store.sellerType || 'store';
             setStoreData({
-                storeName: res.data.store.storeName, description: res.data.store.description,
+                storeName: sName, description: res.data.store.description,
                 logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
-                sellerType: res.data.store.sellerType || 'store',
+                sellerType: sType,
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
                 returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
             });
+            setOriginals({ storeName: sName, storeSlug: slug, sellerType: sType });
             setCustomSubdomain(slug);
             setSubdomainOwned(true);
             setSubdomainAvailable(true);
             setSubdomainMessage('This is your current subdomain');
+            // Compute blocked + days until removal
+            const now = Date.now();
+            const removalAt = res.data.store.subdomainPurchase?.removalScheduledAt;
+            const isPurchased = !!(res.data.store.subdomainPurchase?.isPurchased &&
+                res.data.store.subdomainPurchase?.expiresAt &&
+                new Date(res.data.store.subdomainPurchase.expiresAt).getTime() > now);
+            const blocked = res.data.store.isActive === false;
+            const daysUntilRemoval = (blocked && !isPurchased && removalAt)
+                ? Math.max(0, Math.ceil((new Date(removalAt).getTime() - now) / 86400000))
+                : null;
+            setBlockedInfo({ blocked, daysUntilRemoval, isPurchased });
             setHasStore(true);
         } catch (error) {
             if (error.response?.status === 404) setHasStore(false);
@@ -173,32 +191,69 @@ const StoreSettings = () => {
         catch (error) { toast.error('Failed to upload banner'); } finally { setUploadingBanner(false); }
     };
 
+    const COOLDOWN_DAYS = { storeName: 7, storeSlug: 30, sellerType: 30 };
+    const FIELD_LABELS = { storeName: 'name', storeSlug: 'subdomain', sellerType: 'listing type' };
+
+    const detectPendingChanges = () => {
+        const changes = [];
+        const newSlug = customSubdomain && customSubdomain.length >= 3 ? customSubdomain : storeData.storeSlug;
+        if (hasStore && storeData.storeName.trim().toLowerCase() !== (originals.storeName || '').toLowerCase()) {
+            changes.push({ field: 'storeName', label: FIELD_LABELS.storeName, days: COOLDOWN_DAYS.storeName });
+        }
+        if (hasStore && newSlug && newSlug.toLowerCase() !== (originals.storeSlug || '').toLowerCase()) {
+            changes.push({ field: 'storeSlug', label: FIELD_LABELS.storeSlug, days: COOLDOWN_DAYS.storeSlug });
+        }
+        if (hasStore && (storeData.sellerType || 'store') !== (originals.sellerType || 'store')) {
+            changes.push({ field: 'sellerType', label: FIELD_LABELS.sellerType, days: COOLDOWN_DAYS.sellerType });
+        }
+        return changes;
+    };
+
     const handleSave = async () => {
         if (!storeData.storeName || storeData.storeName.trim().length < 3) { toast.error('Store name must be at least 3 characters'); return; }
+        if (blockedInfo.blocked) {
+            toast.error('Your store is blocked. Reactivate your subscription to make changes.');
+            return;
+        }
+        const changes = detectPendingChanges();
+        if (changes.length > 0) {
+            setPendingChanges(changes);
+            setShowCooldownModal(true);
+            return;
+        }
+        await doSave();
+    };
+
+    const doSave = async () => {
         try {
             setSaving(true);
             const token = localStorage.getItem('jwtToken');
             const endpoint = hasStore ? 'update' : 'create';
-            
             const payload = { ...storeData };
-            // Include the custom subdomain if it's set and valid
             if (customSubdomain && customSubdomain.length >= 3) {
                 payload.storeSlug = customSubdomain;
             }
-
             const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg);
             setHasStore(true);
-            
-            // Update local state with whatever the server returned
             if (res.data.store) {
                 setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
                 setCustomSubdomain(res.data.store.storeSlug);
+                setOriginals({
+                    storeName: res.data.store.storeName,
+                    storeSlug: res.data.store.storeSlug,
+                    sellerType: res.data.store.sellerType || 'store',
+                });
             }
-            
             fetchAnalytics();
-        } catch (error) { toast.error(error.response?.data?.msg || 'Failed to save store'); }
-        finally { setSaving(false); }
+        } catch (error) {
+            const cd = error.response?.data?.cooldown;
+            if (error.response?.status === 423 && cd) {
+                toast.error(`You can change your ${cd.label} again in ${cd.daysRemaining} day(s).`);
+            } else {
+                toast.error(error.response?.data?.msg || 'Failed to save store');
+            }
+        } finally { setSaving(false); setShowCooldownModal(false); setPendingChanges([]); }
     };
 
     const handleDelete = async () => {
@@ -232,6 +287,32 @@ const StoreSettings = () => {
                     {hasStore ? 'Manage your store configuration' : 'Create your store to establish your brand'}
                 </p>
             </div>
+
+            {/* Blocked Banner */}
+            {hasStore && blockedInfo.blocked && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl p-4 md:p-5 mb-6 flex items-start gap-3"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                    <AlertTriangle size={20} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                    <div className="flex-1">
+                        <p className="text-sm font-bold" style={{ color: 'hsl(0, 72%, 50%)' }}>
+                            Store blocked — subscription inactive
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            {blockedInfo.isPurchased
+                                ? 'Your subdomain is purchased and protected. Reactivate your subscription to make your store visible again.'
+                                : blockedInfo.daysUntilRemoval !== null
+                                    ? <>Your subdomain <strong className="font-mono">{storeData.storeSlug}.rozare.com</strong> will be released in <strong>{blockedInfo.daysUntilRemoval} day(s)</strong> and may be claimed by another seller. Reactivate your subscription to keep it.</>
+                                    : 'Reactivate your subscription to make your store visible again.'}
+                        </p>
+                        <Link to="/seller-dashboard/subscription"
+                            className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-xs font-semibold text-white"
+                            style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(15, 80%, 55%))' }}>
+                            Reactivate Subscription
+                        </Link>
+                    </div>
+                </motion.div>
+            )}
 
             {/* Analytics Cards */}
             {hasStore && (
@@ -346,7 +427,11 @@ const StoreSettings = () => {
                             <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                                 Custom Subdomain
                             </h3>
-                            {verification.isVerified ? (
+                            {blockedInfo.blocked ? (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                    <Lock size={10} /> Blocked{blockedInfo.daysUntilRemoval !== null ? ` — releases in ${blockedInfo.daysUntilRemoval}d` : ''}
+                                </span>
+                            ) : verification.isVerified ? (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34,197,94,0.25)' }}>
                                     ✓ Active
                                 </span>
@@ -719,6 +804,42 @@ const StoreSettings = () => {
                                 className="flex-1 px-4 py-2 rounded-xl text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
                                 {applyingVerification ? <><Loader2 className="animate-spin" size={16} /> Submitting...</> : 'Submit Application'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Cooldown Confirmation Modal */}
+            {showCooldownModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel p-6 max-w-md w-full">
+                        <h3 className="text-xl font-bold mb-3 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                            <AlertTriangle size={22} style={{ color: 'hsl(45, 80%, 45%)' }} /> Heads up — change cooldown
+                        </h3>
+                        <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Once you save, you won't be able to change the following again for the time noted:
+                        </p>
+                        <ul className="space-y-2 mb-5">
+                            {pendingChanges.map(c => (
+                                <li key={c.field} className="glass-inner rounded-xl px-4 py-3 flex items-center justify-between">
+                                    <span className="text-sm font-semibold capitalize" style={{ color: 'hsl(var(--foreground))' }}>{c.label}</span>
+                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                                        style={{ background: 'rgba(234,179,8,0.12)', color: 'hsl(45, 80%, 40%)' }}>
+                                        Locked for {c.days} day{c.days === 1 ? '' : 's'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex gap-3">
+                            <button onClick={() => { setShowCooldownModal(false); setPendingChanges([]); }} disabled={saving}
+                                className="flex-1 px-4 py-2.5 rounded-xl glass-inner font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                                Cancel
+                            </button>
+                            <button onClick={doSave} disabled={saving}
+                                className="flex-1 px-4 py-2.5 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
+                                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : 'Confirm & Save'}
                             </button>
                         </div>
                     </motion.div>

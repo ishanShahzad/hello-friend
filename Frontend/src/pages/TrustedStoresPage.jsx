@@ -8,6 +8,7 @@ import Loader from '../components/common/Loader';
 import { useAuth } from '../contexts/AuthContext';
 import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
+import { navigateToStore } from '../utils/subdomainHelper';
 
 const TrustedStoresPage = () => {
     const [trustedStores, setTrustedStores] = useState([]);
@@ -48,7 +49,7 @@ const TrustedStoresPage = () => {
     };
 
     const handleStoreClick = (storeSlug) => {
-        navigate(`/store/${storeSlug}`);
+        navigateToStore(storeSlug, navigate);
     };
 
     if (loading) {
