@@ -1199,10 +1199,23 @@ exports.processTrialExpirations = async () => {
             sub.blockedReason = 'Trial period expired. Subscribe to reactivate your store.';
             await sub.save();
 
-            await Store.findOneAndUpdate(
-                { seller: sub.seller },
-                { isActive: false }
-            );
+            {
+                const storeDoc = await Store.findOne({ seller: sub.seller });
+                if (storeDoc) {
+                    storeDoc.isActive = false;
+                    storeDoc.blockedAt = now;
+                    const purchased = storeDoc.subdomainPurchase?.isPurchased &&
+                        storeDoc.subdomainPurchase?.expiresAt &&
+                        new Date(storeDoc.subdomainPurchase.expiresAt) > now;
+                    if (!purchased) {
+                        storeDoc.subdomainPurchase = {
+                            ...(storeDoc.subdomainPurchase?.toObject?.() || {}),
+                            removalScheduledAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+                        };
+                    }
+                    await storeDoc.save();
+                }
+            }
 
             // Send block notification email
             const user = await User.findById(sub.seller);
