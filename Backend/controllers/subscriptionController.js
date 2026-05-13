@@ -2,7 +2,7 @@ const SellerSubscription = require('../models/SellerSubscription');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
-const { stripe } = require('../config/stripe');
+const { stripe, STRIPE_MODE } = require('../config/stripe');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
@@ -152,6 +152,49 @@ async function checkAndUpdateStatus(sub) {
     return sub;
 }
 
+async function createStripeCustomerForSeller(user, sellerId) {
+    const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.username || user.email,
+        metadata: { sellerId: sellerId.toString(), stripeMode: STRIPE_MODE },
+    });
+
+    return customer.id;
+}
+
+async function getUsableStripeCustomerId(sub, user, sellerId) {
+    if (!sub.stripeCustomerId) {
+        sub.stripeCustomerId = await createStripeCustomerForSeller(user, sellerId);
+        sub.stripeSubscriptionId = undefined;
+        sub.stripePriceId = undefined;
+        await sub.save();
+        return sub.stripeCustomerId;
+    }
+
+    try {
+        const customer = await stripe.customers.retrieve(sub.stripeCustomerId);
+        if (customer?.deleted) {
+            throw Object.assign(new Error(`Stripe customer ${sub.stripeCustomerId} is deleted`), { code: 'resource_missing' });
+        }
+
+        return sub.stripeCustomerId;
+    } catch (error) {
+        if (error?.code !== 'resource_missing') throw error;
+
+        console.warn('[subscription] Stored Stripe customer is not available in current mode; creating a new customer.', {
+            sellerId: sellerId.toString(),
+            staleCustomerId: sub.stripeCustomerId,
+            stripeMode: STRIPE_MODE,
+        });
+
+        sub.stripeCustomerId = await createStripeCustomerForSeller(user, sellerId);
+        sub.stripeSubscriptionId = undefined;
+        sub.stripePriceId = undefined;
+        await sub.save();
+        return sub.stripeCustomerId;
+    }
+}
+
 // Create Stripe checkout for subscription
 exports.createCheckout = async (req, res) => {
     try {
@@ -186,18 +229,9 @@ exports.createCheckout = async (req, res) => {
             return res.status(400).json({ msg: 'You already have an active subscription.' });
         }
 
-        // Create or get Stripe customer
-        let customerId = sub.stripeCustomerId;
-        if (!customerId) {
-            const customer = await stripe.customers.create({
-                email: user.email,
-                name: user.username || user.email,
-                metadata: { sellerId: sellerId.toString() },
-            });
-            customerId = customer.id;
-            sub.stripeCustomerId = customerId;
-            await sub.save();
-        }
+        // Create or validate Stripe customer. A saved customer can be stale when
+        // switching test/live mode or if it was deleted in Stripe.
+        const customerId = await getUsableStripeCustomerId(sub, user, sellerId);
 
         // Prevent parallel subscription exploit:
         // (1) Expire any OPEN checkout sessions for this customer so they can't be completed later
