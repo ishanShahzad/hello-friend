@@ -288,6 +288,32 @@ const StoreSettings = () => {
                 </p>
             </div>
 
+            {/* Blocked Banner */}
+            {hasStore && blockedInfo.blocked && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl p-4 md:p-5 mb-6 flex items-start gap-3"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                    <AlertTriangle size={20} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                    <div className="flex-1">
+                        <p className="text-sm font-bold" style={{ color: 'hsl(0, 72%, 50%)' }}>
+                            Store blocked — subscription inactive
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            {blockedInfo.isPurchased
+                                ? 'Your subdomain is purchased and protected. Reactivate your subscription to make your store visible again.'
+                                : blockedInfo.daysUntilRemoval !== null
+                                    ? <>Your subdomain <strong className="font-mono">{storeData.storeSlug}.rozare.com</strong> will be released in <strong>{blockedInfo.daysUntilRemoval} day(s)</strong> and may be claimed by another seller. Reactivate your subscription to keep it.</>
+                                    : 'Reactivate your subscription to make your store visible again.'}
+                        </p>
+                        <Link to="/seller-dashboard/subscription"
+                            className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-xs font-semibold text-white"
+                            style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(15, 80%, 55%))' }}>
+                            Reactivate Subscription
+                        </Link>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Analytics Cards */}
             {hasStore && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
