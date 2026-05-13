@@ -17,6 +17,10 @@ const StoreSettings = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showCooldownModal, setShowCooldownModal] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState([]); // [{ field, label, days }]
+    const [originals, setOriginals] = useState({ storeName: '', storeSlug: '', sellerType: 'store' });
+    const [blockedInfo, setBlockedInfo] = useState({ blocked: false, daysUntilRemoval: null, isPurchased: false });
     
     // Subdomain state
     const [customSubdomain, setCustomSubdomain] = useState('');
@@ -62,18 +66,32 @@ const StoreSettings = () => {
             const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
             const defaultReturnPolicy = { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' };
             const slug = res.data.store.storeSlug || '';
+            const sName = res.data.store.storeName || '';
+            const sType = res.data.store.sellerType || 'store';
             setStoreData({
-                storeName: res.data.store.storeName, description: res.data.store.description,
+                storeName: sName, description: res.data.store.description,
                 logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
-                sellerType: res.data.store.sellerType || 'store',
+                sellerType: sType,
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
                 returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
             });
+            setOriginals({ storeName: sName, storeSlug: slug, sellerType: sType });
             setCustomSubdomain(slug);
             setSubdomainOwned(true);
             setSubdomainAvailable(true);
             setSubdomainMessage('This is your current subdomain');
+            // Compute blocked + days until removal
+            const now = Date.now();
+            const removalAt = res.data.store.subdomainPurchase?.removalScheduledAt;
+            const isPurchased = !!(res.data.store.subdomainPurchase?.isPurchased &&
+                res.data.store.subdomainPurchase?.expiresAt &&
+                new Date(res.data.store.subdomainPurchase.expiresAt).getTime() > now);
+            const blocked = res.data.store.isActive === false;
+            const daysUntilRemoval = (blocked && !isPurchased && removalAt)
+                ? Math.max(0, Math.ceil((new Date(removalAt).getTime() - now) / 86400000))
+                : null;
+            setBlockedInfo({ blocked, daysUntilRemoval, isPurchased });
             setHasStore(true);
         } catch (error) {
             if (error.response?.status === 404) setHasStore(false);
