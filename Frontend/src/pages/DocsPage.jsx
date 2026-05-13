@@ -809,12 +809,12 @@ function DocsPage() {
               <h2 className="text-2xl font-bold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Ready to Get Started?</h2>
               <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>Join the marketplace where you can shop and run your store just by chatting with AI.</p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Link to="/signup" className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
+                <a href={mainHref('/signup')} className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
                   Start Shopping
-                </Link>
-                <Link to="/become-seller" className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
+                </a>
+                <a href={mainHref('/become-seller')} className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
                   Become a Seller
-                </Link>
+                </a>
               </div>
             </div>
           </main>
