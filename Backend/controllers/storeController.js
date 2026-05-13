@@ -114,7 +114,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
         }
 
         // Reserved subdomains
-        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+        const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
         if (reserved.includes(slug.toLowerCase())) {
             return res.status(200).json({ 
                 available: false, 
@@ -191,7 +191,7 @@ exports.createStore = async (req, res) => {
             if (storeSlug.length < 3) {
                 return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
             }
-            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
             if (reserved.includes(storeSlug.toLowerCase())) {
                 return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
             }
@@ -390,7 +390,7 @@ exports.updateStore = async (req, res) => {
                 return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
             }
             
-            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog'];
+            const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
             if (reserved.includes(storeSlug.toLowerCase())) {
                 return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
             }
