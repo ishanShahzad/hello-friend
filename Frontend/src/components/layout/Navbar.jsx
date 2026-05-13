@@ -71,7 +71,7 @@ function Navbar() {
                 <div className="flex items-center gap-6">
                     <Link to="/" className="flex items-center shrink-0">
                         <div className="glass-inner p-1.5 rounded-xl flex items-center justify-center">
-                            <img src="/rozare-logo.svg" alt="Rozare" className="h-7 sm:h-8 block" />
+                            <img src="/rozare-logo.svg?v=2" alt="Rozare" className="h-7 sm:h-8 block" />
                         </div>
                     </Link>
                     <div className="hidden md:flex items-center gap-1">
