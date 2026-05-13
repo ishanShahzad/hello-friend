@@ -193,6 +193,29 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     }
   }
 
+  // ── Abandoned / failed Stripe checkout cleanup ──
+  // When a buyer closes the Stripe page or the session expires, mark the
+  // awaiting-payment order as cancelled so it never appears as a real order.
+  if (
+    event.type === 'checkout.session.expired' ||
+    event.type === 'checkout.session.async_payment_failed'
+  ) {
+    const session = event.data.object;
+    if (session.mode === 'payment' && session.metadata?.orderId) {
+      try {
+        const order = await Order.findOne({ orderId: session.metadata.orderId });
+        if (order && order.awaitingPayment && !order.isPaid) {
+          order.orderStatus = 'cancelled';
+          order.awaitingPayment = false; // unhide as cancelled
+          await order.save();
+          console.log(`🧹 Cancelled abandoned/failed checkout order ${order.orderId}`);
+        }
+      } catch (cleanupErr) {
+        console.error('Failed to cancel abandoned order:', cleanupErr.message);
+      }
+    }
+  }
+
   res.sendStatus(200);
 });
 
