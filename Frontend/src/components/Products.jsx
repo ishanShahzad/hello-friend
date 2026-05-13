@@ -290,7 +290,7 @@ function Products() {
     <div className='relative flex flex-col lg:flex-row min-h-screen'>
       <SEOHead
         title={null}
-        description="Shop thousands of unique products on Rozare — the best online shopping marketplace. Browse electronics, fashion, home decor, beauty, jewelry & more from verified independent sellers. Secure checkout, multi-currency support, worldwide shipping, best deals & discounts. Find trending products, new arrivals, and top-rated items at affordable prices."
+        description="Shop unique products from verified independent sellers on Rozare. Electronics, fashion, home decor, beauty & more with worldwide shipping."
         canonical="/"
         keywords="shop online, buy products online, online shopping website, best online store, rozare products, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
         jsonLd={[

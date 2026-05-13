@@ -25,7 +25,7 @@ function AboutPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="About Rozare — Our Story & Mission"
-        description="Learn about Rozare — a modern online shopping marketplace built on trust, connecting independent sellers with conscious shoppers worldwide. Discover our mission to make e-commerce fair, transparent, and community-driven with verified sellers, secure payments, and global shipping."
+        description="Learn about Rozare — a modern marketplace connecting independent sellers with shoppers worldwide through trust, transparency, and secure payments."
         canonical="/about"
         keywords="about rozare, rozare story, rozare mission, rozare marketplace about, who is rozare, rozare company, rozare team, online marketplace mission, trusted marketplace, community marketplace, independent sellers platform, fair e-commerce, transparent shopping"
         jsonLd={{
