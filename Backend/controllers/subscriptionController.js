@@ -295,8 +295,20 @@ exports.createCheckout = async (req, res) => {
 
         res.json({ url: session.url, sessionId: session.id });
     } catch (error) {
-        console.error('Create checkout error:', error);
-        res.status(500).json({ msg: 'Failed to create checkout session' });
+        // Surface a useful diagnostic so the seller (and our logs) can tell
+        // *why* checkout failed instead of a generic 500. Stripe SDK errors
+        // expose `type`, `code`, and `message`.
+        console.error('Create checkout error:', {
+            message: error?.message,
+            type: error?.type,
+            code: error?.code,
+            statusCode: error?.statusCode,
+            raw: error?.raw?.message,
+        });
+        res.status(500).json({
+            msg: error?.raw?.message || error?.message || 'Failed to create checkout session',
+            code: error?.code || error?.type || 'CHECKOUT_ERROR',
+        });
     }
 };
 
