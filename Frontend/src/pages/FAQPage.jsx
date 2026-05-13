@@ -107,7 +107,7 @@ function FAQPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="FAQ — Help Center & Common Questions"
-        description="Find answers to frequently asked questions about shopping on Rozare. Learn about payments, shipping, returns, selling, order tracking, trust system, account management, and more. Get help with your Rozare shopping experience."
+        description="Answers about Rozare shopping: payments, shipping, returns, selling, order tracking, trust system, and account management."
         canonical="/faq"
         keywords="rozare FAQ, rozare help, rozare questions, how to shop on rozare, rozare shipping, rozare returns, rozare payments, rozare refund, rozare seller FAQ, how to sell on rozare, rozare order tracking, rozare trust system, rozare verified stores, online shopping FAQ, marketplace help, e-commerce FAQ"
         jsonLd={faqJsonLd}
