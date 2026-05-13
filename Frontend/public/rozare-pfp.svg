@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="rzGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="50%" stop-color="#0EA5E9"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="rzGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Full-bleed circular background so it fits any profile crop -->
+  <circle cx="256" cy="256" r="256" fill="url(#rzGrad)"/>
+  <circle cx="256" cy="256" r="256" fill="url(#rzGlow)"/>
+
+  <!-- Mark centered: original 48x48 viewBox scaled ~6.4x and centered -->
+  <g transform="translate(102.4 102.4) scale(6.4)">
+    <!-- Orbital arc accent -->
+    <path d="M37 14 a15 15 0 0 1 -25 21"
+          fill="none" stroke="white" stroke-opacity="0.45"
+          stroke-width="1.6" stroke-linecap="round"/>
+    <!-- Monogram R -->
+    <path d="M15 14 h11 a7 7 0 0 1 0 14 h-7 l9 6 M19 14 v20"
+          fill="none" stroke="white" stroke-width="3.4"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Spark dot -->
+    <circle cx="33" cy="14" r="2" fill="white"/>
+  </g>
+</svg>
