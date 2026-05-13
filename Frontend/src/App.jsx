@@ -1,13 +1,16 @@
 import AppRoutes from './routes/AppRoutes'
 import SubdomainStorePage from './pages/SubdomainStorePage'
-import { isSubdomain } from './utils/subdomainHelper'
+import DocsPage from './pages/DocsPage'
+import { isSubdomain, isDocsSubdomain } from './utils/subdomainHelper'
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify'
 import { HelmetProvider } from 'react-helmet-async'
 
 function App() {
-  // Check if we're on a subdomain
-  const onSubdomain = isSubdomain();
+  // Reserved system subdomain: docs.rozare.com
+  const onDocs = isDocsSubdomain();
+  // Store subdomain (storename.rozare.com)
+  const onStoreSubdomain = !onDocs && isSubdomain();
 
   return (
     <HelmetProvider>
@@ -32,7 +35,7 @@ function App() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
       />
-      {onSubdomain ? <SubdomainStorePage /> : <AppRoutes />}
+      {onDocs ? <DocsPage /> : onStoreSubdomain ? <SubdomainStorePage /> : <AppRoutes />}
     </HelmetProvider>
   )
 }
