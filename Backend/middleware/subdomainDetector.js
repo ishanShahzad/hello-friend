@@ -21,7 +21,7 @@ const subdomainDetector = async (req, res, next) => {
             const parts = host.split('.');
             if (parts.length > 2) {
                 const hostSub = parts[0].toLowerCase();
-                if (!['www', 'api', 'admin', 'app'].includes(hostSub)) {
+                if (!['www', 'api', 'admin', 'app', 'docs', 'help', 'blog', 'mail', 'cdn', 'static'].includes(hostSub)) {
                     subdomain = hostSub;
                 }
             }
@@ -32,7 +32,7 @@ const subdomainDetector = async (req, res, next) => {
         }
 
         // Skip common subdomains
-        if (['www', 'api', 'admin', 'app'].includes(subdomain)) {
+        if (['www', 'api', 'admin', 'app', 'docs', 'help', 'blog', 'mail', 'cdn', 'static'].includes(subdomain)) {
             return next();
         }
 
