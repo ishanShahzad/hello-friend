@@ -105,7 +105,7 @@ function AppRoutes() {
                     <Route path='/about' element={<AboutPage />} />
                     <Route path='/contact' element={<ContactPage />} />
                     <Route path='/faq' element={<FAQPage />} />
-                    <Route path='/docs' element={<DocsPage />} />
+                    <Route path='/docs' element={<DocsRouteGate />} />
                     <Route path='/track-order' element={<TrackOrderPage />} />
 
                     {/* Checkout - accessible to everyone (guest & logged in) */}
