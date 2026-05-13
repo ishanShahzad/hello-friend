@@ -4,6 +4,7 @@ import { Store, Package, Eye, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TrustButton from './TrustButton';
 import VerifiedBadge from './VerifiedBadge';
+import { getStoreSubdomainUrl } from '../../utils/subdomainHelper';
 
 const SellerTypePill = ({ type }) => {
     const isBrand = type === 'brand';
