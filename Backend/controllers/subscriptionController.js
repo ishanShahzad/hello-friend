@@ -155,9 +155,26 @@ async function checkAndUpdateStatus(sub) {
 // Create Stripe checkout for subscription
 exports.createCheckout = async (req, res) => {
     try {
+        // Guard: Stripe must be configured. In live mode this is the most common
+        // cause of a 500 here (e.g. STRIPE_LIVE_SECRET_KEY missing in env).
+        if (!stripe) {
+            console.error('[subscription] createCheckout: Stripe is not configured');
+            return res.status(503).json({
+                msg: 'Payments are not configured on the server. Please contact support.',
+                code: 'STRIPE_NOT_CONFIGURED',
+            });
+        }
+
         const sellerId = req.user.id;
         const { plan } = req.body; // 'starter' or 'elite'
         const user = await User.findById(sellerId);
+        if (!user) {
+            return res.status(404).json({ msg: 'Seller account not found.' });
+        }
+        if (!user.email) {
+            return res.status(400).json({ msg: 'Your account is missing an email address. Please update your profile before subscribing.' });
+        }
+
         let sub = await SellerSubscription.findOne({ seller: sellerId });
 
         if (!sub) {
@@ -174,7 +191,7 @@ exports.createCheckout = async (req, res) => {
         if (!customerId) {
             const customer = await stripe.customers.create({
                 email: user.email,
-                name: user.username,
+                name: user.username || user.email,
                 metadata: { sellerId: sellerId.toString() },
             });
             customerId = customer.id;
