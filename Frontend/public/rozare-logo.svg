@@ -21,7 +21,7 @@
     <circle cx="36" cy="14" r="2" fill="white"/>
   </g>
 
-  <!-- Wordmark: geometric rounded sans to match the R monogram -->
-  <text x="62" y="37" font-family="Poppins, 'Nunito', 'Montserrat', system-ui, -apple-system, sans-serif"
-        font-size="28" font-weight="800" letter-spacing="-0.6" fill="url(#rzGrad)">Rozare</text>
+  <!-- Wordmark: Inter 900 to match the bold geometric R monogram -->
+  <text x="62" y="37" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="28" font-weight="900" letter-spacing="-1.2" fill="url(#rzGrad)">Rozare</text>
 </svg>
