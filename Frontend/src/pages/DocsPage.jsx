@@ -73,28 +73,47 @@ function DocsPage() {
     }
   };
 
-  // Schema.org structured data for SEO
+  // Schema.org structured data for SEO + AI search engines
+  const DOCS_URL = 'https://docs.rozare.com/';
   const schemaData = {
     '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: 'Rozare Documentation — Shop & Manage Your Store by Chatting with AI',
+    '@type': 'TechArticle',
+    headline: 'Rozare Documentation — Shop & Manage Your Store by Chatting with AI',
+    name: 'Rozare Documentation',
     description: 'Complete guide to Rozare — the AI-powered marketplace where you shop and manage your store or brand by chatting with AI through the app or WhatsApp.',
-    url: 'https://www.rozare.com/docs',
+    inLanguage: 'en',
+    url: DOCS_URL,
+    image: 'https://rozare.com/og-image.png?v=4',
+    datePublished: '2026-01-01',
+    dateModified: new Date().toISOString().slice(0, 10),
+    author: { '@type': 'Organization', name: 'Rozare', url: 'https://rozare.com' },
     publisher: {
       '@type': 'Organization',
       name: 'Rozare',
-      url: 'https://www.rozare.com',
+      url: 'https://rozare.com',
+      logo: { '@type': 'ImageObject', url: 'https://rozare.com/rozare-logo.svg' },
     },
+    about: ['AI-powered marketplace', 'Conversational commerce', 'WhatsApp store management', 'Online selling', 'Online shopping'],
+    keywords: 'Rozare, AI marketplace, AI shopping, AI commerce, sell online, WhatsApp store management, chat to sell, conversational commerce, Rozare Starter, Rozare Elite, become a seller',
     mainEntity: {
       '@type': 'FAQPage',
       mainEntity: [
         { '@type': 'Question', name: 'What is Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare is an AI-powered marketplace where you can shop and manage your entire store or brand simply by chatting with an AI assistant — through the website, the mobile app, or WhatsApp.' } },
         { '@type': 'Question', name: 'How do I become a seller on Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Go to /become-seller, enter your email, verify with the OTP, fill in your store details, and you instantly get a 15-day free trial of all features.' } },
         { '@type': 'Question', name: 'Can I manage my Rozare store from WhatsApp?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Connect your WhatsApp number in seller settings and chat with the Rozare AI to add products, update stock, manage orders, run analytics, and get instant new-order notifications.' } },
-        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month) or Rozare Elite ($12.99/month). Both plans get a 30-day or 45-day free intro period.' } },
-        { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. The Rozare mobile app (built with React Native / Expo) is available for iOS and Android with full shopping, selling, AI chat, and push notification support.' } },
+        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month) or Rozare Elite ($12.99/month).' } },
+        { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. The Rozare mobile app is available for iOS and Android with full shopping, selling, AI chat, and push notification support.' } },
       ],
     },
+  };
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Rozare', item: 'https://rozare.com/' },
+      { '@type': 'ListItem', position: 2, name: 'Documentation', item: DOCS_URL },
+    ],
   };
 
   return (
@@ -102,16 +121,24 @@ function DocsPage() {
       <Helmet>
         <title>Rozare Docs — Shop & Manage Your Store by Chatting with AI</title>
         <meta name="description" content="The complete guide to Rozare — shop and manage your store or brand by chatting with AI through the app or WhatsApp. Learn how to sell, set up payments, ship orders, get verified, and grow with AI." />
-        <meta name="keywords" content="Rozare, AI marketplace, AI shopping, AI commerce, sell online, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller" />
-        <link rel="canonical" href="https://www.rozare.com/docs" />
+        <meta name="keywords" content="Rozare, Rozare docs, Rozare documentation, AI marketplace, AI shopping, AI commerce, conversational commerce, sell online, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller, Rozare guide, Rozare help" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+        <link rel="canonical" href={DOCS_URL} />
+        <meta property="og:site_name" content="Rozare" />
+        <meta property="og:type" content="article" />
         <meta property="og:title" content="Rozare Documentation — AI-Powered Shopping & Selling" />
         <meta property="og:description" content="Shop and manage your store or brand by chatting with AI through the app or WhatsApp. The complete Rozare guide." />
-        <meta property="og:url" content="https://www.rozare.com/docs" />
-        <meta property="og:type" content="website" />
+        <meta property="og:url" content={DOCS_URL} />
+        <meta property="og:image" content="https://rozare.com/og-image.png?v=4" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@RozareHQ" />
         <meta name="twitter:title" content="Rozare Docs — Shop & Manage Your Store by Chatting with AI" />
         <meta name="twitter:description" content="Complete guide to Rozare's AI marketplace — shop or sell by chatting with AI on app or WhatsApp." />
+        <meta name="twitter:image" content="https://rozare.com/og-image.png?v=4" />
         <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
 
       <div className="min-h-screen" style={{ background: 'hsl(var(--background))' }}>
