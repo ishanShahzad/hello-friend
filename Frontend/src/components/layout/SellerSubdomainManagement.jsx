@@ -131,8 +131,10 @@ const SellerSubdomainManagement = () => {
 
     const { subdomain, analytics } = data;
     const isActive = subdomain.isActive;
+    const blocked = subdomain.blocked;
+    const daysUntilRemoval = subdomain.daysUntilRemoval;
     const isOwned = ownership?.ownership?.isOwned;
-    const isPurchased = ownership?.ownership?.isPurchased;
+    const isPurchased = ownership?.ownership?.isPurchased || subdomain.isPurchased;
 
     const stats = [
         { label: 'Total Views', value: analytics.totalViews, icon: <Eye size={18} />, color: 'hsl(220, 70%, 55%)' },
@@ -177,7 +179,11 @@ const SellerSubdomainManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {isActive ? (
+                        {blocked ? (
+                            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                <Lock size={16} /> Blocked{daysUntilRemoval !== null && daysUntilRemoval !== undefined ? ` — releases in ${daysUntilRemoval}d` : ''}
+                            </span>
+                        ) : isActive ? (
                             <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34,197,94,0.25)' }}>
                                 <CheckCircle size={16} /> Active & Live
                             </span>
@@ -186,7 +192,7 @@ const SellerSubdomainManagement = () => {
                                 <Lock size={16} /> Inactive
                             </span>
                         )}
-                        {isActive && (
+                        {isActive && !blocked && (
                             <a href={`https://${subdomain.url}`} target="_blank" rel="noreferrer"
                                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                                 style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
@@ -196,7 +202,32 @@ const SellerSubdomainManagement = () => {
                     </div>
                 </div>
 
-                {!isActive && (
+                {blocked && (
+                    <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
+                            <div>
+                                <p className="text-sm font-semibold" style={{ color: 'hsl(0, 72%, 50%)' }}>
+                                    Your store is blocked — subscription inactive
+                                </p>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    {isPurchased
+                                        ? 'Your subdomain is purchased and protected. Reactivate your subscription to make your store visible again.'
+                                        : daysUntilRemoval !== null && daysUntilRemoval !== undefined
+                                            ? <>Your subdomain <strong className="font-mono">{subdomain.url}</strong> will be released in <strong>{daysUntilRemoval} day(s)</strong> and may be claimed by another seller.</>
+                                            : 'Reactivate your subscription to keep your subdomain.'}
+                                </p>
+                                <Link to="/seller-dashboard/subscription"
+                                    className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-xs font-semibold text-white"
+                                    style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(15, 80%, 55%))' }}>
+                                    Reactivate Subscription <ArrowUpRight size={12} />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!isActive && !blocked && (
                     <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.2)' }}>
                         <div className="flex items-start gap-3">
                             <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 45%)' }} />
