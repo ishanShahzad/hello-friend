@@ -84,6 +84,16 @@ const orderSchema = mongoose.Schema(
             emailAddress: String
         },
 
+        // Stripe checkout session id — used by webhook handlers (expired/failed) to
+        // locate the corresponding awaiting-payment order.
+        stripeSessionId: { type: String, default: null, index: true },
+
+        // True for stripe-mode orders that have been created in DB but the buyer
+        // has not yet paid. These orders are HIDDEN from seller/user/admin
+        // dashboards and listings until payment succeeds via webhook, and are
+        // marked `cancelled` if the Stripe session expires or the buyer abandons.
+        awaitingPayment: { type: Boolean, default: false, index: true },
+
         isPaid: {
             type: Boolean,
             required: true,

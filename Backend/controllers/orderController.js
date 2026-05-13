@@ -221,52 +221,52 @@ exports.placeOrder = async (req, res) => {
             newOrder.confirmation = { token, tokenExpiresAt, confirmedAt: null, confirmedVia: null, declinedAt: null };
         }
 
+        // CRITICAL: Stripe orders start as "awaiting payment" and are HIDDEN from
+        // every dashboard until the Stripe webhook confirms payment. This prevents
+        // abandoned-checkout orders from appearing as real orders to sellers.
+        if (!isCOD) {
+            newOrder.awaitingPayment = true;
+        }
+
         await newOrder.save();
 
-        // Send order confirmation email to buyer
-        try {
-            if (isCOD) {
+        // Send order confirmation email to buyer — ONLY for COD here.
+        // For Stripe orders, the buyer + seller emails are sent from the Stripe
+        // webhook (server.js) after payment is actually confirmed.
+        if (isCOD) {
+            try {
                 const confirmUrl = `${process.env.FRONTEND_URL || 'https://rozare.com'}/orders/confirm/${newOrder.confirmation.token}`;
                 const emailData = buyerOrderConfirmationRequestEmail(newOrder, confirmUrl);
                 await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
-            } else {
-                const emailData = orderConfirmationEmail(newOrder);
-                await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+                newOrder.confirmation.emailSentAt = new Date();
+                newOrder.confirmation.emailSentSuccess = true;
+                await newOrder.save();
+            } catch (emailErr) {
+                console.error('Failed to send order confirmation email:', emailErr.message);
+                newOrder.confirmation.emailSentAt = new Date();
+                newOrder.confirmation.emailSentSuccess = false;
+                newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
+                await newOrder.save();
             }
-            // Track email send success
-            newOrder.confirmation.emailSentAt = new Date();
-            newOrder.confirmation.emailSentSuccess = true;
-            await newOrder.save();
-        } catch (emailErr) {
-            console.error('Failed to send order confirmation email:', emailErr.message);
-            // Track email send failure
-            newOrder.confirmation.emailSentAt = new Date();
-            newOrder.confirmation.emailSentSuccess = false;
-            newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
-            await newOrder.save();
-        }
 
-        // Send new order notification to each seller
-        try {
-            const sellerIds = [...new Set(orderItems.map(p => p.seller?.toString()).filter(Boolean))];
-            for (const sellerId of sellerIds) {
-                const seller = await User.findById(sellerId);
-                if (seller?.email) {
-                    const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
-                    await sendEmail({ to: seller.email, ...sellerEmailData });
+            // Send new order notification to each seller (COD only — for Stripe this happens in webhook)
+            try {
+                const sellerIds = [...new Set(orderItems.map(p => p.seller?.toString()).filter(Boolean))];
+                for (const sellerId of sellerIds) {
+                    const seller = await User.findById(sellerId);
+                    if (seller?.email) {
+                        const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
+                        await sendEmail({ to: seller.email, ...sellerEmailData });
+                    }
+                    notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
+                        console.error('[whatsapp] seller new order notification failed:', e.message)
+                    );
                 }
-                // WhatsApp notification to seller (fire-and-forget)
-                notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
-                    console.error('[whatsapp] seller new order notification failed:', e.message)
-                );
+            } catch (emailErr) {
+                console.error('Failed to send seller notification email:', emailErr.message);
             }
-        } catch (emailErr) {
-            console.error('Failed to send seller notification email:', emailErr.message);
-        }
 
-        // 🟢 Enqueue WhatsApp confirmation poll ONLY for COD orders.
-        // Online-paid orders are auto-confirmed — no need to ask "do you confirm?"
-        if (isCOD) {
+            // 🟢 Enqueue WhatsApp confirmation poll ONLY for COD orders.
             await maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
         }
 
@@ -354,17 +354,28 @@ exports.placeOrder = async (req, res) => {
             ? `rozare://payment-cancel?orderId=${newOrder.orderId}`
             : `${process.env.FRONTEND_URL}/checkout`;
 
+        if (!stripe) {
+            // Stripe not configured — clean up the awaiting order so it doesn't linger
+            await Order.deleteOne({ _id: newOrder._id });
+            return res.status(500).json({ msg: "Online payments are not configured. Please contact support." });
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
             line_items,
             success_url: successUrl,
             cancel_url: cancelUrl,
+            // Auto-expire abandoned checkouts after 30 minutes (Stripe min) so the
+            // `checkout.session.expired` webhook can mark the order as cancelled.
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
             metadata: { orderId: newOrder.orderId }
         })
 
-        // console.log('session:::::', session);
-
+        // Persist the Stripe session id so webhook handlers can locate this order
+        // when the buyer abandons / the session expires.
+        newOrder.stripeSessionId = session.id;
+        await newOrder.save();
 
         return res.status(201).json({
             id: session.id,
@@ -386,7 +397,8 @@ exports.getOrders = async (req, res) => {
     console.log('User role:', role);
     console.log('User ID:', userId);
 
-    let query = {}
+    // Hide awaiting-payment Stripe orders from seller/admin dashboards.
+    let query = { awaitingPayment: { $ne: true } }
     if (search) {
         query.$or = [
             { "shippingInfo.fullName": { $regex: search, $options: 'i' } },
@@ -505,7 +517,8 @@ exports.exportOrders = async (req, res) => {
     const Store = require('../models/Store');
     const User = require('../models/User');
 
-    let query = {};
+    // Hide awaiting-payment Stripe orders from exports.
+    let query = { awaitingPayment: { $ne: true } };
     if (search) {
         query.$or = [
             { "shippingInfo.fullName": { $regex: search, $options: 'i' } },
@@ -892,6 +905,8 @@ exports.getUserOrders = async (req, res) => {
             query.isPaid = paymentStatus === 'paid' ? true : false
         }
         query.user = id
+        // Hide awaiting-payment Stripe orders from buyer "My Orders" until paid.
+        query.awaitingPayment = { $ne: true }
 
         // console.log(query);
         let orders = await Order.find(query)
