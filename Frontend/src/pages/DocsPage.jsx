@@ -781,7 +781,7 @@ function DocsPage() {
                 </ul>
 
                 <h3>Contact support</h3>
-                <p>Visit <Link to="/contact" style={{ color: 'hsl(220, 70%, 65%)' }}>/contact</Link> to send us a message, or open the in-app chatbot and say "I need help with…" — the AI will collect details and create a support ticket for you.</p>
+                <p>Visit <a href={mainHref('/contact')} style={{ color: 'hsl(220, 70%, 65%)' }}>/contact</a> to send us a message, or open the in-app chatbot and say "I need help with…" — the AI will collect details and create a support ticket for you.</p>
               </DocSection>
 
               {/* FAQ */}
