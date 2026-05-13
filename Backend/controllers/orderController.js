@@ -221,52 +221,52 @@ exports.placeOrder = async (req, res) => {
             newOrder.confirmation = { token, tokenExpiresAt, confirmedAt: null, confirmedVia: null, declinedAt: null };
         }
 
+        // CRITICAL: Stripe orders start as "awaiting payment" and are HIDDEN from
+        // every dashboard until the Stripe webhook confirms payment. This prevents
+        // abandoned-checkout orders from appearing as real orders to sellers.
+        if (!isCOD) {
+            newOrder.awaitingPayment = true;
+        }
+
         await newOrder.save();
 
-        // Send order confirmation email to buyer
-        try {
-            if (isCOD) {
+        // Send order confirmation email to buyer — ONLY for COD here.
+        // For Stripe orders, the buyer + seller emails are sent from the Stripe
+        // webhook (server.js) after payment is actually confirmed.
+        if (isCOD) {
+            try {
                 const confirmUrl = `${process.env.FRONTEND_URL || 'https://rozare.com'}/orders/confirm/${newOrder.confirmation.token}`;
                 const emailData = buyerOrderConfirmationRequestEmail(newOrder, confirmUrl);
                 await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
-            } else {
-                const emailData = orderConfirmationEmail(newOrder);
-                await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+                newOrder.confirmation.emailSentAt = new Date();
+                newOrder.confirmation.emailSentSuccess = true;
+                await newOrder.save();
+            } catch (emailErr) {
+                console.error('Failed to send order confirmation email:', emailErr.message);
+                newOrder.confirmation.emailSentAt = new Date();
+                newOrder.confirmation.emailSentSuccess = false;
+                newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
+                await newOrder.save();
             }
-            // Track email send success
-            newOrder.confirmation.emailSentAt = new Date();
-            newOrder.confirmation.emailSentSuccess = true;
-            await newOrder.save();
-        } catch (emailErr) {
-            console.error('Failed to send order confirmation email:', emailErr.message);
-            // Track email send failure
-            newOrder.confirmation.emailSentAt = new Date();
-            newOrder.confirmation.emailSentSuccess = false;
-            newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
-            await newOrder.save();
-        }
 
-        // Send new order notification to each seller
-        try {
-            const sellerIds = [...new Set(orderItems.map(p => p.seller?.toString()).filter(Boolean))];
-            for (const sellerId of sellerIds) {
-                const seller = await User.findById(sellerId);
-                if (seller?.email) {
-                    const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
-                    await sendEmail({ to: seller.email, ...sellerEmailData });
+            // Send new order notification to each seller (COD only — for Stripe this happens in webhook)
+            try {
+                const sellerIds = [...new Set(orderItems.map(p => p.seller?.toString()).filter(Boolean))];
+                for (const sellerId of sellerIds) {
+                    const seller = await User.findById(sellerId);
+                    if (seller?.email) {
+                        const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
+                        await sendEmail({ to: seller.email, ...sellerEmailData });
+                    }
+                    notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
+                        console.error('[whatsapp] seller new order notification failed:', e.message)
+                    );
                 }
-                // WhatsApp notification to seller (fire-and-forget)
-                notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
-                    console.error('[whatsapp] seller new order notification failed:', e.message)
-                );
+            } catch (emailErr) {
+                console.error('Failed to send seller notification email:', emailErr.message);
             }
-        } catch (emailErr) {
-            console.error('Failed to send seller notification email:', emailErr.message);
-        }
 
-        // 🟢 Enqueue WhatsApp confirmation poll ONLY for COD orders.
-        // Online-paid orders are auto-confirmed — no need to ask "do you confirm?"
-        if (isCOD) {
+            // 🟢 Enqueue WhatsApp confirmation poll ONLY for COD orders.
             await maybeEnqueueWhatsAppConfirmation(newOrder, orderItems);
         }
 
