@@ -209,7 +209,7 @@ const StorePage = () => {
                         '@type': 'Store',
                         name: store?.storeName,
                         description: store?.description,
-                        url: `https://rozare.com/store/${slug}`,
+                        url: `https://${slug}.rozare.com`,
                         logo: store?.logo,
                         image: store?.banner || store?.logo,
                         ...(store?.address?.city && {
