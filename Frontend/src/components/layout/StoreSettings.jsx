@@ -652,11 +652,11 @@ const StoreSettings = () => {
                         </motion.button>
 
                         {hasStore && storeData.storeSlug && (
-                            <Link to={`/store/${storeData.storeSlug}`} target="_blank"
+                            <a href={`https://${storeData.storeSlug}.rozare.com`} target="_blank" rel="noreferrer"
                                 className="px-4 sm:px-6 py-3 rounded-xl text-white font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
                                 style={{ background: 'linear-gradient(135deg, hsl(260, 60%, 55%), hsl(280, 50%, 55%))', boxShadow: '0 0 20px -4px hsl(260, 60%, 55%, 0.3)' }}>
                                 <Eye size={20} /><span className="hidden sm:inline">Preview Store</span><span className="sm:hidden">Preview</span>
-                            </Link>
+                            </a>
                         )}
 
                         {hasStore && (
