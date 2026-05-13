@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+
+// On the docs subdomain, internal app links must hop to the main domain.
+const mainHref = (path) => {
+  if (typeof window === 'undefined') return path;
+  const host = window.location.hostname;
+  if (host.startsWith('docs.')) {
+    return `${window.location.protocol}//${host.replace(/^docs\./, '')}${path}`;
+  }
+  return path;
+};
 import {
   Book, ShoppingBag, Store, Bot, Smartphone, CreditCard, Shield, Truck,
   Users, BarChart3, MessageCircle, Sparkles, ChevronRight, Search,
