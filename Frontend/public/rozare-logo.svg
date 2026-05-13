@@ -23,7 +23,7 @@
     <path d="M15 14 h11 a7 7 0 0 1 0 14 h-7 l9 6 M19 28 v6 M19 14 v20"
           fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
     <!-- Spark dot -->
-    <circle cx="36" cy="11" r="2" fill="white"/>
+    <circle cx="35" cy="12" r="2" fill="white"/>
   </g>
 
   <!-- Wordmark -->
