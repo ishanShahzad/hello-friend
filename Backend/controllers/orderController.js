@@ -517,7 +517,8 @@ exports.exportOrders = async (req, res) => {
     const Store = require('../models/Store');
     const User = require('../models/User');
 
-    let query = {};
+    // Hide awaiting-payment Stripe orders from exports.
+    let query = { awaitingPayment: { $ne: true } };
     if (search) {
         query.$or = [
             { "shippingInfo.fullName": { $regex: search, $options: 'i' } },
