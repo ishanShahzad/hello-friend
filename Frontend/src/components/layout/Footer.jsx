@@ -37,7 +37,7 @@ function Footer() {
                 <li><Link to="/contact" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Contact Us</Link></li>
                 <li><Link to="/about" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>About</Link></li>
                 <li><Link to="/track-order" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Track Order</Link></li>
-                <li><Link to="/docs" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Documentation</Link></li>
+                <li><a href={typeof window !== 'undefined' && window.location.hostname.endsWith('rozare.com') ? 'https://docs.rozare.com/' : '/docs'} className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Documentation</a></li>
               </ul>
             </div>
 
