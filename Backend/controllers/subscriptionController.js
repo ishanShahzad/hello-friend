@@ -687,11 +687,24 @@ exports.handleWebhook = async (event) => {
 
                 await sub.save();
 
-                // Block store
-                await Store.findOneAndUpdate(
-                    { seller: sub.seller },
-                    { isActive: false }
-                );
+                // Block store + schedule subdomain removal in 7 days (if not purchased)
+                {
+                    const storeDoc = await Store.findOne({ seller: sub.seller });
+                    if (storeDoc) {
+                        storeDoc.isActive = false;
+                        storeDoc.blockedAt = now;
+                        const purchased = storeDoc.subdomainPurchase?.isPurchased &&
+                            storeDoc.subdomainPurchase?.expiresAt &&
+                            new Date(storeDoc.subdomainPurchase.expiresAt) > now;
+                        if (!purchased) {
+                            storeDoc.subdomainPurchase = {
+                                ...(storeDoc.subdomainPurchase?.toObject?.() || {}),
+                                removalScheduledAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+                            };
+                        }
+                        await storeDoc.save();
+                    }
+                }
 
             // Remove seller's products from all customer carts
             const Cart = require('../models/Cart');
