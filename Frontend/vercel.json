@@ -3,66 +3,49 @@
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "headers": [
+  "redirects": [
     {
-      "source": "/sitemap.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
-      ]
+      "source": "/docs",
+      "has": [{ "type": "host", "value": "rozare.com" }],
+      "destination": "https://docs.rozare.com/",
+      "permanent": true
     },
     {
-      "source": "/sitemap-index.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
-      ]
+      "source": "/docs",
+      "has": [{ "type": "host", "value": "www.rozare.com" }],
+      "destination": "https://docs.rozare.com/",
+      "permanent": true
     },
     {
-      "source": "/sitemap-products.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
-      ]
+      "source": "/docs/:path*",
+      "has": [{ "type": "host", "value": "rozare.com" }],
+      "destination": "https://docs.rozare.com/:path*",
+      "permanent": true
     },
     {
-      "source": "/sitemap-stores.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
-      ]
-    },
-    {
-      "source": "/sitemap-docs.xml",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
-      ]
-    },
-    {
-      "source": "/robots.txt",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/plain"
-        }
-      ]
+      "source": "/docs/:path*",
+      "has": [{ "type": "host", "value": "www.rozare.com" }],
+      "destination": "https://docs.rozare.com/:path*",
+      "permanent": true
     }
   ],
   "rewrites": [
     {
       "source": "/(.*)",
+      "has": [{ "type": "host", "value": "docs.rozare.com" }],
+      "destination": "/docs-prerendered.html"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "headers": [
+    { "source": "/sitemap.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
+    { "source": "/sitemap-index.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
+    { "source": "/sitemap-products.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
+    { "source": "/sitemap-stores.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
+    { "source": "/sitemap-docs.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
+    { "source": "/robots.txt", "headers": [{ "key": "Content-Type", "value": "text/plain" }] }
   ]
 }
