@@ -32,7 +32,11 @@ const StoreCard = ({ store, idx }) => {
             transition={{ duration: 0.4, delay: idx * 0.05 }}
             whileHover={{ y: -3, scale: 1.015 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate(`/store/${store.storeSlug}`)}
+            onClick={() => {
+                const url = getStoreSubdomainUrl(store.storeSlug);
+                if (url.startsWith('/')) navigate(url);
+                else window.location.href = url;
+            }}
             className="glass-card water-shimmer overflow-hidden cursor-pointer group"
         >
             {/* Banner or Gradient */}
