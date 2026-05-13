@@ -43,6 +43,20 @@ const StorePage = () => {
     }, [products, productSearch, selectedCategory]);
 
     useEffect(() => {
+        // Path-based URLs are deprecated. In production, redirect to the
+        // store's subdomain. Only keep this route alive on localhost / preview hosts.
+        const host = window.location.hostname;
+        const isLocalLike = host === 'localhost'
+            || /^\d+\.\d+\.\d+\.\d+$/.test(host)
+            || host.endsWith('lovableproject.com')
+            || host.endsWith('lovable.app')
+            || host.endsWith('vercel.app');
+        if (slug && !isLocalLike) {
+            const parts = host.split('.');
+            const root = parts.length >= 2 ? parts.slice(-2).join('.') : host;
+            window.location.replace(`${window.location.protocol}//${slug}.${root}`);
+            return;
+        }
         fetchStore();
         fetchProducts();
         incrementViewCount();
