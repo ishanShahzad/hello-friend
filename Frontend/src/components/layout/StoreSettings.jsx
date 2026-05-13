@@ -427,7 +427,11 @@ const StoreSettings = () => {
                             <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                                 Custom Subdomain
                             </h3>
-                            {verification.isVerified ? (
+                            {blockedInfo.blocked ? (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                    <Lock size={10} /> Blocked{blockedInfo.daysUntilRemoval !== null ? ` — releases in ${blockedInfo.daysUntilRemoval}d` : ''}
+                                </span>
+                            ) : verification.isVerified ? (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34,197,94,0.25)' }}>
                                     ✓ Active
                                 </span>
