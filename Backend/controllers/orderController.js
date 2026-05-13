@@ -904,6 +904,8 @@ exports.getUserOrders = async (req, res) => {
             query.isPaid = paymentStatus === 'paid' ? true : false
         }
         query.user = id
+        // Hide awaiting-payment Stripe orders from buyer "My Orders" until paid.
+        query.awaitingPayment = { $ne: true }
 
         // console.log(query);
         let orders = await Order.find(query)
