@@ -200,7 +200,7 @@ const StorePage = () => {
                     description={store?.description
                         ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Rozare marketplace. Verified seller, secure checkout, worldwide shipping.`
                         : `Shop unique products from ${store?.storeName} on Rozare. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
-                    canonical={`/store/${slug}`}
+                    canonical={`https://${slug}.rozare.com`}
                     ogImage={store?.logo || undefined}
                     ogImageAlt={`${store?.storeName} — Shop on Rozare Marketplace`}
                     keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, rozare store, verified seller, trusted store, online shop, independent seller`}
