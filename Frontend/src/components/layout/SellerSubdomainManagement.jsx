@@ -82,17 +82,28 @@ const SellerSubdomainManagement = () => {
 
     const handleSaveSlug = async () => {
         if (!newSlug || newSlug.length < 3) { toast.error('Subdomain must be at least 3 characters'); return; }
+        if (subdomain?.blocked) {
+            toast.error('Your store is blocked. Reactivate your subscription before changing your subdomain.');
+            return;
+        }
+        const confirmed = window.confirm(`Heads up: once you change your subdomain, you won't be able to change it again for 30 days. Continue?`);
+        if (!confirmed) return;
         try {
             setSaving(true);
             const token = localStorage.getItem('jwtToken');
-            await axios.put(`${import.meta.env.VITE_API_URL}api/stores/update`, { storeSlug: newSlug }, {
+            await axios.put(`${import.meta.env.VITE_API_URL}api/stores/update`, { storeSlug: newSlug, confirmSubdomainChange: true }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Subdomain updated!');
             setEditing(false);
             fetchData();
         } catch (error) {
-            toast.error(error.response?.data?.msg || 'Failed to update subdomain');
+            const cd = error.response?.data?.cooldown;
+            if (error.response?.status === 423 && cd) {
+                toast.error(`You can change your ${cd.label} again in ${cd.daysRemaining} day(s).`);
+            } else {
+                toast.error(error.response?.data?.msg || 'Failed to update subdomain');
+            }
         } finally { setSaving(false); }
     };
 
