@@ -19,7 +19,7 @@ export default function SEOHead({
   jsonLd,
   children,
 }) {
-  const fullTitle    = title ? `${title} | ${SITE_NAME} — Online Shopping Marketplace` : `${SITE_NAME} — Online Shopping Marketplace | Buy Products from Trusted Sellers`;
+  const fullTitle    = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Shop Unique Products from Trusted Sellers`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : null;
   const imageAlt     = ogImageAlt || fullTitle;
   const allKeywords  = keywords ? `${keywords}, ${DEFAULT_KEYWORDS}` : DEFAULT_KEYWORDS;
