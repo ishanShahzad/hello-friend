@@ -191,32 +191,69 @@ const StoreSettings = () => {
         catch (error) { toast.error('Failed to upload banner'); } finally { setUploadingBanner(false); }
     };
 
+    const COOLDOWN_DAYS = { storeName: 7, storeSlug: 30, sellerType: 30 };
+    const FIELD_LABELS = { storeName: 'name', storeSlug: 'subdomain', sellerType: 'listing type' };
+
+    const detectPendingChanges = () => {
+        const changes = [];
+        const newSlug = customSubdomain && customSubdomain.length >= 3 ? customSubdomain : storeData.storeSlug;
+        if (hasStore && storeData.storeName.trim().toLowerCase() !== (originals.storeName || '').toLowerCase()) {
+            changes.push({ field: 'storeName', label: FIELD_LABELS.storeName, days: COOLDOWN_DAYS.storeName });
+        }
+        if (hasStore && newSlug && newSlug.toLowerCase() !== (originals.storeSlug || '').toLowerCase()) {
+            changes.push({ field: 'storeSlug', label: FIELD_LABELS.storeSlug, days: COOLDOWN_DAYS.storeSlug });
+        }
+        if (hasStore && (storeData.sellerType || 'store') !== (originals.sellerType || 'store')) {
+            changes.push({ field: 'sellerType', label: FIELD_LABELS.sellerType, days: COOLDOWN_DAYS.sellerType });
+        }
+        return changes;
+    };
+
     const handleSave = async () => {
         if (!storeData.storeName || storeData.storeName.trim().length < 3) { toast.error('Store name must be at least 3 characters'); return; }
+        if (blockedInfo.blocked) {
+            toast.error('Your store is blocked. Reactivate your subscription to make changes.');
+            return;
+        }
+        const changes = detectPendingChanges();
+        if (changes.length > 0) {
+            setPendingChanges(changes);
+            setShowCooldownModal(true);
+            return;
+        }
+        await doSave();
+    };
+
+    const doSave = async () => {
         try {
             setSaving(true);
             const token = localStorage.getItem('jwtToken');
             const endpoint = hasStore ? 'update' : 'create';
-            
             const payload = { ...storeData };
-            // Include the custom subdomain if it's set and valid
             if (customSubdomain && customSubdomain.length >= 3) {
                 payload.storeSlug = customSubdomain;
             }
-
             const res = await axios[hasStore ? 'put' : 'post'](`${import.meta.env.VITE_API_URL}api/stores/${endpoint}`, payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg);
             setHasStore(true);
-            
-            // Update local state with whatever the server returned
             if (res.data.store) {
                 setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
                 setCustomSubdomain(res.data.store.storeSlug);
+                setOriginals({
+                    storeName: res.data.store.storeName,
+                    storeSlug: res.data.store.storeSlug,
+                    sellerType: res.data.store.sellerType || 'store',
+                });
             }
-            
             fetchAnalytics();
-        } catch (error) { toast.error(error.response?.data?.msg || 'Failed to save store'); }
-        finally { setSaving(false); }
+        } catch (error) {
+            const cd = error.response?.data?.cooldown;
+            if (error.response?.status === 423 && cd) {
+                toast.error(`You can change your ${cd.label} again in ${cd.daysRemaining} day(s).`);
+            } else {
+                toast.error(error.response?.data?.msg || 'Failed to save store');
+            }
+        } finally { setSaving(false); setShowCooldownModal(false); setPendingChanges([]); }
     };
 
     const handleDelete = async () => {
