@@ -61,7 +61,47 @@ const generateUniqueSlug = async (storeName) => {
     return slug;
 };
 
-// Check if subdomain/slug is available
+// ── Change cooldown windows ───────────────────────────────────────────
+const COOLDOWN_DAYS = { storeSlug: 30, storeName: 7, sellerType: 30 };
+const FIELD_LABELS = { storeSlug: 'subdomain', storeName: 'name', sellerType: 'type' };
+const daysBetween = (later, earlier) =>
+    Math.ceil((later.getTime() - earlier.getTime()) / (1000 * 60 * 60 * 24));
+function checkCooldown(field, lastAt) {
+    if (!lastAt) return null;
+    const cooldown = COOLDOWN_DAYS[field];
+    const next = new Date(new Date(lastAt).getTime() + cooldown * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    if (now >= next) return null;
+    return {
+        field,
+        label: FIELD_LABELS[field],
+        cooldownDays: cooldown,
+        daysRemaining: Math.max(1, daysBetween(next, now)),
+        nextAllowedAt: next.toISOString(),
+    };
+}
+
+// Lazily release a slug if the owner is blocked, not subdomain-purchased,
+// and the 7-day removal window has passed. Returns true if released.
+async function releaseExpiredSlug(store) {
+    if (!store) return false;
+    const purchased = store.subdomainPurchase?.isPurchased &&
+        store.subdomainPurchase?.expiresAt &&
+        new Date(store.subdomainPurchase.expiresAt) > new Date();
+    const removeAt = store.subdomainPurchase?.removalScheduledAt;
+    if (!purchased && removeAt && new Date(removeAt) <= new Date() && store.storeSlug) {
+        // Free the slug — keep store record but mark subdomain as released
+        store.storeSlug = `released-${store._id.toString().slice(-8)}-${Date.now()}`;
+        store.subdomainPurchase = {
+            ...(store.subdomainPurchase?.toObject?.() || {}),
+            removalScheduledAt: null,
+        };
+        await store.save();
+        return true;
+    }
+    return false;
+}
+exports._releaseExpiredSlug = releaseExpiredSlug;
 exports.checkSubdomainAvailability = async (req, res) => {
     try {
         const { slug } = req.params;
