@@ -354,17 +354,28 @@ exports.placeOrder = async (req, res) => {
             ? `rozare://payment-cancel?orderId=${newOrder.orderId}`
             : `${process.env.FRONTEND_URL}/checkout`;
 
+        if (!stripe) {
+            // Stripe not configured — clean up the awaiting order so it doesn't linger
+            await Order.deleteOne({ _id: newOrder._id });
+            return res.status(500).json({ msg: "Online payments are not configured. Please contact support." });
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
             line_items,
             success_url: successUrl,
             cancel_url: cancelUrl,
+            // Auto-expire abandoned checkouts after 30 minutes (Stripe min) so the
+            // `checkout.session.expired` webhook can mark the order as cancelled.
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
             metadata: { orderId: newOrder.orderId }
         })
 
-        // console.log('session:::::', session);
-
+        // Persist the Stripe session id so webhook handlers can locate this order
+        // when the buyer abandons / the session expires.
+        newOrder.stripeSessionId = session.id;
+        await newOrder.save();
 
         return res.status(201).json({
             id: session.id,
