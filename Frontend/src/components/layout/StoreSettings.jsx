@@ -809,6 +809,42 @@ const StoreSettings = () => {
                     </motion.div>
                 </div>
             )}
+
+            {/* Cooldown Confirmation Modal */}
+            {showCooldownModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel p-6 max-w-md w-full">
+                        <h3 className="text-xl font-bold mb-3 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                            <AlertTriangle size={22} style={{ color: 'hsl(45, 80%, 45%)' }} /> Heads up — change cooldown
+                        </h3>
+                        <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Once you save, you won't be able to change the following again for the time noted:
+                        </p>
+                        <ul className="space-y-2 mb-5">
+                            {pendingChanges.map(c => (
+                                <li key={c.field} className="glass-inner rounded-xl px-4 py-3 flex items-center justify-between">
+                                    <span className="text-sm font-semibold capitalize" style={{ color: 'hsl(var(--foreground))' }}>{c.label}</span>
+                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                                        style={{ background: 'rgba(234,179,8,0.12)', color: 'hsl(45, 80%, 40%)' }}>
+                                        Locked for {c.days} day{c.days === 1 ? '' : 's'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex gap-3">
+                            <button onClick={() => { setShowCooldownModal(false); setPendingChanges([]); }} disabled={saving}
+                                className="flex-1 px-4 py-2.5 rounded-xl glass-inner font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                                Cancel
+                            </button>
+                            <button onClick={doSave} disabled={saving}
+                                className="flex-1 px-4 py-2.5 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))' }}>
+                                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : 'Confirm & Save'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };
