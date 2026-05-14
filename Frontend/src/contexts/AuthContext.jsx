@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -104,8 +104,18 @@ export const AuthProvider = ({ children }) => {
         navigate('/')
     };
 
+    // Memoize context value to prevent unnecessary re-renders
+    const contextValue = useMemo(() => ({
+        currentUser,
+        setCurrentUser,
+        fetchAndUpdateCurrentUser,
+        signup,
+        login,
+        logout
+    }), [currentUser]);
+
     return (
-        <AuthContext.Provider value={{ currentUser, setCurrentUser, fetchAndUpdateCurrentUser , signup, login, logout }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

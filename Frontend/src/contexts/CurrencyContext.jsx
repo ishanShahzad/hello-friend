@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 
 const CurrencyContext = createContext();
@@ -131,7 +131,8 @@ export const CurrencyProvider = ({ children }) => {
     return priceInCurrentCurrency / rate;
   };
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     currency,
     currencies: CURRENCIES,
     exchangeRates,
@@ -142,7 +143,7 @@ export const CurrencyProvider = ({ children }) => {
     convertToUSD,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,
     getCurrencyName: () => CURRENCIES[currency].name
-  };
+  }), [currency, exchangeRates, isLoading]);
 
   return (
     <CurrencyContext.Provider value={value}>

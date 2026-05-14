@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
@@ -306,35 +306,48 @@ export const GlobalProvider = ({ children }) => {
     const toggleCart = () => setIsOpen((prev) => !prev);
 
     const [isOverlayOpen, setIsOverlayOpen] = useState(false)
+    
+    // Memoize context value to prevent unnecessary re-renders
+    const contextValue = useMemo(() => ({
+        isWishlistOpen,
+        setIsWishlistOpen,
+        fetchWishlist,
+        wishlistItems,
+        handleAddToWishlist,
+        handleDeleteFromWishlist,
+        fetchCart,
+        handleAddToCart,
+        cartItems,
+
+        handleQtyInc,
+        handleQtyDec,
+        handleRemoveCartItem,
+
+        isOpen,
+        setIsOpen,
+        toggleCart,
+        dropdownRef,
+
+        isOverlayOpen,
+        setIsOverlayOpen,
+        cartBtn,
+        isCartLoading,
+        loadingProductId,
+
+        qtyUpdateId
+    }), [
+        isWishlistOpen,
+        wishlistItems,
+        cartItems,
+        isOpen,
+        isOverlayOpen,
+        isCartLoading,
+        loadingProductId,
+        qtyUpdateId
+    ]);
+    
     return (
-        <GlobalContext.Provider value={{
-            isWishlistOpen,
-            setIsWishlistOpen,
-            fetchWishlist,
-            wishlistItems,
-            handleAddToWishlist,
-            handleDeleteFromWishlist,
-            fetchCart,
-            handleAddToCart,
-            cartItems,
-
-            handleQtyInc,
-            handleQtyDec,
-            handleRemoveCartItem,
-
-            isOpen,
-            setIsOpen,
-            toggleCart,
-            dropdownRef,
-
-            isOverlayOpen,
-            setIsOverlayOpen,
-            cartBtn,
-            isCartLoading,
-            loadingProductId,
-
-            qtyUpdateId
-        }}>
+        <GlobalContext.Provider value={contextValue}>
             {children}
         </GlobalContext.Provider>
     );
