@@ -39,6 +39,7 @@ function ProductDetailPage() {
     const [storeData, setStoreData] = useState(null);
     const [availableCoupons, setAvailableCoupons] = useState([]);
     const [copiedCoupon, setCopiedCoupon] = useState(null);
+    const [relatedProducts, setRelatedProducts] = useState([]);
     const commentRef = useRef();
 
     const isInWishlist = product && wishlistItems?.some((item) => item._id === product._id);
