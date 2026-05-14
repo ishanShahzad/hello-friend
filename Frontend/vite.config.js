@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     target: 'es2020',
     minify: 'esbuild',          // fast + tree-shakes; default but explicit
-    cssMinify: 'lightningcss',
+    cssMinify: 'esbuild',
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
