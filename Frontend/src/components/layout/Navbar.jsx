@@ -59,8 +59,8 @@ function Navbar() {
         <nav className={`transition-all duration-300 fixed z-50
                 px-4 sm:px-6 md:px-10 lg:px-14
                 ${isScrolled
-                ? 'top-0 left-0 right-0 glass-panel-strong backdrop-blur-md'
-                : 'top-4 left-4 right-4 glass-panel backdrop-blur-sm'
+                ? 'top-0 left-0 right-0 glass-panel-strong'
+                : 'top-4 left-4 right-4 glass-panel'
             }`}
             style={{ borderRadius: isScrolled ? '0' : '24px' }}
         >

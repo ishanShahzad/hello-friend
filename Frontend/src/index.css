@@ -245,26 +245,40 @@ input, select, textarea {
 .filter-sb::-webkit-scrollbar { display: none; }
 
 /* ====================
+   PERFORMANCE MODE: Disable ALL backdrop-filter globally
+   This is the nuclear option for 2018 Mac compatibility
+==================== */
+* {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ====================
    Glass Panel Classes
+   PERFORMANCE MODE: backdrop-filter disabled for 2018 Mac compatibility
 ==================== */
 .glass-panel {
-    background: var(--glass-bg);
-    /* Reduced blur from 8px to 4px for better performance */
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.95); /* Solid background instead of blur */
+    /* backdrop-filter: blur(4px); DISABLED FOR PERFORMANCE */
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 24px;
 }
 
+.dark .glass-panel {
+    background: rgba(20, 20, 30, 0.95); /* Solid background for dark mode */
+}
+
 .glass-panel-strong {
-    background: var(--glass-bg-strong);
-    /* Reduced blur from 12px to 6px for better performance */
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.98); /* Solid background instead of blur */
+    /* backdrop-filter: blur(6px); DISABLED FOR PERFORMANCE */
     border: 1px solid var(--glass-border-strong);
     box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
     border-radius: 28px;
+}
+
+.dark .glass-panel-strong {
+    background: rgba(20, 20, 30, 0.98); /* Solid background for dark mode */
 }
 
 /* High-opacity floating panels (dropdowns, modals, popovers) matching navbar */
@@ -283,15 +297,17 @@ input, select, textarea {
 }
 
 .glass-card {
-    background: var(--glass-bg);
-    /* Reduced blur from 8px to 3px for better performance */
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    background: rgba(255, 255, 255, 0.95); /* Solid background instead of blur */
+    /* backdrop-filter: blur(3px); DISABLED FOR PERFORMANCE */
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 22px;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     will-change: transform;
+}
+
+.dark .glass-card {
+    background: rgba(20, 20, 30, 0.95); /* Solid background for dark mode */
 }
 
 .glass-card:hover {
@@ -301,12 +317,14 @@ input, select, textarea {
 }
 
 .glass-inner {
-    background: rgba(255, 255, 255, 0.08);
-    /* Reduced blur from 4px to 2px for better performance */
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.12); /* Solid background instead of blur */
+    /* backdrop-filter: blur(2px); DISABLED FOR PERFORMANCE */
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
+}
+
+.dark .glass-inner {
+    background: rgba(255, 255, 255, 0.08); /* Solid background for dark mode */
 }
 
 .glass-button {
@@ -400,12 +418,13 @@ input, select, textarea {
 .orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(40px); /* Reduced from 90px - MAJOR performance improvement */
+    filter: blur(40px); /* Reduced from 90px */
     pointer-events: none;
-    animation: orb-drift 30s ease-in-out infinite;
-    will-change: transform;
+    /* animation: orb-drift 30s ease-in-out infinite; DISABLED FOR PERFORMANCE */
+    will-change: auto; /* Changed from transform */
     contain: strict;
     transform: translateZ(0);
+    opacity: 0.3; /* Reduced opacity since they're now static */
 }
 
 .orb-blue {
