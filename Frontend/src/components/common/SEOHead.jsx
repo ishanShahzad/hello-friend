@@ -1,5 +1,4 @@
-import helmetAsync from 'react-helmet-async';
-const { Helmet } = helmetAsync;
+import { Helmet } from 'react-helmet-async';
 
 const SITE_NAME    = 'Rozare';
 const SITE_URL     = 'https://rozare.com';
