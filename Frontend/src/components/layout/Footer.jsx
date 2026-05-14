@@ -22,7 +22,8 @@ function Footer() {
             <div>
               <h4 className="text-sm font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Shop</h4>
               <ul className="space-y-2">
-                <li><Link to="/" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>All Products</Link></li>
+                <li><Link to="/products" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>All Products</Link></li>
+                <li><Link to="/" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Home</Link></li>
                 <li><Link to="/stores" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Stores</Link></li>
                 <li><Link to="/stores/trusted" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Trusted Stores</Link></li>
                 <li><Link to="/become-seller" className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'hsl(var(--muted-foreground))' }}>Become a Seller</Link></li>
