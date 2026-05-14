@@ -10,7 +10,7 @@ import Analytics from './components/common/Analytics'
 function App() {
   // Reserved system subdomain: docs.rozare.com
   const onDocs = isDocsSubdomain();
-  // Store subdomain (storename.rozare.com)
+  // Store subdomain (storename.rozare.com) 
   const onStoreSubdomain = !onDocs && isSubdomain();
 
   return (
