@@ -555,12 +555,6 @@ export default function Checkout() {
       }
 
       if (order.paymentMethod == 'cash_on_delivery') {
-        if (window.GSM && res.data.order) {
-          try {
-            window.GSM.trackPurchase({ orderId: res.data.order.orderId, amount: res.data.order.totalAmount, customerEmail: res.data.order.email, currency: 'USD' });
-          } catch (gsmError) { console.error('GSM tracking failed:', gsmError); }
-        }
-        
         setIsProcessing(false);
         
         // If update prompt is showing, don't navigate yet - modal handles it

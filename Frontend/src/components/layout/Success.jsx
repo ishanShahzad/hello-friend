@@ -37,11 +37,6 @@ export default function Success() {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/session/${sessionId}`);
       const sessionData = res.data?.session;
       setSession(sessionData);
-      if (sessionData && window.GSM) {
-        try {
-          window.GSM.trackPurchase({ orderId: sessionData.metadata?.orderId || sessionData.id, amount: sessionData.amount_total / 100, customerEmail: sessionData.customer_details?.email, currency: 'USD' });
-        } catch (gsmError) { console.error('GSM tracking failed:', gsmError); }
-      }
     } catch (error) { console.error(error); toast.error(error.response?.data?.msg); }
   };
 

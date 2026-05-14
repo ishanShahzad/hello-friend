@@ -250,8 +250,8 @@ input, select, textarea {
 .glass-panel {
     background: var(--glass-bg);
     /* Reduced blur from 8px to 4px for better performance */
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 24px;
@@ -260,8 +260,8 @@ input, select, textarea {
 .glass-panel-strong {
     background: var(--glass-bg-strong);
     /* Reduced blur from 12px to 6px for better performance */
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border-strong);
     box-shadow: var(--glass-shadow-lg), var(--glass-inner-glow);
     border-radius: 28px;
@@ -285,8 +285,8 @@ input, select, textarea {
 .glass-card {
     background: var(--glass-bg);
     /* Reduced blur from 8px to 3px for better performance */
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-inner-glow);
     border-radius: 22px;
