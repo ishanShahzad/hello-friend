@@ -21,18 +21,18 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Separate framer-motion to its own chunk (it's heavy)
-            if (id.includes('framer-motion')) {
-              return 'framer-motion';
+            // Don't chunk recharts - it has circular dependencies
+            if (id.includes('recharts')) {
+              return 'vendor'; // Put with main vendor bundle
             }
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'react-vendor';
             }
+            if (id.includes('framer-motion')) {
+              return 'framer-motion';
+            }
             if (id.includes('lucide-react')) {
               return 'icons-vendor';
-            }
-            if (id.includes('recharts')) {
-              return 'charts-vendor';
             }
             if (id.includes('axios')) {
               return 'http-vendor';

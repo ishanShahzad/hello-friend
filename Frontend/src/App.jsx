@@ -4,7 +4,8 @@ import DocsPage from './pages/DocsPage'
 import { isSubdomain, isDocsSubdomain } from './utils/subdomainHelper'
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify'
-import { HelmetProvider } from 'react-helmet-async'
+import helmetAsync from 'react-helmet-async';
+const { HelmetProvider } = helmetAsync;
 import Analytics from './components/common/Analytics'
 
 function App() {
