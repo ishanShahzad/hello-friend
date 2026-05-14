@@ -85,7 +85,7 @@ function Products() {
     if (initialFetchDone.current && prev !== JSON.stringify(filters)) {
       fetchProducts()
     }
-  }, [JSON.stringify(filters)])
+  }, [filters, fetchProducts]) // Fixed: use filters object directly, not JSON.stringify
 
   useEffect(() => {
     const fetchFilters = async () => {
