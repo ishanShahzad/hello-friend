@@ -42,6 +42,14 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap-products.xml",
+      "destination": "https://tortrose-backend-496a749db93a.herokuapp.com/sitemap-products.xml"
+    },
+    {
+      "source": "/sitemap-stores.xml",
+      "destination": "https://tortrose-backend-496a749db93a.herokuapp.com/sitemap-stores.xml"
+    },
+    {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "docs.rozare.com" }],
       "destination": "/docs-prerendered.html"

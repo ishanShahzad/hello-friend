@@ -116,6 +116,8 @@ Allow: /
 User-agent: Diffbot
 Allow: /
 
-Sitemap: https://rozare.com/sitemap.xml
 Sitemap: https://rozare.com/sitemap-index.xml
+Sitemap: https://rozare.com/sitemap.xml
+Sitemap: https://rozare.com/sitemap-products.xml
+Sitemap: https://rozare.com/sitemap-stores.xml
 Sitemap: https://rozare.com/sitemap-docs.xml

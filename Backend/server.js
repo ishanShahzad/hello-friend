@@ -361,6 +361,9 @@ app.use('/api/seller-whatsapp', sellerWhatsappRoutes);
 app.use('/api/user-whatsapp', userWhatsappRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+// ── Dynamic SEO sitemaps (products & stores) ──
+app.use('/', require('./routes/sitemapRoutes'));
+
 // ── Trial expiration (runs on persistent Heroku dyno) ──
 const { processTrialExpirations, migrateHasUsedFreePeriod } = require('./controllers/subscriptionController');
 setInterval(processTrialExpirations, 60 * 60 * 1000); // every hour
