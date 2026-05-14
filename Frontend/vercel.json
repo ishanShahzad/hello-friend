@@ -5,6 +5,17 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.rozare.com" }],
+      "destination": "https://rozare.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/pages/contact-us",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
       "source": "/docs",
       "has": [{ "type": "host", "value": "rozare.com" }],
       "destination": "https://docs.rozare.com/",
