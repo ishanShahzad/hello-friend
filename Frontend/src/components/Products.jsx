@@ -375,7 +375,7 @@ function Products() {
       {/* Product Grid */}
       <main className='min-w-0 flex-1 p-4 lg:p-6'>
         {/* Personalized Sections */}
-        <PersonalizedSections />
+      {/* <PersonalizedSections /> */} {/* Temporarily disabled to test performance */}
 
         <div className='mb-6 mt-8 flex flex-col gap-4'>
           {/* Product search */}

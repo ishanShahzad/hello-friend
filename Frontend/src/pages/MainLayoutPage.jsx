@@ -35,7 +35,7 @@ function MainLayoutPage() {
 
   return (
     <div className='relative min-h-screen' style={{ overflowX: 'clip' }}>
-      <GlassBackground />
+      {/* <GlassBackground /> */} {/* Temporarily disabled to test performance */}
       <AnimatePresence mode='wait'>
         {
           isOpen && (
@@ -53,7 +53,7 @@ function MainLayoutPage() {
         <Outlet />
       </div>
       <Footer />
-      <ChatBot />
+      {/* <ChatBot /> */} {/* Temporarily disabled to test performance */}
     </div>
   )
 }
