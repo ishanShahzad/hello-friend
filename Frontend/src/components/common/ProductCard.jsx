@@ -4,6 +4,7 @@ import { useGlobal } from "../../contexts/GlobalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import React, { useState, memo } from "react";
+import { optimizeImage, buildSrcSet } from "../../utils/optimizeImage";
 
 const ProductCard = memo(({
   _id, name, image, images, category, price, discountedPrice,
