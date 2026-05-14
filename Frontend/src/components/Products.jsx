@@ -286,15 +286,23 @@ function Products() {
     </div>
   )
 
+  const isProductsRoute = location.pathname === '/products'
+  const seoTitle = isProductsRoute ? 'All Products — Browse the Full Catalog' : null
+  const seoCanonical = isProductsRoute ? '/products' : '/'
+  const seoDescription = isProductsRoute
+    ? 'Browse the full Rozare product catalog — electronics, fashion, home decor, beauty, accessories and more from verified independent sellers worldwide.'
+    : 'Shop unique products from verified independent sellers on Rozare. Electronics, fashion, home decor, beauty & more with worldwide shipping.'
+  const collectionUrl = `https://rozare.com${isProductsRoute ? '/products' : '/'}`
+
   return (
     <div className='relative flex flex-col lg:flex-row min-h-screen'>
       <SEOHead
-        title={null}
-        description="Shop unique products from verified independent sellers on Rozare. Electronics, fashion, home decor, beauty & more with worldwide shipping."
-        canonical="/"
-        keywords="shop online, buy products online, online shopping website, best online store, rozare products, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
+        title={seoTitle}
+        description={seoDescription}
+        canonical={seoCanonical}
+        keywords="shop online, buy products online, online shopping website, best online store, rozare products, all products, product catalog, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
         jsonLd={[
-          {
+          ...(!isProductsRoute ? [{
             '@context': 'https://schema.org',
             '@type': 'WebSite',
             name: 'Rozare',
@@ -309,15 +317,25 @@ function Products() {
               },
               'query-input': 'required name=search_term_string',
             },
-          },
+          }] : []),
           {
             '@context': 'https://schema.org',
             '@type': 'CollectionPage',
-            name: 'All Products — Rozare',
-            description: 'Browse and shop all products available on Rozare marketplace',
-            url: 'https://rozare.com/',
+            name: isProductsRoute ? 'All Products — Rozare' : 'Rozare Marketplace',
+            description: isProductsRoute
+              ? 'Complete catalog of products available on Rozare marketplace.'
+              : 'Browse and shop products available on Rozare marketplace.',
+            url: collectionUrl,
             isPartOf: { '@type': 'WebSite', name: 'Rozare', url: 'https://rozare.com' },
           },
+          ...(isProductsRoute ? [{
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://rozare.com/' },
+              { '@type': 'ListItem', position: 2, name: 'All Products', item: 'https://rozare.com/products' },
+            ],
+          }] : []),
         ]}
       />
       {/* Mobile Filter Toggle (bottom-LEFT to avoid overlap with chat FAB) */}
