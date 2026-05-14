@@ -85,15 +85,15 @@
   <link rel="dns-prefetch" href="https://res.cloudinary.com" />
   <link rel="dns-prefetch" href="https://api.stripe.com" />
 
-  <!-- Fonts (non-render-blocking) - Reduced to essential weights only -->
+  <!-- Fonts (non-render-blocking) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style"
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
     onload="this.onload=null;this.rel='stylesheet'">
   <noscript>
     <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
   </noscript>
 
   <!-- JSON-LD Structured Data: Organization -->
@@ -179,6 +179,74 @@
     }
   }
   </script>
+
+<!-- GSM Cashback Tracking Script -->
+<script>
+(function() {
+  window.GSM = {
+    brandId: '697b9599afb2ae3c366b6753',
+    apiUrl: 'https://gsm-v2-api-5ffdf926b962.herokuapp.com',
+    
+    init: function() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var trackingCode = urlParams.get('gsm_tracking');
+      
+      if (trackingCode) {
+        localStorage.setItem('gsm_tracking_code', trackingCode);
+        localStorage.setItem('gsm_tracking_expires', Date.now() + 7*24*60*60*1000);
+      }
+    },
+    
+    trackPurchase: function(data) {
+      var trackingCode = localStorage.getItem('gsm_tracking_code');
+      var expires = localStorage.getItem('gsm_tracking_expires');
+      
+      if (!trackingCode) {
+        return Promise.resolve({ success: false, message: 'No tracking code' });
+      }
+      
+      if (Date.now() > parseInt(expires)) {
+        localStorage.removeItem('gsm_tracking_code');
+        localStorage.removeItem('gsm_tracking_expires');
+        return Promise.resolve({ success: false, message: 'Tracking code expired' });
+      }
+      
+      return fetch(this.apiUrl + '/purchases/webhook/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackingCode: trackingCode,
+          orderId: data.orderId,
+          amount: data.amount,
+          currency: data.currency || 'USD',
+          customerEmail: data.customerEmail || '',
+          purchaseDate: new Date().toISOString(),
+          status: 'completed'
+        })
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(result) {
+        if (result.success) {
+          localStorage.removeItem('gsm_tracking_code');
+          localStorage.removeItem('gsm_tracking_expires');
+        }
+        return result;
+      })
+      .catch(function(err) {
+        return { success: false, error: err.message };
+      });
+    }
+  };
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      window.GSM.init();
+    });
+  } else {
+    window.GSM.init();
+  }
+})();
+</script>
 
   <!-- JSON-LD: FAQ for AI search engines (ChatGPT, Perplexity, Gemini, Google AI Overviews) -->
   <script type="application/ld+json">

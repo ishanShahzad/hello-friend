@@ -269,7 +269,7 @@ const PersonalizedSections = () => {
 
   useEffect(() => {
     fetchPersonalizedData()
-  }, []) // Removed currentUser dependency - only fetch once on mount
+  }, [currentUser])
 
   const fetchPersonalizedData = async () => {
     setLoading(true)
