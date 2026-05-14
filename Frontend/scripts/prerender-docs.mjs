@@ -10,7 +10,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = resolve(process.cwd());
-const ssrPath = resolve(root, 'dist-ssr/docs-ssr-entry.js');
+const ssrPath = resolve(root, 'dist-ssr-docs/docs-ssr-entry.js');
 const indexPath = resolve(root, 'dist/index.html');
 const outPath = resolve(root, 'dist/docs-prerendered.html');
 

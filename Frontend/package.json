@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr scripts/docs-ssr-entry.jsx --outDir dist-ssr --ssrManifest false && node scripts/prerender-docs.mjs",
+    "build": "vite build && vite build --ssr scripts/docs-ssr-entry.jsx --outDir dist-ssr-docs --ssrManifest false && vite build --ssr scripts/home-ssr-entry.jsx --outDir dist-ssr-home --ssrManifest false && node scripts/prerender-docs.mjs && node scripts/prerender-home.mjs",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0 --port 4173"
   },

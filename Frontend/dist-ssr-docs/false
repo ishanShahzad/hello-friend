@@ -1,0 +1,7 @@
+{
+  "node_modules/react-helmet-async/lib/index.esm.js": [
+    "/assets/react-vendor-BfHIaHDi.js"
+  ],
+  "scripts/docs-ssr-entry.jsx": [],
+  "src/pages/DocsPage.jsx": []
+}

@@ -50,6 +50,17 @@
       "destination": "https://tortrose-backend-496a749db93a.herokuapp.com/sitemap-stores.xml"
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(bot|crawler|spider|crawling|Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|facebot|ia_archiver|AhrefsBot|SemrushBot|MJ12bot|DotBot|BLEXBot|GPTBot|ChatGPT-User|ClaudeBot|Claude-Web|PerplexityBot|Applebot|Twitterbot|LinkedInBot|WhatsApp|facebookexternalhit).*"
+        }
+      ],
+      "destination": "/home-prerendered.html"
+    },
+    {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "docs.rozare.com" }],
       "destination": "/docs-prerendered.html"

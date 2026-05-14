@@ -1,0 +1,23 @@
+{
+  "name": "Rozare — Modern Marketplace",
+  "short_name": "Rozare",
+  "description": "Shop unique products from trusted independent sellers worldwide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#4466ee",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
