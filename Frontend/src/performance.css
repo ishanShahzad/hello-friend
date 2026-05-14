@@ -1,0 +1,69 @@
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   This file overrides heavy CSS effects
+   ============================================ */
+
+/* Reduce backdrop-filter blur (BIGGEST PERFORMANCE KILLER) */
+.glass-panel {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.glass-panel-strong {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.glass-card {
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+}
+
+.glass-inner {
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+}
+
+.glass-button {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Reduce filter blur on orbs */
+.orb {
+    filter: blur(60px) !important;
+}
+
+/* Optimize animations - reduce complexity */
+@keyframes orb-drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(20px, -15px); }
+}
+
+/* Disable bubble animations on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+    .orb,
+    .bubble,
+    .float-gentle {
+        animation: none !important;
+    }
+}
+
+/* Performance hints for GPU acceleration */
+.glass-card,
+.glass-panel,
+.glass-panel-strong {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Optimize hover effects - reduce transform complexity */
+.glass-card:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+}
+
+/* Reduce shadow complexity */
+.glass-shadow-lg {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
