@@ -82,6 +82,7 @@ function AppRoutes() {
                 <Route path='/' element={<MainLayoutPage />} >
                     {/* PUBLIC ROUTES */}
                     <Route index element={<Products />} />
+                    <Route path='/products' element={<Products />} />
                     <Route path={'/single-product/:id'} element={<ProductDetailPage />} />
                     <Route path={'/profile'} element={<Profile />} />
                     <Route path={'/forgot-password'} element={<ForgotPassword />} />
