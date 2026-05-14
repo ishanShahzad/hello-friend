@@ -20,7 +20,7 @@ import {
   Lightbulb, Info, AlertTriangle, Wand2, Tag, Image as ImageIcon,
   RefreshCw, Layers, Gem
 } from 'lucide-react';
-import helmetAsync from 'react-helmet-async';
+import * as helmetAsync from 'react-helmet-async';
 const { Helmet } = helmetAsync;
 
 // ─── Section Data ───

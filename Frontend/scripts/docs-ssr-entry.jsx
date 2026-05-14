@@ -5,7 +5,7 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom';
-import helmetAsync from 'react-helmet-async';
+import * as helmetAsync from 'react-helmet-async';
 const { HelmetProvider } = helmetAsync;
 import DocsPage from '../src/pages/DocsPage.jsx';
 
