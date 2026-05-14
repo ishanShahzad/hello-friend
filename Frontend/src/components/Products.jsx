@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from "framer-motion"
+// import { AnimatePresence, motion } from "framer-motion" // REMOVED FOR PERFORMANCE
 import axios from 'axios'
 import Loader from './common/Loader'
 import ProductCard from './common/ProductCard'
@@ -350,22 +350,18 @@ function Products() {
       </div>
 
       {/* Mobile Filter Overlay — sits above navbar so nothing peeks through */}
-      <AnimatePresence>
-        {isFilterOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] lg:hidden"
-              onClick={() => setIsFilterOpen(false)} />
-            <motion.aside
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-              transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-              className='fixed top-0 left-0 h-[100dvh] w-80 max-w-[85vw] sidebar-mobile-solid z-[90] overflow-y-auto lg:hidden flex flex-col'
-              style={{ borderRadius: '0 28px 28px 0', paddingTop: 'env(safe-area-inset-top)' }}>
-              <FilterSidebarContent onClose={() => setIsFilterOpen(false)} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      {isFilterOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] lg:hidden"
+            onClick={() => setIsFilterOpen(false)} />
+          <aside
+            className='fixed top-0 left-0 h-[100dvh] w-80 max-w-[85vw] sidebar-mobile-solid z-[90] overflow-y-auto lg:hidden flex flex-col'
+            style={{ borderRadius: '0 28px 28px 0', paddingTop: 'env(safe-area-inset-top)' }}>
+            <FilterSidebarContent onClose={() => setIsFilterOpen(false)} />
+          </aside>
+        </>
+      )}
 
       {/* Desktop Filter Sidebar */}
       <aside className='hidden lg:block m-5 glass-panel w-72 shrink-0 self-start sticky top-24 overflow-y-auto max-h-[calc(100vh-7rem)] filter-sb'>

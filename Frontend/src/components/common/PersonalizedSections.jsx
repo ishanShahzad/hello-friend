@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+// import { motion, AnimatePresence } from 'framer-motion' // REMOVED FOR PERFORMANCE
 import { Link } from 'react-router-dom'
 import { Sparkles, TrendingUp, DollarSign, Clock, Gift, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid } from 'lucide-react'
 import axios from 'axios'
