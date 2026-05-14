@@ -6,6 +6,7 @@ import { Heart, ShoppingCart, Star, ChevronRight, ChevronLeft, Zap, Sparkles, Sh
 import Loader from '../components/common/Loader';
 import StoreInfo from '../components/common/StoreInfo';
 import SEOHead from '../components/common/SEOHead';
+import ProductCard from '../components/common/ProductCard';
 import { toast } from 'react-toastify';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -135,6 +136,27 @@ function ProductDetailPage() {
     };
 
     useEffect(() => { fetchProduct(); fetchProductCoupons(); }, [id]);
+
+    // Related products by category (excludes current product)
+    useEffect(() => {
+        if (!product?.category) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await axios.get(
+                    `${import.meta.env.VITE_API_URL}api/products/get-products?category=${encodeURIComponent(product.category)}`
+                );
+                if (cancelled) return;
+                const list = (res.data.products || [])
+                    .filter(p => p._id !== product._id)
+                    .slice(0, 8);
+                setRelatedProducts(list);
+            } catch (err) {
+                console.log('Related products unavailable');
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [product?.category, product?._id]);
 
     const fetchProductCoupons = async () => {
         try {
@@ -854,6 +876,35 @@ function ProductDetailPage() {
                         </div>
                     </div>
                 </motion.div>
+
+                {/* Related Products */}
+                {relatedProducts.length > 0 && (
+                    <motion.section
+                        className="mt-12"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        aria-labelledby="related-products-heading"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 id="related-products-heading" className="text-xl md:text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
+                                Related Products
+                            </h2>
+                            <Link
+                                to="/products"
+                                className="text-sm font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
+                                style={{ color: 'hsl(220, 70%, 55%)' }}
+                            >
+                                View all <ChevronRight size={16} />
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+                            {relatedProducts.slice(0, 4).map((p, idx) => (
+                                <ProductCard key={p._id} {...p} idx={idx} />
+                            ))}
+                        </div>
+                    </motion.section>
+                )}
             </div>
         </motion.div>
     );

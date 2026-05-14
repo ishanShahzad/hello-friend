@@ -5,6 +5,7 @@ import { isSubdomain, isDocsSubdomain } from './utils/subdomainHelper'
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify'
 import { HelmetProvider } from 'react-helmet-async'
+import Analytics from './components/common/Analytics'
 
 function App() {
   // Reserved system subdomain: docs.rozare.com
@@ -14,6 +15,7 @@ function App() {
 
   return (
     <HelmetProvider>
+      <Analytics />
       <ToastContainer
         position='bottom-right'
         autoClose={3500}
