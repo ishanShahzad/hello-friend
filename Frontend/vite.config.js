@@ -13,22 +13,30 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
-    minify: 'esbuild',          // fast + tree-shakes; default but explicit
+    minify: 'esbuild',
     cssMinify: 'esbuild',
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Split heavy vendors into long-cacheable chunks so users only
-        // re-download what actually changed between deploys.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'motion-vendor': ['framer-motion'],
-          'icons-vendor': ['lucide-react'],
-          'charts-vendor': ['recharts'],
-          'form-vendor': ['react-hook-form'],
-          'http-vendor': ['axios'],
-          'helmet-vendor': ['react-helmet-async'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('framer-motion')) {
+              return 'motion-vendor';
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons-vendor';
+            }
+            if (id.includes('recharts')) {
+              return 'charts-vendor';
+            }
+            if (id.includes('axios')) {
+              return 'http-vendor';
+            }
+          }
         },
       },
     },
