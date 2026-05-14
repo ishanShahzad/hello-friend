@@ -4,6 +4,7 @@ import { useGlobal } from "../../contexts/GlobalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import React, { useState, memo } from "react";
+import { optimizeImage, buildSrcSet } from "../../utils/optimizeImage";
 
 const ProductCard = memo(({
   _id, name, image, images, category, price, discountedPrice,
@@ -89,9 +90,15 @@ const ProductCard = memo(({
           <div className="relative w-full h-full flex items-center justify-center">
             <img
               key={activeImageIndex}
-              src={images?.[activeImageIndex]?.url || image}
+              src={optimizeImage(images?.[activeImageIndex]?.url || image, { width: 480 })}
+              srcSet={buildSrcSet(images?.[activeImageIndex]?.url || image)}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
               alt={name}
-              loading="lazy"
+              loading={idx !== undefined && idx < 4 ? 'eager' : 'lazy'}
+              fetchpriority={idx !== undefined && idx < 4 ? 'high' : 'auto'}
+              decoding="async"
+              width="300"
+              height="300"
               className="w-full h-full object-contain transition-opacity duration-300"
               style={{ opacity: imageLoaded ? 1 : 0 }}
               onLoad={() => setImageLoaded(true)}

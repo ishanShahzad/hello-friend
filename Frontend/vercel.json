@@ -65,6 +65,24 @@
     { "source": "/sitemap-products.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
     { "source": "/sitemap-stores.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
     { "source": "/sitemap-docs.xml", "headers": [{ "key": "Content-Type", "value": "application/xml" }] },
-    { "source": "/robots.txt", "headers": [{ "key": "Content-Type", "value": "text/plain" }] }
+    { "source": "/robots.txt", "headers": [{ "key": "Content-Type", "value": "text/plain" }] },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css|woff|woff2|ttf|otf|eot)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|webp|avif|svg|ico)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }
+      ]
+    }
   ]
 }
