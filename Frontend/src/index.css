@@ -7,6 +7,14 @@
 /* ====================
    Custom Properties (Design Tokens)
 ==================== */
+/* ====================
+   PERFORMANCE TEST: Disable ALL animations globally
+==================== */
+*, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
 :root {
     /* Core Semantic Tokens */
     --background: 220 20% 97%;
