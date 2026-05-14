@@ -5,7 +5,8 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
+import helmetAsync from 'react-helmet-async';
+const { HelmetProvider } = helmetAsync;
 import DocsPage from '../src/pages/DocsPage.jsx';
 
 export function renderDocs(url = '/') {
