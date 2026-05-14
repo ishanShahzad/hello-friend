@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  ssr: {
+    noExternal: ['react-helmet-async'],
+  },
   preview: {
     host: '0.0.0.0',
     port: 4173,
