@@ -1,26 +1,27 @@
 import React, { useMemo } from 'react';
 
 const GlassBackground = () => {
-    const bubbles = useMemo(() => {
-        return Array.from({ length: 5 }, (_, i) => ({
-            id: i,
-            size: Math.random() * 20 + 6,
-            left: Math.random() * 100,
-            opacity: Math.random() * 0.25 + 0.06,
-            duration: Math.random() * 16 + 14,
-            delay: Math.random() * 15,
-            drift: (Math.random() - 0.5) * 60,
-        }));
-    }, []);
+    // Bubbles disabled for performance - they cause significant lag on older hardware
+    // const bubbles = useMemo(() => {
+    //     return Array.from({ length: 5 }, (_, i) => ({
+    //         id: i,
+    //         size: Math.random() * 20 + 6,
+    //         left: Math.random() * 100,
+    //         opacity: Math.random() * 0.25 + 0.06,
+    //         duration: Math.random() * 16 + 14,
+    //         delay: Math.random() * 15,
+    //         drift: (Math.random() - 0.5) * 60,
+    //     }));
+    // }, []);
 
     return (
         <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" style={{ contain: 'strict' }}>
-            {/* Orbs — reduced to 2 */}
+            {/* Orbs — reduced to 2 with 40px blur (down from 90px) for performance */}
             <div className="orb orb-blue" style={{ width: 500, height: 500, top: '-10%', left: '-5%', animationDelay: '0s' }} />
             <div className="orb orb-purple" style={{ width: 400, height: 400, top: '20%', right: '-8%', animationDelay: '5s' }} />
 
-            {/* Bubbles — reduced to 5 */}
-            {bubbles.map((b) => (
+            {/* Bubbles disabled for performance */}
+            {/* {bubbles.map((b) => (
                 <div
                     key={b.id}
                     className="bubble"
@@ -36,7 +37,7 @@ const GlassBackground = () => {
                         animationDelay: `${b.delay}s`,
                     }}
                 />
-            ))}
+            ))} */}
         </div>
     );
 };

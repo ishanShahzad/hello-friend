@@ -400,7 +400,7 @@ input, select, textarea {
 .orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(90px);
+    filter: blur(40px); /* Reduced from 90px - MAJOR performance improvement */
     pointer-events: none;
     animation: orb-drift 30s ease-in-out infinite;
     will-change: transform;
