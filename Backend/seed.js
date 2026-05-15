@@ -1,14 +1,20 @@
 const mongoose = require('mongoose');
 const connectDB = require('./config/db')
-const Product = require('./models/Product'); // Adjust path as needed
+const Product = require('./models/Product');
+const User = require('./models/User');
 connectDB()
+
+// Helper function to generate random price between 2-11
+const getRandomPrice = () => {
+  return Math.floor(Math.random() * (11 - 2 + 1)) + 2;
+};
 
 
 const productsData = [
   {
     name: "Leather Recliner Sofa Chair",
     description: "Premium genuine leather recliner with comfortable padding, adjustable positions, and built-in cup holders.",
-    price: 599.99,
+    price: 2,
     discount: 10,
     discountedPrice: 539.99,
     category: "Furniture",
@@ -28,7 +34,7 @@ const productsData = [
   {
     name: "Nike Air Max 270 Running Shoes",
     description: "Lightweight running shoes with maximal cushioning and Nike's largest Air unit for all-day comfort.",
-    price: 149.99,
+    price: 6,
     discount: 20,
     discountedPrice: 119.99,
     category: "Fashion",
@@ -48,7 +54,7 @@ const productsData = [
   {
     name: "KitchenAid Stand Mixer",
     description: "Professional 5-quart stand mixer with 10 speeds for all your baking needs. Includes dough hook, flat beater, and wire whip.",
-    price: 379.99,
+    price: 3,
     discount: 15,
     discountedPrice: 322.99,
     category: "Home & Kitchen",
@@ -614,19 +620,55 @@ const productsData = [
 
 const seedProducts = async () => {
   try {
-    // Connect to MongoDB
-    // await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/your-database-name');
-    // console.log('Connected to MongoDB');
-
+    console.log('🔌 Connecting to MongoDB...');
+    
+    // Find the seller
+    const seller = await User.findOne({ email: 'salmaniqbal2008@gmail.com', role: 'seller' });
+    
+    if (!seller) {
+      console.error('❌ Seller with email salmaniqbal2008@gmail.com not found!');
+      process.exit(1);
+    }
+    
+    console.log(`✅ Found seller: ${seller.username} (${seller.email})`);
+    console.log(`   Seller ID: ${seller._id}\n`);
+    
+    // Update all products with random prices and assign to seller
+    const updatedProducts = productsData.map(product => {
+      const randomPrice = getRandomPrice();
+      return {
+        ...product,
+        price: randomPrice,
+        discountedPrice: 0, // No discount
+        discount: 0,
+        seller: seller._id // Assign to the seller
+      };
+    });
+    
+    console.log('📦 Inserting products with random prices (2-11)...\n');
+    
     // Insert new products
-    const createdProducts = await Product.insertMany(productsData);
-    console.log(`Successfully seeded ${createdProducts.length} products`);
+    const createdProducts = await Product.insertMany(updatedProducts);
+    
+    console.log('═══════════════════════════════════════════════════');
+    console.log('✅ PRODUCTS SEEDED SUCCESSFULLY!');
+    console.log('═══════════════════════════════════════════════════');
+    console.log(`📊 Total products created: ${createdProducts.length}`);
+    console.log(`👤 Assigned to seller: ${seller.username}`);
+    console.log(`💰 Price range: $2 - $11 (random)\n`);
+    
+    // Show sample products
+    console.log('Sample products:');
+    createdProducts.slice(0, 5).forEach(product => {
+      console.log(`   • ${product.name} - $${product.price}`);
+    });
+    console.log('═══════════════════════════════════════════════════\n');
 
     // Close connection
     await mongoose.connection.close();
-    console.log('Database connection closed');
+    console.log('🔌 Database connection closed');
   } catch (error) {
-    console.error('Error seeding products:', error);
+    console.error('❌ Error seeding products:', error);
     process.exit(1);
   }
 };
