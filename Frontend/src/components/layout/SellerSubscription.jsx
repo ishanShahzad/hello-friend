@@ -617,6 +617,8 @@ const SellerSubscription = () => {
                         </div>
                     </div>
                 )}
+            </div>
+            )}
 
             {/* Pricing Cards — always visible */}
             <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -833,7 +835,7 @@ const SellerSubscription = () => {
                         </motion.button>
                         )}
                     </motion.div>
-                </div>
+            </div>
 
             {/* Timeline */}
             <div className="glass-panel-strong p-6">
