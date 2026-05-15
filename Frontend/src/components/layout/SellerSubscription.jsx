@@ -360,7 +360,7 @@ const SellerSubscription = () => {
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                        {isElite ? 'Rozare Elite' : 'Rozare Starter'}
+                        Rozare Subscription Plans
                     </h1>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Manage your seller plan</p>
                 </div>
