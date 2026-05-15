@@ -5,10 +5,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import React, { useState, memo } from "react";
 import { optimizeImage, buildSrcSet } from "../../utils/optimizeImage";
+import { getStoreSubdomainUrl } from "../../utils/subdomainHelper";
 
 const ProductCard = memo(({
   _id, name, image, images, category, price, discountedPrice,
-  stock, rating, numReviews, isFeatured, idx,
+  stock, rating, numReviews, isFeatured, idx, store, seller,
 }) => {
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, handleQtyInc, handleQtyDec, isCartLoading, loadingProductId, qtyUpdateId } = useGlobal();
   const { currentUser } = useAuth();
@@ -33,6 +34,20 @@ const ProductCard = memo(({
 
   const handleAddToCartClick = () => {
     handleAddToCart(_id);
+  };
+
+  // Handle product navigation - redirect to product's store subdomain if different
+  const handleProductClick = (e) => {
+    const storeSlug = store?.slug || seller?.store?.slug;
+    if (!storeSlug) return; // Let Link handle it normally
+    
+    const productUrl = getStoreSubdomainUrl(storeSlug);
+    if (productUrl.startsWith('http')) {
+      // Need to redirect to different subdomain
+      e.preventDefault();
+      window.location.href = `${productUrl}/single-product/${_id}`;
+    }
+    // Otherwise let Link handle it normally
   };
 
   return (
@@ -76,7 +91,7 @@ const ProductCard = memo(({
             {btn.icon}
           </button>
         ))}
-        <Link to={`/single-product/${_id}`}>
+        <Link to={`/single-product/${_id}`} onClick={handleProductClick}>
           <button
             className="p-1.5 sm:p-2 rounded-full glass-button transition-transform active:scale-90 hover:scale-110">
             <Eye size={14} className="sm:w-4 sm:h-4" />
@@ -86,7 +101,7 @@ const ProductCard = memo(({
 
       {/* Product Image */}
       <div className="relative overflow-hidden rounded-2xl mb-2 sm:mb-3 aspect-square glass-inner">
-        <Link to={`/single-product/${_id}`} className="block w-full h-full">
+        <Link to={`/single-product/${_id}`} onClick={handleProductClick} className="block w-full h-full">
           <div className="relative w-full h-full flex items-center justify-center">
             <img
               key={activeImageIndex}
@@ -131,7 +146,7 @@ const ProductCard = memo(({
         <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider mb-1"
           style={{ color: 'hsl(var(--muted-foreground))' }}>{category}</span>
 
-        <Link to={`/single-product/${_id}`}>
+        <Link to={`/single-product/${_id}`} onClick={handleProductClick}>
           <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1 sm:mb-1.5 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] transition-colors"
             style={{ color: 'hsl(var(--foreground))' }}>
             {name}
@@ -206,7 +221,7 @@ const ProductCard = memo(({
         )}
 
         <div className="mt-2 flex justify-center opacity-60 group-hover:opacity-100 transition-opacity">
-          <Link to={`/single-product/${_id}`} className="text-xs sm:text-sm font-medium flex items-center gap-0.5 transition-colors"
+          <Link to={`/single-product/${_id}`} onClick={handleProductClick} className="text-xs sm:text-sm font-medium flex items-center gap-0.5 transition-colors"
             style={{ color: 'hsl(var(--primary))' }}>
             <span className="hidden sm:inline">View details</span><span className="sm:hidden">Details</span>
             <ChevronRight size={12} />

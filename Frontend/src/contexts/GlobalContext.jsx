@@ -2,13 +2,54 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, us
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
+import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie } from "../utils/cookieHelper";
 
 const GlobalContext = createContext();
 
 const GUEST_CART_KEY = 'guestCart';
-const getGuestCart = () => { try { const r = localStorage.getItem(GUEST_CART_KEY); return r ? JSON.parse(r) : []; } catch { return []; } };
-const saveGuestCart = (cart) => localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cart));
-const clearGuestCart = () => localStorage.removeItem(GUEST_CART_KEY);
+const GUEST_CART_COOKIE = 'rozare_guest_cart';
+
+// Helper functions for guest cart - now using cookies for cross-subdomain support
+const getGuestCart = () => { 
+    try {
+        // Try cookie first (new method)
+        const cookieData = getCookie(GUEST_CART_COOKIE);
+        if (cookieData) {
+            return JSON.parse(cookieData);
+        }
+        
+        // Fallback to localStorage (old method) and migrate
+        const localData = localStorage.getItem(GUEST_CART_KEY);
+        if (localData) {
+            const cart = JSON.parse(localData);
+            // Migrate to cookie
+            saveGuestCart(cart);
+            return cart;
+        }
+        
+        return [];
+    } catch { 
+        return []; 
+    } 
+};
+
+const saveGuestCart = (cart) => {
+    try {
+        const cartData = JSON.stringify(cart);
+        // Save to cookie (primary storage)
+        setCrossDomainCookie(GUEST_CART_COOKIE, cartData, 30);
+        // Also save to localStorage as backup
+        localStorage.setItem(GUEST_CART_KEY, cartData);
+    } catch (error) {
+        console.error('Error saving guest cart:', error);
+    }
+};
+
+const clearGuestCart = () => {
+    deleteCookie(GUEST_CART_COOKIE);
+    localStorage.removeItem(GUEST_CART_KEY);
+};
+
 const calcGuestTotal = (cart) => cart.reduce((s, i) => s + ((i.product.discountedPrice || i.product.price) * i.qty), 0);
 
 
