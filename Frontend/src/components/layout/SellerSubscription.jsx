@@ -614,11 +614,9 @@ const SellerSubscription = () => {
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
                                 </div>
                             ))}
-            </div>
-            )}
+                        </div>
                     </div>
                 )}
-            </div>
 
             {/* Pricing Cards — always visible */}
             <div className="grid md:grid-cols-2 gap-4 mb-6">
