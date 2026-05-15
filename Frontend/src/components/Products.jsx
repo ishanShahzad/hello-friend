@@ -22,6 +22,10 @@ function Products() {
   const [error, setError] = useState(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [sortBy, setSortBy] = useState('relevance')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   const priceRangeRef = useRef(null)
   const navigate = useNavigate()
@@ -57,8 +61,12 @@ function Products() {
       }
     })
     if (search !== '') params.append('search', search)
+    params.append('page', currentPage)
+    params.append('limit', PRODUCTS_PER_PAGE)
+    params.append('sortBy', sortBy)
+    params.append('sortOrder', sortOrder)
     return params.toString()
-  }, [search])
+  }, [search, currentPage, sortBy, sortOrder])
 
   const fetchProducts = useCallback(async () => {
     setLoading(true); setError(null)
@@ -67,7 +75,8 @@ function Products() {
       navigate(query ? `${location.pathname}?${query}` : location.pathname, { replace: true })
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-products?${query}`)
       setProducts(res.data.products || [])
-      setCurrentPage(1)
+      setTotalPages(res.data.pagination?.totalPages || 1)
+      setTotalProducts(res.data.pagination?.totalProducts || 0)
     } catch (err) { console.log(err); setError(err) }
     finally { setLoading(false) }
   }, [serializeFilters, navigate, location.pathname])
@@ -83,9 +92,17 @@ function Products() {
     const prev = JSON.stringify(filtersRef.current)
     filtersRef.current = filters
     if (initialFetchDone.current && prev !== JSON.stringify(filters)) {
+      setCurrentPage(1) // Reset to page 1 when filters change
       fetchProducts()
     }
   }, [JSON.stringify(filters)])
+  
+  // Fetch products when page, sort, or sortOrder changes
+  useEffect(() => {
+    if (initialFetchDone.current) {
+      fetchProducts()
+    }
+  }, [currentPage, sortBy, sortOrder])
 
   useEffect(() => {
     const fetchFilters = async () => {
@@ -108,13 +125,6 @@ function Products() {
     }
   }
 
-  // Pagination
-  const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE)
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * PRODUCTS_PER_PAGE
-    return products.slice(start, start + PRODUCTS_PER_PAGE)
-  }, [products, currentPage])
-
   const goToPage = (page) => {
     setCurrentPage(page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -129,6 +139,13 @@ function Products() {
     for (let i = start; i <= end; i++) pages.push(i)
     return pages
   }, [currentPage, totalPages])
+  
+  const handleSortChange = (newSort) => {
+    const [sortField, order] = newSort.split('-')
+    setSortBy(sortField)
+    setSortOrder(order || 'desc')
+    setCurrentPage(1) // Reset to page 1 when sorting changes
+  }
 
   if (error) return (
     <div className='w-full h flex justify-center items-center flex-col gap-4'>
@@ -422,10 +439,27 @@ function Products() {
                 Browse Stores →
               </Link>
             </div>
-            <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-3 flex-wrap'>
               <span className='tag-pill text-sm font-medium'>
-                {products.length} {products.length === 1 ? 'product' : 'products'}
+                {totalProducts} {totalProducts === 1 ? 'product' : 'products'}
               </span>
+              
+              {/* Sort Dropdown */}
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className='glass-input text-sm font-medium px-3 py-2 rounded-xl cursor-pointer'
+                style={{ minWidth: '180px' }}
+              >
+                <option value="relevance-desc">✨ Recommended</option>
+                <option value="price-asc">💰 Price: Low to High</option>
+                <option value="price-desc">💎 Price: High to Low</option>
+                <option value="rating-desc">⭐ Highest Rated</option>
+                <option value="newest-desc">🆕 Newest First</option>
+                <option value="popular-desc">🔥 Most Popular</option>
+                <option value="sales-desc">🏆 Best Selling</option>
+              </select>
+              
               <CurrencySelector />
             </div>
           </div>
@@ -446,7 +480,7 @@ function Products() {
             ) : (
               <>
                 <div className='grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5 sm:gap-3 lg:gap-4 items-start'>
-                  {paginatedProducts.map((prod, idx) => (
+                  {products.map((prod, idx) => (
                     <div key={prod._id} className='mx-auto w-full max-w-[220px] min-w-0 xl:max-w-[232px]'>
                       <ProductCard idx={idx} {...prod} />
                     </div>

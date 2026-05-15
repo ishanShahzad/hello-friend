@@ -41,6 +41,8 @@ const productSchema = mongoose.Schema(
             default: { type: String, default: '' }, // Default selected value for this option group
         }],
         seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Track who created the product
+        views: { type: Number, default: 0 }, // Track product views for popularity
+        totalSales: { type: Number, default: 0 }, // Track total sales for ranking
         returnPolicy: {
             useStorePolicy: { type: Boolean, default: true }, // true = inherit from store
             returnsEnabled: { type: Boolean, default: false },

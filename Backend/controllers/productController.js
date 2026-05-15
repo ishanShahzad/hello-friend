@@ -2,11 +2,154 @@
 const Product = require("../models/Product")
 const Fuse = require('fuse.js')
 
+/**
+ * Calculate relevance score for product ranking
+ * Balances quality, freshness, diversity, and seller fairness
+ */
+const calculateRelevanceScore = (product, sellerProductCounts, totalSellers) => {
+    const now = Date.now();
+    const createdAt = new Date(product.createdAt).getTime();
+    const daysSinceCreated = (now - createdAt) / (1000 * 60 * 60 * 24);
+    
+    // Base scores
+    let score = 0;
+    
+    // 1. FEATURED BOOST (500-1000 points)
+    // Featured products get significant boost but not overwhelming
+    if (product.isFeatured) {
+        score += 800;
+    }
+    
+    // 2. QUALITY SCORE (0-500 points)
+    // Rating × reviews = quality indicator
+    const rating = product.rating || 0;
+    const numReviews = product.numReviews || 0;
+    const qualityScore = (rating * 50) + (Math.min(numReviews, 50) * 5);
+    score += qualityScore;
+    
+    // 3. SALES PERFORMANCE (0-300 points)
+    // Products that sell well rank higher
+    const totalSales = product.totalSales || 0;
+    const salesScore = Math.min(totalSales * 10, 300);
+    score += salesScore;
+    
+    // 4. POPULARITY (0-200 points)
+    // Views indicate interest
+    const views = product.views || 0;
+    const popularityScore = Math.min(views * 0.5, 200);
+    score += popularityScore;
+    
+    // 5. FRESHNESS BOOST (0-600 points, decays over time)
+    // New products get temporary boost to ensure visibility
+    // Boost is stronger when there are more sellers (more competition)
+    let freshnessBoost = 0;
+    if (daysSinceCreated <= 30) {
+        // New product (< 30 days)
+        const freshnessMultiplier = Math.max(1, totalSellers / 10); // More sellers = stronger boost
+        const decayFactor = 1 - (daysSinceCreated / 30); // Linear decay over 30 days
+        freshnessBoost = 600 * decayFactor * freshnessMultiplier;
+        score += freshnessBoost;
+    }
+    
+    // 6. DIVERSITY PENALTY (prevents seller domination)
+    // If a seller has many products, reduce their individual product scores slightly
+    const sellerId = product.seller?._id?.toString() || product.seller?.toString();
+    const sellerProductCount = sellerProductCounts[sellerId] || 1;
+    
+    if (sellerProductCount > 5) {
+        // Sellers with 6+ products get diminishing returns
+        // This ensures smaller sellers get fair visibility
+        const diversityPenalty = Math.min((sellerProductCount - 5) * 20, 200);
+        score -= diversityPenalty;
+    }
+    
+    // 7. STOCK AVAILABILITY (0 or -500 points)
+    // Out of stock products rank much lower
+    if (product.stock === 0) {
+        score -= 500;
+    }
+    
+    // 8. DISCOUNT BOOST (0-150 points)
+    // Products on sale get slight boost
+    if (product.discountedPrice && product.discountedPrice < product.price) {
+        const discountPercent = ((product.price - product.discountedPrice) / product.price) * 100;
+        score += Math.min(discountPercent * 3, 150);
+    }
+    
+    // 9. VERIFIED STORE BOOST (0-300 points)
+    // Products from verified stores get trust boost
+    if (product.seller?.store?.verification?.isVerified) {
+        score += 300;
+    }
+    
+    return Math.max(0, score); // Ensure non-negative
+};
+
+/**
+ * Apply intelligent sorting based on sort parameter
+ */
+const applySorting = (products, sortBy, sortOrder, sellerProductCounts, totalSellers) => {
+    const order = sortOrder === 'asc' ? 1 : -1;
+    
+    switch(sortBy) {
+        case 'price':
+            return products.sort((a, b) => {
+                const priceA = a.discountedPrice || a.price;
+                const priceB = b.discountedPrice || b.price;
+                return (priceA - priceB) * order;
+            });
+            
+        case 'rating':
+            return products.sort((a, b) => {
+                const scoreA = (a.rating || 0) * 100 + (a.numReviews || 0);
+                const scoreB = (b.rating || 0) * 100 + (b.numReviews || 0);
+                return (scoreB - scoreA) * order;
+            });
+            
+        case 'newest':
+            return products.sort((a, b) => {
+                const dateA = new Date(a.createdAt).getTime();
+                const dateB = new Date(b.createdAt).getTime();
+                return (dateB - dateA) * order;
+            });
+            
+        case 'popular':
+            return products.sort((a, b) => {
+                return ((b.views || 0) - (a.views || 0)) * order;
+            });
+            
+        case 'sales':
+            return products.sort((a, b) => {
+                return ((b.totalSales || 0) - (a.totalSales || 0)) * order;
+            });
+            
+        case 'relevance':
+        default:
+            // Calculate relevance scores for all products
+            const productsWithScores = products.map(product => ({
+                ...product,
+                _relevanceScore: calculateRelevanceScore(product, sellerProductCounts, totalSellers)
+            }));
+            
+            // Sort by relevance score
+            return productsWithScores.sort((a, b) => b._relevanceScore - a._relevanceScore);
+    }
+};
 
 exports.getProducts = async (req, res) => {
-    const { categories, brands, priceRange, search, page = 1, limit = 12 } = { ...req.query }
+    const { 
+        categories, 
+        brands, 
+        priceRange, 
+        search, 
+        page = 1, 
+        limit = 24,
+        sortBy = 'relevance',
+        sortOrder = 'desc'
+    } = { ...req.query }
+    
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 12));
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 24));
     const skip = (pageNum - 1) * limitNum;
 
     try {
@@ -20,8 +163,15 @@ exports.getProducts = async (req, res) => {
 
         // Only show products from active stores (hides blocked/expired seller products)
         const Store = require('../models/Store');
-        const activeStores = await Store.find({ isActive: true }).select('seller').lean();
-        const activeSellerIds = activeStores.map(s => s.seller).filter(Boolean);
+        const activeStores = await Store.find({ isActive: true })
+            .select('seller verification')
+            .populate('seller', '_id')
+            .lean();
+        const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
+        
+        // Count total active sellers for diversity calculation
+        const totalSellers = activeSellerIds.length;
+        
         // Include products with no seller (admin products) + products from active sellers
         query.$or = [
             { seller: null },
@@ -34,7 +184,7 @@ exports.getProducts = async (req, res) => {
                 select: 'username email',
                 populate: {
                     path: 'store',
-                    select: 'storeName storeSlug'
+                    select: 'storeName storeSlug verification'
                 }
             })
             .lean()
@@ -48,6 +198,16 @@ exports.getProducts = async (req, res) => {
             const results = fuse.search(search)
             products = results.map(r => r.item)
         }
+        
+        // Count products per seller for diversity calculation
+        const sellerProductCounts = {};
+        products.forEach(product => {
+            const sellerId = product.seller?._id?.toString() || product.seller?.toString() || 'admin';
+            sellerProductCounts[sellerId] = (sellerProductCounts[sellerId] || 0) + 1;
+        });
+        
+        // Apply intelligent sorting
+        products = applySorting(products, sortBy, sortOrder, sellerProductCounts, totalSellers);
 
         const totalProducts = products.length;
         const totalPages = Math.ceil(totalProducts / limitNum);
@@ -62,6 +222,11 @@ exports.getProducts = async (req, res) => {
                 totalProducts,
                 totalPages,
                 hasMore: pageNum < totalPages,
+            },
+            sorting: {
+                sortBy,
+                sortOrder,
+                availableSorts: ['relevance', 'price', 'rating', 'newest', 'popular', 'sales']
             }
         })
     } catch (error) {
