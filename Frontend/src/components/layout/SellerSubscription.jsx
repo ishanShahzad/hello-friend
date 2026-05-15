@@ -795,16 +795,37 @@ const SellerSubscription = () => {
                             ))}
                         </div>
 
+                        {isElite && isSubscribed ? (
+                            <div className="space-y-2">
+                                <div className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                    style={{ background: 'rgba(139,92,246,0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    <Check size={15} /> Current Plan
+                                </div>
+                                {!subscription?.cancelledAt && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+                                        style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'hsl(0, 72%, 55%)' }}
+                                    >
+                                        <X size={14} /> Cancel Subscription
+                                    </motion.button>
+                                )}
+                            </div>
+                        ) : (
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => handleSubscribe('elite')}
+                            onClick={() => isStarterSubscribed ? setShowUpgradeConfirm(true) : handleSubscribe('elite')}
                             disabled={checkoutLoading === 'elite'}
                             className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
                             style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}
                         >
                             {checkoutLoading === 'elite' ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : isStarterSubscribed ? (
+                                <><Gem size={15} /> Upgrade to Elite <ArrowRight size={15} /></>
                             ) : (
                                 <>
                                     <Gem size={15} />
@@ -813,6 +834,7 @@ const SellerSubscription = () => {
                                 </>
                             )}
                         </motion.button>
+                        )}
                     </motion.div>
                 </div>
             )}
