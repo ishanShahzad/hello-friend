@@ -367,7 +367,8 @@ const SellerSubscription = () => {
                 {getStatusBadge()}
             </div>
 
-            {/* Current Plan Card */}
+            {/* Current Plan Card — hidden once subscribed */}
+            {!isSubscribed && (
             <div className="glass-panel-strong p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
