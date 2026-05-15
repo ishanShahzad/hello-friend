@@ -844,26 +844,34 @@ const SellerSubscription = () => {
                 <h3 className="text-sm font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>How it works</h3>
                 <div className="space-y-4">
                     {[
-                        { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter ($5.99/mo) or Rozare Elite ($12.99/mo)', active: false },
-                        { step: '3', title: 'Free Period', desc: isElite ? '45 days of full access at no cost' : '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
-                        { step: '4', title: 'Monthly Billing', desc: isElite ? '$12.99/month. Cancel anytime.' : '$5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
-                        { step: '5', title: 'Bonus Features', desc: isElite ? 'Permanently included with your Elite plan.' : 'After 6 months, bonus features expire. Upgrade to Elite to keep them.', active: false },
-                    ].map((s, i) => (
+                        { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial, done: !isTrial && (isSubscribed || isBlocked || isPastDue) },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter ($5.99/mo) or Rozare Elite ($12.99/mo)', active: false, done: isSubscribed || isPastDue },
+                        { step: '3', title: 'Free Period', desc: isElite ? '45 days of full access at no cost' : '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period', done: subscription?.status === 'active' || (isSubscribed && subscription?.hasUsedFreePeriod && subscription?.status !== 'free_period') },
+                        { step: '4', title: 'Monthly Billing', desc: isElite ? '$12.99/month. Cancel anytime.' : '$5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active', done: false },
+                        { step: '5', title: 'Bonus Features', desc: isElite ? 'Permanently included with your Elite plan.' : 'After 6 months, bonus features expire. Upgrade to Elite to keep them.', active: false, done: isElite && isSubscribed },
+                    ].map((s, i) => {
+                        const isDone = s.done;
+                        return (
                         <div key={i} className="flex items-start gap-3">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active ? 'text-white' : ''}`}
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active || isDone ? 'text-white' : ''}`}
                                 style={{
-                                    background: s.active ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' : 'rgba(0,0,0,0.06)',
-                                    color: s.active ? 'white' : 'hsl(var(--muted-foreground))',
+                                    background: isDone
+                                        ? 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))'
+                                        : s.active
+                                            ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))'
+                                            : 'rgba(0,0,0,0.06)',
+                                    color: s.active || isDone ? 'white' : 'hsl(var(--muted-foreground))',
                                 }}>
-                                {s.step}
+                                {isDone ? <Check size={14} /> : s.step}
                             </div>
                             <div>
-                                <p className="text-xs font-bold" style={{ color: s.active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>{s.title}</p>
+                                <p className="text-xs font-bold" style={{ color: s.active || isDone ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>{s.title}</p>
                                 <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.desc}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
+                </div>
                 </div>
             </div>
 
