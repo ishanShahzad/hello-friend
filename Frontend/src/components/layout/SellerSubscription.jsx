@@ -614,7 +614,8 @@ const SellerSubscription = () => {
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
                                 </div>
                             ))}
-                        </div>
+            </div>
+            )}
                     </div>
                 )}
             </div>
