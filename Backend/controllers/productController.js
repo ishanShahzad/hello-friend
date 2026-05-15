@@ -29,6 +29,15 @@ exports.getProducts = async (req, res) => {
         ];
 
         let products = await Product.find(query)
+            .populate({
+                path: 'seller',
+                select: 'username email',
+                populate: {
+                    path: 'store',
+                    select: 'storeName storeSlug'
+                }
+            })
+            .lean()
 
         // Apply fuzzy search with Fuse.js if search term is present
         if (search) {

@@ -38,8 +38,13 @@ const ProductCard = memo(({
 
   // Handle product navigation - redirect to product's store subdomain if different
   const handleProductClick = (e) => {
-    const storeSlug = store?.slug || seller?.store?.slug;
-    if (!storeSlug) return; // Let Link handle it normally
+    // Get store slug from populated seller.store or direct store prop
+    const storeSlug = seller?.store?.storeSlug || store?.storeSlug || store?.slug;
+    
+    if (!storeSlug) {
+      // No store found, navigate normally
+      return;
+    }
     
     const productUrl = getStoreSubdomainUrl(storeSlug);
     if (productUrl.startsWith('http')) {

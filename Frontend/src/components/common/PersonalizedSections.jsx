@@ -5,6 +5,7 @@ import { Sparkles, TrendingUp, DollarSign, Clock, Gift, ChevronLeft, ChevronRigh
 import axios from 'axios'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrency } from '../../contexts/CurrencyContext'
+import { getStoreSubdomainUrl } from '../../utils/subdomainHelper'
 
 const SliderProductCard = ({ product, formatPrice }) => {
   const displayPrice = product.discountedPrice || product.price
@@ -13,13 +14,32 @@ const SliderProductCard = ({ product, formatPrice }) => {
     ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
     : 0
 
+  // Handle product navigation - redirect to product's store subdomain
+  const handleProductClick = (e) => {
+    // Get store slug from populated seller.store
+    const storeSlug = product.seller?.store?.storeSlug;
+    
+    if (!storeSlug) {
+      // No store found, navigate normally
+      return;
+    }
+    
+    const productUrl = getStoreSubdomainUrl(storeSlug);
+    if (productUrl.startsWith('http')) {
+      // Need to redirect to different subdomain
+      e.preventDefault();
+      window.location.href = `${productUrl}/single-product/${product._id}`;
+    }
+    // Otherwise let Link handle it normally
+  };
+
   return (
     <motion.div
       whileHover={{ y: -6, scale: 1.02 }}
       transition={{ duration: 0.25 }}
       className="w-[188px] sm:w-[208px] lg:w-[224px] xl:w-[236px] shrink-0 snap-start"
     >
-      <Link to={`/single-product/${product._id}`} className="block h-full">
+      <Link to={`/single-product/${product._id}`} onClick={handleProductClick} className="block h-full">
         <article className="glass-card h-full overflow-hidden p-2 sm:p-2.5">
           <div className="relative overflow-hidden rounded-[1.25rem] glass-inner aspect-[4/4.8]">
             <img
