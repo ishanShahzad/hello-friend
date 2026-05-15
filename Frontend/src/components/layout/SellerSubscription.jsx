@@ -868,7 +868,6 @@ const SellerSubscription = () => {
                         );
                     })}
                 </div>
-                </div>
             </div>
 
             {/* Subscription comparison note */}
