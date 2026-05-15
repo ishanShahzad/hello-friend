@@ -621,8 +621,7 @@ const SellerSubscription = () => {
             </div>
 
             {/* Pricing Cards — always visible */}
-            {(
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
                     {/* Rozare Starter Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -837,7 +836,6 @@ const SellerSubscription = () => {
                         )}
                     </motion.div>
                 </div>
-            )}
 
             {/* Timeline */}
             <div className="glass-panel-strong p-6">
