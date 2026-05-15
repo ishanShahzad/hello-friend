@@ -674,7 +674,9 @@ const SellerSubscription = () => {
                             <p className="text-[10px] font-bold flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
                                 <Award size={11} /> Features from Elite
                                 <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    6 months only
+                                    {isStarterSubscribed && subscription?.bonusFeaturesActive
+                                        ? `${bonusMonthsRemaining} month${bonusMonthsRemaining !== 1 ? 's' : ''} remaining`
+                                        : '6 months only'}
                                 </span>
                             </p>
                             {bonusFeatures.map((f, i) => (
