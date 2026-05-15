@@ -369,6 +369,37 @@ const SellerSubscription = () => {
                 </motion.div>
             )}
 
+            {/* Cancellation banner — subscription scheduled to end at period end */}
+            {subscription?.cancelledAt && ['active', 'free_period'].includes(subscription?.status) && (() => {
+                const endDate = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
+                const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 p-5 rounded-2xl border"
+                        style={{ background: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+                                <X size={20} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold" style={{ color: 'hsl(0, 72%, 55%)' }}>Subscription Cancelled</h3>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Your plan will remain active for{' '}
+                                    <strong style={{ color: 'hsl(var(--foreground))' }}>
+                                        {daysLeft !== null ? `${daysLeft} more day${daysLeft !== 1 ? 's' : ''}` : 'the remainder of this period'}
+                                    </strong>
+                                    {endDate && <> and end on <strong style={{ color: 'hsl(var(--foreground))' }}>{endDate.toLocaleDateString()}</strong></>}.
+                                    After that your store will be blocked until you re-subscribe.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                );
+            })()}
+
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
