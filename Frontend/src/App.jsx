@@ -1,7 +1,6 @@
 import AppRoutes from './routes/AppRoutes'
-import SubdomainStorePage from './pages/SubdomainStorePage'
 import DocsPage from './pages/DocsPage'
-import { isSubdomain, isDocsSubdomain } from './utils/subdomainHelper'
+import { isSubdomain, isDocsSubdomain, getSubdomain } from './utils/subdomainHelper'
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify'
 import { HelmetProvider } from 'react-helmet-async';
@@ -10,8 +9,9 @@ import Analytics from './components/common/Analytics'
 function App() {
   // Reserved system subdomain: docs.rozare.com
   const onDocs = isDocsSubdomain();
-  // Store subdomain (storename.rozare.com) 
-  const onStoreSubdomain = !onDocs && isSubdomain();
+  // Store subdomain (storename.rozare.com) — full app routes still work,
+  // we only override the home route to render the store page for this subdomain.
+  const subdomainSlug = !onDocs && isSubdomain() ? getSubdomain() : null;
 
   return (
     <HelmetProvider>
@@ -37,7 +37,7 @@ function App() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
       />
-      {onDocs ? <DocsPage /> : onStoreSubdomain ? <SubdomainStorePage /> : <AppRoutes />}
+      {onDocs ? <DocsPage /> : <AppRoutes subdomainSlug={subdomainSlug} />}
     </HelmetProvider>
   )
 }

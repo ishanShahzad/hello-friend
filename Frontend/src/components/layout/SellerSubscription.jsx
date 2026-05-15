@@ -129,13 +129,26 @@ const SellerSubscription = () => {
 
     const getStatusBadge = () => {
         if (!subscription) return null;
+        // Stripe "cancel at period end" — status is still active but cancelledAt is set.
+        // Surface that explicitly so the seller knows the plan is winding down.
+        if (subscription.cancelledAt && ['active', 'free_period'].includes(subscription.status)) {
+            const endDate = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
+            const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
+            return (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0, 72%, 55%)' }}>
+                    <X size={12} /> Cancelled
+                    {daysLeft !== null && <span className="opacity-80">· {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining</span>}
+                </span>
+            );
+        }
         const map = {
             trial: { label: 'Free Trial', color: 'hsl(220, 70%, 55%)', bg: 'rgba(99,102,241,0.12)', icon: <Clock size={12} /> },
             free_period: { label: subscription?.plan === 'elite' ? '45-Day Free' : '30-Day Free', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Sparkles size={12} /> },
             active: { label: 'Active', color: 'hsl(150, 60%, 45%)', bg: 'rgba(16,185,129,0.12)', icon: <Check size={12} /> },
             past_due: { label: 'Past Due', color: 'hsl(30, 90%, 50%)', bg: 'rgba(249,115,22,0.12)', icon: <AlertTriangle size={12} /> },
             blocked: { label: 'Blocked', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239,68,68,0.12)', icon: <Lock size={12} /> },
-            cancelled: { label: 'Cancelled', color: 'hsl(var(--muted-foreground))', bg: 'rgba(0,0,0,0.06)', icon: <X size={12} /> },
+            cancelled: { label: 'Cancelled', color: 'hsl(0, 72%, 55%)', bg: 'rgba(239,68,68,0.12)', icon: <X size={12} /> },
         };
         const s = map[subscription.status] || map.trial;
         return (
@@ -355,6 +368,37 @@ const SellerSubscription = () => {
                     </div>
                 </motion.div>
             )}
+
+            {/* Cancellation banner — subscription scheduled to end at period end */}
+            {subscription?.cancelledAt && ['active', 'free_period'].includes(subscription?.status) && (() => {
+                const endDate = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
+                const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 p-5 rounded-2xl border"
+                        style={{ background: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+                                <X size={20} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold" style={{ color: 'hsl(0, 72%, 55%)' }}>Subscription Cancelled</h3>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Your plan will remain active for{' '}
+                                    <strong style={{ color: 'hsl(var(--foreground))' }}>
+                                        {daysLeft !== null ? `${daysLeft} more day${daysLeft !== 1 ? 's' : ''}` : 'the remainder of this period'}
+                                    </strong>
+                                    {endDate && <> and end on <strong style={{ color: 'hsl(var(--foreground))' }}>{endDate.toLocaleDateString()}</strong></>}.
+                                    After that your store will be blocked until you re-subscribe.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                );
+            })()}
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">

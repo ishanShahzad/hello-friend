@@ -91,7 +91,7 @@ const SuspenseFallback = () => (
     </div>
 )
 
-function AppRoutes() {
+function AppRoutes({ subdomainSlug = null }) {
     const navigate = useNavigate()
 
     return (
@@ -99,7 +99,7 @@ function AppRoutes() {
             <Routes>
                 <Route path='/' element={<MainLayoutPage />} >
                     {/* PUBLIC ROUTES */}
-                    <Route index element={<Products />} />
+                    <Route index element={subdomainSlug ? <StorePage slugOverride={subdomainSlug} /> : <Products />} />
                     <Route path='/products' element={<Products />} />
                     <Route path={'/single-product/:id'} element={<ProductDetailPage />} />
                     <Route path={'/profile'} element={<Profile />} />
