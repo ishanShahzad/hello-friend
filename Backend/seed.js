@@ -9,6 +9,11 @@ const getRandomPrice = () => {
   return Math.floor(Math.random() * (11 - 2 + 1)) + 2;
 };
 
+// Helper function to generate random discounted price between 1-2
+const getRandomDiscountedPrice = () => {
+  return Math.floor(Math.random() * (2 - 1 + 1)) + 1;
+};
+
 
 const productsData = [
   {
@@ -636,10 +641,11 @@ const seedProducts = async () => {
     // Update all products with random prices and assign to seller
     const updatedProducts = productsData.map(product => {
       const randomPrice = getRandomPrice();
+      const randomDiscountedPrice = getRandomDiscountedPrice();
       return {
         ...product,
         price: randomPrice,
-        discountedPrice: 0, // No discount
+        discountedPrice: randomDiscountedPrice, // Random discount price 1-2
         discount: 0,
         seller: seller._id // Assign to the seller
       };

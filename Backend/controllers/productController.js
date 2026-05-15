@@ -14,10 +14,11 @@ const calculateRelevanceScore = (product, sellerProductCounts, totalSellers) => 
     // Base scores
     let score = 0;
     
-    // 1. FEATURED BOOST (500-1000 points)
-    // Featured products get significant boost but not overwhelming
+    // 1. FEATURED BOOST (200-400 points)
+    // Featured products get moderate boost, not overwhelming
+    // Quality products with sales can still outrank featured products
     if (product.isFeatured) {
-        score += 800;
+        score += 300;
     }
     
     // 2. QUALITY SCORE (0-500 points)

@@ -194,6 +194,24 @@ function Products() {
         </form>
       </div>
 
+      {/* Sort By */}
+      <div>
+        <label className='block text-xs font-semibold uppercase tracking-wider mb-2' style={{ color: 'hsl(var(--muted-foreground))' }}>Sort By</label>
+        <select
+          value={`${sortBy}-${sortOrder}`}
+          onChange={(e) => { handleSortChange(e.target.value); onClose && onClose(); }}
+          className='glass-input text-sm font-medium w-full cursor-pointer'
+        >
+          <option value="relevance-desc">✨ Recommended</option>
+          <option value="price-asc">💰 Price: Low to High</option>
+          <option value="price-desc">💎 Price: High to Low</option>
+          <option value="rating-desc">⭐ Highest Rated</option>
+          <option value="newest-desc">🆕 Newest First</option>
+          <option value="popular-desc">🔥 Most Popular</option>
+          <option value="sales-desc">🏆 Best Selling</option>
+        </select>
+      </div>
+
       {/* Categories — fixed preset list + Other */}
       <div>
         <label className='block text-xs font-semibold uppercase tracking-wider mb-3' style={{ color: 'hsl(var(--muted-foreground))' }}>Categories</label>
@@ -439,27 +457,10 @@ function Products() {
                 Browse Stores →
               </Link>
             </div>
-            <div className='flex items-center gap-3 flex-wrap'>
+            <div className='flex items-center gap-3'>
               <span className='tag-pill text-sm font-medium'>
                 {totalProducts} {totalProducts === 1 ? 'product' : 'products'}
               </span>
-              
-              {/* Sort Dropdown */}
-              <select
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => handleSortChange(e.target.value)}
-                className='glass-input text-sm font-medium px-3 py-2 rounded-xl cursor-pointer'
-                style={{ minWidth: '180px' }}
-              >
-                <option value="relevance-desc">✨ Recommended</option>
-                <option value="price-asc">💰 Price: Low to High</option>
-                <option value="price-desc">💎 Price: High to Low</option>
-                <option value="rating-desc">⭐ Highest Rated</option>
-                <option value="newest-desc">🆕 Newest First</option>
-                <option value="popular-desc">🔥 Most Popular</option>
-                <option value="sales-desc">🏆 Best Selling</option>
-              </select>
-              
               <CurrencySelector />
             </div>
           </div>
