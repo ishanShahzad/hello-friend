@@ -689,16 +689,37 @@ const SellerSubscription = () => {
                             ))}
                         </div>
 
+                        {isStarterSubscribed ? (
+                            <div className="space-y-2">
+                                <div className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                    style={{ background: 'rgba(16,185,129,0.12)', color: 'hsl(150, 60%, 45%)' }}>
+                                    <Check size={15} /> Current Plan
+                                </div>
+                                {!subscription?.cancelledAt && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+                                        style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'hsl(0, 72%, 55%)' }}
+                                    >
+                                        <X size={14} /> Cancel Subscription
+                                    </motion.button>
+                                )}
+                            </div>
+                        ) : (
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => handleSubscribe('starter')}
+                            onClick={() => isElite ? setShowDowngradeConfirm(true) : handleSubscribe('starter')}
                             disabled={checkoutLoading === 'starter'}
                             className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
                             style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}
                         >
                             {checkoutLoading === 'starter' ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : isElite ? (
+                                <><ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} /> Downgrade to Starter</>
                             ) : (
                                 <>
                                     <CreditCard size={15} />
@@ -707,6 +728,7 @@ const SellerSubscription = () => {
                                 </>
                             )}
                         </motion.button>
+                        )}
                     </motion.div>
 
                     {/* Rozare Elite Card */}
