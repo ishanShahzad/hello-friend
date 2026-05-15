@@ -167,6 +167,8 @@ const SellerSubscription = () => {
         return daysLeft <= 7 && daysLeft > 0;
     })();
     const bonusDaysUntilExpiry = subscription?.bonusExpiryDate ? Math.max(0, Math.ceil((new Date(subscription.bonusExpiryDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+    const bonusMonthsRemaining = subscription?.bonusExpiryDate ? Math.max(0, Math.ceil(bonusDaysUntilExpiry / 30)) : 6;
+    const isStarterSubscribed = isSubscribed && !isElite;
 
     const starterFeatures = [
         'Store & products visible to all customers',
