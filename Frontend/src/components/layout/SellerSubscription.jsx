@@ -167,6 +167,8 @@ const SellerSubscription = () => {
         return daysLeft <= 7 && daysLeft > 0;
     })();
     const bonusDaysUntilExpiry = subscription?.bonusExpiryDate ? Math.max(0, Math.ceil((new Date(subscription.bonusExpiryDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+    const bonusMonthsRemaining = subscription?.bonusExpiryDate ? Math.max(0, Math.ceil(bonusDaysUntilExpiry / 30)) : 6;
+    const isStarterSubscribed = isSubscribed && !isElite;
 
     const starterFeatures = [
         'Store & products visible to all customers',
@@ -358,14 +360,15 @@ const SellerSubscription = () => {
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                        {isElite ? 'Rozare Elite' : 'Rozare Starter'}
+                        Rozare Subscription Plans
                     </h1>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Manage your seller plan</p>
                 </div>
                 {getStatusBadge()}
             </div>
 
-            {/* Current Plan Card */}
+            {/* Current Plan Card — hidden once subscribed */}
+            {!isSubscribed && (
             <div className="glass-panel-strong p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -611,13 +614,14 @@ const SellerSubscription = () => {
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
                                 </div>
                             ))}
-                        </div>
+            </div>
+            )}
                     </div>
                 )}
             </div>
 
-            {/* Pricing Cards */}
-            {showSubscribeButton && (
+            {/* Pricing Cards — always visible */}
+            {(
                 <div className="grid md:grid-cols-2 gap-4 mb-6">
                     {/* Rozare Starter Card */}
                     <motion.div
@@ -670,7 +674,9 @@ const SellerSubscription = () => {
                             <p className="text-[10px] font-bold flex items-center gap-1" style={{ color: 'hsl(270, 60%, 55%)' }}>
                                 <Award size={11} /> Features from Elite
                                 <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
-                                    6 months only
+                                    {isStarterSubscribed && subscription?.bonusFeaturesActive
+                                        ? `${bonusMonthsRemaining} month${bonusMonthsRemaining !== 1 ? 's' : ''} remaining`
+                                        : '6 months only'}
                                 </span>
                             </p>
                             {bonusFeatures.map((f, i) => (
@@ -683,16 +689,37 @@ const SellerSubscription = () => {
                             ))}
                         </div>
 
+                        {isStarterSubscribed ? (
+                            <div className="space-y-2">
+                                <div className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                    style={{ background: 'rgba(16,185,129,0.12)', color: 'hsl(150, 60%, 45%)' }}>
+                                    <Check size={15} /> Current Plan
+                                </div>
+                                {!subscription?.cancelledAt && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+                                        style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'hsl(0, 72%, 55%)' }}
+                                    >
+                                        <X size={14} /> Cancel Subscription
+                                    </motion.button>
+                                )}
+                            </div>
+                        ) : (
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => handleSubscribe('starter')}
+                            onClick={() => isElite ? setShowDowngradeConfirm(true) : handleSubscribe('starter')}
                             disabled={checkoutLoading === 'starter'}
                             className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
                             style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' }}
                         >
                             {checkoutLoading === 'starter' ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : isElite ? (
+                                <><ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} /> Downgrade to Starter</>
                             ) : (
                                 <>
                                     <CreditCard size={15} />
@@ -701,6 +728,7 @@ const SellerSubscription = () => {
                                 </>
                             )}
                         </motion.button>
+                        )}
                     </motion.div>
 
                     {/* Rozare Elite Card */}
@@ -767,16 +795,37 @@ const SellerSubscription = () => {
                             ))}
                         </div>
 
+                        {isElite && isSubscribed ? (
+                            <div className="space-y-2">
+                                <div className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                    style={{ background: 'rgba(139,92,246,0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                    <Check size={15} /> Current Plan
+                                </div>
+                                {!subscription?.cancelledAt && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+                                        style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'hsl(0, 72%, 55%)' }}
+                                    >
+                                        <X size={14} /> Cancel Subscription
+                                    </motion.button>
+                                )}
+                            </div>
+                        ) : (
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => handleSubscribe('elite')}
+                            onClick={() => isStarterSubscribed ? setShowUpgradeConfirm(true) : handleSubscribe('elite')}
                             disabled={checkoutLoading === 'elite'}
                             className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60"
                             style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 55%), hsl(290, 50%, 50%))' }}
                         >
                             {checkoutLoading === 'elite' ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : isStarterSubscribed ? (
+                                <><Gem size={15} /> Upgrade to Elite <ArrowRight size={15} /></>
                             ) : (
                                 <>
                                     <Gem size={15} />
@@ -785,6 +834,7 @@ const SellerSubscription = () => {
                                 </>
                             )}
                         </motion.button>
+                        )}
                     </motion.div>
                 </div>
             )}
@@ -794,26 +844,34 @@ const SellerSubscription = () => {
                 <h3 className="text-sm font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>How it works</h3>
                 <div className="space-y-4">
                     {[
-                        { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial },
-                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter ($5.99/mo) or Rozare Elite ($12.99/mo)', active: false },
-                        { step: '3', title: 'Free Period', desc: isElite ? '45 days of full access at no cost' : '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period' },
-                        { step: '4', title: 'Monthly Billing', desc: isElite ? '$12.99/month. Cancel anytime.' : '$5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active' },
-                        { step: '5', title: 'Bonus Features', desc: isElite ? 'Permanently included with your Elite plan.' : 'After 6 months, bonus features expire. Upgrade to Elite to keep them.', active: false },
-                    ].map((s, i) => (
+                        { step: '1', title: 'Free Trial', desc: '15 days to set up your store, add products, and start selling', active: isTrial, done: !isTrial && (isSubscribed || isBlocked || isPastDue) },
+                        { step: '2', title: 'Subscribe', desc: 'Choose Rozare Starter ($5.99/mo) or Rozare Elite ($12.99/mo)', active: false, done: isSubscribed || isPastDue },
+                        { step: '3', title: 'Free Period', desc: isElite ? '45 days of full access at no cost' : '30 days of full access at no cost to grow your business', active: subscription?.status === 'free_period', done: subscription?.status === 'active' || (isSubscribed && subscription?.hasUsedFreePeriod && subscription?.status !== 'free_period') },
+                        { step: '4', title: 'Monthly Billing', desc: isElite ? '$12.99/month. Cancel anytime.' : '$5.99/month after free period. Cancel anytime.', active: subscription?.status === 'active', done: false },
+                        { step: '5', title: 'Bonus Features', desc: isElite ? 'Permanently included with your Elite plan.' : 'After 6 months, bonus features expire. Upgrade to Elite to keep them.', active: false, done: isElite && isSubscribed },
+                    ].map((s, i) => {
+                        const isDone = s.done;
+                        return (
                         <div key={i} className="flex items-start gap-3">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active ? 'text-white' : ''}`}
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.active || isDone ? 'text-white' : ''}`}
                                 style={{
-                                    background: s.active ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))' : 'rgba(0,0,0,0.06)',
-                                    color: s.active ? 'white' : 'hsl(var(--muted-foreground))',
+                                    background: isDone
+                                        ? 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))'
+                                        : s.active
+                                            ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(250, 60%, 55%))'
+                                            : 'rgba(0,0,0,0.06)',
+                                    color: s.active || isDone ? 'white' : 'hsl(var(--muted-foreground))',
                                 }}>
-                                {s.step}
+                                {isDone ? <Check size={14} /> : s.step}
                             </div>
                             <div>
-                                <p className="text-xs font-bold" style={{ color: s.active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>{s.title}</p>
+                                <p className="text-xs font-bold" style={{ color: s.active || isDone ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>{s.title}</p>
                                 <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.desc}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
+                </div>
                 </div>
             </div>
 
