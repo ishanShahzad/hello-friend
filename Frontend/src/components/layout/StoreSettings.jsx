@@ -745,13 +745,14 @@ const StoreSettings = () => {
                             </a>
                         )}
 
-                        {hasStore && (
+                        {/* Delete Store button hidden - sellers should not be able to delete their store */}
+                        {/* {hasStore && (
                             <button onClick={() => setShowDeleteConfirm(true)}
                                 className="px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
                                 style={{ background: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 55%)' }}>
                                 <Trash2 size={20} /><span>Delete</span>
                             </button>
-                        )}
+                        )} */}
                     </div>
                 </div>
             </div>

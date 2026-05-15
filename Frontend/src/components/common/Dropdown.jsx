@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Crown, LayoutDashboard, LogOutIcon, User, Store } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { navigateToMainDomainPath, isSubdomain } from "../../utils/subdomainHelper";
 
 const NavDropdown = () => {
     const { currentUser, logout } = useAuth();
@@ -48,17 +49,27 @@ const NavDropdown = () => {
 
     const navigate = useNavigate();
 
+    // Handle navigation - redirect to main domain if on subdomain
+    const handleNavigation = (path) => {
+        if (isSubdomain()) {
+            navigateToMainDomainPath(path);
+        } else {
+            navigate(path);
+        }
+        setOpen(false);
+    };
+
     const menuItems = [];
 
     if (currentUser?.role === 'admin') {
-        menuItems.push({ label: "Admin Dashboard", icon: <Crown size={20} className="text-amber-400" />, onClick: () => { navigate('/admin-dashboard/store-overview'); setOpen(false); }, highlight: true });
+        menuItems.push({ label: "Admin Dashboard", icon: <Crown size={20} className="text-amber-400" />, onClick: () => handleNavigation('/admin-dashboard/store-overview'), highlight: true });
     }
     if (currentUser?.role === 'seller') {
-        menuItems.push({ label: "Seller Dashboard", icon: <Store size={20} className="text-emerald-400" />, onClick: () => { navigate('/seller-dashboard/store-overview'); setOpen(false); }, highlight: true });
+        menuItems.push({ label: "Seller Dashboard", icon: <Store size={20} className="text-emerald-400" />, onClick: () => handleNavigation('/seller-dashboard/store-overview'), highlight: true });
     }
-    menuItems.push({ label: "Your Dashboard", icon: <LayoutDashboard size={20} />, onClick: () => { navigate('/user-dashboard/account-overview'); setOpen(false); } });
+    menuItems.push({ label: "Your Dashboard", icon: <LayoutDashboard size={20} />, onClick: () => handleNavigation('/user-dashboard/account-overview') });
     if (currentUser?.role === 'user') {
-        menuItems.push({ label: "Become a Seller", icon: <Store size={20} />, onClick: () => { navigate('/become-seller'); setOpen(false); } });
+        menuItems.push({ label: "Become a Seller", icon: <Store size={20} />, onClick: () => handleNavigation('/become-seller') });
     }
     menuItems.push(
         { divider: true },
