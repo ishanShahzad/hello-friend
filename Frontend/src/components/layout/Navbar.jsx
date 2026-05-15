@@ -10,6 +10,7 @@ import {
 import { useGlobal } from "../../contexts/GlobalContext";
 import WishlistDropdown from "../common/Wishlist";
 import { useTheme } from "../../contexts/ThemeContext";
+import { navigateToMainDomainPath, isSubdomain } from "../../utils/subdomainHelper";
 
 function Navbar() {
     const { currentUser, logout } = useAuth();
@@ -55,6 +56,15 @@ function Navbar() {
             : []),
     ];
 
+    // Handle navigation - redirect to main domain if on subdomain
+    const handleNavClick = (e, path) => {
+        if (isSubdomain()) {
+            e.preventDefault();
+            navigateToMainDomainPath(path);
+        }
+        // Otherwise let Link handle it normally
+    };
+
     return (
         <nav className={`transition-all duration-300 fixed z-50
                 px-4 sm:px-6 md:px-10 lg:px-14
@@ -69,7 +79,7 @@ function Navbar() {
 
                 {/* Left: Logo + Nav Links */}
                 <div className="flex items-center gap-6">
-                    <Link to="/" className="flex items-center shrink-0">
+                    <Link to="/" onClick={(e) => handleNavClick(e, '/')} className="flex items-center shrink-0">
                         <div className="glass-inner p-1.5 rounded-xl flex items-center justify-center">
                             <img src="/rozare-logo.svg?v=2" alt="Rozare" className="h-7 sm:h-8 block" />
                         </div>
@@ -77,6 +87,7 @@ function Navbar() {
                     <div className="hidden md:flex items-center gap-1">
                         {navLinks.map(link => (
                             <Link key={link.to} to={link.to}
+                                onClick={(e) => handleNavClick(e, link.to)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-white/10 transition-all duration-300"
                                 style={{ color: 'hsl(var(--foreground))' }}>
                                 {link.label}
@@ -117,7 +128,7 @@ function Navbar() {
                     <WishlistDropdown />
 
                     {!currentUser && (
-                        <Link to="/login" className="hidden sm:block">
+                        <Link to="/login" onClick={(e) => handleNavClick(e, '/login')} className="hidden sm:block">
                             <button className="px-4 py-2 rounded-xl font-semibold text-sm transition-all glow-soft"
                                 style={{
                                     background: 'var(--logo-gradient)',
@@ -163,7 +174,7 @@ function Navbar() {
                                     'hsl(var(--foreground))';
                                 return (
                                     <Link key={item.to} to={item.to}
-                                        onClick={() => setMobileMenuOpen(false)}
+                                        onClick={(e) => { setMobileMenuOpen(false); handleNavClick(e, item.to); }}
                                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/10 active:scale-[0.98] font-medium text-[15px]"
                                         style={{
                                             background: active ? 'var(--glass-bg-strong)' : 'transparent',
@@ -193,7 +204,7 @@ function Navbar() {
                                     Logout
                                 </button>
                             ) : (
-                                <Link to="/login" onClick={() => setMobileMenuOpen(false)}
+                                <Link to="/login" onClick={(e) => { setMobileMenuOpen(false); handleNavClick(e, '/login'); }}
                                     className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-[15px]"
                                     style={{
                                         background: 'var(--logo-gradient)',

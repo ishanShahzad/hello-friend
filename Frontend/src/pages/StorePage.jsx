@@ -9,6 +9,7 @@ import Loader from '../components/common/Loader';
 import TrustButton from '../components/common/TrustButton';
 import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
+import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
 
 const StorePage = ({ slugOverride = null }) => {
     const { slug: slugFromParams } = useParams();
@@ -88,6 +89,14 @@ const StorePage = ({ slugOverride = null }) => {
         setCopiedCoupon(code);
         toast.success('Coupon code copied!');
         setTimeout(() => setCopiedCoupon(null), 2000);
+    };
+
+    // Handle navigation - redirect to main domain if on subdomain
+    const handleNavClick = (e, path) => {
+        if (isSubdomain()) {
+            e.preventDefault();
+            navigateToMainDomainPath(path);
+        }
     };
 
     const fetchStore = async () => {
@@ -173,13 +182,13 @@ const StorePage = ({ slugOverride = null }) => {
                 </p>
                 <div className="flex gap-3">
                     <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                        onClick={() => navigate('/stores')}
+                        onClick={(e) => { e.preventDefault(); navigateToMainDomainPath('/stores'); }}
                         className="px-6 py-2.5 rounded-xl font-semibold text-sm"
                         style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
                         Browse All Stores
                     </motion.button>
                     <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                        onClick={() => navigate('/')}
+                        onClick={(e) => { e.preventDefault(); navigateToMainDomainPath('/'); }}
                         className="glass-button px-6 py-2.5 rounded-xl font-semibold text-sm">
                         Go Home
                     </motion.button>
@@ -236,12 +245,12 @@ const StorePage = ({ slugOverride = null }) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                 >
-                    <Link to="/" className="flex items-center gap-1 transition-colors hover:text-[hsl(220,70%,55%)]">
+                    <Link to="/" onClick={(e) => handleNavClick(e, '/')} className="flex items-center gap-1 transition-colors hover:text-[hsl(220,70%,55%)]">
                         <Home size={15} />
                         <span>Home</span>
                     </Link>
                     <ChevronRight size={14} className="mx-1.5 opacity-50" />
-                    <Link to="/stores" className="transition-colors hover:text-[hsl(220,70%,55%)]">Stores</Link>
+                    <Link to="/stores" onClick={(e) => handleNavClick(e, '/stores')} className="transition-colors hover:text-[hsl(220,70%,55%)]">Stores</Link>
                     <ChevronRight size={14} className="mx-1.5 opacity-50" />
                     <span className="font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{store?.storeName}</span>
                 </motion.div>

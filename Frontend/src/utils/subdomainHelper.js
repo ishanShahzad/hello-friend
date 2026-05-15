@@ -106,3 +106,26 @@ export const navigateToStore = (storeSlug, navigate) => {
         window.location.href = url;
     }
 };
+
+// Navigate to main domain (remove subdomain) for non-store pages
+export const navigateToMainDomainPath = (path = '/') => {
+    const currentSubdomain = getSubdomain();
+    
+    // If not on a subdomain, use normal navigation
+    if (!currentSubdomain) {
+        return null; // Let React Router handle it
+    }
+    
+    // If on a subdomain, redirect to main domain
+    const mainDomain = getMainDomain();
+    const protocol = window.location.protocol;
+    
+    // For localhost, just navigate normally
+    if (mainDomain.includes('localhost')) {
+        return null;
+    }
+    
+    // Full redirect to main domain
+    window.location.href = `${protocol}//${mainDomain}${path}`;
+    return true; // Indicate redirect happened
+};
