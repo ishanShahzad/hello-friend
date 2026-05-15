@@ -24,6 +24,7 @@ import TrustButton from '../components/common/TrustButton';
 import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
 import { getSubdomain, redirectToMainDomain } from '../utils/subdomainHelper';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const SubdomainStorePage = () => {
     const navigate = useNavigate();
@@ -89,7 +90,7 @@ const SubdomainStorePage = () => {
 
     const fetchTrustStatus = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             if (!token || !store?._id) return;
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const res = await axios.get(

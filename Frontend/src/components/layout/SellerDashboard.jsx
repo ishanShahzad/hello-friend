@@ -15,6 +15,7 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatBotComponent from '../common/ChatBot';
 import { PRESET_CATEGORIES } from '../../utils/categories';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 // Shared menu items (used by desktop sidebar + mobile inline menu)
 const getSellerMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
@@ -52,7 +53,7 @@ const SellerDashboard = () => {
     useEffect(() => {
         const fetchSub = async () => {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subscription/status`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -115,7 +116,7 @@ const SellerDashboard = () => {
 
     const fetchFeaturedStats = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/featured-stats`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -129,7 +130,7 @@ const SellerDashboard = () => {
         setLoading(true);
         try {
             const query = serializeFilters();
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-seller-products?${query}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -189,7 +190,7 @@ const SellerDashboard = () => {
 
         if (editingProduct._id) {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 const res = await axios.put(`${import.meta.env.VITE_API_URL}api/products/edit/${editingProduct._id}`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg);
@@ -197,7 +198,7 @@ const SellerDashboard = () => {
             } catch (error) { toast.error(error.response?.data?.msg || 'Failed to update product'); }
         } else {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/add`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg);
@@ -211,7 +212,7 @@ const SellerDashboard = () => {
 
     const handleDeleteProduct = async (id) => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/products/delete/${id}`,
                 { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg || 'Product deleted successfully');
@@ -221,7 +222,7 @@ const SellerDashboard = () => {
     };
 
     const fetchOrders = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             const query = serializeFilters();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/get?${query}`,
@@ -269,14 +270,14 @@ const SellerDashboard = () => {
         setNotificationsLoading(true);
         let prefs = {};
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const prefsRes = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/notification-prefs`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             prefs = prefsRes.data.prefs || {};
         } catch { /* fallback to all enabled */ }
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/notifications`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -963,7 +964,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
         if (!product.description?.trim()) { toast.error('Write a description first'); return; }
         setImprovingDesc(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/improve-description`,
                 { name: product.name, description: product.description, category: product.category, brand: product.brand },
                 { headers: { Authorization: `Bearer ${token}` } });
@@ -990,7 +991,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
         }
         setGeneratingTags(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/ai-assist/generate-tags`,
                 { name: product.name, description: product.description, category: product.category, brand: product.brand },
                 { headers: { Authorization: `Bearer ${token}` } });

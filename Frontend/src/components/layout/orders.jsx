@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import Loader from '../common/Loader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const OrderManagement = () => {
     const { currentUser } = useAuth();
@@ -22,7 +23,7 @@ const OrderManagement = () => {
     const [exportFormat, setExportFormat] = useState('pdf');
 
     const fetchOrders = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         setLoading(true);
         try {
             const query = serializeFilters();
@@ -44,7 +45,7 @@ const OrderManagement = () => {
     useEffect(() => { fetchOrders(); }, [searchTerm, statusFilter, paymentFilter, dateRange]);
 
     const handleExport = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         setExporting(true);
         try {
             const query = serializeFilters();

@@ -10,6 +10,7 @@ import ProductCard from '../components/common/ProductCard';
 import { toast } from 'react-toastify';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { getAuthToken } from "../utils/cookieHelper";
 
 function ProductDetailPage() {
     const { id } = useParams();
@@ -83,7 +84,7 @@ function ProductDetailPage() {
         e.preventDefault();
         if (!commentRef.current.value.trim()) return toast.error('Please write a review comment');
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(
                 `${import.meta.env.VITE_API_URL}api/products/add-review/${product._id}`,
                 { rating, comment: commentRef.current.value },

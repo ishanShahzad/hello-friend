@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 export default function ShippingConfiguration() {
   const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
@@ -20,7 +21,7 @@ export default function ShippingConfiguration() {
 
   const fetchShippingMethods = async () => {
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const userStr = localStorage.getItem('currentUser');
       if (!userStr) { toast.error('User not found. Please login again.'); setIsLoading(false); return; }
       const user = JSON.parse(userStr);
@@ -54,7 +55,7 @@ export default function ShippingConfiguration() {
     }
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const res = await axios.put(`${import.meta.env.VITE_API_URL}api/shipping/methods`, { methods }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.success) toast.success('Shipping methods updated successfully');
     } catch (error) { toast.error(error.response?.data?.msg || 'Failed to update'); }

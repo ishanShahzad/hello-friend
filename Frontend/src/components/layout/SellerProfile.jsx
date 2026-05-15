@@ -4,6 +4,7 @@ import { User, Mail, Phone, MapPin, Store, MessageCircle, Edit3, CheckCircle2, A
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -36,7 +37,7 @@ export default function SellerProfile() {
   const [emailCountdown, setEmailCountdown] = useState(0);
   const emailCountdownRef = useRef(null);
 
-  const token = localStorage.getItem('jwtToken');
+  const token = getAuthToken();
   const headers = { Authorization: `Bearer ${token}` };
 
   // Countdown effects

@@ -7,6 +7,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const SellerSubdomainManagement = () => {
     const { formatPrice } = useCurrency();
@@ -25,7 +26,7 @@ const SellerSubdomainManagement = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const [analyticsRes, ownershipRes] = await Promise.all([
                 axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/analytics/seller`, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -62,7 +63,7 @@ const SellerSubdomainManagement = () => {
         if (!slug || slug.length < 3) { setSlugAvailable(null); setSlugMessage(''); return; }
         try {
             setSlugChecking(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/check-subdomain/${slug}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -90,7 +91,7 @@ const SellerSubdomainManagement = () => {
         if (!confirmed) return;
         try {
             setSaving(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.put(`${import.meta.env.VITE_API_URL}api/stores/update`, { storeSlug: newSlug, confirmSubdomainChange: true }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -110,7 +111,7 @@ const SellerSubdomainManagement = () => {
     const handlePurchaseSubdomain = async () => {
         setPurchaseLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/subdomain/purchase`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });

@@ -4,6 +4,7 @@ import { DollarSign, Percent, Ban, Save, Loader2, Info } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 export default function TaxConfiguration() {
   const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
@@ -27,7 +28,7 @@ export default function TaxConfiguration() {
     if (taxType === 'percentage' && taxValue > 100) { toast.error('Percentage cannot exceed 100'); return; }
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const res = await axios.put(`${import.meta.env.VITE_API_URL}api/tax/config`, { type: taxType, value: parseFloat(taxValue) }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.success) toast.success('Tax configuration updated successfully');
     } catch (error) { toast.error(error.response?.data?.msg || 'Failed to update tax configuration'); }

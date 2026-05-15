@@ -7,6 +7,7 @@ import { Link, useParams } from "react-router-dom";
 import Loader from "../common/Loader";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const timeAgo = (dateStr) => {
     if (!dateStr) return '';
@@ -42,20 +43,20 @@ const OrderDetail = () => {
     };
 
     const fetchOrderDetail = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try { const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/detail/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setOrder(res.data.order); setNewStatus(res.data.order?.orderStatus || 'pending'); }
         catch (error) { toast.error(error.response?.data?.msg || 'Server error'); }
     };
     useEffect(() => { fetchOrderDetail(); }, []);
 
     const handleStatusUpdate = async () => {
-        try { const token = localStorage.getItem('jwtToken'); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/order/update-status/${order?._id}`, { newStatus }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg || 'Updated'); fetchOrderDetail(); }
+        try { const token = getAuthToken(); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/order/update-status/${order?._id}`, { newStatus }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg || 'Updated'); fetchOrderDetail(); }
         catch (error) { toast.error(error.response?.msg || 'Error updating status'); }
         setIsUpdating(false);
     };
 
     const handleCancelOrder = async () => {
-        try { const token = localStorage.getItem('jwtToken'); await axios.patch(`${import.meta.env.VITE_API_URL}api/order/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); fetchOrderDetail(); }
+        try { const token = getAuthToken(); await axios.patch(`${import.meta.env.VITE_API_URL}api/order/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); fetchOrderDetail(); }
         catch (error) { toast.error(error.response?.msg || 'Error cancelling order'); }
         finally { setShowCancelConfirm(false); }
     };

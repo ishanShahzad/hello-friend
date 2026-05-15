@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import VerifiedBadge from '../../components/common/VerifiedBadge';
 import Loader from '../../components/common/Loader';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const StoreVerifications = () => {
     const [activeTab, setActiveTab] = useState('pending');
@@ -36,36 +37,36 @@ const StoreVerifications = () => {
     }, [searchQuery, pendingStores, verifiedStores, unverifiedStores]);
 
     const fetchPendingVerifications = async () => {
-        try { setLoading(true); const token = localStorage.getItem('jwtToken'); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/verification/pending`, { headers: { Authorization: `Bearer ${token}` } }); setPendingStores(res.data.stores); }
+        try { setLoading(true); const token = getAuthToken(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/verification/pending`, { headers: { Authorization: `Bearer ${token}` } }); setPendingStores(res.data.stores); }
         catch (error) { console.error(error); toast.error('Failed to load pending verifications'); } finally { setLoading(false); }
     };
     const fetchVerifiedStores = async () => {
-        try { const token = localStorage.getItem('jwtToken'); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/verification/verified`, { headers: { Authorization: `Bearer ${token}` } }); setVerifiedStores(res.data.stores); }
+        try { const token = getAuthToken(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/verification/verified`, { headers: { Authorization: `Bearer ${token}` } }); setVerifiedStores(res.data.stores); }
         catch (error) { console.error(error); }
     };
     const fetchUnverifiedStores = async () => {
-        try { const token = localStorage.getItem('jwtToken'); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/all`, { headers: { Authorization: `Bearer ${token}` } });
+        try { const token = getAuthToken(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/all`, { headers: { Authorization: `Bearer ${token}` } });
             const unverified = res.data.stores.filter(s => !s.verification?.isVerified && s.verification?.status !== 'pending');
             setUnverifiedStores(unverified); setFilteredUnverified(unverified);
         } catch (error) { console.error(error); }
     };
 
     const handleApprove = async (storeId) => {
-        try { setProcessingId(storeId); const token = localStorage.getItem('jwtToken'); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${storeId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Store verified!'); fetchPendingVerifications(); fetchVerifiedStores(); }
+        try { setProcessingId(storeId); const token = getAuthToken(); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${storeId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Store verified!'); fetchPendingVerifications(); fetchVerifiedStores(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed'); } finally { setProcessingId(null); }
     };
     const handleReject = async () => {
         if (!rejectionReason.trim()) { toast.error('Please provide a reason'); return; }
-        try { setProcessingId(selectedStore._id); const token = localStorage.getItem('jwtToken'); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/reject`, { rejectionReason }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Rejected'); setShowRejectModal(false); setRejectionReason(''); setSelectedStore(null); fetchPendingVerifications(); }
+        try { setProcessingId(selectedStore._id); const token = getAuthToken(); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/reject`, { rejectionReason }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Rejected'); setShowRejectModal(false); setRejectionReason(''); setSelectedStore(null); fetchPendingVerifications(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed'); } finally { setProcessingId(null); }
     };
     const handleRemoveVerification = async () => {
         if (!removalReason.trim()) { toast.error('Please provide a reason'); return; }
-        try { setProcessingId(selectedStore._id); const token = localStorage.getItem('jwtToken'); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/remove`, { reason: removalReason }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Verification removed'); setShowRemoveModal(false); setRemovalReason(''); setSelectedStore(null); fetchVerifiedStores(); fetchUnverifiedStores(); }
+        try { setProcessingId(selectedStore._id); const token = getAuthToken(); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/remove`, { reason: removalReason }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Verification removed'); setShowRemoveModal(false); setRemovalReason(''); setSelectedStore(null); fetchVerifiedStores(); fetchUnverifiedStores(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed'); } finally { setProcessingId(null); }
     };
     const handleVerifyStore = async () => {
-        try { setProcessingId(selectedStore._id); const token = localStorage.getItem('jwtToken'); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Store verified!'); setShowVerifyModal(false); setSelectedStore(null); fetchUnverifiedStores(); fetchVerifiedStores(); }
+        try { setProcessingId(selectedStore._id); const token = getAuthToken(); await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${selectedStore._id}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Store verified!'); setShowVerifyModal(false); setSelectedStore(null); fetchUnverifiedStores(); fetchVerifiedStores(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed'); } finally { setProcessingId(null); }
     };
 

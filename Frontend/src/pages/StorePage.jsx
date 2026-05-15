@@ -10,6 +10,7 @@ import TrustButton from '../components/common/TrustButton';
 import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
 import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const StorePage = ({ slugOverride = null }) => {
     const { slug: slugFromParams } = useParams();
@@ -131,7 +132,7 @@ const StorePage = ({ slugOverride = null }) => {
 
     const fetchTrustStatus = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             if (!token || !store?._id) return;
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const res = await axios.get(

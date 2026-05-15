@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const StoreSettings = () => {
     const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
@@ -60,7 +61,7 @@ const StoreSettings = () => {
     const fetchStoreData = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/my-store`, { headers: { Authorization: `Bearer ${token}` } });
             const defaultSocialLinks = { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' };
             const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
@@ -101,7 +102,7 @@ const StoreSettings = () => {
 
     const fetchAnalytics = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/analytics`, { headers: { Authorization: `Bearer ${token}` } });
             setAnalytics(res.data.analytics);
         } catch (error) { console.error('Error fetching analytics:', error); }
@@ -109,7 +110,7 @@ const StoreSettings = () => {
 
     const fetchVerificationStatus = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/verification/status`, { headers: { Authorization: `Bearer ${token}` } });
             setVerification(res.data.verification);
         } catch (error) { console.error('Error fetching verification status:', error); }
@@ -123,7 +124,7 @@ const StoreSettings = () => {
         if (!emailRegex.test(contactEmail)) { toast.error('Please provide a valid email'); return; }
         try {
             setApplyingVerification(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.post(`${import.meta.env.VITE_API_URL}api/stores/verification/apply`, { applicationMessage, contactEmail: contactEmail.trim(), contactPhone: contactPhone.trim() }, { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Verification application submitted!');
             setShowVerificationModal(false); setApplicationMessage(''); setContactEmail(''); setContactPhone('');
@@ -149,7 +150,7 @@ const StoreSettings = () => {
         }
         try {
             setSubdomainChecking(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/check-subdomain/${slug}`, { headers: { Authorization: `Bearer ${token}` } });
             setSubdomainAvailable(res.data.available);
             setSubdomainOwned(res.data.isOwned || false);
@@ -227,7 +228,7 @@ const StoreSettings = () => {
     const doSave = async () => {
         try {
             setSaving(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const endpoint = hasStore ? 'update' : 'create';
             const payload = { ...storeData };
             if (customSubdomain && customSubdomain.length >= 3) {
@@ -258,7 +259,7 @@ const StoreSettings = () => {
 
     const handleDelete = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.delete(`${import.meta.env.VITE_API_URL}api/stores/delete`, { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Store deleted'); setHasStore(false);
             setStoreData({ storeName: '', description: '', logo: '', banner: '', storeSlug: '' });

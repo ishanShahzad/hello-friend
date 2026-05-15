@@ -8,6 +8,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import BulkDiscountModal from "./BulkDiscountModal";
 import { ProductForm } from "./SellerDashboard";
 import axios from "axios";
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const ProductManagement = () => {
     const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats } = useOutletContext();
@@ -21,7 +22,7 @@ const ProductManagement = () => {
     useEffect(() => {
         const checkStore = async () => {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 
                 if (!token) {
                     console.error('No JWT token found');

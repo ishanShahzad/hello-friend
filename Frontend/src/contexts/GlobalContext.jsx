@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, us
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
-import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie } from "../utils/cookieHelper";
+import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie, getAuthToken } from "../utils/cookieHelper";
 
 const GlobalContext = createContext();
 
@@ -84,7 +84,7 @@ export const GlobalProvider = ({ children }) => {
                 const gc = getGuestCart();
                 if (gc.length > 0) {
                     try {
-                        const token = localStorage.getItem('jwtToken');
+                        const token = getAuthToken();
                         for (const item of gc) {
                             await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${item.product._id}`,
                                 { selectedColor: item.selectedColor || null },
@@ -101,7 +101,7 @@ export const GlobalProvider = ({ children }) => {
     const fetchWishlist = async () => {
 
         try {
-            let token = localStorage.getItem('jwtToken')
+            let token = getAuthToken()
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-wishlist`, {
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -122,7 +122,7 @@ export const GlobalProvider = ({ children }) => {
                 toast.info('Please login to add items to wishlist');
                 return;
             }
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(
                 `${import.meta.env.VITE_API_URL}api/products/add-to-wishlist/${id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -140,7 +140,7 @@ export const GlobalProvider = ({ children }) => {
                 toast.info('Please login to manage wishlist');
                 return;
             }
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.delete(
                 `${import.meta.env.VITE_API_URL}api/products/delete-from-wishlist/${id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -197,7 +197,7 @@ export const GlobalProvider = ({ children }) => {
                 return;
             }
 
-            const token = localStorage.getItem('jwtToken')
+            const token = getAuthToken()
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${id}`,
                 { selectedColor, selectedOptions: selectedOptions || undefined },
                 { headers: { Authorization: `Bearer ${token}` } })
@@ -222,7 +222,7 @@ export const GlobalProvider = ({ children }) => {
     const fetchCart = async () => {
         try {
             setIsCartLoading(true)
-            const token = localStorage.getItem('jwtToken')
+            const token = getAuthToken()
             if (!token) {
                 // No token, user not logged in - this is normal
                 setIsCartLoading(false)
@@ -258,7 +258,7 @@ export const GlobalProvider = ({ children }) => {
     const handleQtyInc = async (id) => {
         try {
             setQtyUpdateId(id)
-            const token = localStorage.getItem('jwtToken')
+            const token = getAuthToken()
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/cart/qty-inc/${id}`,
                 {},
                 {
@@ -282,7 +282,7 @@ export const GlobalProvider = ({ children }) => {
         try {
             setQtyUpdateId(id)
 
-            const token = localStorage.getItem('jwtToken')
+            const token = getAuthToken()
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/cart/qty-dec/${id}`,
                 {},
                 {
@@ -315,7 +315,7 @@ export const GlobalProvider = ({ children }) => {
                 return;
             }
 
-            const token = localStorage.getItem('jwtToken')
+            const token = getAuthToken()
             const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/cart/remove/${id}`,
                 {
                     headers: {

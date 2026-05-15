@@ -4,6 +4,7 @@ import { MessageSquare, Filter, Search, Eye, ChevronDown, AlertCircle, Clock, Ch
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const CATEGORIES = [
     { value: '', label: 'All Categories' },
@@ -53,7 +54,7 @@ const ComplaintsManagement = () => {
     const fetchComplaints = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const params = new URLSearchParams();
             if (category) params.append('category', category);
             if (status) params.append('status', status);
@@ -72,7 +73,7 @@ const ComplaintsManagement = () => {
     const handleUpdate = async (id, updates) => {
         setUpdatingId(id);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.put(`${import.meta.env.VITE_API_URL}api/chatbot/complaint/${id}`, updates, {
                 headers: { Authorization: `Bearer ${token}` }
             });

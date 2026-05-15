@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const NotificationsPage = () => {
     const { products, orders } = useOutletContext();
@@ -21,7 +22,7 @@ const NotificationsPage = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         // Always fetch admin broadcasts addressed to this user
         axios.get(`${import.meta.env.VITE_API_URL}api/notifications/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then(res => setBroadcasts(res.data?.items || []))

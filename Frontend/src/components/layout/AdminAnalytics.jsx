@@ -8,6 +8,7 @@ import {
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import axios from 'axios';
+import { getAuthToken } from "../../utils/cookieHelper";
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, PieChart, Pie, Cell
@@ -26,7 +27,7 @@ const AdminAnalytics = () => {
     const fetchAnalytics = async () => {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/admin?days=${timeRange}`, {
                 headers: { Authorization: `Bearer ${token}` }

@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
 import { navigateToStore } from '../utils/subdomainHelper';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const TrustedStoresPage = () => {
     const [trustedStores, setTrustedStores] = useState([]);
@@ -28,7 +29,7 @@ const TrustedStoresPage = () => {
     const fetchTrustedStores = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const config = {
                 headers: {
                     Authorization: `Bearer ${token}`

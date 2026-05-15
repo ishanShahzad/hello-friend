@@ -46,6 +46,7 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import OrderManagement from './orders';
 import StoreOverview from './StoreOverview';
 import ProductManagement from './ProductManagement';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 
 
@@ -105,7 +106,7 @@ const UserDashboard = () => {
     // GET ORDERS
     // const fetchOrders = async () => {
 
-    //     const token = localStorage.getItem('jwtToken')
+    //     const token = getAuthToken()
     //     setLoading(true)
     //     try {
     //         const query = serializeFilters()

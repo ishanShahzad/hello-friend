@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const SellerSubscription = () => {
     const [subscription, setSubscription] = useState(null);
@@ -34,7 +35,7 @@ const SellerSubscription = () => {
 
     const fetchSubscription = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/subscription/status`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -49,7 +50,7 @@ const SellerSubscription = () => {
     const handleSubscribe = async (plan = 'starter') => {
         setCheckoutLoading(plan);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/create-checkout`, { plan }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -63,7 +64,7 @@ const SellerSubscription = () => {
     const handleCancel = async () => {
         setCancelLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/cancel`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -80,7 +81,7 @@ const SellerSubscription = () => {
     const handleUpgrade = async () => {
         setUpgradeLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/upgrade-to-elite`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -97,7 +98,7 @@ const SellerSubscription = () => {
     const handleDowngrade = async () => {
         setDowngradeLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/downgrade-to-starter`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -114,7 +115,7 @@ const SellerSubscription = () => {
     const handleCancelDowngrade = async () => {
         setCancelDowngradeLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/subscription/cancel-downgrade`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });

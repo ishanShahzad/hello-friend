@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 // ─── Endpoint (our own backend — no Supabase) ───
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
@@ -333,7 +334,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   // Derived
   const role = currentUser?.role || 'user';
   const userName = currentUser?.username || '';
-  const authToken = typeof window !== 'undefined' ? localStorage.getItem('jwtToken') : null;
+  const authToken = typeof window !== 'undefined' ? getAuthToken() : null;
   const chips = ROLE_CHIPS[role] || ROLE_CHIPS.user;
   const titles = ROLE_TITLES[role] || ROLE_TITLES.user;
 

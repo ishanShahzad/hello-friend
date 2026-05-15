@@ -5,6 +5,7 @@ import { Search, Filter, User, UserX, UserCheck, Shield, ShieldOff, Trash2, User
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Loader from '../common/Loader';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const UserManagement = () => {
   const { currentUser } = useAuth();
@@ -28,12 +29,12 @@ const UserManagement = () => {
   };
 
   const fetchUsers = async () => {
-    try { setLoading(true); const token = localStorage.getItem('jwtToken'); const query = serializeFilters(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/get?${query}`, { headers: { Authorization: `Bearer ${token}` } }); setUsers(res.data.users); }
+    try { setLoading(true); const token = getAuthToken(); const query = serializeFilters(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/get?${query}`, { headers: { Authorization: `Bearer ${token}` } }); setUsers(res.data.users); }
     catch (error) { toast.error(error.response?.data.msg || 'Server error'); } finally { setLoading(false); }
   };
 
   const fetchAllUsers = async () => {
-    try { const token = localStorage.getItem('jwtToken'); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/get`, { headers: { Authorization: `Bearer ${token}` } }); setAllUsers(res.data.users); }
+    try { const token = getAuthToken(); const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/get`, { headers: { Authorization: `Bearer ${token}` } }); setAllUsers(res.data.users); }
     catch (error) { toast.error(error.response?.data.msg || 'Server error'); }
   };
 
@@ -45,17 +46,17 @@ const UserManagement = () => {
   const handleChangeRole = (user) => { setSelectedUser(user); setShowRoleModal(true); };
 
   const confirmBlockUser = async () => {
-    try { const token = localStorage.getItem('jwtToken'); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/block-toggle/${selectedUser._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Updated'); fetchUsers(); fetchAllUsers(); }
+    try { const token = getAuthToken(); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/block-toggle/${selectedUser._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Updated'); fetchUsers(); fetchAllUsers(); }
     catch (error) { toast.error('Server error'); } setShowBlockModal(false); setSelectedUser(null);
   };
 
   const confirmDeleteUser = async () => {
-    try { const token = localStorage.getItem('jwtToken'); const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/user/delete/${selectedUser._id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Deleted'); fetchUsers(); fetchAllUsers(); }
+    try { const token = getAuthToken(); const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/user/delete/${selectedUser._id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Deleted'); fetchUsers(); fetchAllUsers(); }
     catch (error) { toast.error('Server error'); } setShowDeleteModal(false); setSelectedUser(null);
   };
 
   const confirmChangeRole = async () => {
-    try { const token = localStorage.getItem('jwtToken'); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/admin-toggle/${selectedUser._id}`, { newRole: selectedUser.targetRole }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Updated'); fetchUsers(); fetchAllUsers(); }
+    try { const token = getAuthToken(); const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/admin-toggle/${selectedUser._id}`, { newRole: selectedUser.targetRole }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data?.msg || 'Updated'); fetchUsers(); fetchAllUsers(); }
     catch (error) { toast.error('Server error'); } setShowRoleModal(false); setSelectedUser(null);
   };
 

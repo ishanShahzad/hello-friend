@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import { getStoreSubdomainUrl } from '../../utils/subdomainHelper';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const AdminSubdomainManagement = () => {
     const { formatPrice } = useCurrency();
@@ -23,7 +24,7 @@ const AdminSubdomainManagement = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const params = new URLSearchParams();
             if (search) params.append('search', search);
             if (statusFilter !== 'all') params.append('status', statusFilter);
@@ -52,7 +53,7 @@ const AdminSubdomainManagement = () => {
         if (!editSlug || editSlug.length < 3) { toast.error('Subdomain must be at least 3 characters'); return; }
         try {
             setSavingSlug(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.put(`${import.meta.env.VITE_API_URL}api/subdomain/admin/${storeId}/update-slug`, { newSlug: editSlug }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -66,7 +67,7 @@ const AdminSubdomainManagement = () => {
 
     const handleToggleVerification = async (store) => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             if (store.verification?.isVerified) {
                 await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${store._id}/remove`, { reason: 'Admin action' }, {
                     headers: { Authorization: `Bearer ${token}` }

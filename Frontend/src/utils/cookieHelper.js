@@ -99,3 +99,29 @@ export const migrateLocalStorageToCookie = (localStorageKey, cookieName) => {
         console.error('Error migrating to cookie:', error);
     }
 };
+
+/**
+ * Get JWT auth token from cookie or localStorage
+ * This function provides backward compatibility and cross-subdomain support
+ * @returns {string|null} - JWT token or null if not found
+ */
+export const getAuthToken = () => {
+    const JWT_TOKEN_COOKIE = 'rozare_jwt_token';
+    const JWT_TOKEN_KEY = 'jwtToken';
+    
+    // Try cookie first (new method - works across subdomains)
+    const cookieToken = getCookie(JWT_TOKEN_COOKIE);
+    if (cookieToken) {
+        return cookieToken;
+    }
+    
+    // Fallback to localStorage (old method) and migrate
+    const localToken = localStorage.getItem(JWT_TOKEN_KEY);
+    if (localToken) {
+        // Migrate to cookie for future use
+        setCrossDomainCookie(JWT_TOKEN_COOKIE, localToken, 30);
+        return localToken;
+    }
+    
+    return null;
+};

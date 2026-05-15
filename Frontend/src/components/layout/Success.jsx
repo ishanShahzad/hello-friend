@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle, Mail, CreditCard, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import { getAuthToken } from "../../utils/cookieHelper";
 
 export default function Success() {
   const [session, setSession] = useState(null);
@@ -19,7 +20,7 @@ export default function Success() {
 
   const clearCart = async () => {
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       if (token) {
         await axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
           headers: { Authorization: `Bearer ${token}` }

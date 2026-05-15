@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { loadStripe } from '@stripe/stripe-js'
 import Loader from "../common/Loader";
 import PhoneField, { isValidPhone } from "../common/PhoneField";
+import { getAuthToken } from "../../utils/cookieHelper";
 
 export default function Checkout() {
 
@@ -90,7 +91,7 @@ export default function Checkout() {
 
   const fetchSavedShippingInfo = async () => {
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       if (!token) return;
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/shipping-info`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -106,7 +107,7 @@ export default function Checkout() {
 
   const fetchAvailableCoupons = async () => {
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       if (!token) return;
       const sellerIds = [...new Set(cartItems.cart.map(item => item.product.seller))];
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/coupons/checkout-coupons`,
@@ -161,7 +162,7 @@ export default function Checkout() {
     }
     setCouponLoading(prev => ({ ...prev, [inputKey]: true }));
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/coupons/validate`,
         { code, productIds },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -1410,7 +1411,7 @@ export default function Checkout() {
                     setShowUpdatePrompt(false);
                     // Continue with order flow
                     if (pendingOrderData?.data) {
-                      const token = localStorage.getItem('jwtToken');
+                      const token = getAuthToken();
                       if (pendingOrderData.order?.paymentMethod === 'cash_on_delivery') {
                         axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, { headers: { Authorization: `Bearer ${token}` } })
                           .then(() => fetchCart()).catch(() => {});
@@ -1424,7 +1425,7 @@ export default function Checkout() {
                 <motion.button whileTap={{ scale: 0.97 }}
                   onClick={async () => {
                     try {
-                      const token = localStorage.getItem('jwtToken');
+                      const token = getAuthToken();
                       await axios.patch(`${import.meta.env.VITE_API_URL}api/user/shipping-info`,
                         { shippingInfo: pendingOrderData?.currentShipping },
                         { headers: { Authorization: `Bearer ${token}` } }
@@ -1434,7 +1435,7 @@ export default function Checkout() {
                     } catch (e) { console.error(e); }
                     setShowUpdatePrompt(false);
                     if (pendingOrderData?.order?.paymentMethod === 'cash_on_delivery') {
-                      const token = localStorage.getItem('jwtToken');
+                      const token = getAuthToken();
                       axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, { headers: { Authorization: `Bearer ${token}` } })
                         .then(() => fetchCart()).catch(() => {});
                       navigate('/success');

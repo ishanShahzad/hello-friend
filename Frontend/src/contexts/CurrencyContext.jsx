@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const CurrencyContext = createContext();
 
@@ -78,7 +79,7 @@ export const CurrencyProvider = ({ children }) => {
     localStorage.setItem('userCurrency', newCurrency);
 
     // Update in database if user is logged in
-    const token = localStorage.getItem('jwtToken');
+    const token = getAuthToken();
     if (token) {
       try {
         await axios.patch(

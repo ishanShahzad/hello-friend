@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Percent, DollarSign, Tag, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => {
     const [activeOperation, setActiveOperation] = useState('discount');
@@ -16,20 +17,20 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
     const handleApplyDiscount = async () => {
         if (!discountValue || discountValue <= 0) { toast.error('Please enter a valid discount value'); return; }
         setIsLoading(true);
-        try { const token = localStorage.getItem('jwtToken'); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/bulk-discount`, { productIds, discountType, discountValue: parseFloat(discountValue) }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
+        try { const token = getAuthToken(); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/bulk-discount`, { productIds, discountType, discountValue: parseFloat(discountValue) }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed to apply discount'); } finally { setIsLoading(false); }
     };
 
     const handleUpdatePrice = async () => {
         if (priceValue === '' || (priceUpdateType !== 'set' && priceValue == 0)) { toast.error('Please enter a valid price value'); return; }
         setIsLoading(true);
-        try { const token = localStorage.getItem('jwtToken'); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/bulk-price-update`, { productIds, updateType: priceUpdateType, value: parseFloat(priceValue) }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
+        try { const token = getAuthToken(); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/bulk-price-update`, { productIds, updateType: priceUpdateType, value: parseFloat(priceValue) }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed to update prices'); } finally { setIsLoading(false); }
     };
 
     const handleRemoveDiscount = async () => {
         setIsLoading(true);
-        try { const token = localStorage.getItem('jwtToken'); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/remove-discount`, { productIds }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
+        try { const token = getAuthToken(); const productIds = selectedProducts.map(p => p._id); const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/remove-discount`, { productIds }, { headers: { Authorization: `Bearer ${token}` } }); toast.success(res.data.msg); onSuccess(); handleClose(); }
         catch (error) { toast.error(error.response?.data?.msg || 'Failed to remove discounts'); } finally { setIsLoading(false); }
     };
 

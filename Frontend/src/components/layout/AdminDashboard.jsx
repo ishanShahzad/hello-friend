@@ -19,6 +19,7 @@ import GlassBackground from '../common/GlassBackground';
 import Loader from '../common/Loader';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import ChatBotComponent from '../common/ChatBot';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 // Shared menu items
 const getAdminMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
@@ -140,14 +141,14 @@ const AdminDashboard = () => {
 
         if (editingProduct._id) {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 const res = await axios.put(`${import.meta.env.VITE_API_URL}api/products/edit/${editingProduct._id}`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg); fetchProducts(); fetchFilters();
             } catch (error) { toast.error(error.response?.data?.msg || 'Failed'); }
         } else {
             try {
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/add`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg); fetchProducts(); fetchFilters();
@@ -158,7 +159,7 @@ const AdminDashboard = () => {
 
     const handleDeleteProduct = async (id) => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.delete(`${import.meta.env.VITE_API_URL}api/products/delete/${id}`,
                 { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg || 'success'); fetchProducts();
@@ -167,7 +168,7 @@ const AdminDashboard = () => {
     };
 
     const fetchOrders = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             const query = serializeFilters();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/get?${query}`,
@@ -207,7 +208,7 @@ const AdminDashboard = () => {
     // Fetch notifications from backend API
     const fetchNotifications = async () => {
         setNotificationsLoading(true);
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/admin/notifications`, {
                 headers: { Authorization: `Bearer ${token}` }

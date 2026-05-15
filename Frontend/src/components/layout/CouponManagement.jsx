@@ -9,6 +9,7 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const CouponManagement = () => {
     const { formatPrice } = useCurrency();
@@ -52,7 +53,7 @@ const CouponManagement = () => {
     const fetchAnalytics = async () => {
         setAnalyticsLoading(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/analytics`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -66,7 +67,7 @@ const CouponManagement = () => {
 
     const fetchCoupons = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/seller`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -80,7 +81,7 @@ const CouponManagement = () => {
 
     const fetchProducts = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-seller-products`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -152,7 +153,7 @@ const CouponManagement = () => {
         if (!validateForm()) return;
         setSaving(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const payload = {
                 ...form,
                 discountValue: Number(form.discountValue),
@@ -185,7 +186,7 @@ const CouponManagement = () => {
 
     const handleDelete = async (id) => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.delete(`${import.meta.env.VITE_API_URL}api/coupons/delete/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -199,7 +200,7 @@ const CouponManagement = () => {
 
     const handleToggle = async (id) => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/coupons/toggle/${id}`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });

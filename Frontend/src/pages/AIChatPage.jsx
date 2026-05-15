@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ChatBot from '../components/common/ChatBot';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 
@@ -17,7 +18,7 @@ const BRAND_PRIMARY = '#0EA5E9';
 function AIChatPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const authToken = localStorage.getItem('jwtToken');
+  const authToken = getAuthToken();
 
   const [conversations, setConversations] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(null);

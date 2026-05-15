@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import { Link } from 'react-router-dom';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } };
@@ -21,7 +22,7 @@ const AccountOverview = () => {
 
     const fetchUser = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`, { headers: { Authorization: `Bearer ${token}` } });
             setUserData(res.data?.user);
         } catch (error) { console.error(error); }
@@ -45,7 +46,7 @@ const AccountOverview = () => {
     }, 0);
 
     const fetchOrders = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         setLoading(true);
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/user-orders`, { headers: { Authorization: `Bearer ${token}` } });

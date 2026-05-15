@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -36,7 +37,7 @@ const SellerWhatsAppSettings = () => {
     const otpRefs = useRef([]);
     const cooldownRef = useRef(null);
 
-    const token = localStorage.getItem('jwtToken');
+    const token = getAuthToken();
     const headers = { Authorization: `Bearer ${token}` };
 
     useEffect(() => {

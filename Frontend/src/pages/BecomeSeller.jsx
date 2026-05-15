@@ -7,6 +7,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import SEOHead from '../components/common/SEOHead';
 import PhoneField, { isValidPhone } from '../components/common/PhoneField';
+import { getAuthToken } from "../utils/cookieHelper";
 
 export default function BecomeSeller() {
   const navigate = useNavigate();
@@ -81,7 +82,7 @@ export default function BecomeSeller() {
     setStoreNameError('');
     storeCheckRef.current = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/check-subdomain/${slug}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -302,7 +303,7 @@ export default function BecomeSeller() {
     if (!whatsappVerified) { setFormError('Please verify your WhatsApp number first'); return; }
     setLoading(true);
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const socialLinks = {};
       if (storeData.website) socialLinks.website = storeData.website;
       if (storeData.instagram) socialLinks.instagram = storeData.instagram;

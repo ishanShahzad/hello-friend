@@ -8,10 +8,11 @@
  * Returns: { ok: true, ...data } or { ok: false, error: '...', msg: '...' }
  */
 import axios from 'axios';
+import { getAuthToken } from "../utils/cookieHelper";
 
 const apiUrl = () => import.meta.env.VITE_API_URL;
 const authHeaders = () => {
-  const jwt = localStorage.getItem('jwtToken');
+  const jwt = getAuthToken();
   return jwt ? { Authorization: `Bearer ${jwt}` } : {};
 };
 

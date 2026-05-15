@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAuthToken } from "../../../utils/cookieHelper";
 import {
     Megaphone, Send, Calendar, Repeat, Users, User as UserIcon, ShoppingBag,
     Search, X, Check, Clock, AlertTriangle, CheckCircle2, Loader2, Trash2,
@@ -8,7 +9,7 @@ import {
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('jwtToken')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${getAuthToken()}` });
 
 const CATEGORIES = [
     { id: 'announcement', label: 'Announcement', icon: Megaphone, color: 'hsl(220,70%,55%)' },

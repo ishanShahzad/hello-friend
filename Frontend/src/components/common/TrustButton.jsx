@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrusted = false, compact = false, onTrustChange }) => {
   const [isTrusted, setIsTrusted] = useState(initialIsTrusted);
@@ -20,7 +21,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
       if (!currentUser || !storeId) return;
 
       try {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         const config = {
           headers: {
             Authorization: `Bearer ${token}`
@@ -52,7 +53,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('jwtToken');
+      const token = getAuthToken();
       const config = {
         headers: {
           Authorization: `Bearer ${token}`

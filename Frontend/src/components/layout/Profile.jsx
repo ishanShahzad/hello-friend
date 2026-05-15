@@ -10,6 +10,7 @@ import PhoneField from '../common/PhoneField';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const UserProfile = () => {
     const { currentUser, fetchAndUpdateCurrentUser } = useAuth();
@@ -40,7 +41,7 @@ const UserProfile = () => {
     const fetchUser = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`, { headers: { Authorization: `Bearer ${token}` } });
             setUserData(res.data?.user);
             setFormData(prev => ({ ...prev, username: res.data?.user?.username || '', email: res.data?.user?.email || '' }));
@@ -53,7 +54,7 @@ const UserProfile = () => {
 
     const fetchShippingInfo = async () => {
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/user/shipping-info`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -74,7 +75,7 @@ const UserProfile = () => {
         e.preventDefault();
         setSavingShipping(true);
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             await axios.patch(`${import.meta.env.VITE_API_URL}api/user/shipping-info`,
                 { shippingInfo: shippingForm },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -93,7 +94,7 @@ const UserProfile = () => {
             try {
                 const fd = new FormData();
                 fd.append('profileImage', file);
-                const token = localStorage.getItem('jwtToken');
+                const token = getAuthToken();
                 await axios.post(`${import.meta.env.VITE_API_URL}api/upload/profile-image`, fd, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } });
                 setIsWaiting(true);
                 fetchUser();
@@ -106,7 +107,7 @@ const UserProfile = () => {
         e.preventDefault();
         if (userData.username === formData.username) return toast.error('Username is same as before!');
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/user/update`, { username: formData.username }, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res?.data?.msg || 'Username updated successfully');
             fetchUser();
@@ -123,7 +124,7 @@ const UserProfile = () => {
     const handlePasswordUpdate = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/password/change`, {
                 currentPassword: formData.currentPassword, newPassword: formData.newPassword, confirmPassword: formData.confirmPassword
             }, { headers: { Authorization: `Bearer ${token}` } });

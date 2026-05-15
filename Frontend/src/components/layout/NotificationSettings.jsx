@@ -8,6 +8,7 @@ import Loader from '../common/Loader';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const defaultPrefs = {
     stockAlerts: true,
@@ -31,7 +32,7 @@ const NotificationSettings = () => {
     // Fetch prefs from backend
     useEffect(() => {
         const fetchPrefs = async () => {
-            const token = localStorage.getItem('jwtToken');
+            const token = getAuthToken();
             try {
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/notification-prefs`, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -53,7 +54,7 @@ const NotificationSettings = () => {
 
     const handleSave = async () => {
         setSaving(true);
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             await axios.put(`${import.meta.env.VITE_API_URL}api/analytics/notification-prefs`,
                 { prefs },
@@ -71,7 +72,7 @@ const NotificationSettings = () => {
 
     const handleResetDefaults = async () => {
         setPrefs(defaultPrefs);
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         try {
             await axios.put(`${import.meta.env.VITE_API_URL}api/analytics/notification-prefs`,
                 { prefs: defaultPrefs },

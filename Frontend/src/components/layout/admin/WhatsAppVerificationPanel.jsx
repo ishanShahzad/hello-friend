@@ -8,10 +8,11 @@ import {
     TrendingUp, BarChart3, Timer, RotateCcw, Bell,
 } from 'lucide-react';
 import PhoneField, { isValidPhone } from '../../common/PhoneField';
+import { getAuthToken } from "../../../utils/cookieHelper";
 
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('jwtToken')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${getAuthToken()}` });
 
 const STATUS_META = {
     disconnected: { label: 'Disconnected', color: 'hsl(0, 0%, 55%)', bg: 'rgba(120,120,120,0.12)' },

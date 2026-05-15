@@ -5,6 +5,7 @@ import axios from 'axios';
 import Loader from '../common/Loader';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } };
@@ -36,7 +37,7 @@ const UserOrdersManagement = () => {
     };
 
     const fetchOrders = async () => {
-        const token = localStorage.getItem('jwtToken');
+        const token = getAuthToken();
         setLoading(true);
         try {
             const query = serializeFilters();
