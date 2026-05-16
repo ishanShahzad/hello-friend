@@ -1798,6 +1798,9 @@ exports.streamChat = async (req, res) => {
     // Track where new messages start (so we only save NEW messages to history)
     const newMsgStartIndex = conversationMessages.length;
 
+    // Collect tool events from this turn so we can persist them with the assistant message
+    const turnToolEvents = [];
+
     // ═══ Tool Execution Loop ═══
     // The AI may request tool calls. We execute them server-side, feed results back,
     // and let the AI generate a natural language summary. Max 5 iterations for safety.
