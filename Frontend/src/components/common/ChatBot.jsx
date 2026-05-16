@@ -342,7 +342,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   useEffect(() => {
     if (initialMessages !== null) {
       if (initialMessages.length > 0) {
-        setMessages(initialMessages.map(m => ({ role: m.role, content: m.content })));
+        setMessages(initialMessages.map(m => ({
+          role: m.role,
+          content: m.content,
+          ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+        })));
         setShowChips(false);
       } else {
         // New empty conversation — show greeting
