@@ -2159,7 +2159,11 @@ async function saveToConversation(userId, conversationId, messages, source = 'we
 
   // APPEND new messages (don't replace existing ones)
   for (const m of messages) {
-    convo.messages.push({ role: m.role, content: m.content });
+    const entry = { role: m.role, content: m.content };
+    if (Array.isArray(m.toolEvents) && m.toolEvents.length > 0) {
+      entry.toolEvents = m.toolEvents;
+    }
+    convo.messages.push(entry);
   }
   // Cap at 200 messages
   if (convo.messages.length > 200) {
