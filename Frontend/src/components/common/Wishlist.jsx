@@ -90,7 +90,7 @@ export default function WishlistDropdown() {
                 <button
                     ref={triggerRef}
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl glass-button text-sm font-medium relative"
+                    className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl glass-button text-sm font-medium relative"
                 >
                     <Heart className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'hsl(340, 65%, 65%)' }} />
                     <span className='hidden sm:flex'>Wishlist</span>

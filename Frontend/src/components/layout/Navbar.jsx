@@ -67,10 +67,10 @@ function Navbar() {
 
     return (
         <nav className={`transition-all duration-300 fixed z-50
-                px-4 sm:px-6 md:px-10 lg:px-14
+                px-3 sm:px-4 md:px-10 lg:px-14
                 ${isScrolled
                 ? 'top-0 left-0 right-0 glass-panel-strong backdrop-blur-md'
-                : 'top-4 left-4 right-4 glass-panel backdrop-blur-sm'
+                : 'top-4 left-3 right-3 sm:left-4 sm:right-4 glass-panel backdrop-blur-sm'
             }`}
             style={{ borderRadius: isScrolled ? '0' : '24px' }}
         >
@@ -78,10 +78,10 @@ function Navbar() {
             <div className={`flex justify-between items-center ${isScrolled ? 'h-[60px]' : 'h-[60px] sm:h-[64px]'}`}>
 
                 {/* Left: Logo + Nav Links */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 sm:gap-6">
                     <Link to="/" onClick={(e) => handleNavClick(e, '/')} className="flex items-center shrink-0">
                         <div className="glass-inner p-1.5 rounded-xl flex items-center justify-center">
-                            <img src="/rozare-logo.svg?v=2" alt="Rozare" className="h-7 sm:h-8 block" />
+                            <img src="/rozare-logo.svg?v=2" alt="Rozare" className="h-6 sm:h-7 md:h-8 block" />
                         </div>
                     </Link>
                     <div className="hidden md:flex items-center gap-1">
@@ -102,20 +102,20 @@ function Navbar() {
                 </div>
 
                 {/* Right: Cart, Wishlist, Login */}
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
                     <button onClick={toggleTheme}
-                        className="p-2 rounded-xl glass-button transition-all duration-300"
+                        className="p-1.5 sm:p-2 rounded-xl glass-button transition-all duration-300"
                         style={{ color: 'hsl(var(--foreground))' }}
                         aria-label="Toggle dark mode">
                         <motion.div key={isDark ? 'moon' : 'sun'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
-                            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                            {isDark ? <Sun size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Moon size={16} className="sm:w-[18px] sm:h-[18px]" />}
                         </motion.div>
                     </button>
 
                     <button ref={cartBtn} onClick={toggleCart}
-                        className="relative flex items-center gap-1.5 px-2.5 py-2 rounded-xl glass-button text-sm font-medium"
+                        className="relative flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl glass-button text-sm font-medium"
                         style={{ color: 'hsl(var(--foreground))' }}>
-                        <ShoppingCart size={18} />
+                        <ShoppingCart size={16} className="sm:w-[18px] sm:h-[18px]" />
                         <span className="hidden sm:inline">Cart</span>
                         {(cartItems?.cart?.length || 0) > 0 && (
                             <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full shadow-md"
@@ -142,11 +142,11 @@ function Navbar() {
 
                     {/* Mobile hamburger */}
                     <button onClick={() => setMobileMenuOpen(o => !o)}
-                        className="md:hidden p-2 rounded-xl glass-button transition-transform"
+                        className="md:hidden p-1.5 sm:p-2 rounded-xl glass-button transition-transform"
                         aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                         aria-expanded={mobileMenuOpen}>
                         <motion.div key={mobileMenuOpen ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
-                            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                            {mobileMenuOpen ? <X size={20} className="sm:w-[22px] sm:h-[22px]" /> : <Menu size={20} className="sm:w-[22px] sm:h-[22px]" />}
                         </motion.div>
                     </button>
                 </div>

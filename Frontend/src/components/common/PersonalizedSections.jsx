@@ -37,7 +37,7 @@ const SliderProductCard = ({ product, formatPrice }) => {
     <motion.div
       whileHover={{ y: -6, scale: 1.02 }}
       transition={{ duration: 0.25 }}
-      className="w-[188px] sm:w-[208px] lg:w-[224px] xl:w-[236px] shrink-0 snap-start"
+      className="w-[155px] xs:w-[188px] sm:w-[208px] lg:w-[224px] xl:w-[236px] shrink-0 snap-start"
     >
       <Link to={`/single-product/${product._id}`} onClick={handleProductClick} className="block h-full">
         <article className="glass-card h-full overflow-hidden p-2 sm:p-2.5">
