@@ -2250,6 +2250,7 @@ exports.getConversation = async (req, res) => {
       messages: (convo.messages || []).map(m => ({
         role: m.role,
         content: m.content,
+        toolEvents: m.toolEvents || [],
         createdAt: m.createdAt,
       })),
     });
