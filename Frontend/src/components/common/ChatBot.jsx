@@ -387,7 +387,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         })
         .then(convoData => {
           if (convoData && convoData.messages?.length > 0) {
-            setMessages(convoData.messages.map(m => ({ role: m.role, content: m.content })));
+            setMessages(convoData.messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+            })));
             setActiveConvoId(convoData._id);
             setShowChips(false);
           } else {
