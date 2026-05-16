@@ -1888,6 +1888,10 @@ exports.streamChat = async (req, res) => {
         if (isClientSideTool(toolName)) {
           // Client-side tools: send to frontend for rendering, give AI a success ack
           send({ type: 'client_action', action: toolName, args, id: tc.id });
+          // Persist client actions other than navigation (which is a one-time side-effect)
+          if (toolName !== 'navigate') {
+            turnToolEvents.push({ type: 'client_action', action: toolName, args });
+          }
           conversationMessages.push({
             role: 'tool',
             tool_call_id: tc.id,
@@ -1900,6 +1904,7 @@ exports.streamChat = async (req, res) => {
           const result = await executeToolCall(toolName, args, userObj);
 
           send({ type: 'tool_result', tool: toolName, result, id: tc.id });
+          turnToolEvents.push({ type: 'tool_result', tool: toolName, result });
 
           conversationMessages.push({
             role: 'tool',
@@ -1916,19 +1921,21 @@ exports.streamChat = async (req, res) => {
     if (userId) {
       try {
         const conversationId = body.conversationId || null;
-        // Extract NEW messages from this request:
-        // 1. The latest user message (from incoming cleanMessages — was added BEFORE newMsgStartIndex)
-        // 2. Any assistant text messages produced during the tool/response loop (after newMsgStartIndex)
         const lastUserMsg = cleanMessages.filter(m => m.role === 'user').pop();
         const newMessages = [];
         if (lastUserMsg?.content && typeof lastUserMsg.content === 'string' && lastUserMsg.content.trim()) {
           newMessages.push({ role: 'user', content: lastUserMsg.content });
         }
-        const newAssistantMsgs = conversationMessages
+        // Merge ALL assistant text from this turn into a single message
+        // (multiple tool-rounds can produce multiple assistant text segments — they belong to the same turn)
+        const assistantText = conversationMessages
           .slice(newMsgStartIndex)
           .filter(m => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim())
-          .map(m => ({ role: m.role, content: m.content }));
-        newMessages.push(...newAssistantMsgs);
+          .map(m => m.content.trim())
+          .join('\n\n');
+        if (assistantText) {
+          newMessages.push({ role: 'assistant', content: assistantText, toolEvents: turnToolEvents });
+        }
 
         const savedConvoId = await saveToConversation(userId, conversationId, newMessages);
         // Send the conversationId back to the client so it can track it
