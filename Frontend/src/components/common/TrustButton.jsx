@@ -127,7 +127,7 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
         onClick={handleTrustToggle}
         disabled={isLoading || !currentUser}
         className={`
-          flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all
+          flex items-center gap-0.5 sm:gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all
           ${isTrusted
             ? 'bg-green-500 hover:bg-green-600 text-white'
             : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -138,11 +138,11 @@ const TrustButton = ({ storeId, storeName, initialTrustCount = 0, initialIsTrust
         title={!currentUser ? 'Login to trust stores' : ''}
       >
         {isLoading ? (
-          <span className="animate-spin">⏳</span>
+          <span className="animate-spin text-[10px] sm:text-xs">⏳</span>
         ) : (
-          <span>{isTrusted ? '✓' : '+'}</span>
+          <span className="text-[10px] sm:text-xs">{isTrusted ? '✓' : '+'}</span>
         )}
-        <span>{isTrusted ? 'Trusting' : 'Trust'}</span>
+        <span className="hidden xs:inline">{isTrusted ? 'Trusting' : 'Trust'}</span>
       </button>
     );
   }

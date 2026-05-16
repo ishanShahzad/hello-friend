@@ -41,55 +41,55 @@ const StoreCard = ({ store, idx }) => {
         >
             {/* Banner or Gradient */}
             {store.banner ? (
-                <div className="h-24 sm:h-28 md:h-32 overflow-hidden relative">
+                <div className="h-20 sm:h-24 md:h-28 lg:h-32 overflow-hidden relative">
                     <img
                         src={store.banner}
                         alt={store.storeName}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                    <div className="absolute top-2 right-2 z-10">
+                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
                         <SellerTypePill type={store.sellerType} />
                     </div>
                 </div>
             ) : (
-                <div className="h-24 sm:h-28 md:h-32 relative overflow-hidden"
+                <div className="h-20 sm:h-24 md:h-28 lg:h-32 relative overflow-hidden"
                      style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' }}>
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <Store size={32} className="text-white/30" />
+                        <Store size={24} className="sm:w-8 sm:h-8 text-white/30" />
                     </div>
-                    <div className="absolute top-2 right-2 z-10">
+                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
                         <SellerTypePill type={store.sellerType} />
                     </div>
                 </div>
             )}
 
             {/* Store Info */}
-            <div className="p-3 sm:p-4 md:p-5 relative">
+            <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 relative">
                 {/* Logo */}
-                <div className="-mt-10 sm:-mt-12 md:-mt-14 mb-2 sm:mb-2.5 md:mb-3">
+                <div className="-mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 mb-1.5 sm:mb-2 md:mb-2.5 lg:mb-3">
                     {store.logo ? (
                         <img
                             src={store.logo}
                             alt={store.storeName}
-                            className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-2xl object-cover border-2 border-white/40 shadow-lg backdrop-blur-sm"
+                            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 rounded-xl sm:rounded-2xl object-cover border-2 border-white/40 shadow-lg backdrop-blur-sm"
                         />
                     ) : (
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-2xl flex items-center justify-center border-2 border-white/40 shadow-lg"
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 rounded-xl sm:rounded-2xl flex items-center justify-center border-2 border-white/40 shadow-lg"
                              style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' }}>
-                            <Store size={22} className="sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
+                            <Store size={18} className="sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-white" />
                         </div>
                     )}
                 </div>
 
                 {/* Store Name & Trust Button */}
-                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-1.5">
-                    <h3 className="font-bold text-sm sm:text-base text-[hsl(220,25%,10%)] truncate flex-1 flex items-center gap-1.5">
-                        {store.storeName}
+                <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                    <h3 className="font-bold text-xs sm:text-sm md:text-base text-[hsl(220,25%,10%)] truncate flex-1 flex items-center gap-1 sm:gap-1.5">
+                        <span className="truncate">{store.storeName}</span>
                         {store.verification?.isVerified && <VerifiedBadge size="sm" />}
                     </h3>
-                    <div onClick={(e) => e.stopPropagation()}>
+                    <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                         <TrustButton
                             storeId={store._id}
                             storeName={store.storeName}
@@ -105,26 +105,26 @@ const StoreCard = ({ store, idx }) => {
                 </div>
 
                 {/* Trusters Count */}
-                <p className="text-[10px] sm:text-xs mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                <p className="text-[9px] sm:text-[10px] md:text-xs mb-1.5 sm:mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {trustCount} {trustCount === 1 ? 'truster' : 'trusters'}
                 </p>
 
                 {/* Description */}
                 {store.description && (
-                    <p className="text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 min-h-[32px] sm:min-h-[36px] leading-relaxed"
+                    <p className="text-[10px] sm:text-xs md:text-sm mb-1.5 sm:mb-2 md:mb-3 line-clamp-2 min-h-[28px] sm:min-h-[32px] md:min-h-[36px] leading-relaxed"
                        style={{ color: 'hsl(var(--muted-foreground))' }}>
                         {store.description}
                     </p>
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm pt-2 sm:pt-3 border-t border-white/15">
-                    <div className="flex items-center gap-1 sm:gap-1.5 font-medium" style={{ color: 'hsl(var(--primary))' }}>
-                        <Package size={12} className="sm:w-3.5 sm:h-3.5" />
+                <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 text-[10px] sm:text-xs md:text-sm pt-1.5 sm:pt-2 md:pt-3 border-t border-white/15">
+                    <div className="flex items-center gap-0.5 sm:gap-1 md:gap-1.5 font-medium" style={{ color: 'hsl(var(--primary))' }}>
+                        <Package size={11} className="sm:w-3 sm:h-3 md:w-3.5 md:h-3.5" />
                         <span>{store.productCount || 0} items</span>
                     </div>
-                    <div className="flex items-center gap-1 sm:gap-1.5 font-medium" style={{ color: 'hsl(200, 80%, 55%)' }}>
-                        <Eye size={12} className="sm:w-3.5 sm:h-3.5" />
+                    <div className="flex items-center gap-0.5 sm:gap-1 md:gap-1.5 font-medium" style={{ color: 'hsl(200, 80%, 55%)' }}>
+                        <Eye size={11} className="sm:w-3 sm:h-3 md:w-3.5 md:h-3.5" />
                         <span>{store.views || 0} views</span>
                     </div>
                 </div>
