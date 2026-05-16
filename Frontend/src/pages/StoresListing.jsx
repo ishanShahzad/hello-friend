@@ -191,11 +191,15 @@ const StoresListing = () => {
 
                 {/* Type Tabs */}
                 <motion.div
-                    className="glass-panel p-2 mb-4 inline-flex gap-1"
+                    className="glass-panel p-2 mb-4 inline-flex gap-1 max-w-full overflow-x-auto"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.15 }}
                 >
+                    <style>{`
+                        .glass-panel::-webkit-scrollbar { display: none; }
+                    `}</style>
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const active = typeFilter === tab.key;
@@ -204,7 +208,7 @@ const StoresListing = () => {
                             <button
                                 key={tab.key}
                                 onClick={() => setTypeFilter(tab.key)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap"
                                 style={{
                                     background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' : 'transparent',
                                     color: active ? 'white' : 'hsl(var(--foreground))',
@@ -223,12 +227,12 @@ const StoresListing = () => {
 
                 {/* Search and Sort Card */}
                 <motion.div
-                    className="glass-panel p-5 mb-8"
+                    className="glass-panel p-3 sm:p-5 mb-8"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                    <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 180px' }}>
+                    <div className="flex flex-col sm:grid gap-3 sm:gap-3" style={{ gridTemplateColumns: '1fr auto' }}>
                         <div className="search-input-wrapper">
                             <div className="search-input-icon" style={{ left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }}>
                                 <Search size={17} />
@@ -241,13 +245,13 @@ const StoresListing = () => {
                                 className="glass-input glass-input-search"
                             />
                         </div>
-                        <div ref={sortRef}>
+                        <div ref={sortRef} className="w-full sm:w-auto">
                             <motion.button
                                 ref={buttonRef}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={toggleSort}
-                                className="glass-inner flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl cursor-pointer font-medium text-sm w-full"
-                                style={{ color: 'hsl(var(--foreground))', minWidth: 170 }}
+                                className="glass-inner flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl cursor-pointer font-medium text-sm w-full sm:min-w-[170px]"
+                                style={{ color: 'hsl(var(--foreground))' }}
                             >
                                 <span>{sortOptions.find(o => o.value === sortBy)?.label}</span>
                                 <ChevronDown size={16} style={{ color: 'hsl(var(--muted-foreground))', transform: sortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s ease' }} />
