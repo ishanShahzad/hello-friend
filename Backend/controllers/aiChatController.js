@@ -209,6 +209,14 @@ You're a growth partner. Regularly suggest:
 - Never fabricate numbers — always use tools to fetch fresh data
 - Reference past conversation and seller's business details naturally
 
+## CRITICAL: NEVER CLAIM AN ACTION YOU DID NOT EXECUTE
+- You can ONLY say "I updated/changed/added/deleted X" if you actually invoked the matching tool AND received a `success: true` result in this turn.
+- If the user asks a question like "can I change my store name?", that is a QUESTION — answer it, do NOT call the update tool.
+- Only call an action tool when the user clearly INSTRUCTS you to perform the action ("change my store name to X", "rename my store to X").
+- If a tool returns `success: false` (e.g. cooldown still active, validation failed), tell the user the EXACT error message from the tool. Never pretend it succeeded.
+- Store name can only be changed once every 7 days. Subdomain (storeSlug) once every 30 days. If the user just asks whether they can change it, mention these limits; do not attempt the change.
+- If you don't know whether a change is allowed, you may call the relevant "get" tool to inspect current state before acting — but never invent a result.
+
 ## ROZARE PLATFORM KNOWLEDGE
 You know everything about Rozare. Answer questions about the platform from this knowledge:
 - **Rozare** is the world's first AI-powered e-commerce platform. Users shop, sell, and manage everything through natural conversation with you (the AI) — on web AND WhatsApp.
@@ -1798,6 +1806,9 @@ exports.streamChat = async (req, res) => {
     // Track where new messages start (so we only save NEW messages to history)
     const newMsgStartIndex = conversationMessages.length;
 
+    // Collect tool events from this turn so we can persist them with the assistant message
+    const turnToolEvents = [];
+
     // ═══ Tool Execution Loop ═══
     // The AI may request tool calls. We execute them server-side, feed results back,
     // and let the AI generate a natural language summary. Max 5 iterations for safety.
@@ -1885,6 +1896,10 @@ exports.streamChat = async (req, res) => {
         if (isClientSideTool(toolName)) {
           // Client-side tools: send to frontend for rendering, give AI a success ack
           send({ type: 'client_action', action: toolName, args, id: tc.id });
+          // Persist client actions other than navigation (which is a one-time side-effect)
+          if (toolName !== 'navigate') {
+            turnToolEvents.push({ type: 'client_action', action: toolName, args });
+          }
           conversationMessages.push({
             role: 'tool',
             tool_call_id: tc.id,
@@ -1897,6 +1912,7 @@ exports.streamChat = async (req, res) => {
           const result = await executeToolCall(toolName, args, userObj);
 
           send({ type: 'tool_result', tool: toolName, result, id: tc.id });
+          turnToolEvents.push({ type: 'tool_result', tool: toolName, result });
 
           conversationMessages.push({
             role: 'tool',
@@ -1913,19 +1929,21 @@ exports.streamChat = async (req, res) => {
     if (userId) {
       try {
         const conversationId = body.conversationId || null;
-        // Extract NEW messages from this request:
-        // 1. The latest user message (from incoming cleanMessages — was added BEFORE newMsgStartIndex)
-        // 2. Any assistant text messages produced during the tool/response loop (after newMsgStartIndex)
         const lastUserMsg = cleanMessages.filter(m => m.role === 'user').pop();
         const newMessages = [];
         if (lastUserMsg?.content && typeof lastUserMsg.content === 'string' && lastUserMsg.content.trim()) {
           newMessages.push({ role: 'user', content: lastUserMsg.content });
         }
-        const newAssistantMsgs = conversationMessages
+        // Merge ALL assistant text from this turn into a single message
+        // (multiple tool-rounds can produce multiple assistant text segments — they belong to the same turn)
+        const assistantText = conversationMessages
           .slice(newMsgStartIndex)
           .filter(m => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim())
-          .map(m => ({ role: m.role, content: m.content }));
-        newMessages.push(...newAssistantMsgs);
+          .map(m => m.content.trim())
+          .join('\n\n');
+        if (assistantText) {
+          newMessages.push({ role: 'assistant', content: assistantText, toolEvents: turnToolEvents });
+        }
 
         const savedConvoId = await saveToConversation(userId, conversationId, newMessages);
         // Send the conversationId back to the client so it can track it
@@ -2149,7 +2167,11 @@ async function saveToConversation(userId, conversationId, messages, source = 'we
 
   // APPEND new messages (don't replace existing ones)
   for (const m of messages) {
-    convo.messages.push({ role: m.role, content: m.content });
+    const entry = { role: m.role, content: m.content };
+    if (Array.isArray(m.toolEvents) && m.toolEvents.length > 0) {
+      entry.toolEvents = m.toolEvents;
+    }
+    convo.messages.push(entry);
   }
   // Cap at 200 messages
   if (convo.messages.length > 200) {
@@ -2236,6 +2258,7 @@ exports.getConversation = async (req, res) => {
       messages: (convo.messages || []).map(m => ({
         role: m.role,
         content: m.content,
+        toolEvents: m.toolEvents || [],
         createdAt: m.createdAt,
       })),
     });

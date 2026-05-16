@@ -342,7 +342,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   useEffect(() => {
     if (initialMessages !== null) {
       if (initialMessages.length > 0) {
-        setMessages(initialMessages.map(m => ({ role: m.role, content: m.content })));
+        setMessages(initialMessages.map(m => ({
+          role: m.role,
+          content: m.content,
+          ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+        })));
         setShowChips(false);
       } else {
         // New empty conversation — show greeting
@@ -383,7 +387,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         })
         .then(convoData => {
           if (convoData && convoData.messages?.length > 0) {
-            setMessages(convoData.messages.map(m => ({ role: m.role, content: m.content })));
+            setMessages(convoData.messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+            })));
             setActiveConvoId(convoData._id);
             setShowChips(false);
           } else {
@@ -613,19 +621,41 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     }
   }, [messages, isLoading, authToken, handleClientAction]);
 
-  // ─── Clear chat ───
-  const clearChat = () => {
+  // ─── Clear chat (start a brand-new conversation) ───
+  const clearChat = async () => {
     setMessages([]);
     setShowChips(true);
     setPendingTools([]);
+    setActiveConvoId(null);
+    hasLoadedHistory.current = true; // don't re-load history into this new session
+
+    // For logged-in users, create a fresh conversation on the server so the next
+    // message doesn't accidentally append to the previously-active conversation.
+    if (authToken) {
+      try {
+        const resp = await fetch(`${API_BASE}api/ai-chat/conversations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ title: 'New Chat' }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?._id) {
+            setActiveConvoId(data._id);
+            if (onConversationCreated) onConversationCreated(data._id);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to start new conversation:', e);
+      }
+    }
+
     // Re-trigger greeting
-    setTimeout(() => {
-      const hour = new Date().getHours();
-      const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-      const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
-      setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
-      setShowChips(true);
-    }, 100);
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const greetFn = ROLE_GREETINGS[role] || ROLE_GREETINGS.user;
+    setMessages([{ role: 'assistant', content: greetFn(userName, greeting) }]);
+    setShowChips(true);
   };
 
   // ─── Render a message ───

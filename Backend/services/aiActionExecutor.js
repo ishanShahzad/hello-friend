@@ -1338,8 +1338,60 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const updates = { ...args };
         delete updates.seller;
-        delete updates.storeSlug; // slug changes need separate flow
         delete updates.verification;
+        delete updates.storeSlug; // subdomain changes go through a separate flow with payment/cooldown
+
+        const existing = await Store.findOne({ seller: userId });
+        if (!existing) return { success: false, error: 'Store not found.' };
+
+        if (existing.isActive === false) {
+          return { success: false, error: 'Your store is blocked. Reactivate your subscription before changing store details.' };
+        }
+
+        // Enforce cooldowns: storeName 7d, sellerType 30d
+        const COOLDOWN_DAYS = { storeName: 7, sellerType: 30 };
+        const FIELD_LABELS = { storeName: 'name', sellerType: 'type' };
+        const checkCd = (field, lastAt) => {
+          if (!lastAt) return null;
+          const nextAt = new Date(new Date(lastAt).getTime() + COOLDOWN_DAYS[field] * 86400000);
+          const now = new Date();
+          if (now >= nextAt) return null;
+          return Math.max(1, Math.ceil((nextAt - now) / 86400000));
+        };
+
+        // Validate & detect changes
+        if (updates.storeName !== undefined) {
+          const name = String(updates.storeName).trim();
+          if (name.length < 3 || name.length > 50) {
+            return { success: false, error: 'Store name must be 3–50 characters.' };
+          }
+          if (name.toLowerCase() === existing.storeName.toLowerCase()) {
+            delete updates.storeName;
+          } else {
+            const days = checkCd('storeName', existing.lastNameChangeAt);
+            if (days) return { success: false, error: `You can change your store ${FIELD_LABELS.storeName} again in ${days} day(s). Store names can only be changed once every 7 days.` };
+            const dup = await Store.findOne({ storeName: { $regex: new RegExp(`^${name}$`, 'i') }, _id: { $ne: existing._id } }).select('_id').lean();
+            if (dup) return { success: false, error: 'A store with this name already exists.' };
+            updates.storeName = name;
+            updates.lastNameChangeAt = new Date();
+          }
+        }
+
+        if (updates.sellerType !== undefined) {
+          if (!['store', 'brand'].includes(updates.sellerType)) {
+            delete updates.sellerType;
+          } else if (updates.sellerType === (existing.sellerType || 'store')) {
+            delete updates.sellerType;
+          } else {
+            const days = checkCd('sellerType', existing.lastTypeChangeAt);
+            if (days) return { success: false, error: `You can change your store ${FIELD_LABELS.sellerType} again in ${days} day(s).` };
+            updates.lastTypeChangeAt = new Date();
+          }
+        }
+
+        if (Object.keys(updates).length === 0) {
+          return { success: false, error: 'No changes to apply.' };
+        }
 
         const store = await Store.findOneAndUpdate(
           { seller: userId },
@@ -1347,8 +1399,7 @@ async function executeToolCall(toolName, args = {}, user) {
           { new: true, runValidators: true }
         ).select('storeName description').lean();
 
-        if (!store) return { success: false, error: 'Store not found.' };
-        return { success: true, message: `Store "${store.storeName}" updated successfully! 🏪` };
+        return { success: true, message: `Store "${store.storeName}" updated successfully! 🏪`, data: { updatedFields: Object.keys(updates).filter(k => !k.startsWith('last')) } };
       }
 
       case 'get_store_analytics': {

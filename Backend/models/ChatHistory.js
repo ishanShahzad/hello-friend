@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const messageSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
   content: { type: String, default: '' },
-  toolEvents: [{ type: mongoose.Schema.Types.Mixed }], // tool results, navigation, etc.
+  toolEvents: { type: [mongoose.Schema.Types.Mixed], default: undefined }, // tool results, client actions, etc.
 }, { timestamps: true });
 
 // ─── A single conversation (chat session) ───
