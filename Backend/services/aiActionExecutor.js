@@ -135,6 +135,153 @@ function isPlaceholderValue(value) {
   ].includes(v);
 }
 
+function cleanString(value) {
+  return String(value ?? '').trim();
+}
+
+const COMMON_COLOR_WORDS = new Set([
+  'black', 'white', 'red', 'yellow', 'blue', 'green', 'orange', 'purple',
+  'pink', 'brown', 'gray', 'grey', 'silver', 'gold', 'golden', 'navy',
+  'maroon', 'beige', 'cream', 'ivory', 'teal', 'cyan', 'magenta', 'violet',
+  'indigo', 'lime', 'olive', 'tan', 'coral', 'turquoise',
+]);
+const COLOR_SHADE_WORDS = new Set(['light', 'dark', 'navy', 'baby', 'sky', 'royal', 'hot', 'forest']);
+
+function splitDelimitedString(value, { splitSpacesForColors = false } = {}) {
+  const raw = cleanString(value);
+  if (!raw) return [];
+  if (/[,\n;|/]/.test(raw)) {
+    return raw.split(/[,\n;|/]+/).map(cleanString).filter(Boolean);
+  }
+  if (splitSpacesForColors) {
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length > 1 && words.every(w => COMMON_COLOR_WORDS.has(w.toLowerCase()))) {
+      if (words.length === 2 && COLOR_SHADE_WORDS.has(words[0].toLowerCase())) return [raw];
+      return words;
+    }
+  }
+  return [raw];
+}
+
+function normalizeStringArray(value, options = {}) {
+  const values = Array.isArray(value) ? value.flatMap(v => splitDelimitedString(v, options)) : splitDelimitedString(value, options);
+  const seen = new Set();
+  return values
+    .map(v => cleanString(v).replace(/^#/, ''))
+    .filter(v => v && v.length <= 50)
+    .filter(v => {
+      const key = v.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeTags(value, fallbackSource = {}) {
+  const provided = normalizeStringArray(value);
+  if (provided.length) return provided.slice(0, 12);
+
+  const seed = [
+    fallbackSource.brand,
+    fallbackSource.category,
+    fallbackSource.name,
+    fallbackSource.description,
+    ...(fallbackSource.colors || []),
+  ].filter(Boolean).join(' ');
+  const words = seed
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && w.length <= 24);
+  const blocked = new Set(['this', 'that', 'with', 'from', 'best', 'your', 'product', 'available']);
+  const tags = [];
+  for (const word of words) {
+    if (blocked.has(word) || tags.includes(word)) continue;
+    tags.push(word);
+    if (tags.length >= 8) break;
+  }
+  if (/\bkid|child|toy|play\b/i.test(seed) && !tags.includes('kids')) tags.push('kids');
+  return tags.slice(0, 12);
+}
+
+function normalizeImageList(value) {
+  const candidates = [];
+  const add = (entry) => {
+    if (!entry) return;
+    if (typeof entry === 'string') {
+      const urls = entry.match(/https?:\/\/\S+/g);
+      if (urls?.length) candidates.push(...urls);
+      else candidates.push(...splitDelimitedString(entry));
+      return;
+    }
+    if (typeof entry === 'object') {
+      add(entry.url || entry.image || entry.imageUrl || entry.src);
+    }
+  };
+  if (Array.isArray(value)) value.forEach(add);
+  else add(value);
+
+  const seen = new Set();
+  return candidates
+    .map(cleanString)
+    .filter(url => /^https?:\/\//i.test(url))
+    .filter(url => {
+      const key = url.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map(url => ({ url }));
+}
+
+function normalizeOptionGroups(value) {
+  const rawGroups = Array.isArray(value)
+    ? value
+    : (value && typeof value === 'object'
+      ? Object.entries(value).map(([name, values]) => ({ name, values }))
+      : []);
+
+  const seen = new Set();
+  return rawGroups.map(group => {
+    const name = cleanString(group?.name);
+    const values = normalizeStringArray(group?.values);
+    if (!name || values.length === 0) return null;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const defaultValue = cleanString(group?.default);
+    return {
+      name,
+      values,
+      default: values.includes(defaultValue) ? defaultValue : values[0],
+    };
+  }).filter(Boolean);
+}
+
+function addColorOptionGroup(optionGroups, colors) {
+  if (!colors.length) return optionGroups;
+  const hasColorGroup = optionGroups.some(group => group.name.toLowerCase() === 'color');
+  if (hasColorGroup) return optionGroups;
+  return [
+    ...optionGroups,
+    { name: 'Color', values: colors, default: colors[0] },
+  ];
+}
+
+function buildProductImageFields(productInput) {
+  const primaryImages = normalizeImageList(productInput.image || productInput.imageUrl);
+  const primaryImage = primaryImages[0]?.url || '';
+  const normalizedImages = normalizeImageList(productInput.images || productInput.imageUrls);
+  const allImages = normalizeImageList([
+    ...primaryImages,
+    ...normalizedImages,
+  ]);
+  return {
+    image: primaryImage || allImages[0]?.url || 'https://via.placeholder.com/400',
+    images: allImages,
+  };
+}
+
 // ─── Smart Search: Synonym/Multilingual Expansion ───
 const SYNONYM_MAP = {
   // Multilingual (Urdu/Hindi → English)
@@ -733,7 +880,7 @@ async function executeToolCall(toolName, args = {}, user) {
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
 
-        const imageUrl = product.image || product.images?.[0];
+        const imageUrl = product.image || product.images?.[0]?.url || product.images?.[0];
         if (!imageUrl) return { success: false, error: `No image is available for "${product.name}".` };
 
         return {
@@ -1134,38 +1281,92 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!Number.isFinite(discountedPrice) || discountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
         if (discountedPrice > 0 && discountedPrice >= price) return { success: false, error: 'Discounted price must be lower than the product price.' };
 
-        const product = await Product.create({
+        const confirmDuplicate = args.confirmDuplicate === true || p.confirmDuplicate === true;
+        const duplicate = await Product.findOne({
+          seller: targetSellerId,
+          name: { $regex: `^${escapeRegExp(p.name)}$`, $options: 'i' },
+          brand: { $regex: `^${escapeRegExp(p.brand)}$`, $options: 'i' },
+        }).select('_id name brand price stock category createdAt').lean();
+
+        if (duplicate && !confirmDuplicate) {
+          return {
+            success: false,
+            blocked: true,
+            requiresConfirmation: true,
+            duplicate: true,
+            error: `A product named "${duplicate.name}" by ${duplicate.brand} already exists in this store. I did not add another copy. Confirm if you intentionally want a duplicate listing.`,
+            data: {
+              existingProduct: {
+                productId: duplicate._id,
+                name: duplicate.name,
+                brand: duplicate.brand,
+                price: duplicate.price,
+                stock: duplicate.stock,
+                category: duplicate.category,
+                createdAt: duplicate.createdAt,
+              },
+            },
+          };
+        }
+
+        const colors = normalizeStringArray(p.colors || p.colorOptions, { splitSpacesForColors: true });
+        const optionGroups = addColorOptionGroup(normalizeOptionGroups(p.optionGroups || p.options), colors);
+        const { image, images } = buildProductImageFields(p);
+        const tags = normalizeTags(p.tags, {
           name: p.name,
-          description: p.description || '',
+          brand: p.brand,
+          category: p.category,
+          description: p.description,
+          colors,
+        });
+
+        const product = await Product.create({
+          name: cleanString(p.name),
+          description: cleanString(p.description) || cleanString(p.name),
           price,
           discountedPrice,
-          category: p.category,
-          brand: p.brand,
+          category: cleanString(p.category),
+          brand: cleanString(p.brand),
           stock,
-          image: p.image || 'https://via.placeholder.com/400',
-          images: p.images || [],
-          tags: p.tags || [],
-          colors: p.colors || [],
+          image,
+          images,
+          tags,
+          colors,
+          optionGroups,
+          ...(Object.keys(pickObject(p.returnPolicy)).length ? { returnPolicy: p.returnPolicy } : {}),
           seller: targetSellerId,
         });
 
         return {
           success: true,
-          data: { productId: product._id, name: product.name, price: product.price },
+          data: {
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            stock: product.stock,
+            category: product.category,
+            brand: product.brand,
+            image: product.image,
+            images: product.images,
+            tags: product.tags,
+            colors: product.colors,
+            optionGroups: product.optionGroups,
+            returnPolicy: product.returnPolicy,
+          },
           message: `Product "${product.name}" added to your store "${store.storeName}" at $${product.price}! 🎉`,
         };
       }
 
       case 'edit_product': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productId } = args;
+        const { productId, productName } = args;
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
-        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy'];
+        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy'];
         const updates = {};
         for (const field of allowedProductFields) {
           if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
         }
-        if (!productId) return { success: false, error: 'Please specify which product to edit (productId).' };
+        if (!productId && !productName) return { success: false, error: 'Please specify which product to edit (productId or productName).' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid product fields were provided to update.' };
         for (const numericField of ['price', 'discountedPrice', 'stock']) {
           if (updates[numericField] !== undefined) {
@@ -1177,11 +1378,41 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
 
+        if (updates.images !== undefined || updates.image !== undefined || updates.imageUrl !== undefined) {
+          const imageFields = buildProductImageFields({ ...updates, image: updates.image || updates.imageUrl });
+          updates.image = imageFields.image;
+          updates.images = imageFields.images;
+          delete updates.imageUrl;
+        }
+        if (updates.tags !== undefined) updates.tags = normalizeTags(updates.tags);
+        if (updates.colors !== undefined) updates.colors = normalizeStringArray(updates.colors, { splitSpacesForColors: true });
+        if (updates.optionGroups !== undefined) updates.optionGroups = normalizeOptionGroups(updates.optionGroups);
+
+        const safeProductId = toId(productId);
+        const filter = role === 'admin' ? {} : { seller: userId };
+        if (safeProductId) {
+          filter._id = safeProductId;
+        } else {
+          filter.name = { $regex: `^${escapeRegExp(productName)}$`, $options: 'i' };
+        }
+        if (role === 'admin' && toId(args.sellerId || args.seller)) {
+          filter.seller = toId(args.sellerId || args.seller);
+        }
+
+        if (updates.colors?.length) {
+          if (updates.optionGroups !== undefined) {
+            updates.optionGroups = addColorOptionGroup(updates.optionGroups, updates.colors);
+          } else {
+            const existingProduct = await Product.findOne(filter).select('optionGroups').lean();
+            updates.optionGroups = addColorOptionGroup(existingProduct?.optionGroups || [], updates.colors);
+          }
+        }
+
         const product = await Product.findOneAndUpdate(
-          role === 'admin' ? { _id: toId(productId) } : { _id: toId(productId), seller: userId },
+          filter,
           { $set: updates },
-          { new: true, runValidators: true }
-        ).select('name price stock category').lean();
+          { new: true, runValidators: true, sort: { updatedAt: -1, createdAt: -1 } }
+        ).select('name price stock category brand image images tags colors optionGroups').lean();
 
         if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
         return {

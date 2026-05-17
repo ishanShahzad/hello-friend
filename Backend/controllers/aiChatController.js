@@ -190,7 +190,12 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 **IMPORTANT:** search_products searches ALL products on the platform (for buying). list_my_products shows ONLY this seller's products (for managing). Never confuse the two.
 
 ## Interaction Style
-- When the seller says "add a product": collect name, price, category, brand, stock. If any missing, ask specifically.
+- When the seller says "add a product": collect name, price, category, brand, stock. The add_product tool also supports description, image URL(s), tags, colors, optionGroups (for Size, Color, Material, etc.), and product return policy.
+- If the seller asks you to improve the description, write a polished description before calling add_product.
+- If the seller says "choose tags yourself", create sensible searchable tags and pass them to add_product or edit_product. Never say tags are unsupported.
+- If the seller provides colors, sizes, variants, image URLs, or tags in the same product request, include them in the original add_product call. If they provide those details after a successful add, use edit_product on the most recently added productId from tool results; do not add the product again.
+- Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add image URLs, colors, sizes, or other options. On web they can upload an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
+- If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
 - When showing analytics: present numbers clearly (totals, %, comparisons)
 - Proactively suggest: social media marketing, seasonal promotions, optimizing low-performing listings, cross-sells
 - Always confirm destructive actions (delete product, delete coupon) before executing
@@ -680,7 +685,7 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'add_product',
-      description: "Add a new product to the seller's store. REQUIRED: name, price, category, brand, stock. Ask for any missing fields.",
+      description: "Add a new product to the seller's store. Supports tags, colors, optionGroups, image URL(s), return policy, and improved descriptions. REQUIRED: name, price, category, brand, stock. Ask for any missing fields.",
       parameters: {
         type: 'object',
         properties: {
@@ -690,9 +695,30 @@ const sellerTools = [
           category: { type: 'string' },
           brand: { type: 'string' },
           stock: { type: 'number' },
-          image: { type: 'string' },
+          image: { type: 'string', description: 'Primary product image URL. On WhatsApp, user must paste a public URL. On web, user may upload an image and send the resulting URL.' },
+          images: {
+            type: 'array',
+            description: 'Additional product image URLs.',
+            items: { type: 'string' },
+          },
           discountedPrice: { type: 'number' },
           tags: { type: 'array', items: { type: 'string' } },
+          colors: { type: 'array', items: { type: 'string' }, description: 'Color choices such as red, yellow, black.' },
+          optionGroups: {
+            type: 'array',
+            description: 'Seller-defined variants/options, e.g. [{name:"Size", values:["S","M","L"], default:"M"}].',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                values: { type: 'array', items: { type: 'string' } },
+                default: { type: 'string' },
+              },
+              required: ['name', 'values'],
+            },
+          },
+          returnPolicy: { type: 'object', description: 'Optional product-specific return/warranty policy. If omitted, product inherits the store policy.' },
+          confirmDuplicate: { type: 'boolean', description: 'Only true when the seller explicitly confirms they intentionally want to create a duplicate listing.' },
           sellerId: { type: 'string', description: 'Admin only: seller user id to create this product under' },
         },
         required: ['name', 'price', 'category', 'brand', 'stock'],
@@ -703,14 +729,19 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'edit_product',
-      description: "Edit one of the seller's own products. Only owner can edit.",
+      description: "Edit one of the seller's own products. Supports description, price, stock, image URL(s), tags, colors, optionGroups, and return policy. Use the recent productId from successful add_product results for follow-up edits.",
       parameters: {
         type: 'object',
         properties: {
-          productId: { type: 'string' },
-          updates: { type: 'object', description: 'Fields to update' },
+          productId: { type: 'string', description: 'Preferred. Product ID from a previous add/list/search result.' },
+          productName: { type: 'string', description: 'Fallback only when productId is not available; exact product name.' },
+          sellerId: { type: 'string', description: 'Admin only: restrict update to this seller.' },
+          updates: {
+            type: 'object',
+            description: 'Fields to update: name, description, price, discountedPrice, category, brand, stock, image/imageUrl, images, tags, colors, optionGroups, returnPolicy.',
+          },
         },
-        required: ['productId', 'updates'],
+        required: ['updates'],
       },
     },
   },
@@ -1229,6 +1260,14 @@ or Hindi say "kar sakti hoon" / "karti hoon" instead of "kar sakta hoon" /
 "karta hoon". This is only a grammar choice, not a personality change.
 `;
 
+const TOOL_MEMORY_ADDENDUM = `
+
+## Internal tool memory
+Some previous assistant messages may include bracketed [Tool memory: ...] notes.
+Use those notes only to remember exact ids, successful actions, blocked actions,
+and failures. Never quote those notes or mention them as visible chat content.
+`;
+
 function getSystemPrompt(role) {
   let base;
   switch (role) {
@@ -1241,7 +1280,7 @@ function getSystemPrompt(role) {
     default:
       base = USER_PROMPT;
   }
-  return base + FEMININE_GRAMMAR_ADDENDUM;
+  return base + FEMININE_GRAMMAR_ADDENDUM + TOOL_MEMORY_ADDENDUM;
 }
 
 const GUEST_TOOL_NAMES = new Set([
@@ -1616,6 +1655,7 @@ const WHATSAPP_SYSTEM_PROMPT_ADDENDUM = `
 - You can send multiple images if the user asks for multiple (e.g. "show me 1st and 3rd")
 - Only send images when explicitly asked — never spam images automatically
 - If the product has no image, tell the user: "This product doesn't have an image yet"
+- For seller product creation/editing on WhatsApp, ask the seller to paste public image URL(s). Do not imply WhatsApp can upload a product image file directly into the catalog unless a URL is provided.
 `;
 
 /**
@@ -1727,33 +1767,48 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       // Special handling for send_product_image in WhatsApp mode
       if (toolName === 'send_product_image' && isWhatsApp) {
         try {
-          const product = await Product.findById(args.productId).select('name images price discountedPrice').lean();
-          if (!product || !product.images?.length) {
+          const product = await Product.findById(args.productId).select('name image images price discountedPrice stock').lean();
+          const imageUrl = product?.image || product?.images?.[0]?.url || product?.images?.[0];
+          if (!product || !imageUrl) {
             conversationMessages.push({
               role: 'tool',
               tool_call_id: tc.id,
               content: JSON.stringify({ success: false, message: 'This product does not have an image.' }),
             });
+            toolResults.push({ tool: toolName, result: { success: false, error: 'This product does not have an image.' }, id: tc.id });
           } else {
-            const imageUrl = product.images[0]?.url || product.images[0];
             const caption = args.caption || `*${product.name}*\n💰 ${product.discountedPrice ? `~$${product.price}~ $${product.discountedPrice}` : `$${product.price}`}\n🔗 ${SITE_URL}/single-product/${product._id}`;
             // Store image info for the WhatsApp service to send after response
             if (!options._pendingImages) options._pendingImages = [];
             options._pendingImages.push({ imageUrl, caption });
+            const toolResult = {
+              success: true,
+              data: {
+                productId: product._id,
+                name: product.name,
+                imageUrl,
+                caption,
+                price: product.discountedPrice || product.price,
+                stock: product.stock,
+              },
+              message: `Image of "${product.name}" will be sent to the user.`,
+            };
             conversationMessages.push({
               role: 'tool',
               tool_call_id: tc.id,
-              content: JSON.stringify({ success: true, message: `Image of "${product.name}" will be sent to the user.` }),
+              content: JSON.stringify(toolResult),
             });
+            toolResults.push({ tool: toolName, result: toolResult, id: tc.id });
           }
         } catch (imgErr) {
+          const toolResult = { success: false, error: 'Failed to fetch product image.' };
           conversationMessages.push({
             role: 'tool',
             tool_call_id: tc.id,
-            content: JSON.stringify({ success: false, message: 'Failed to fetch product image.' }),
+            content: JSON.stringify(toolResult),
           });
+          toolResults.push({ tool: toolName, result: toolResult, id: tc.id });
         }
-        toolResults.push({ tool: toolName, result: { success: true }, id: tc.id });
         continue;
       }
 

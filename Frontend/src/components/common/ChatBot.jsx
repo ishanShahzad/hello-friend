@@ -6,13 +6,14 @@ import {
   Sparkles, Palette, Clock, ArrowRight, Volume2, VolumeX, Trash2,
   Heart, MapPin, Bell, Ticket, CheckCircle, XCircle, Search,
   ShoppingBag, BarChart3, Shield, Megaphone, Settings,
-  Plus, Star, Eye, ShoppingCart, Maximize2, Store
+  Plus, Star, Eye, ShoppingCart, Maximize2, Store, ImagePlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 import { getAuthToken } from "../../utils/cookieHelper";
+import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 
 // ─── Endpoint (our own backend — no Supabase) ───
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
@@ -90,6 +91,27 @@ const TOOL_ICONS = {
 
 const formatToolDisplayName = (name = '') =>
   name.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+
+const summarizeToolEventsForPrompt = (toolEvents = []) => {
+  const lines = [];
+  for (const event of toolEvents || []) {
+    if (event?.type !== 'tool_result') continue;
+    const result = event.result || {};
+    const data = result.data || {};
+    if (event.tool === 'add_product' && result.success && data.productId) {
+      lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless explicitly asked for a duplicate.]`);
+    } else if (event.tool === 'edit_product' && result.success && (data._id || data.productId)) {
+      lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}".]`);
+    } else if (event.tool === 'add_product' && result.duplicate) {
+      const existing = data.existingProduct || {};
+      lines.push(`[Tool memory: add_product duplicate blocked. Existing productId=${existing.productId || ''}; name="${existing.name || ''}". Ask for explicit duplicate confirmation before creating another listing.]`);
+    } else if (result.success === false) {
+      lines.push(`[Tool memory: ${event.tool} failed: ${result.error || result.message || 'unknown error'}. Do not claim it succeeded.]`);
+    }
+    if (lines.length >= 6) break;
+  }
+  return lines.join('\n');
+};
 
 // ─── Voice Waveform ───
 const VoiceWaveform = ({ isActive }) => (
@@ -335,9 +357,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [pendingTools, setPendingTools] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const abortRef = useRef(null);
   const hasLoadedHistory = useRef(false);
 
@@ -347,6 +371,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const authToken = typeof window !== 'undefined' ? getAuthToken() : null;
   const chips = ROLE_CHIPS[role] || ROLE_CHIPS.user;
   const titles = ROLE_TITLES[role] || ROLE_TITLES.user;
+  const canUploadProductImage = authToken && (role === 'seller' || role === 'admin');
 
   // ─── Load initial messages from parent (AI Chat page) ───
   useEffect(() => {
@@ -461,6 +486,27 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     return null;
   }, [navigate]);
 
+  const handleProductImageUpload = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingProductImage(true);
+    try {
+      const imageUrl = await uploadImageToCloudinary(file);
+      setInput(prev => {
+        const prefix = prev.trim() ? `${prev.trim()} ` : '';
+        return `${prefix}Product image URL: ${imageUrl}`;
+      });
+      toast.success('Image uploaded. Send the message when the product details are ready.');
+      setTimeout(() => inputRef.current?.focus(), 0);
+    } catch (error) {
+      toast.error(error.message || 'Failed to upload image');
+    } finally {
+      setIsUploadingProductImage(false);
+      if (event.target) event.target.value = '';
+    }
+  }, []);
+
   // ─── Send message (SSE streaming with server-side tool execution) ───
   const sendMessage = useCallback(async (text) => {
     if (!text?.trim() || isLoading) return;
@@ -474,7 +520,13 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     // Build conversation history for the API (only user/assistant text messages)
     const apiMessages = [...messages, userMsg]
       .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content)
-      .map(m => ({ role: m.role, content: m.content }));
+      .map(m => {
+        const toolMemory = summarizeToolEventsForPrompt(m.toolEvents);
+        return {
+          role: m.role,
+          content: toolMemory ? `${m.content}\n\n${toolMemory}` : m.content,
+        };
+      });
 
     // Add assistant placeholder for streaming
     setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true, toolEvents: [] }]);
@@ -629,7 +681,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       setIsLoading(false);
       setPendingTools([]);
     }
-  }, [messages, isLoading, authToken, handleClientAction]);
+  }, [messages, isLoading, authToken, activeConvoId, handleClientAction]);
 
   // ─── Clear chat (start a brand-new conversation) ───
   const clearChat = async () => {
@@ -1053,19 +1105,45 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
               '--tw-ring-color': 'rgba(14,165,233,0.35)',
             }}
           >
+            {canUploadProductImage && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProductImageUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || isUploadingProductImage}
+                  className="h-8 w-8 shrink-0 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 hover:scale-[1.04] active:scale-95"
+                  style={{
+                    background: 'hsl(var(--background) / 0.7)',
+                    color: 'hsl(var(--muted-foreground))',
+                    border: '1px solid hsl(var(--border))',
+                  }}
+                  title="Upload product image"
+                  aria-label="Upload product image"
+                >
+                  {isUploadingProductImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+                </button>
+              </>
+            )}
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={isLoading ? 'AI is thinking…' : 'Ask Rozare anything…'}
-              disabled={isLoading}
+              disabled={isLoading || isUploadingProductImage}
               className="flex-1 bg-transparent text-sm outline-none min-w-0 placeholder:opacity-60"
               style={{ color: 'hsl(var(--foreground))' }}
             />
           </div>
           <button
             type="submit"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || isUploadingProductImage || !input.trim()}
             className="h-11 w-11 shrink-0 rounded-2xl flex items-center justify-center transition-all disabled:opacity-40 hover:scale-[1.04] active:scale-95"
             style={{
               background: BRAND_GRADIENT,

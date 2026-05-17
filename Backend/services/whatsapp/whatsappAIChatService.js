@@ -206,6 +206,7 @@ function formatToolActivitySummary(toolResults = [], clientActions = []) {
     for (const event of events) {
         let label = TOOL_ACTIVITY_LABELS[event.name] || event.name.replace(/_/g, ' ');
         if (event.name === 'update_store' && event.result?.blocked) label = 'checked store change eligibility';
+        if (event.name === 'add_product' && event.result?.duplicate) label = 'blocked a duplicate product';
         if (event.result?.success === false && !event.result?.blocked) label = `action failed: ${label}`;
         if (!labels.includes(label)) labels.push(label);
         if (labels.length >= 3) break;
@@ -213,6 +214,30 @@ function formatToolActivitySummary(toolResults = [], clientActions = []) {
 
     const extra = events.length > labels.length ? ` +${events.length - labels.length} more` : '';
     return `Action note: ${labels.join('; ')}${extra}.`;
+}
+
+function summarizeToolEventsForMemory(toolEvents = []) {
+    const lines = [];
+    for (const event of toolEvents || []) {
+        if (event?.type !== 'tool_result') continue;
+        const tool = event.tool;
+        const result = event.result || {};
+        const data = result.data || {};
+
+        if (tool === 'add_product' && result.success && data.productId) {
+            lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless the seller explicitly asks for a duplicate.]`);
+        } else if (tool === 'edit_product' && result.success && (data._id || data.productId)) {
+            lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}". Continue editing this product if the seller gives more details.]`);
+        } else if (tool === 'add_product' && result.duplicate) {
+            const existing = data.existingProduct || {};
+            lines.push(`[Tool memory: add_product duplicate blocked. Existing productId=${existing.productId || ''}; name="${existing.name || ''}". Ask for explicit duplicate confirmation before creating another listing.]`);
+        } else if (result.success === false) {
+            lines.push(`[Tool memory: ${tool} failed: ${result.error || result.message || 'unknown error'}. Do not claim it succeeded.]`);
+        }
+
+        if (lines.length >= 6) break;
+    }
+    return lines.join('\n');
 }
 
 async function identifyUserByPhone(phone, instanceType) {
@@ -328,11 +353,16 @@ async function loadWhatsAppConversation(userId) {
     const convo = history.conversations.find(c => c.source === 'whatsapp');
     if (!convo || !convo.messages?.length) return [];
 
-    // Return last 30 messages for context (to keep within token limits)
-    return convo.messages.slice(-30).map(m => ({
-        role: m.role,
-        content: m.content,
-    }));
+    // Return last 30 messages for context (to keep within token limits).
+    // Tool memory is appended to assistant turns so follow-up edits can use
+    // the exact product/order ids created in previous WhatsApp messages.
+    return convo.messages.slice(-30).map(m => {
+        const memory = summarizeToolEventsForMemory(m.toolEvents || []);
+        return {
+            role: m.role,
+            content: memory ? `${m.content || ''}\n\n${memory}` : (m.content || ''),
+        };
+    });
 }
 
 // ─── Graceful Rejection Messages ──────────────────────────────────────

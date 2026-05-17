@@ -59,6 +59,26 @@ const ROLE_TITLES = {
 };
 
 // ─── Execute tool calls via backend API ───
+const summarizeToolResultsForPrompt = (toolResults = []) => {
+  const lines = [];
+  for (const event of toolResults || []) {
+    const result = event.result || {};
+    const data = result.data || {};
+    if (event.name === 'add_product' && result.success && data.productId) {
+      lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless explicitly asked for a duplicate.]`);
+    } else if (event.name === 'edit_product' && result.success && (data._id || data.productId)) {
+      lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}".]`);
+    } else if (event.name === 'add_product' && result.duplicate) {
+      const existing = data.existingProduct || {};
+      lines.push(`[Tool memory: add_product duplicate blocked. Existing productId=${existing.productId || ''}; name="${existing.name || ''}". Ask for explicit duplicate confirmation before creating another listing.]`);
+    } else if (result.success === false) {
+      lines.push(`[Tool memory: ${event.name} failed: ${result.error || result.message || 'unknown error'}. Do not claim it succeeded.]`);
+    }
+    if (lines.length >= 6) break;
+  }
+  return lines.join('\n');
+};
+
 async function executeToolCall(name, args) {
   const apiUrl = '';
   try {
@@ -303,7 +323,13 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
 
     const aiMessages = messages
       .filter(m => m.role === 'user' || m.role === 'assistant')
-      .map(m => ({ role: m.role, content: m.content }));
+      .map(m => {
+        const toolMemory = summarizeToolResultsForPrompt(m.toolResults);
+        return {
+          role: m.role,
+          content: toolMemory ? `${m.content}\n\n${toolMemory}` : m.content,
+        };
+      });
     aiMessages.push({ role: 'user', content: msgText });
 
     try {

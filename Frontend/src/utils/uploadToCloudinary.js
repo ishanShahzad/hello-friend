@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { toast } from 'react-toastify';
 import { getAuthToken } from "../utils/cookieHelper";
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 
 export const uploadImageToCloudinary = async (file) => {
     if (!file) {
@@ -17,7 +18,7 @@ export const uploadImageToCloudinary = async (file) => {
     try {
         const token = getAuthToken();
         const response = await axios.post(
-            `${import.meta.env.VITE_API_URL}api/upload/product-image`,
+            `${API_BASE}api/upload/product-image`,
             formData,
             {
                 headers: {
