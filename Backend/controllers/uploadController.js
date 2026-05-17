@@ -1,4 +1,27 @@
 const User = require('../models/User')
+const { Readable } = require('stream')
+const { cloudinary } = require('../utils/cloudinary')
+
+const uploadBufferToCloudinary = (file, folder = 'E-Commerce') => {
+    if (file?.path) return Promise.resolve(file.path);
+    if (!file?.buffer) return Promise.reject(new Error('No upload buffer found'));
+
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder,
+                resource_type: 'image',
+                allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+                timeout: 30000,
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result.secure_url || result.url);
+            }
+        );
+        Readable.from(file.buffer).pipe(stream);
+    });
+};
 
 exports.profileImage = async (req, res) => {
     try {
@@ -6,21 +29,18 @@ exports.profileImage = async (req, res) => {
             return res.status(400).json({ msg: 'No file uploaded' });
         }
 
-        const user = await User.findByIdAndUpdate(req.user.id,
+        const imageUrl = await uploadBufferToCloudinary(req.file);
+        await User.findByIdAndUpdate(req.user.id,
             {
-                avatar: req.file.path
-            }
+                avatar: imageUrl
+            },
+            { new: true }
         )
-        await user.save()
         console.log('file request::::::::', req.file);
-  
-
-        // File is automatically uploaded to Cloudinary by multer-storage-cloudinary
-        // The file information will be available in req.file
 
         res.json({
             message: 'Image uploaded successfully',
-            imageUrl: req.file.path, // This is the Cloudinary URL 
+            imageUrl,
         });
     } catch (error) {
         console.error('Upload error:', error);
@@ -34,11 +54,12 @@ exports.productImage = async (req, res) => {
             return res.status(400).json({ msg: 'No file uploaded' });
         }
 
-        console.log('Product image uploaded:', req.file);
+        const imageUrl = await uploadBufferToCloudinary(req.file);
+        console.log('Product image uploaded:', { originalname: req.file.originalname, mimetype: req.file.mimetype, size: req.file.size, imageUrl });
 
         res.json({
             message: 'Product image uploaded successfully',
-            imageUrl: req.file.path, // This is the Cloudinary URL 
+            imageUrl,
         });
     } catch (error) {
         console.error('Upload error:', error);

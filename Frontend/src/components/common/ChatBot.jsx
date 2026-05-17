@@ -79,6 +79,7 @@ const TOOL_ICONS = {
   get_notifications: Bell, mark_notifications_read: Bell,
   get_available_coupons: Ticket, validate_coupon: Ticket,
   add_product: ShoppingBag, edit_product: ShoppingBag, delete_product: Trash2,
+  feature_product: Star,
   list_my_products: ShoppingBag, get_seller_analytics: BarChart3,
   get_seller_orders: Package, update_order_status: CheckCircle,
   get_my_store: Settings, update_store: Settings, get_store_analytics: BarChart3,
@@ -102,6 +103,21 @@ const summarizeToolEventsForPrompt = (toolEvents = []) => {
       lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless explicitly asked for a duplicate.]`);
     } else if (event.tool === 'edit_product' && result.success && (data._id || data.productId)) {
       lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}".]`);
+    } else if (event.tool === 'feature_product' && result.success && (data.productId || data._id)) {
+      lines.push(`[Tool memory: feature_product succeeded. productId=${data.productId || data._id}; name="${data.name || ''}"; isFeatured=${data.isFeatured === true}.]`);
+    } else if (event.tool === 'delete_product' && result.success && Array.isArray(data.deleted)) {
+      lines.push(`[Tool memory: delete_product succeeded. Deleted products: ${data.deleted.map(p => `${p.productId || p._id}:${p.name}`).join(', ')}.]`);
+    } else if (event.tool === 'list_my_products' && result.success && Array.isArray(data.products)) {
+      const products = data.products.slice(0, 10).map(p => `${p._id || p.productId}:${p.name}; brand=${p.brand || ''}; price=${p.price ?? ''}; stock=${p.stock ?? ''}; featured=${p.isFeatured === true}; createdAt=${p.createdAt || ''}`);
+      lines.push(`[Tool memory: list_my_products returned ${data.total ?? data.products.length} products. Internal product lookup: ${products.join(' | ')}. Use these ids internally only; do not show or ask the seller for product IDs.]`);
+    } else if (event.tool === 'search_products' && result.success && Array.isArray(data.products)) {
+      const products = data.products.slice(0, 12).map(p => `${p._id || p.productId}:${p.name}; store=${p.storeName || ''}; slug=${p.storeSlug || ''}; price=${p.discountedPrice || p.price || ''}; stock=${p.stock ?? ''}; colors=${JSON.stringify(p.colors || [])}; options=${JSON.stringify(p.optionGroups || [])}`);
+      lines.push(`[Tool memory: search_products returned ${data.count ?? data.products.length} products. Internal product lookup for shopper follow-ups: ${products.join(' | ')}. Use these ids internally only; do not show raw product IDs.]`);
+    } else if (event.tool === 'get_product_detail' && result.success && data._id) {
+      lines.push(`[Tool memory: get_product_detail productId=${data._id}; name="${data.name || ''}"; store="${data.storeName || ''}"; stock=${data.stock ?? ''}; colors=${JSON.stringify(data.colors || [])}; options=${JSON.stringify(data.optionGroups || [])}.]`);
+    } else if (event.tool === 'search_stores' && result.success && Array.isArray(data.stores)) {
+      const stores = data.stores.slice(0, 8).map(s => `${s._id}:${s.storeName}; slug=${s.storeSlug || s.slug || ''}; matches=${(s.matchingProducts || []).map(p => p.name).join(', ')}`);
+      lines.push(`[Tool memory: search_stores returned stores: ${stores.join(' | ')}. Use storeSlug/storeId internally when searching products from a chosen store.]`);
     } else if (event.tool === 'add_product' && result.duplicate) {
       const existing = data.existingProduct || {};
       lines.push(`[Tool memory: add_product duplicate blocked. Existing productId=${existing.productId || ''}; name="${existing.name || ''}". Ask for explicit duplicate confirmation before creating another listing.]`);

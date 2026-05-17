@@ -42,6 +42,7 @@ const UserOrdersManagement = lazy(() => import('../components/layout/UserOrdersM
 const UserOrderDetail = lazy(() => import('../components/layout/UserOrderDetail'))
 const OrderDetail = lazy(() => import('../components/layout/OrderDetail'))
 const UserManagement = lazy(() => import('../components/layout/UserManagement'))
+const UserWhatsAppSettings = lazy(() => import('../components/layout/UserWhatsAppSettings'))
 
 // ── Admin dashboard
 const AdminDashboard = lazy(() => import('../components/layout/AdminDashboard'))
@@ -149,6 +150,7 @@ function AppRoutes({ subdomainSlug = null }) {
                     <Route path='/user-dashboard/account-overview' element={<ProtectedRoute><AccountOverview /></ProtectedRoute>} />
                     <Route path='/user-dashboard/profile' element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     <Route path='/user-dashboard/orders' element={<ProtectedRoute><UserOrdersManagement /></ProtectedRoute>} />
+                    <Route path='/user-dashboard/whatsapp' element={<ProtectedRoute><UserWhatsAppSettings /></ProtectedRoute>} />
                     <Route path='/user-dashboard/order/:id' element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                     <Route path='/user-dashboard/user-management' element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
                     <Route path='/user-dashboard/order/detail/:id' element={<ProtectedRoute><UserOrderDetail /></ProtectedRoute>} />

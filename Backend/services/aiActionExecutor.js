@@ -28,6 +28,14 @@ const SellerSubscription = require('../models/SellerSubscription');
 const StoreTrust = require('../models/StoreTrust');
 const Cart = require('../models/Cart');
 const StoreReview = require('../models/StoreReview');
+const WhatsAppConfig = require('../models/WhatsAppConfig');
+const { sendEmail } = require('../controllers/mailController');
+const { buyerOrderConfirmationRequestEmail, newOrderSellerEmail } = require('../utils/emailTemplates');
+const { generateConfirmationToken } = require('../controllers/orderConfirmationController');
+const { sellerHasWhatsAppVerify } = require('../controllers/subscriptionController');
+const { enqueueOrderConfirmation } = require('./whatsapp/queue');
+const { notifySeller } = require('./whatsapp/sellerNotificationService');
+const sellerTemplates = require('./whatsapp/sellerMessageTemplates');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -55,6 +63,10 @@ function safeLimit(v, def = 10, max = 50) {
 function safePage(v) {
   const n = parseInt(v, 10);
   return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+function isTruthy(value) {
+  return value === true || value === 'true' || value === '1' || value === 1;
 }
 
 const STORE_CHANGE_COOLDOWN_DAYS = { storeName: 7, storeSlug: 30, sellerType: 30 };
@@ -282,6 +294,112 @@ function buildProductImageFields(productInput) {
   };
 }
 
+const FEATURED_LIMITS = { free_trial: 6, starter: 6, elite: 12 };
+
+async function sellerCanFeatureProduct(userId, excludeProductId = null) {
+  try {
+    const sub = await SellerSubscription.findOne({ seller: userId }).lean();
+    let plan = 'free_trial';
+    let entitled = false;
+
+    if (!sub) {
+      entitled = true;
+    } else if (sub.status === 'trial') {
+      plan = 'free_trial';
+      entitled = true;
+    } else if (sub.plan === 'elite' && ['active', 'free_period'].includes(sub.status)) {
+      plan = 'elite';
+      entitled = true;
+    } else if (['active', 'free_period'].includes(sub.status)) {
+      plan = sub.plan || 'starter';
+      entitled = true;
+    } else if (sub.bonusFeaturesActive && (!sub.bonusExpiryDate || new Date() < sub.bonusExpiryDate)) {
+      plan = sub.plan || 'starter';
+      entitled = true;
+    } else {
+      plan = sub.plan || 'free_trial';
+    }
+
+    if (!entitled) return { allowed: false, current: 0, max: 0, plan, reason: 'not_entitled' };
+
+    const max = FEATURED_LIMITS[plan] || FEATURED_LIMITS.free_trial;
+    const query = { seller: userId, isFeatured: true };
+    const safeExcludeId = toId(excludeProductId);
+    if (safeExcludeId) query._id = { $ne: safeExcludeId };
+    const current = await Product.countDocuments(query);
+
+    if (current >= max) return { allowed: false, current, max, plan, reason: 'limit_reached' };
+    return { allowed: true, current, max, plan };
+  } catch (e) {
+    console.error('sellerCanFeatureProduct error:', e);
+    return { allowed: false, current: 0, max: 0, plan: 'free_trial', reason: 'error' };
+  }
+}
+
+function productLookupBaseFilter(role, userId, args = {}) {
+  const filter = role === 'admin' ? {} : { seller: userId };
+  const targetSellerId = role === 'admin' ? toId(args.sellerId || args.seller) : null;
+  if (targetSellerId) filter.seller = targetSellerId;
+  return filter;
+}
+
+async function resolveProductCandidates({ role, userId, args = {}, productId, productIds, productName, productNames, excludeProductId, keepProductId }) {
+  const filter = productLookupBaseFilter(role, userId, args);
+  const ids = [
+    ...(Array.isArray(productIds) ? productIds : []),
+    ...(productId ? [productId] : []),
+  ].map(toId).filter(Boolean);
+
+  const excludedIds = new Set([excludeProductId, keepProductId, args.excludeProductId, args.keepProductId]
+    .map(toId)
+    .filter(Boolean)
+    .map(String));
+
+  if (ids.length) {
+    filter._id = { $in: ids, ...(excludedIds.size ? { $nin: [...excludedIds] } : {}) };
+    return Product.find(filter).sort({ updatedAt: -1, createdAt: -1 }).select('name brand price stock category isFeatured createdAt').lean();
+  }
+
+  const names = [
+    ...(Array.isArray(productNames) ? productNames : []),
+    ...(productName ? [productName] : []),
+    ...(args.name ? [args.name] : []),
+  ].map(cleanString).filter(Boolean);
+
+  if (!names.length) return [];
+
+  const exactFilter = {
+    ...filter,
+    $or: names.map(name => ({ name: { $regex: `^${escapeRegExp(name)}$`, $options: 'i' } })),
+  };
+  if (excludedIds.size) exactFilter._id = { $nin: [...excludedIds] };
+  let products = await Product.find(exactFilter).sort({ updatedAt: -1, createdAt: -1 }).select('name brand price stock category isFeatured createdAt').lean();
+
+  if (!products.length) {
+    const looseFilter = {
+      ...filter,
+      $or: names.map(name => ({ name: { $regex: escapeRegExp(name), $options: 'i' } })),
+    };
+    if (excludedIds.size) looseFilter._id = { $nin: [...excludedIds] };
+    products = await Product.find(looseFilter).sort({ updatedAt: -1, createdAt: -1 }).limit(10).select('name brand price stock category isFeatured createdAt').lean();
+  }
+
+  return products;
+}
+
+function formatProductCandidate(product) {
+  return {
+    productId: product._id,
+    name: product.name,
+    brand: product.brand,
+    price: product.price,
+    stock: product.stock,
+    category: product.category,
+    isFeatured: !!product.isFeatured,
+    createdAt: product.createdAt,
+  };
+}
+
 // ─── Smart Search: Synonym/Multilingual Expansion ───
 const SYNONYM_MAP = {
   // Multilingual (Urdu/Hindi → English)
@@ -375,6 +493,246 @@ function buildSmartSearchFilter(query, category) {
   return filter;
 }
 
+function normalizeObjectIdString(value) {
+  const id = value?._id || value;
+  return id ? String(id) : '';
+}
+
+function plainOptions(value) {
+  if (!value) return {};
+  if (value instanceof Map) return Object.fromEntries(value.entries());
+  if (typeof value.toJSON === 'function') return value.toJSON();
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizeOptionGroups(product) {
+  return (product?.optionGroups || [])
+    .map(group => ({
+      name: String(group?.name || '').trim(),
+      values: normalizeStringArray(group?.values),
+    }))
+    .filter(group => group.name && group.values.length > 0);
+}
+
+function normalizeStringArray(value) {
+  return Array.isArray(value)
+    ? [...new Set(value.map(v => String(v || '').trim()).filter(Boolean))]
+    : [];
+}
+
+function findCaseInsensitive(value, choices = []) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return choices.find(choice => choice.toLowerCase() === raw.toLowerCase()) || '';
+}
+
+function resolveSelectedOption(selectedOptions, groupName) {
+  const opts = plainOptions(selectedOptions);
+  if (Object.prototype.hasOwnProperty.call(opts, groupName)) return opts[groupName];
+  const key = Object.keys(opts).find(k => k.toLowerCase() === String(groupName).toLowerCase());
+  return key ? opts[key] : undefined;
+}
+
+function validateProductSelection(product, selections = {}) {
+  const groups = normalizeOptionGroups(product);
+  const legacyColors = normalizeStringArray(product?.colors);
+  const selectedOptions = plainOptions(selections.selectedOptions);
+  let selectedColor = String(selections.selectedColor || '').trim();
+  const normalizedOptions = {};
+  const missingOptions = [];
+  const invalidOptions = [];
+  const hasColorGroup = groups.some(group => group.name.toLowerCase() === 'color');
+
+  for (const group of groups) {
+    const rawValue = resolveSelectedOption(selectedOptions, group.name);
+    const rawFromColor = group.name.toLowerCase() === 'color' && selectedColor ? selectedColor : '';
+    const chosen = findCaseInsensitive(rawValue || rawFromColor, group.values);
+    if (!rawValue && !rawFromColor) {
+      missingOptions.push({ name: group.name, values: group.values });
+      continue;
+    }
+    if (!chosen) {
+      invalidOptions.push({ name: group.name, value: rawValue || rawFromColor, values: group.values });
+      continue;
+    }
+    normalizedOptions[group.name] = chosen;
+    if (group.name.toLowerCase() === 'color') selectedColor = chosen;
+  }
+
+  if (!hasColorGroup && legacyColors.length > 0) {
+    if (!selectedColor) {
+      selectedColor = String(resolveSelectedOption(selectedOptions, 'Color') || resolveSelectedOption(selectedOptions, 'color') || '').trim();
+    }
+    const chosenColor = findCaseInsensitive(selectedColor, legacyColors);
+    if (!selectedColor) {
+      missingOptions.push({ name: 'Color', values: legacyColors });
+    } else if (!chosenColor) {
+      invalidOptions.push({ name: 'Color', value: selectedColor, values: legacyColors });
+    } else {
+      selectedColor = chosenColor;
+    }
+  }
+
+  return {
+    ok: missingOptions.length === 0 && invalidOptions.length === 0,
+    selectedColor: selectedColor || null,
+    selectedOptions: Object.keys(normalizedOptions).length > 0 ? normalizedOptions : undefined,
+    missingOptions,
+    invalidOptions,
+    requiredOptions: groups.map(group => ({ name: group.name, values: group.values })),
+    availableColors: legacyColors,
+  };
+}
+
+function summarizeSelectionRequest(product, selection) {
+  const parts = [];
+  for (const opt of selection.missingOptions || []) {
+    parts.push(`${opt.name}: ${opt.values.join(', ')}`);
+  }
+  for (const opt of selection.invalidOptions || []) {
+    parts.push(`${opt.name} must be one of: ${opt.values.join(', ')}`);
+  }
+  return `"${product?.name || 'This product'}" needs a selection before checkout. ${parts.join(' | ')}`;
+}
+
+function parseQuantity(value, fallback = 1) {
+  const n = Number.parseInt(value ?? fallback, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function shippingMissingFields(shipping = {}) {
+  const required = ['fullName', 'email', 'phone', 'address', 'city', 'state', 'postalCode', 'country'];
+  return required.filter(field => !String(shipping[field] || '').trim());
+}
+
+async function hydrateStoresForProducts(products = []) {
+  const sellerIds = [...new Set(products.map(p => normalizeObjectIdString(p.seller)).filter(Boolean))];
+  if (!sellerIds.length) return products;
+  const stores = await Store.find({ seller: { $in: sellerIds } })
+    .select('seller storeName storeSlug verification.isVerified trustCount')
+    .lean();
+  const storeBySeller = new Map(stores.map(store => [normalizeObjectIdString(store.seller), store]));
+  return products.map(product => {
+    const store = storeBySeller.get(normalizeObjectIdString(product.seller));
+    return {
+      ...product,
+      storeName: store?.storeName,
+      storeSlug: store?.storeSlug,
+      isVerifiedStore: store?.verification?.isVerified || false,
+      storeTrustCount: store?.trustCount || 0,
+    };
+  });
+}
+
+async function resolveStoreScope(args = {}) {
+  const storeId = toId(args.storeId);
+  const sellerId = toId(args.sellerId || args.seller);
+  const storeSlug = String(args.storeSlug || args.slug || '').trim().toLowerCase();
+  const storeName = String(args.storeName || args.store || '').trim();
+
+  if (sellerId) {
+    const store = await Store.findOne({ seller: sellerId, isActive: { $ne: false } })
+      .select('_id seller storeName storeSlug verification.isVerified')
+      .lean();
+    return store ? { store, filter: { seller: store.seller } } : { notFound: true };
+  }
+
+  if (storeId) {
+    const store = await Store.findOne({ _id: storeId, isActive: { $ne: false } })
+      .select('_id seller storeName storeSlug verification.isVerified')
+      .lean();
+    return store ? { store, filter: { seller: store.seller } } : { notFound: true };
+  }
+
+  if (!storeSlug && !storeName) return { filter: {} };
+
+  const storeQueries = [];
+  if (storeSlug) storeQueries.push({ storeSlug });
+  if (storeName) {
+    const safeName = escapeRegExp(storeName);
+    storeQueries.push({ storeName: { $regex: `^${safeName}$`, $options: 'i' } });
+    storeQueries.push({ storeName: { $regex: safeName, $options: 'i' } });
+    storeQueries.push({ storeSlug: { $regex: safeName.replace(/\s+/g, '-'), $options: 'i' } });
+  }
+
+  const matches = await Store.find({ isActive: { $ne: false }, $or: storeQueries })
+    .limit(5)
+    .select('_id seller storeName storeSlug verification.isVerified')
+    .lean();
+
+  if (!matches.length) return { notFound: true };
+
+  const exact = matches.find(store =>
+    (storeSlug && store.storeSlug === storeSlug) ||
+    (storeName && store.storeName.toLowerCase() === storeName.toLowerCase())
+  );
+  if (exact) return { store: exact, filter: { seller: exact.seller } };
+  if (matches.length === 1) return { store: matches[0], filter: { seller: matches[0].seller } };
+
+  return { ambiguous: true, matches };
+}
+
+async function notifyCodOrder(newOrder, productItems = []) {
+  try {
+    const confirmUrl = `${process.env.FRONTEND_URL || 'https://rozare.com'}/orders/confirm/${newOrder.confirmation.token}`;
+    const emailData = buyerOrderConfirmationRequestEmail(newOrder, confirmUrl);
+    await sendEmail({ to: newOrder.shippingInfo.email, ...emailData });
+    newOrder.confirmation.emailSentAt = new Date();
+    newOrder.confirmation.emailSentSuccess = true;
+    await newOrder.save();
+  } catch (emailErr) {
+    console.error('[aiActionExecutor] buyer order email failed:', emailErr.message);
+    newOrder.confirmation.emailSentAt = new Date();
+    newOrder.confirmation.emailSentSuccess = false;
+    newOrder.confirmation.emailError = emailErr.message || 'Unknown email error';
+    await newOrder.save().catch(() => null);
+  }
+
+  const sellerIds = [...new Set(productItems.map(p => normalizeObjectIdString(p.seller)).filter(Boolean))];
+  for (const sellerId of sellerIds) {
+    try {
+      const seller = await User.findById(sellerId).select('username email').lean();
+      if (seller?.email) {
+        const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
+        await sendEmail({ to: seller.email, ...sellerEmailData });
+      }
+      notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
+        console.error('[aiActionExecutor] seller WhatsApp order notification failed:', e.message)
+      );
+    } catch (err) {
+      console.error('[aiActionExecutor] seller order notification failed:', err.message);
+    }
+  }
+
+  try {
+    const cfg = await WhatsAppConfig.findOne({ singletonKey: 'main' }).lean();
+    let entitled = false;
+    for (const sellerId of sellerIds) {
+      if (await sellerHasWhatsAppVerify(sellerId)) {
+        entitled = true;
+        break;
+      }
+    }
+    if (cfg?.status === 'connected' && entitled) {
+      enqueueOrderConfirmation(newOrder).catch(err =>
+        console.error('[aiActionExecutor] WhatsApp order confirmation enqueue failed:', err.message)
+      );
+    } else {
+      await Order.updateOne({ _id: newOrder._id }, {
+        $set: {
+          'confirmation.whatsappSentAt': new Date(),
+          'confirmation.whatsappSentSuccess': false,
+          'confirmation.whatsappError': cfg?.status === 'connected'
+            ? 'No seller in this order has the WhatsApp verification bonus enabled'
+            : (cfg ? `WhatsApp status: ${cfg.status} (not connected)` : 'WhatsApp not configured'),
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[aiActionExecutor] WhatsApp confirmation check failed:', err.message);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  MAIN DISPATCHER
 // ═══════════════════════════════════════════════════════════════════
@@ -391,10 +749,36 @@ async function executeToolCall(toolName, args = {}, user) {
       // ─────────────────────────────────────────────
 
       case 'search_products': {
-        const { query, category, minPrice, maxPrice, sortBy } = args;
+        const { query, category, minPrice, maxPrice, sortBy, brand, limit } = args;
         
         // Use smart search with synonym expansion
         const filter = buildSmartSearchFilter(query, category);
+        const storeScope = await resolveStoreScope(args);
+        if (storeScope.notFound) {
+          return {
+            success: false,
+            error: `I couldn't find that store${args.storeName ? ` ("${args.storeName}")` : args.storeSlug ? ` (${args.storeSlug})` : ''}. Try the exact store name or ask me to search stores first.`,
+            data: { storeNotFound: true },
+          };
+        }
+        if (storeScope.ambiguous) {
+          return {
+            success: false,
+            error: `I found a few stores that match. Please choose one: ${storeScope.matches.map(s => `${s.storeName} (@${s.storeSlug})`).join(', ')}`,
+            data: {
+              needsStoreSelection: true,
+              stores: storeScope.matches.map(s => ({
+                _id: s._id,
+                storeName: s.storeName,
+                storeSlug: s.storeSlug,
+                isVerified: s.verification?.isVerified || false,
+              })),
+            },
+          };
+        }
+        Object.assign(filter, storeScope.filter || {});
+        if (brand) filter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
+        if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) filter.stock = { $gt: 0 };
         if (minPrice || maxPrice) {
           filter.price = {};
           if (minPrice) filter.price.$gte = Number(minPrice);
@@ -411,34 +795,40 @@ async function executeToolCall(toolName, args = {}, user) {
 
         let products = await Product.find(filter)
           .sort(sort)
-          .limit(20)
-          .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups')
+          .limit(safeLimit(limit, 20, 50))
+          .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
           .lean();
+        products = await hydrateStoresForProducts(products);
 
         // If no results and we have a query, try a broader fallback: sort by popularity
         if (products.length === 0 && query) {
           // Fallback: return popular/recent products when search yields nothing
-          products = await Product.find(category ? { category: { $regex: category, $options: 'i' } } : {})
+          const fallbackFilter = { ...(storeScope.filter || {}) };
+          if (category) fallbackFilter.category = { $regex: category, $options: 'i' };
+          if (brand) fallbackFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
+          if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fallbackFilter.stock = { $gt: 0 };
+          products = await Product.find(fallbackFilter)
             .sort({ rating: -1, numReviews: -1, createdAt: -1 })
             .limit(12)
-            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups')
+            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
             .lean();
+          products = await hydrateStoresForProducts(products);
 
           if (products.length > 0) {
             return {
               success: true,
-              data: { products, count: products.length, fallback: true },
-              message: `No exact matches for "${query}", but here are ${products.length} popular product${products.length !== 1 ? 's' : ''} you might like:`,
+              data: { products, count: products.length, fallback: true, store: storeScope.store || null },
+              message: `No exact matches for "${query}"${storeScope.store ? ` in ${storeScope.store.storeName}` : ''}, but here are ${products.length} popular product${products.length !== 1 ? 's' : ''} you might like:`,
             };
           }
         }
 
         return {
           success: true,
-          data: { products, count: products.length },
+          data: { products, count: products.length, store: storeScope.store || null },
           message: products.length > 0
-            ? `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` matching "${query}"` : ''}`
-            : `No products found${query ? ` for "${query}"` : ''}. Try different keywords or browse categories.`,
+            ? `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` matching "${query}"` : ''}${storeScope.store ? ` from ${storeScope.store.storeName}` : ''}`
+            : `No products found${query ? ` for "${query}"` : ''}${storeScope.store ? ` in ${storeScope.store.storeName}` : ''}. Try different keywords, a broader category, or another store.`,
         };
       }
 
@@ -926,10 +1316,30 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!userId) return { success: false, error: 'You must be logged in to add items to cart.' };
         const { productId, selectedColor, selectedOptions } = args;
         if (!productId) return { success: false, error: 'Please provide a productId.' };
+        const quantity = parseQuantity(args.quantity, 1);
+        if (!quantity) return { success: false, error: 'Please provide a valid quantity of at least 1.' };
 
-        const product = await Product.findById(toId(productId)).select('name price discountedPrice stock image').lean();
+        const product = await Product.findById(toId(productId)).select('name price discountedPrice stock image colors optionGroups').lean();
         if (!product) return { success: false, error: 'Product not found.' };
         if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
+        if (quantity > product.stock) return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
+
+        const selection = validateProductSelection(product, { selectedColor, selectedOptions });
+        if (!selection.ok) {
+          return {
+            success: false,
+            needsSelection: true,
+            error: summarizeSelectionRequest(product, selection),
+            data: {
+              productId: product._id,
+              name: product.name,
+              requiredOptions: selection.requiredOptions,
+              availableColors: selection.availableColors,
+              missingOptions: selection.missingOptions,
+              invalidOptions: selection.invalidOptions,
+            },
+          };
+        }
 
         let cart = await Cart.findOne({ user: userId });
         if (!cart) {
@@ -937,28 +1347,34 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         // Check if already in cart
-        const optKey = selectedOptions ? Object.keys(selectedOptions).sort().map(k => `${k}:${selectedOptions[k]}`).join('|') : '';
+        const normalizedSelectedOptions = selection.selectedOptions || undefined;
+        const normalizedSelectedColor = selection.selectedColor || null;
+        const optKey = normalizedSelectedOptions ? Object.keys(normalizedSelectedOptions).sort().map(k => `${k}:${normalizedSelectedOptions[k]}`).join('|') : '';
         const existing = cart.cartItems.find(item =>
-          item.product.toString() === productId &&
-          (item.selectedColor || null) === (selectedColor || null) &&
+          normalizeObjectIdString(item.product) === String(productId) &&
+          (item.selectedColor || null) === normalizedSelectedColor &&
           (item.selectedOptions ? Object.keys(item.selectedOptions.toJSON?.() || item.selectedOptions).sort().map(k => `${k}:${(item.selectedOptions.toJSON?.() || item.selectedOptions)[k]}`).join('|') : '') === optKey
         );
         if (existing) {
-          return { success: true, message: `"${product.name}" is already in your cart.` };
+          const nextQty = (existing.qty || 1) + quantity;
+          if (nextQty > product.stock) {
+            return { success: false, error: `You already have ${existing.qty || 1} in your cart. Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} are available.` };
+          }
+          existing.qty = nextQty;
+        } else {
+          cart.cartItems.push({
+            product: productId,
+            qty: quantity,
+            selectedColor: normalizedSelectedColor,
+            selectedOptions: normalizedSelectedOptions,
+          });
         }
-
-        cart.cartItems.push({
-          product: productId,
-          selectedColor: selectedColor || null,
-          selectedOptions: selectedOptions || undefined,
-        });
         await cart.populate('cartItems.product');
         await cart.save();
 
-        const effectivePrice = product.discountedPrice && product.discountedPrice > 0 ? product.discountedPrice : product.price;
         return {
           success: true,
-          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice },
+          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice, productId: product._id, name: product.name, quantity },
           message: `"${product.name}" added to cart! 🛒 Cart total: $${cart.totalCartPrice?.toFixed(2)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
         };
       }
@@ -982,6 +1398,7 @@ async function executeToolCall(toolName, args = {}, user) {
             quantity: item.qty || 1,
             image: p.image,
             selectedColor: item.selectedColor,
+            selectedOptions: plainOptions(item.selectedOptions),
             subtotal: price * (item.qty || 1),
           };
         });
@@ -1028,7 +1445,19 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'place_order': {
         if (!userId) return { success: false, error: 'You must be logged in to place an order.' };
-        const { productId, shippingInfo, paymentMethod } = args;
+        const { productId, shippingInfo, paymentMethod, selectedColor, selectedOptions } = args;
+        const normalizedPaymentMethod = paymentMethod || 'cash_on_delivery';
+        if (!['cash_on_delivery', 'stripe'].includes(normalizedPaymentMethod)) {
+          return { success: false, error: 'Please choose either Cash on Delivery or card checkout.' };
+        }
+        if (normalizedPaymentMethod === 'stripe') {
+          return {
+            success: false,
+            needsPaymentCheckout: true,
+            error: 'Card payment needs the secure checkout page. I can add the product to your cart and take you to checkout, or place the order here with Cash on Delivery.',
+            data: { checkoutRoute: '/checkout' },
+          };
+        }
 
         // Get user's saved address if shipping info not provided
         let shipping = shippingInfo;
@@ -1052,23 +1481,46 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
 
-        if (!shipping || !shipping.fullName || !shipping.address || !shipping.city) {
+        if (shipping && !shipping.email) shipping.email = (await User.findById(userId).select('email').lean())?.email || '';
+        const missingShipping = shippingMissingFields(shipping || {});
+        if (missingShipping.length > 0) {
           return {
             success: false,
-            error: 'No shipping address found. Please provide your shipping details: fullName, email, phone, address, city, state, postalCode, country.',
+            error: `Please provide the missing shipping detail${missingShipping.length !== 1 ? 's' : ''}: ${missingShipping.join(', ')}.`,
             needsShippingInfo: true,
+            data: { missingShippingFields: missingShipping },
           };
         }
-        if (!shipping.email) shipping.email = (await User.findById(userId).select('email').lean())?.email || '';
-        if (!shipping.phone) shipping.phone = '';
 
         // Get product(s) to order
         let orderItems = [];
+        let productItems = [];
         if (productId) {
           // Single product order
           const product = await Product.findById(toId(productId)).lean();
           if (!product) return { success: false, error: 'Product not found.' };
           if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
+          productItems = [product];
+          const quantity = parseQuantity(args.quantity, 1);
+          if (!quantity) return { success: false, error: 'Please provide a valid quantity of at least 1.' };
+          if (quantity > product.stock) return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
+
+          const selection = validateProductSelection(product, { selectedColor, selectedOptions });
+          if (!selection.ok) {
+            return {
+              success: false,
+              needsSelection: true,
+              error: summarizeSelectionRequest(product, selection),
+              data: {
+                productId: product._id,
+                name: product.name,
+                requiredOptions: selection.requiredOptions,
+                availableColors: selection.availableColors,
+                missingOptions: selection.missingOptions,
+                invalidOptions: selection.invalidOptions,
+              },
+            };
+          }
 
           const effectivePrice = product.discountedPrice && product.discountedPrice > 0 ? product.discountedPrice : product.price;
           orderItems = [{
@@ -1077,7 +1529,9 @@ async function executeToolCall(toolName, args = {}, user) {
             name: product.name,
             image: product.image,
             price: effectivePrice,
-            quantity: 1,
+            quantity,
+            selectedColor: selection.selectedColor,
+            selectedOptions: selection.selectedOptions,
           }];
         } else {
           // Order from cart
@@ -1085,6 +1539,7 @@ async function executeToolCall(toolName, args = {}, user) {
           if (!cart || !cart.cartItems?.length) {
             return { success: false, error: 'Cart is empty. Add products first or specify a productId.' };
           }
+          productItems = cart.cartItems.filter(i => i.product).map(item => item.product);
           orderItems = cart.cartItems.filter(i => i.product).map(item => {
             const p = item.product;
             const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
@@ -1103,6 +1558,35 @@ async function executeToolCall(toolName, args = {}, user) {
 
         if (orderItems.length === 0) return { success: false, error: 'No items to order.' };
 
+        for (const item of orderItems) {
+          const product = productItems.find(p => normalizeObjectIdString(p._id) === normalizeObjectIdString(item.productId));
+          if (!product) return { success: false, error: `"${item.name}" is no longer available.` };
+          if ((item.quantity || 1) > product.stock) {
+            return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
+          }
+          const selection = validateProductSelection(product, {
+            selectedColor: item.selectedColor,
+            selectedOptions: item.selectedOptions,
+          });
+          if (!selection.ok) {
+            return {
+              success: false,
+              needsSelection: true,
+              error: summarizeSelectionRequest(product, selection),
+              data: {
+                productId: product._id,
+                name: product.name,
+                requiredOptions: selection.requiredOptions,
+                availableColors: selection.availableColors,
+                missingOptions: selection.missingOptions,
+                invalidOptions: selection.invalidOptions,
+              },
+            };
+          }
+          item.selectedColor = selection.selectedColor;
+          item.selectedOptions = selection.selectedOptions;
+        }
+
         const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
         // Get tax
@@ -1112,21 +1596,24 @@ async function executeToolCall(toolName, args = {}, user) {
           tax = taxConfig.type === 'percentage' ? subtotal * taxConfig.value / 100 : taxConfig.value;
         }
 
-        // Get shipping method for the seller
-        const firstSeller = orderItems[0]?.productId;
-        const sellerProduct = await Product.findById(firstSeller).select('seller').lean();
-        let shippingMethod = { name: 'Standard', price: 0, estimatedDays: 5 };
-        if (sellerProduct?.seller) {
-          const sellerShipping = await ShippingMethod.findOne({ seller: sellerProduct.seller }).lean();
-          if (sellerShipping?.methods?.length) {
-            const active = sellerShipping.methods.find(m => m.isActive);
-            if (active) {
-              shippingMethod = { name: active.type, price: active.cost, estimatedDays: active.deliveryDays };
-            }
+        // Get shipping method per seller. Cart checkout can contain multiple stores.
+        const sellerIds = [...new Set(productItems.map(p => normalizeObjectIdString(p.seller)).filter(Boolean))];
+        const sellerShipping = [];
+        let shippingCost = 0;
+        for (const sellerId of sellerIds) {
+          let method = { name: 'Standard', price: 0, estimatedDays: 5 };
+          const sellerConfig = await ShippingMethod.findOne({ seller: sellerId }).lean();
+          const active = sellerConfig?.methods?.find(m => m.isActive);
+          if (active) {
+            method = { name: active.type, price: active.cost || 0, estimatedDays: active.deliveryDays || 5 };
           }
+          sellerShipping.push({ seller: sellerId, shippingMethod: method });
+          shippingCost += Number(method.price || 0);
         }
+        const shippingMethod = sellerShipping[0]?.shippingMethod || { name: 'Standard', price: 0, estimatedDays: 5 };
+        if (sellerIds[0]) shippingMethod.seller = sellerIds[0];
 
-        const totalAmount = subtotal + shippingMethod.price + tax;
+        const totalAmount = subtotal + shippingCost + tax;
 
         const newOrder = new Order({
           user: userId,
@@ -1151,30 +1638,45 @@ async function executeToolCall(toolName, args = {}, user) {
             country: shipping.country || 'Pakistan',
           },
           shippingMethod,
+          sellerShipping,
           orderSummary: {
             subtotal,
-            shippingCost: shippingMethod.price,
+            shippingCost,
             tax,
             couponDiscount: 0,
             totalAmount,
           },
-          paymentMethod: paymentMethod || 'cash_on_delivery',
+          paymentMethod: normalizedPaymentMethod,
         });
 
-        // Generate confirmation token
-        const crypto = require('crypto');
-        const token = crypto.randomBytes(32).toString('hex');
         newOrder.confirmation = {
-          token,
-          tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          ...generateConfirmationToken(),
+          confirmedAt: null,
+          confirmedVia: null,
+          declinedAt: null,
         };
 
         await newOrder.save();
 
-        // Decrement stock
+        // Decrement stock with a final guard so concurrent orders cannot oversell.
+        const decremented = [];
         for (const item of orderItems) {
-          await Product.findByIdAndUpdate(item.productId || item.id, { $inc: { stock: -item.quantity } });
+          const productIdToUpdate = item.productId || item.id;
+          const updated = await Product.findOneAndUpdate(
+            { _id: productIdToUpdate, stock: { $gte: item.quantity } },
+            { $inc: { stock: -item.quantity, totalSales: item.quantity } },
+            { new: true }
+          );
+          if (!updated) {
+            for (const prior of decremented) {
+              await Product.findByIdAndUpdate(prior.productId, { $inc: { stock: prior.quantity, totalSales: -prior.quantity } });
+            }
+            await Order.deleteOne({ _id: newOrder._id });
+            return { success: false, error: `"${item.name}" is no longer available in the requested quantity. Please refresh the product and try again.` };
+          }
+          decremented.push({ productId: productIdToUpdate, quantity: item.quantity });
         }
+        await notifyCodOrder(newOrder, productItems);
 
         // Clear cart if ordering from cart
         if (!productId) {
@@ -1319,6 +1821,20 @@ async function executeToolCall(toolName, args = {}, user) {
           description: p.description,
           colors,
         });
+        let isFeatured = p.isFeatured === true;
+        if (isFeatured && role === 'seller') {
+          const featCheck = await sellerCanFeatureProduct(userId);
+          if (!featCheck.allowed) {
+            return {
+              success: false,
+              blocked: true,
+              error: featCheck.reason === 'limit_reached'
+                ? `You've reached your featured product limit (${featCheck.max}). Add the product without featuring it, or unfeature another product first.`
+                : 'Your current subscription does not allow featuring products right now.',
+              data: { featuredStats: featCheck },
+            };
+          }
+        }
 
         const product = await Product.create({
           name: cleanString(p.name),
@@ -1333,6 +1849,7 @@ async function executeToolCall(toolName, args = {}, user) {
           tags,
           colors,
           optionGroups,
+          isFeatured,
           ...(Object.keys(pickObject(p.returnPolicy)).length ? { returnPolicy: p.returnPolicy } : {}),
           seller: targetSellerId,
         });
@@ -1351,6 +1868,7 @@ async function executeToolCall(toolName, args = {}, user) {
             tags: product.tags,
             colors: product.colors,
             optionGroups: product.optionGroups,
+            isFeatured: product.isFeatured,
             returnPolicy: product.returnPolicy,
           },
           message: `Product "${product.name}" added to your store "${store.storeName}" at $${product.price}! 🎉`,
@@ -1361,7 +1879,7 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const { productId, productName } = args;
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
-        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy'];
+        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy', 'isFeatured'];
         const updates = {};
         for (const field of allowedProductFields) {
           if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
@@ -1408,11 +1926,29 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
 
+        if (updates.isFeatured === true && role === 'seller') {
+          const existingProduct = await Product.findOne(filter).select('_id isFeatured').lean();
+          if (!existingProduct) return { success: false, error: 'Product not found or you don\'t own it.' };
+          if (!existingProduct.isFeatured) {
+            const featCheck = await sellerCanFeatureProduct(userId, existingProduct._id);
+            if (!featCheck.allowed) {
+              return {
+                success: false,
+                blocked: true,
+                error: featCheck.reason === 'limit_reached'
+                  ? `You've reached your featured product limit (${featCheck.max}). Unfeature another product or upgrade your plan to feature more.`
+                  : 'Your current subscription does not allow featuring products right now.',
+                data: { featuredStats: featCheck },
+              };
+            }
+          }
+        }
+
         const product = await Product.findOneAndUpdate(
           filter,
           { $set: updates },
           { new: true, runValidators: true, sort: { updatedAt: -1, createdAt: -1 } }
-        ).select('name price stock category brand image images tags colors optionGroups').lean();
+        ).select('name price stock category brand image images tags colors optionGroups isFeatured').lean();
 
         if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
         return {
@@ -1424,12 +1960,103 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'delete_product': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productId } = args;
-        if (!productId) return { success: false, error: 'Please specify which product to delete (productId).' };
+        const { productId, productIds, productName, productNames, deleteAllMatches } = args;
+        const products = await resolveProductCandidates({
+          role,
+          userId,
+          args,
+          productId,
+          productIds,
+          productName,
+          productNames,
+          excludeProductId: args.excludeProductId,
+          keepProductId: args.keepProductId,
+        });
 
-        const product = await Product.findOneAndDelete(role === 'admin' ? { _id: toId(productId) } : { _id: toId(productId), seller: userId });
-        if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
-        return { success: true, message: `Product "${product.name}" has been permanently deleted. 🗑️` };
+        if (!products.length) {
+          return {
+            success: false,
+            error: productName || productNames?.length
+              ? 'I could not find a matching product in your store. Try the product name as it appears in your dashboard.'
+              : 'Please specify the product by name or let me search your products first.',
+          };
+        }
+
+        const explicitIds = productId || (Array.isArray(productIds) && productIds.length > 0);
+        const explicitNames = Array.isArray(productNames) && productNames.length > 1;
+        if (products.length > 1 && !explicitIds && !explicitNames && deleteAllMatches !== true) {
+          return {
+            success: false,
+            blocked: true,
+            requiresSelection: true,
+            error: `I found ${products.length} matching products. I did not delete anything yet. Please confirm which ones to remove by name, price, or "all matching".`,
+            data: { matches: products.map(formatProductCandidate) },
+          };
+        }
+
+        const deleteFilter = productLookupBaseFilter(role, userId, args);
+        deleteFilter._id = { $in: products.map(p => p._id) };
+        const result = await Product.deleteMany(deleteFilter);
+        const deleted = products.map(formatProductCandidate);
+        return {
+          success: true,
+          data: { deleted, deletedCount: result.deletedCount },
+          message: result.deletedCount === 1
+            ? `Deleted "${deleted[0].name}" from your store.`
+            : `Deleted ${result.deletedCount} products: ${deleted.map(p => `"${p.name}"`).join(', ')}.`,
+        };
+      }
+
+      case 'feature_product': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const { productId, productName } = args;
+        const featured = args.featured !== false;
+        const products = await resolveProductCandidates({ role, userId, args, productId, productName });
+
+        if (!products.length) {
+          return { success: false, error: 'I could not find that product in your store. Tell me the product name and I can look it up.' };
+        }
+        if (products.length > 1 && !productId) {
+          return {
+            success: false,
+            blocked: true,
+            requiresSelection: true,
+            error: `I found ${products.length} matching products. Please tell me which one to ${featured ? 'feature' : 'unfeature'} using its name, price, or latest/oldest wording.`,
+            data: { matches: products.map(formatProductCandidate) },
+          };
+        }
+
+        const product = products[0];
+        if (featured && role === 'seller' && !product.isFeatured) {
+          const featCheck = await sellerCanFeatureProduct(userId, product._id);
+          if (!featCheck.allowed) {
+            return {
+              success: false,
+              blocked: true,
+              error: featCheck.reason === 'limit_reached'
+                ? `You've reached your featured product limit (${featCheck.max}). Unfeature another product or upgrade your plan to feature more.`
+                : 'Your current subscription does not allow featuring products right now.',
+              data: { featuredStats: featCheck },
+            };
+          }
+        }
+
+        const filter = productLookupBaseFilter(role, userId, args);
+        filter._id = product._id;
+        const updated = await Product.findOneAndUpdate(
+          filter,
+          { $set: { isFeatured: featured } },
+          { new: true, runValidators: true }
+        ).select('name brand price stock category isFeatured createdAt').lean();
+
+        if (!updated) return { success: false, error: 'Product not found or you don\'t own it.' };
+        return {
+          success: true,
+          data: formatProductCandidate(updated),
+          message: featured
+            ? `"${updated.name}" is now featured on your store/homepage.`
+            : `"${updated.name}" is no longer featured.`,
+        };
       }
 
       case 'list_my_products': {
@@ -1447,7 +2074,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const skip = (safePage(page) - 1) * safeLimit(limit, 20);
         const [products, total] = await Promise.all([
           Product.find(filter).sort(sort).skip(skip).limit(safeLimit(limit, 20))
-            .select('name price discountedPrice category brand stock image rating numReviews')
+            .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups createdAt')
             .lean(),
           Product.countDocuments(filter),
         ]);
@@ -2619,6 +3246,11 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!store) return { success: false, error: 'Store not found.' };
 
         const productCount = await Product.countDocuments({ seller: store.seller?._id });
+        const productPreview = await Product.find({ seller: store.seller?._id, stock: { $gt: 0 } })
+          .sort({ isFeatured: -1, rating: -1, createdAt: -1 })
+          .limit(8)
+          .select('name price discountedPrice category brand image stock colors optionGroups rating numReviews isFeatured')
+          .lean();
         let orderCount;
         if (role === 'admin') {
           orderCount = await Order.countDocuments({
@@ -2639,6 +3271,7 @@ async function executeToolCall(toolName, args = {}, user) {
             views: store.views,
             trustCount: store.trustCount,
             productCount,
+            products: productPreview,
             createdAt: store.createdAt,
             ...(role === 'admin' ? {
               sellerEmail: store.seller?.email,
@@ -2652,25 +3285,87 @@ async function executeToolCall(toolName, args = {}, user) {
       }
 
       case 'search_stores': {
-        const { query, limit } = args;
+        const { query, limit, category, brand } = args;
         if (!query) return { success: false, error: 'Please provide a search query.' };
         const safeQuery = escapeRegExp(query);
 
-        const stores = await Store.find({
+        const storeMatches = await Store.find({
+          isActive: { $ne: false },
           $or: [
             { storeName: { $regex: safeQuery, $options: 'i' } },
             { storeSlug: { $regex: safeQuery, $options: 'i' } },
             { description: { $regex: safeQuery, $options: 'i' } },
           ],
         })
-          .limit(safeLimit(limit, 10))
-          .select('storeName storeSlug description views trustCount verification.isVerified')
+          .limit(safeLimit(limit, 10, 20))
+          .select('_id seller storeName storeSlug description views trustCount verification.isVerified')
           .lean();
+
+        const productFilter = buildSmartSearchFilter(query, category);
+        if (brand) productFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
+        productFilter.stock = { $gt: 0 };
+        const matchingProducts = await Product.find(productFilter)
+          .sort({ rating: -1, numReviews: -1, createdAt: -1 })
+          .limit(50)
+          .select('seller name price discountedPrice image category brand stock')
+          .lean();
+        const sellerProductMap = new Map();
+        for (const product of matchingProducts) {
+          const sellerId = normalizeObjectIdString(product.seller);
+          if (!sellerId) continue;
+          if (!sellerProductMap.has(sellerId)) sellerProductMap.set(sellerId, []);
+          if (sellerProductMap.get(sellerId).length < 3) {
+            sellerProductMap.get(sellerId).push({
+              _id: product._id,
+              name: product.name,
+              price: product.price,
+              discountedPrice: product.discountedPrice,
+              image: product.image,
+              category: product.category,
+              brand: product.brand,
+              stock: product.stock,
+            });
+          }
+        }
+
+        const productStores = sellerProductMap.size
+          ? await Store.find({ isActive: { $ne: false }, seller: { $in: [...sellerProductMap.keys()] } })
+            .limit(20)
+            .select('_id seller storeName storeSlug description views trustCount verification.isVerified')
+            .lean()
+          : [];
+
+        const merged = new Map();
+        for (const store of [...storeMatches, ...productStores]) {
+          const key = normalizeObjectIdString(store._id);
+          merged.set(key, {
+            ...store,
+            matchingProducts: sellerProductMap.get(normalizeObjectIdString(store.seller)) || [],
+          });
+        }
+
+        const stores = [...merged.values()]
+          .sort((a, b) => (b.matchingProducts?.length || 0) - (a.matchingProducts?.length || 0) || (b.trustCount || 0) - (a.trustCount || 0))
+          .slice(0, safeLimit(limit, 10, 20));
 
         return {
           success: true,
-          data: { stores, count: stores.length },
-          message: `Found ${stores.length} store${stores.length !== 1 ? 's' : ''} matching "${query}".`,
+          data: {
+            stores: stores.map(s => ({
+              _id: s._id,
+              seller: s.seller,
+              storeName: s.storeName,
+              storeSlug: s.storeSlug,
+              slug: s.storeSlug,
+              description: s.description,
+              views: s.views,
+              trustCount: s.trustCount,
+              isVerified: s.verification?.isVerified || false,
+              matchingProducts: s.matchingProducts || [],
+            })),
+            count: stores.length,
+          },
+          message: `Found ${stores.length} store${stores.length !== 1 ? 's' : ''} matching "${query}" by store name or products they sell.`,
         };
       }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Clock, CheckCircle, User, ShoppingBag, ArrowRight, CreditCard, Sparkles, TrendingUp, Box, Calendar, Eye } from 'lucide-react';
+import { Package, Clock, CheckCircle, User, ShoppingBag, ArrowRight, CreditCard, Sparkles, TrendingUp, Box, Calendar, Eye, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -76,6 +76,7 @@ const AccountOverview = () => {
     const quickActions = [
         { label: 'Browse Products', icon: <Sparkles size={14} />, link: '/products' },
         { label: 'Your Orders', icon: <Box size={14} />, link: '/user-dashboard/orders' },
+        { label: 'WhatsApp AI', icon: <MessageCircle size={14} />, link: '/user-dashboard/whatsapp' },
         { label: 'Edit Profile', icon: <User size={14} />, link: '/user-dashboard/profile' },
     ];
 

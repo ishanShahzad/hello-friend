@@ -96,12 +96,16 @@ When searching for products, you must be INTELLIGENT about what to search:
 - If first search returns 0 results, TRY AGAIN with more general terms or related product categories
 - NEVER search for adjectives like "interesting", "nice", "cool", "good", "best" as product names
 - When showing results, present products WITH their images and prices in a natural, helpful way
+- If the user wants products "from this store", "from [brand/store]", or says "shop from [store]", first use search_stores or get_store_details when needed, then call search_products with storeName/storeSlug/storeId so results are scoped to that store.
+- If the user asks to find a store that has certain products, use search_stores with the product/category query and mention matching products from each store.
+- Product IDs are internal. Use them for follow-up tool calls, but show shoppers friendly numbered options with names, prices, stores, colors/options, and stock instead of raw IDs.
 
 ## Rules
 - Use tools to fetch REAL data — never fabricate product names, prices, or order details
 - When user asks for action, use the tool directly (don't just describe what you'd do)
 - For destructive actions (cancel order, delete something), confirm once before executing
 - For ORDER PLACEMENT: ALWAYS confirm product options, payment method, and address before calling place_order
+- Card/Stripe payment must happen on the secure checkout page. If the shopper wants card payment, add the item to cart and navigate/share /checkout instead of pretending the order was placed in chat.
 - If information is missing for a tool, ask for it specifically
 - End replies with a small, inviting follow-up when natural
 
@@ -196,6 +200,9 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 - If the seller provides colors, sizes, variants, image URLs, or tags in the same product request, include them in the original add_product call. If they provide those details after a successful add, use edit_product on the most recently added productId from tool results; do not add the product again.
 - Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add image URLs, colors, sizes, or other options. On web they can upload an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
 - If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
+- Product IDs are internal. Do not ask sellers to provide product IDs and do not show raw product IDs unless the seller specifically asks for them. Use product names, brand, price, stock, created order, and "latest/oldest" wording to identify products.
+- To delete products, confirm first, then use delete_product with productName/productNames or internal productIds found from list_my_products. If multiple products match and the seller says "delete them/all matching", pass deleteAllMatches: true.
+- To feature or unfeature a product, use feature_product. Do not say this capability is missing.
 - When showing analytics: present numbers clearly (totals, %, comparisons)
 - Proactively suggest: social media marketing, seasonal promotions, optimizing low-performing listings, cross-sells
 - Always confirm destructive actions (delete product, delete coupon) before executing
@@ -304,8 +311,14 @@ const userTools = [
           category: { type: 'string', description: 'Category filter (optional)' },
           maxPrice: { type: 'number', description: 'Maximum price (optional)' },
           minPrice: { type: 'number', description: 'Minimum price (optional)' },
+          brand: { type: 'string', description: 'Brand filter (optional)' },
+          storeId: { type: 'string', description: 'Internal store ID to scope results to a store (optional)' },
+          storeSlug: { type: 'string', description: 'Store slug/subdomain to scope results to a store (optional)' },
+          storeName: { type: 'string', description: 'Store or brand/storefront name to scope results to a store (optional)' },
+          inStockOnly: { type: 'boolean', description: 'Set true when the user is actively shopping or ordering and wants available items only.' },
+          sortBy: { type: 'string', enum: ['price_low', 'price_high', 'popular', 'newest', 'best_rated', 'trending'] },
+          limit: { type: 'number', description: 'Maximum products to return' },
         },
-        required: ['query'],
       },
     },
   },
@@ -560,7 +573,9 @@ const userTools = [
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string' },
+          query: { type: 'string', description: 'Store name, brand, product type, or product keyword' },
+          category: { type: 'string', description: 'Optional product category to match stores by inventory' },
+          brand: { type: 'string', description: 'Optional product brand to match stores by inventory' },
           limit: { type: 'number' },
         },
         required: ['query'],
@@ -610,7 +625,12 @@ const userTools = [
         type: 'object',
         properties: {
           productId: { type: 'string', description: 'Product ID to add' },
+          quantity: { type: 'number', description: 'Quantity to add. Default 1.' },
           selectedColor: { type: 'string', description: 'Optional color choice' },
+          selectedOptions: {
+            type: 'object',
+            description: 'Required product options, e.g. {"Size":"M","Color":"Red"}. Ask the user before choosing options.',
+          },
         },
         required: ['productId'],
       },
@@ -668,11 +688,17 @@ const userTools = [
         type: 'object',
         properties: {
           productId: { type: 'string', description: 'Optional: specific product ID to order. If omitted, orders entire cart.' },
+          quantity: { type: 'number', description: 'Quantity for a direct product order. Default 1.' },
+          selectedColor: { type: 'string', description: 'Color choice for a direct product order when applicable.' },
+          selectedOptions: {
+            type: 'object',
+            description: 'Required product options for direct order, e.g. {"Size":"M","Color":"Red"}.',
+          },
           shippingInfo: {
             type: 'object',
-            description: 'Shipping address. If not provided, uses saved address. Required fields: fullName, address, city. Optional: email, phone, state, postalCode, country.',
+            description: 'Shipping address. If not provided, uses saved address. Required fields: fullName, email, phone, address, city, state, postalCode, country.',
           },
-          paymentMethod: { type: 'string', enum: ['cash_on_delivery', 'stripe'], description: 'Payment method. Default: cash_on_delivery' },
+          paymentMethod: { type: 'string', enum: ['cash_on_delivery', 'stripe'], description: 'Payment method. Use cash_on_delivery for chat orders; Stripe requires secure checkout.' },
         },
       },
     },
@@ -718,6 +744,7 @@ const sellerTools = [
             },
           },
           returnPolicy: { type: 'object', description: 'Optional product-specific return/warranty policy. If omitted, product inherits the store policy.' },
+          isFeatured: { type: 'boolean', description: 'Whether to feature this product immediately, subject to seller plan limits.' },
           confirmDuplicate: { type: 'boolean', description: 'Only true when the seller explicitly confirms they intentionally want to create a duplicate listing.' },
           sellerId: { type: 'string', description: 'Admin only: seller user id to create this product under' },
         },
@@ -729,7 +756,7 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'edit_product',
-      description: "Edit one of the seller's own products. Supports description, price, stock, image URL(s), tags, colors, optionGroups, and return policy. Use the recent productId from successful add_product results for follow-up edits.",
+      description: "Edit one of the seller's own products. Supports description, price, stock, image URL(s), tags, colors, optionGroups, return policy, and isFeatured. Use the recent productId from successful add_product/list results for follow-up edits. Product IDs are internal; do not ask sellers for IDs.",
       parameters: {
         type: 'object',
         properties: {
@@ -738,7 +765,7 @@ const sellerTools = [
           sellerId: { type: 'string', description: 'Admin only: restrict update to this seller.' },
           updates: {
             type: 'object',
-            description: 'Fields to update: name, description, price, discountedPrice, category, brand, stock, image/imageUrl, images, tags, colors, optionGroups, returnPolicy.',
+            description: 'Fields to update: name, description, price, discountedPrice, category, brand, stock, image/imageUrl, images, tags, colors, optionGroups, returnPolicy, isFeatured.',
           },
         },
         required: ['updates'],
@@ -749,11 +776,35 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'delete_product',
-      description: "Delete one of the seller's own products. Confirm first.",
+      description: "Delete one or more of the seller's own products. Confirm first. Prefer productName/productNames or internal IDs from list_my_products; never ask the seller to provide product IDs.",
       parameters: {
         type: 'object',
-        properties: { productId: { type: 'string' } },
-        required: ['productId'],
+        properties: {
+          productId: { type: 'string', description: 'Internal product id from prior tool results. Do not ask seller for this.' },
+          productIds: { type: 'array', items: { type: 'string' }, description: 'Internal product ids from prior tool results for bulk deletion.' },
+          productName: { type: 'string', description: 'Exact or close product name to delete.' },
+          productNames: { type: 'array', items: { type: 'string' }, description: 'Product names to delete.' },
+          keepProductId: { type: 'string', description: 'Internal id to keep when deleting duplicates.' },
+          excludeProductId: { type: 'string', description: 'Internal id to exclude from deletion.' },
+          deleteAllMatches: { type: 'boolean', description: 'True only after seller confirms all matching products should be deleted.' },
+          sellerId: { type: 'string', description: 'Admin only: restrict deletion to this seller.' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feature_product',
+      description: "Feature or unfeature one of the seller's own products on the homepage/store. Use recent productId if available, otherwise productName. Do not ask seller for product IDs.",
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'Internal product id from prior tool results. Do not ask seller for this.' },
+          productName: { type: 'string', description: 'Exact or close product name to feature/unfeature.' },
+          featured: { type: 'boolean', description: 'true to feature, false to unfeature. Defaults to true.' },
+          sellerId: { type: 'string', description: 'Admin only: restrict to this seller.' },
+        },
       },
     },
   },
@@ -842,12 +893,12 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'update_order_status',
-      description: "Update status of an order containing the seller's product (processing/shipped/delivered only; sellers can't cancel).",
+      description: "Update status of an order containing the seller's product (confirmed/processing/shipped/delivered; sellers can't cancel). Use orderId from get_seller_orders results.",
       parameters: {
         type: 'object',
         properties: {
           orderId: { type: 'string' },
-          newStatus: { type: 'string', enum: ['processing', 'shipped', 'delivered'] },
+          newStatus: { type: 'string', enum: ['confirmed', 'processing', 'shipped', 'delivered'] },
         },
         required: ['orderId', 'newStatus'],
       },

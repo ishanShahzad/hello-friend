@@ -1357,7 +1357,7 @@ const AI_ACTION_ROUTE_ROLES = {
         'update_profile', 'get_notifications', 'mark_notifications_read',
         'get_available_coupons', 'validate_coupon', 'get_verified_stores',
         'get_store_details', 'search_stores', 'add_product', 'edit_product',
-        'delete_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
+        'delete_product', 'feature_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
         'remove_discount', 'get_seller_analytics', 'get_seller_orders',
         'update_order_status', 'get_my_store', 'update_store',
         'get_store_analytics', 'apply_for_verification', 'get_shipping_methods',
@@ -1370,7 +1370,7 @@ const AI_ACTION_ROUTE_ROLES = {
         'update_profile', 'get_notifications', 'mark_notifications_read',
         'get_available_coupons', 'validate_coupon', 'get_verified_stores',
         'get_store_details', 'search_stores', 'add_product', 'edit_product',
-        'delete_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
+        'delete_product', 'feature_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
         'remove_discount', 'get_seller_analytics', 'get_seller_orders',
         'update_order_status', 'get_my_store', 'update_store',
         'get_store_analytics', 'apply_for_verification', 'get_shipping_methods',
@@ -1435,6 +1435,7 @@ function aiActionToolRoute(toolName, source = 'body', transform) {
 exports.addProduct = aiActionToolRoute('add_product');
 exports.editProduct = aiActionToolRoute('edit_product');
 exports.deleteProduct = aiActionToolRoute('delete_product');
+exports.featureProduct = aiActionToolRoute('feature_product');
 exports.listMyProducts = aiActionToolRoute('list_my_products', 'query');
 exports.bulkDiscount = aiActionToolRoute('bulk_discount');
 exports.bulkPriceUpdate = aiActionToolRoute('bulk_price_update');

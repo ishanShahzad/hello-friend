@@ -221,21 +221,36 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
 
 // ── CORS ──
-const allowedOrigins = [
+const normalizeOrigin = (origin) => String(origin || '').trim().replace(/\/+$/, '');
+const configuredOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URLS,
+  process.env.ALLOWED_ORIGINS,
+]
+  .filter(Boolean)
+  .flatMap(value => String(value).split(','))
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
   'https://www.rozare.com',
   'https://rozare.com',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+  ...configuredOrigins,
+].map(normalizeOrigin));
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    const normalized = normalizeOrigin(origin);
+    if (allowedOrigins.has(normalized)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all for now
+      callback(null, process.env.NODE_ENV !== 'production');
     }
   },
   credentials: true,
@@ -243,14 +258,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 86400
-}));
+};
 
-app.options('*', cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Ensure CORS headers on ALL responses (including errors)
 app.use((req, res, next) => {

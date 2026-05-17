@@ -24,6 +24,7 @@ router.post('/rate-limit/increment', optionalAuth, ai.incrementRateLimit);
 router.post('/add-product', verifyToken, ai.addProduct);
 router.post('/edit-product', verifyToken, ai.editProduct);
 router.post('/delete-product', verifyToken, ai.deleteProduct);
+router.post('/feature-product', verifyToken, ai.featureProduct);
 router.get('/my-products', verifyToken, ai.listMyProducts);
 router.post('/bulk-discount', verifyToken, ai.bulkDiscount);
 router.post('/bulk-price-update', verifyToken, ai.bulkPriceUpdate);

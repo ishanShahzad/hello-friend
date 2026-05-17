@@ -37,6 +37,7 @@ import {
     ShoppingBag,
     Users,
     LayoutDashboard,
+    MessageCircle,
 } from "lucide-react";
 
 import axios from 'axios';
@@ -169,6 +170,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         { id: 'account overview', label: 'Account Overview', icon: <LayoutDashboard size={18} />, link: '/user-dashboard/account-overview' },
         { id: 'profile', label: 'Profile', icon: <User size={18} />, link: '/user-dashboard/profile' },
         { id: 'orders', label: 'Your Orders', icon: <ShoppingCart size={18} />, link: '/user-dashboard/orders' },
+        { id: 'whatsapp', label: 'WhatsApp AI', icon: <MessageCircle size={18} />, link: '/user-dashboard/whatsapp' },
     ];
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);

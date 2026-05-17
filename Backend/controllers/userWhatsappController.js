@@ -350,6 +350,7 @@ exports.getUserWhatsAppStatus = async (req, res) => {
             verified: user?.whatsappInfo?.verified || false,
             verifiedAt: user?.whatsappInfo?.verifiedAt || null,
             instanceConnected,
+            aiWhatsAppNumber: cfg?.linkedNumber || null,
         });
     } catch (error) {
         console.error('[userWhatsapp] getUserWhatsAppStatus error:', error.message);

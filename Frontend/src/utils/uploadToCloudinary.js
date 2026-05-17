@@ -23,7 +23,6 @@ export const uploadImageToCloudinary = async (file) => {
             {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
                 }
             }
         );
