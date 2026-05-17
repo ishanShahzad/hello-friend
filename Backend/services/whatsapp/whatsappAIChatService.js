@@ -127,6 +127,94 @@ async function sendResponse(phone, text, instanceType) {
  *   - Must be role=seller → seller role
  *   - Otherwise → null (rejected)
  */
+const TOOL_ACTIVITY_LABELS = {
+    search_products: 'searched products',
+    get_product_detail: 'checked product details',
+    get_my_orders: 'checked orders',
+    get_order_detail: 'checked an order',
+    cancel_order: 'cancelled an order',
+    get_wishlist: 'checked wishlist',
+    add_to_wishlist: 'updated wishlist',
+    remove_from_wishlist: 'updated wishlist',
+    get_addresses: 'checked addresses',
+    add_address: 'saved an address',
+    update_profile: 'updated profile',
+    get_notifications: 'checked notifications',
+    mark_notifications_read: 'updated notifications',
+    get_available_coupons: 'checked coupons',
+    validate_coupon: 'validated a coupon',
+    add_to_cart: 'updated cart',
+    view_cart: 'checked cart',
+    remove_from_cart: 'updated cart',
+    clear_cart: 'cleared cart',
+    place_order: 'placed an order',
+    add_product: 'added a product',
+    edit_product: 'updated a product',
+    delete_product: 'deleted a product',
+    list_my_products: 'checked products',
+    bulk_discount: 'updated discounts',
+    bulk_price_update: 'updated prices',
+    remove_discount: 'removed discounts',
+    get_seller_analytics: 'checked analytics',
+    get_seller_orders: 'checked seller orders',
+    update_order_status: 'updated order status',
+    get_my_store: 'checked store details',
+    update_store: 'updated store settings',
+    get_store_analytics: 'checked store analytics',
+    apply_for_verification: 'submitted verification',
+    get_shipping_methods: 'checked shipping methods',
+    update_shipping: 'updated shipping',
+    create_coupon: 'created a coupon',
+    get_my_coupons: 'checked coupons',
+    update_coupon: 'updated a coupon',
+    delete_coupon: 'deleted a coupon',
+    toggle_coupon: 'updated coupon status',
+    get_all_users: 'checked users',
+    get_admin_analytics: 'checked platform analytics',
+    get_all_orders: 'checked platform orders',
+    get_all_complaints: 'checked complaints',
+    update_complaint: 'updated a complaint',
+    get_pending_verifications: 'checked verifications',
+    approve_verification: 'approved verification',
+    reject_verification: 'rejected verification',
+    remove_verification: 'removed verification',
+    get_all_stores: 'checked stores',
+    update_tax_config: 'updated tax config',
+    get_tax_config: 'checked tax config',
+    send_broadcast: 'created a broadcast',
+    get_broadcasts: 'checked broadcasts',
+    cancel_broadcast: 'cancelled a broadcast',
+    get_all_subscriptions: 'checked subscriptions',
+    get_verified_stores: 'checked verified stores',
+    get_store_details: 'checked store details',
+    search_stores: 'searched stores',
+    navigate: 'shared a link',
+    show_style_advice: 'prepared style advice',
+    suggest_outfit: 'prepared an outfit idea',
+    send_product_image: 'prepared a product image',
+};
+
+function formatToolActivitySummary(toolResults = [], clientActions = []) {
+    const events = [
+        ...toolResults.map(t => ({ name: t.tool, result: t.result })),
+        ...clientActions.map(c => ({ name: c.action, result: { success: true } })),
+    ].filter(e => e.name);
+
+    if (!events.length) return '';
+
+    const labels = [];
+    for (const event of events) {
+        let label = TOOL_ACTIVITY_LABELS[event.name] || event.name.replace(/_/g, ' ');
+        if (event.name === 'update_store' && event.result?.blocked) label = 'checked store change eligibility';
+        if (event.result?.success === false && !event.result?.blocked) label = `action failed: ${label}`;
+        if (!labels.includes(label)) labels.push(label);
+        if (labels.length >= 3) break;
+    }
+
+    const extra = events.length > labels.length ? ` +${events.length - labels.length} more` : '';
+    return `Action note: ${labels.join('; ')}${extra}.`;
+}
+
 async function identifyUserByPhone(phone, instanceType) {
     const digits = normalizePhoneDigits(phone);
     if (!digits || digits.length < 8) return null;
@@ -397,7 +485,11 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType) 
 
         // 6. Send AI response
         if (result.responseText) {
-            await sendResponse(phone, result.responseText, instanceType);
+            const actionSummary = formatToolActivitySummary(result.toolResults, result.clientActions);
+            const responseText = actionSummary
+                ? `${result.responseText}\n\n_${actionSummary}_`
+                : result.responseText;
+            await sendResponse(phone, responseText, instanceType);
         } else {
             // AI returned empty response — send a fallback
             await sendResponse(phone, "I'm sorry, I couldn't process that. Could you try rephrasing? 🤔", instanceType);

@@ -1336,3 +1336,156 @@ exports.searchStores = async (req, res) => {
         res.status(500).json({ msg: 'Server error' });
     }
 };
+
+// Production AI action adapter:
+// Keep legacy /api/ai-actions routes, but execute through the same hardened,
+// role-aware tool executor used by /api/ai-chat and WhatsApp.
+const { executeToolCall: executeUnifiedToolCall } = require('../services/aiActionExecutor');
+
+const AI_ACTION_ROUTE_ROLES = {
+    guest: new Set(['search_products', 'get_available_coupons', 'validate_coupon']),
+    user: new Set([
+        'search_products', 'get_order_detail', 'cancel_order', 'get_wishlist',
+        'add_to_wishlist', 'remove_from_wishlist', 'get_addresses', 'add_address',
+        'update_profile', 'get_notifications', 'mark_notifications_read',
+        'get_available_coupons', 'validate_coupon', 'get_verified_stores',
+        'get_store_details', 'search_stores',
+    ]),
+    seller: new Set([
+        'search_products', 'get_order_detail', 'cancel_order', 'get_wishlist',
+        'add_to_wishlist', 'remove_from_wishlist', 'get_addresses', 'add_address',
+        'update_profile', 'get_notifications', 'mark_notifications_read',
+        'get_available_coupons', 'validate_coupon', 'get_verified_stores',
+        'get_store_details', 'search_stores', 'add_product', 'edit_product',
+        'delete_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
+        'remove_discount', 'get_seller_analytics', 'get_seller_orders',
+        'update_order_status', 'get_my_store', 'update_store',
+        'get_store_analytics', 'apply_for_verification', 'get_shipping_methods',
+        'update_shipping', 'create_coupon', 'get_my_coupons', 'update_coupon',
+        'delete_coupon', 'toggle_coupon', 'get_subscription_status',
+    ]),
+    admin: new Set([
+        'search_products', 'get_order_detail', 'cancel_order', 'get_wishlist',
+        'add_to_wishlist', 'remove_from_wishlist', 'get_addresses', 'add_address',
+        'update_profile', 'get_notifications', 'mark_notifications_read',
+        'get_available_coupons', 'validate_coupon', 'get_verified_stores',
+        'get_store_details', 'search_stores', 'add_product', 'edit_product',
+        'delete_product', 'list_my_products', 'bulk_discount', 'bulk_price_update',
+        'remove_discount', 'get_seller_analytics', 'get_seller_orders',
+        'update_order_status', 'get_my_store', 'update_store',
+        'get_store_analytics', 'apply_for_verification', 'get_shipping_methods',
+        'update_shipping', 'create_coupon', 'get_my_coupons', 'update_coupon',
+        'delete_coupon', 'toggle_coupon', 'get_subscription_status',
+        'get_all_users', 'delete_user', 'block_user', 'change_user_role',
+        'get_admin_analytics', 'get_all_orders', 'get_all_complaints',
+        'update_complaint', 'get_pending_verifications', 'approve_verification',
+        'reject_verification', 'remove_verification', 'get_all_stores',
+        'update_tax_config', 'get_tax_config', 'send_broadcast', 'get_broadcasts',
+        'cancel_broadcast', 'get_all_subscriptions',
+    ]),
+};
+
+function canUseAIActionTool(role, toolName) {
+    const normalizedRole = role || 'guest';
+    return AI_ACTION_ROUTE_ROLES[normalizedRole]?.has(toolName) || false;
+}
+
+function normalizeToolHttpResult(result) {
+    const ok = result?.success !== false;
+    const data = result?.data && typeof result.data === 'object' && !Array.isArray(result.data)
+        ? result.data
+        : {};
+    return {
+        success: ok,
+        ok,
+        msg: result?.message || result?.error || (ok ? 'Done.' : 'Action failed.'),
+        message: result?.message,
+        error: result?.error,
+        data: result?.data,
+        ...data,
+        ...(result?.missingFields ? { missingFields: result.missingFields } : {}),
+        ...(result?.cooldown ? { cooldown: result.cooldown } : {}),
+        ...(result?.requiresConfirmation ? { requiresConfirmation: true } : {}),
+    };
+}
+
+function aiActionToolRoute(toolName, source = 'body', transform) {
+    return async (req, res) => {
+        const role = req.user?.role || 'guest';
+        if (!canUseAIActionTool(role, toolName)) {
+            return res.status(403).json({
+                success: false,
+                ok: false,
+                msg: 'This AI tool is not available for your role.',
+                error: 'This AI tool is not available for your role.',
+            });
+        }
+
+        const args = transform
+            ? transform(req)
+            : source === 'query'
+                ? req.query
+                : req.body;
+        const result = await executeUnifiedToolCall(toolName, args || {}, req.user || { role: 'guest' });
+        const status = result?.success === false ? 400 : 200;
+        return res.status(status).json(normalizeToolHttpResult(result));
+    };
+}
+
+exports.addProduct = aiActionToolRoute('add_product');
+exports.editProduct = aiActionToolRoute('edit_product');
+exports.deleteProduct = aiActionToolRoute('delete_product');
+exports.listMyProducts = aiActionToolRoute('list_my_products', 'query');
+exports.bulkDiscount = aiActionToolRoute('bulk_discount');
+exports.bulkPriceUpdate = aiActionToolRoute('bulk_price_update');
+exports.removeDiscount = aiActionToolRoute('remove_discount');
+exports.getSellerAnalytics = aiActionToolRoute('get_seller_analytics', 'query');
+exports.getSellerOrders = aiActionToolRoute('get_seller_orders', 'query');
+exports.updateOrderStatus = aiActionToolRoute('update_order_status');
+exports.getMyStore = aiActionToolRoute('get_my_store', 'query');
+exports.updateStore = aiActionToolRoute('update_store');
+exports.getStoreAnalytics = aiActionToolRoute('get_store_analytics', 'query');
+exports.applyForVerification = aiActionToolRoute('apply_for_verification');
+exports.getShippingMethods = aiActionToolRoute('get_shipping_methods', 'query');
+exports.updateShipping = aiActionToolRoute('update_shipping');
+exports.getAllUsers = aiActionToolRoute('get_all_users', 'query');
+exports.deleteUser = aiActionToolRoute('delete_user');
+exports.blockUser = aiActionToolRoute('block_user');
+exports.changeUserRole = aiActionToolRoute('change_user_role');
+exports.getAdminAnalytics = aiActionToolRoute('get_admin_analytics', 'query');
+exports.getAllOrders = aiActionToolRoute('get_all_orders', 'query');
+exports.getOrderDetail = aiActionToolRoute('get_order_detail', 'query');
+exports.cancelOrder = aiActionToolRoute('cancel_order');
+exports.getAllComplaints = aiActionToolRoute('get_all_complaints', 'query');
+exports.updateComplaint = aiActionToolRoute('update_complaint');
+exports.getPendingVerifications = aiActionToolRoute('get_pending_verifications', 'query');
+exports.approveVerification = aiActionToolRoute('approve_verification');
+exports.rejectVerification = aiActionToolRoute('reject_verification');
+exports.removeVerification = aiActionToolRoute('remove_verification');
+exports.getAllStores = aiActionToolRoute('get_all_stores', 'query');
+exports.updateTaxConfig = aiActionToolRoute('update_tax_config');
+exports.getTaxConfig = aiActionToolRoute('get_tax_config', 'query');
+exports.getWishlist = aiActionToolRoute('get_wishlist', 'query');
+exports.addToWishlist = aiActionToolRoute('add_to_wishlist');
+exports.removeFromWishlist = aiActionToolRoute('remove_from_wishlist');
+exports.getAddresses = aiActionToolRoute('get_addresses', 'query');
+exports.addAddress = aiActionToolRoute('add_address');
+exports.updateProfile = aiActionToolRoute('update_profile');
+exports.getNotifications = aiActionToolRoute('get_notifications', 'query');
+exports.markNotificationsRead = aiActionToolRoute('mark_notifications_read');
+exports.getAvailableCoupons = aiActionToolRoute('get_available_coupons', 'query');
+exports.validateCoupon = aiActionToolRoute('validate_coupon');
+exports.createCoupon = aiActionToolRoute('create_coupon');
+exports.getMyCoupons = aiActionToolRoute('get_my_coupons', 'query');
+exports.updateCoupon = aiActionToolRoute('update_coupon');
+exports.deleteCoupon = aiActionToolRoute('delete_coupon');
+exports.toggleCoupon = aiActionToolRoute('toggle_coupon');
+exports.getSubscriptionStatus = aiActionToolRoute('get_subscription_status', 'query');
+exports.sendBroadcast = aiActionToolRoute('send_broadcast');
+exports.getBroadcasts = aiActionToolRoute('get_broadcasts', 'query');
+exports.cancelBroadcast = aiActionToolRoute('cancel_broadcast');
+exports.getAllSubscriptions = aiActionToolRoute('get_all_subscriptions', 'query');
+exports.getVerifiedStores = aiActionToolRoute('get_verified_stores', 'query');
+exports.getStoreDetails = aiActionToolRoute('get_store_details', 'query');
+exports.searchStores = aiActionToolRoute('search_stores', 'query');
+exports.searchProducts = aiActionToolRoute('search_products', 'query');

@@ -57,6 +57,84 @@ function safePage(v) {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+const STORE_CHANGE_COOLDOWN_DAYS = { storeName: 7, storeSlug: 30, sellerType: 30 };
+const STORE_FIELD_LABELS = { storeName: 'store name', storeSlug: 'subdomain', sellerType: 'store type' };
+const RESERVED_SUBDOMAINS = new Set(['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support']);
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function pickObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function cooldownStatus(field, lastAt) {
+  const cooldownDays = STORE_CHANGE_COOLDOWN_DAYS[field];
+  if (!cooldownDays) return { canChange: true, cooldownDays };
+  if (!lastAt) return { canChange: true, cooldownDays, lastChangedAt: null, nextAllowedAt: null, daysRemaining: 0 };
+
+  const lastChangedAt = new Date(lastAt);
+  const nextAllowedAt = new Date(lastChangedAt.getTime() + cooldownDays * 86400000);
+  const now = new Date();
+  if (now >= nextAllowedAt) {
+    return {
+      canChange: true,
+      cooldownDays,
+      lastChangedAt: lastChangedAt.toISOString(),
+      nextAllowedAt: nextAllowedAt.toISOString(),
+      daysRemaining: 0,
+    };
+  }
+
+  return {
+    canChange: false,
+    cooldownDays,
+    lastChangedAt: lastChangedAt.toISOString(),
+    nextAllowedAt: nextAllowedAt.toISOString(),
+    daysRemaining: Math.max(1, Math.ceil((nextAllowedAt - now) / 86400000)),
+  };
+}
+
+function storeChangeLimits(store) {
+  return {
+    storeName: cooldownStatus('storeName', store?.lastNameChangeAt),
+    subdomain: cooldownStatus('storeSlug', store?.lastSlugChangeAt),
+    sellerType: cooldownStatus('sellerType', store?.lastTypeChangeAt),
+  };
+}
+
+function sanitizeSubdomain(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\.rozare\.com$/i, '')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function isPlaceholderValue(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (!v) return false;
+  return [
+    'your new store name',
+    'new store name',
+    'store name',
+    'your store name',
+    'your new subdomain',
+    'new subdomain',
+    'subdomain',
+    'your-new-store-name',
+    'new-store-name',
+    'your-new-subdomain',
+    'new-subdomain',
+    'example',
+    'example-store',
+  ].includes(v);
+}
+
 // ─── Smart Search: Synonym/Multilingual Expansion ───
 const SYNONYM_MAP = {
   // Multilingual (Urdu/Hindi → English)
@@ -646,6 +724,32 @@ async function executeToolCall(toolName, args = {}, user) {
         };
       }
 
+      case 'send_product_image': {
+        const { productId, caption } = args;
+        if (!productId) return { success: false, error: 'Please provide a product ID.' };
+
+        const product = await Product.findById(toId(productId))
+          .select('name image images price discountedPrice stock')
+          .lean();
+        if (!product) return { success: false, error: 'Product not found.' };
+
+        const imageUrl = product.image || product.images?.[0];
+        if (!imageUrl) return { success: false, error: `No image is available for "${product.name}".` };
+
+        return {
+          success: true,
+          data: {
+            productId: product._id,
+            name: product.name,
+            imageUrl,
+            caption: caption || product.name,
+            price: product.discountedPrice || product.price,
+            stock: product.stock,
+          },
+          message: `Image ready for "${product.name}".`,
+        };
+      }
+
       case 'get_my_profile': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const user = await User.findById(userId)
@@ -1006,7 +1110,11 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'add_product': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const store = await Store.findOne({ seller: userId }).select('_id storeName').lean();
+        const targetSellerId = role === 'admin' ? toId(args.sellerId || args.seller) : userId;
+        if (role === 'admin' && !targetSellerId) {
+          return { success: false, error: 'Please provide sellerId so the product can be assigned to a seller.' };
+        }
+        const store = await Store.findOne({ seller: targetSellerId }).select('_id storeName').lean();
         if (!store) return { success: false, error: 'You need to create a store first.' };
 
         const p = args.product || args;
@@ -1018,20 +1126,27 @@ async function executeToolCall(toolName, args = {}, user) {
         if (missing.length) {
           return { success: false, error: `Missing required fields: ${missing.join(', ')}`, missingFields: missing };
         }
+        const price = Number(p.price);
+        const stock = p.stock != null ? Number(p.stock) : 0;
+        const discountedPrice = p.discountedPrice ? Number(p.discountedPrice) : 0;
+        if (!Number.isFinite(price) || price < 0) return { success: false, error: 'Product price must be a non-negative number.' };
+        if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Product stock must be a non-negative number.' };
+        if (!Number.isFinite(discountedPrice) || discountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
+        if (discountedPrice > 0 && discountedPrice >= price) return { success: false, error: 'Discounted price must be lower than the product price.' };
 
         const product = await Product.create({
           name: p.name,
           description: p.description || '',
-          price: Number(p.price),
-          discountedPrice: p.discountedPrice ? Number(p.discountedPrice) : 0,
+          price,
+          discountedPrice,
           category: p.category,
           brand: p.brand,
-          stock: p.stock != null ? Number(p.stock) : 0,
+          stock,
           image: p.image || 'https://via.placeholder.com/400',
           images: p.images || [],
           tags: p.tags || [],
           colors: p.colors || [],
-          seller: userId,
+          seller: targetSellerId,
         });
 
         return {
@@ -1043,11 +1158,27 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'edit_product': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productId, ...updates } = args;
+        const { productId } = args;
+        const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
+        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy'];
+        const updates = {};
+        for (const field of allowedProductFields) {
+          if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
+        }
         if (!productId) return { success: false, error: 'Please specify which product to edit (productId).' };
+        if (Object.keys(updates).length === 0) return { success: false, error: 'No valid product fields were provided to update.' };
+        for (const numericField of ['price', 'discountedPrice', 'stock']) {
+          if (updates[numericField] !== undefined) {
+            const numericValue = Number(updates[numericField]);
+            if (!Number.isFinite(numericValue) || numericValue < 0) {
+              return { success: false, error: `${numericField} must be a non-negative number.` };
+            }
+            updates[numericField] = numericValue;
+          }
+        }
 
         const product = await Product.findOneAndUpdate(
-          { _id: toId(productId), seller: userId },
+          role === 'admin' ? { _id: toId(productId) } : { _id: toId(productId), seller: userId },
           { $set: updates },
           { new: true, runValidators: true }
         ).select('name price stock category').lean();
@@ -1065,7 +1196,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const { productId } = args;
         if (!productId) return { success: false, error: 'Please specify which product to delete (productId).' };
 
-        const product = await Product.findOneAndDelete({ _id: toId(productId), seller: userId });
+        const product = await Product.findOneAndDelete(role === 'admin' ? { _id: toId(productId) } : { _id: toId(productId), seller: userId });
         if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
         return { success: true, message: `Product "${product.name}" has been permanently deleted. 🗑️` };
       }
@@ -1073,7 +1204,7 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'list_my_products': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const { search, category, limit, page, sortBy } = args;
-        const filter = { seller: userId };
+        const filter = role === 'admin' ? {} : { seller: userId };
         if (search) filter.name = { $regex: search, $options: 'i' };
         if (category) filter.category = { $regex: category, $options: 'i' };
 
@@ -1099,10 +1230,14 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'bulk_discount': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productIds, category: cat, discountPercent } = args;
-        if (!discountPercent) return { success: false, error: 'Please specify a discount percentage.' };
+        const { productIds, category: cat } = args;
+        const discountType = args.discountType || (args.discountPercent != null ? 'percentage' : 'percentage');
+        const discountValue = args.discountValue != null ? Number(args.discountValue) : Number(args.discountPercent);
+        if (!Number.isFinite(discountValue) || discountValue <= 0) return { success: false, error: 'Please specify a positive discount value.' };
+        if (!['percentage', 'fixed'].includes(discountType)) return { success: false, error: 'Discount type must be percentage or fixed.' };
+        if (discountType === 'percentage' && discountValue > 100) return { success: false, error: 'Percentage discounts cannot exceed 100%.' };
 
-        const filter = { seller: userId };
+        const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
         else if (cat) filter.category = { $regex: cat, $options: 'i' };
 
@@ -1112,23 +1247,32 @@ async function executeToolCall(toolName, args = {}, user) {
         const bulkOps = products.map(p => ({
           updateOne: {
             filter: { _id: p._id },
-            update: { $set: { discountedPrice: Math.round(p.price * (1 - discountPercent / 100) * 100) / 100 } },
+            update: {
+              $set: {
+                discountedPrice: discountType === 'percentage'
+                  ? Math.round(p.price * (1 - discountValue / 100) * 100) / 100
+                  : Math.max(0, Math.round((p.price - discountValue) * 100) / 100),
+              },
+            },
           },
         }));
         await Product.bulkWrite(bulkOps);
 
         return {
           success: true,
-          message: `Applied ${discountPercent}% discount to ${products.length} product${products.length !== 1 ? 's' : ''}! 🏷️`,
+          message: `Applied ${discountType === 'percentage' ? `${discountValue}%` : `$${discountValue}`} discount to ${products.length} product${products.length !== 1 ? 's' : ''}!`,
         };
       }
 
       case 'bulk_price_update': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productIds, category: cat, priceChange, isPercent } = args;
-        if (!priceChange && priceChange !== 0) return { success: false, error: 'Please specify a price change amount.' };
+        const { productIds, category: cat } = args;
+        const updateType = args.updateType || (args.isPercent ? 'percentage' : 'fixed');
+        const value = args.value != null ? Number(args.value) : Number(args.priceChange);
+        if (!Number.isFinite(value)) return { success: false, error: 'Please specify a valid price update value.' };
+        if (!['percentage', 'fixed', 'set'].includes(updateType)) return { success: false, error: 'Price update type must be percentage, fixed, or set.' };
 
-        const filter = { seller: userId };
+        const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
         else if (cat) filter.category = { $regex: cat, $options: 'i' };
 
@@ -1136,8 +1280,11 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!products.length) return { success: false, error: 'No matching products found.' };
 
         const bulkOps = products.map(p => {
-          const change = isPercent ? p.price * Number(priceChange) / 100 : Number(priceChange);
-          const newPrice = Math.max(0, Math.round((p.price + change) * 100) / 100);
+          let newPrice;
+          if (updateType === 'set') newPrice = value;
+          else if (updateType === 'percentage') newPrice = p.price + (p.price * value / 100);
+          else newPrice = p.price + value;
+          newPrice = Math.max(0, Math.round(newPrice * 100) / 100);
           return {
             updateOne: {
               filter: { _id: p._id },
@@ -1149,14 +1296,14 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
-          message: `Updated prices for ${products.length} product${products.length !== 1 ? 's' : ''} (${isPercent ? priceChange + '%' : '$' + priceChange}).`,
+          message: `Updated prices for ${products.length} product${products.length !== 1 ? 's' : ''} (${updateType}: ${value}).`,
         };
       }
 
       case 'remove_discount': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const { productIds, category: cat } = args;
-        const filter = { seller: userId };
+        const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
         else if (cat) filter.category = { $regex: cat, $options: 'i' };
 
@@ -1276,7 +1423,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'update_order_status': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { orderId, status: newStatus } = args;
+        const { orderId } = args;
+        const newStatus = args.newStatus || args.status;
         if (!orderId || !newStatus) return { success: false, error: 'Please provide orderId and new status.' };
 
         const validStatuses = ['confirmed', 'processing', 'shipped', 'delivered'];
@@ -1284,16 +1432,17 @@ async function executeToolCall(toolName, args = {}, user) {
           return { success: false, error: `Invalid status. Valid: ${validStatuses.join(', ')}` };
         }
 
-        // Verify seller owns products in this order
-        const myProducts = await Product.find({ seller: userId }).select('_id').lean();
-        const productIds = myProducts.map(p => p._id.toString());
+        // Verify seller owns products in this order. Admins can update any order.
+        const productIds = role === 'admin'
+          ? []
+          : (await Product.find({ seller: userId }).select('_id').lean()).map(p => p._id.toString());
 
         const order = await Order.findOne({
           $or: [{ _id: toId(orderId) }, { orderId: orderId }],
         });
         if (!order) return { success: false, error: 'Order not found.' };
 
-        const ownsItems = order.orderItems.some(i => productIds.includes(i.productId?.toString()));
+        const ownsItems = role === 'admin' || order.orderItems.some(i => productIds.includes(i.productId?.toString()));
         if (!ownsItems) return { success: false, error: 'This order doesn\'t contain your products.' };
 
         order.orderStatus = newStatus;
@@ -1328,6 +1477,7 @@ async function executeToolCall(toolName, args = {}, user) {
             socialLinks: store.socialLinks,
             returnPolicy: store.returnPolicy,
             productCount,
+            changeLimits: storeChangeLimits(store),
             createdAt: store.createdAt,
           },
           message: `Your store "${store.storeName}" — ${store.verification?.isVerified ? 'verified ✓' : 'not verified'} — ${productCount} products, ${store.views} views.`,
@@ -1336,70 +1486,133 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'update_store': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const updates = { ...args };
-        delete updates.seller;
-        delete updates.verification;
-        delete updates.storeSlug; // subdomain changes go through a separate flow with payment/cooldown
+        const normalizedRaw = Object.keys(pickObject(args.updates)).length ? { ...args.updates } : { ...args };
+        const allowedStoreFields = ['storeName', 'storeSlug', 'description', 'logo', 'banner', 'socialLinks', 'address', 'returnPolicy', 'sellerType'];
+        const normalizedUpdates = {};
+        for (const field of allowedStoreFields) {
+          if (normalizedRaw[field] !== undefined) normalizedUpdates[field] = normalizedRaw[field];
+        }
 
-        const existing = await Store.findOne({ seller: userId });
-        if (!existing) return { success: false, error: 'Store not found.' };
+        const existingStore = await Store.findOne({ seller: userId });
+        if (!existingStore) return { success: false, error: 'Store not found.' };
 
-        if (existing.isActive === false) {
+        if (existingStore.isActive === false) {
           return { success: false, error: 'Your store is blocked. Reactivate your subscription before changing store details.' };
         }
 
-        // Enforce cooldowns: storeName 7d, sellerType 30d
-        const COOLDOWN_DAYS = { storeName: 7, sellerType: 30 };
-        const FIELD_LABELS = { storeName: 'name', sellerType: 'type' };
-        const checkCd = (field, lastAt) => {
-          if (!lastAt) return null;
-          const nextAt = new Date(new Date(lastAt).getTime() + COOLDOWN_DAYS[field] * 86400000);
-          const now = new Date();
-          if (now >= nextAt) return null;
-          return Math.max(1, Math.ceil((nextAt - now) / 86400000));
-        };
-
-        // Validate & detect changes
-        if (updates.storeName !== undefined) {
-          const name = String(updates.storeName).trim();
+        if (normalizedUpdates.storeName !== undefined) {
+          const name = String(normalizedUpdates.storeName).trim();
+          if (isPlaceholderValue(name)) {
+            return { success: false, error: 'No store name was provided. Ask the seller what new store name they want before updating.' };
+          }
           if (name.length < 3 || name.length > 50) {
-            return { success: false, error: 'Store name must be 3–50 characters.' };
+            return { success: false, error: 'Store name must be 3-50 characters.' };
           }
-          if (name.toLowerCase() === existing.storeName.toLowerCase()) {
-            delete updates.storeName;
+          if (name.toLowerCase() === existingStore.storeName.toLowerCase()) {
+            delete normalizedUpdates.storeName;
           } else {
-            const days = checkCd('storeName', existing.lastNameChangeAt);
-            if (days) return { success: false, error: `You can change your store ${FIELD_LABELS.storeName} again in ${days} day(s). Store names can only be changed once every 7 days.` };
-            const dup = await Store.findOne({ storeName: { $regex: new RegExp(`^${name}$`, 'i') }, _id: { $ne: existing._id } }).select('_id').lean();
-            if (dup) return { success: false, error: 'A store with this name already exists.' };
-            updates.storeName = name;
-            updates.lastNameChangeAt = new Date();
+            const cd = cooldownStatus('storeName', existingStore.lastNameChangeAt);
+            if (!cd.canChange) {
+              return {
+                success: false,
+                error: `You can change your ${STORE_FIELD_LABELS.storeName} again in ${cd.daysRemaining} day(s). Store names can only be changed once every 7 days.`,
+                cooldown: cd,
+              };
+            }
+            const duplicate = await Store.findOne({ storeName: { $regex: new RegExp(`^${escapeRegExp(name)}$`, 'i') }, _id: { $ne: existingStore._id } }).select('_id').lean();
+            if (duplicate) return { success: false, error: 'A store with this name already exists.' };
+            normalizedUpdates.storeName = name;
+            normalizedUpdates.lastNameChangeAt = new Date();
           }
         }
 
-        if (updates.sellerType !== undefined) {
-          if (!['store', 'brand'].includes(updates.sellerType)) {
-            delete updates.sellerType;
-          } else if (updates.sellerType === (existing.sellerType || 'store')) {
-            delete updates.sellerType;
+        if (normalizedUpdates.storeSlug !== undefined) {
+          const slug = sanitizeSubdomain(normalizedUpdates.storeSlug);
+          if (isPlaceholderValue(slug)) {
+            return { success: false, error: 'No subdomain was provided. Ask the seller what new subdomain they want before updating.' };
+          }
+          if (slug.length < 3 || slug.length > 63) {
+            return { success: false, error: 'Subdomain must be 3-63 characters.' };
+          }
+          if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) {
+            return { success: false, error: 'Subdomain can only contain lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen.' };
+          }
+          if (RESERVED_SUBDOMAINS.has(slug)) {
+            return { success: false, error: 'This subdomain is reserved by the system.' };
+          }
+          if (slug === existingStore.storeSlug) {
+            delete normalizedUpdates.storeSlug;
           } else {
-            const days = checkCd('sellerType', existing.lastTypeChangeAt);
-            if (days) return { success: false, error: `You can change your store ${FIELD_LABELS.sellerType} again in ${days} day(s).` };
-            updates.lastTypeChangeAt = new Date();
+            const cd = cooldownStatus('storeSlug', existingStore.lastSlugChangeAt);
+            if (!cd.canChange) {
+              return {
+                success: false,
+                error: `You can change your ${STORE_FIELD_LABELS.storeSlug} again in ${cd.daysRemaining} day(s). Subdomains can only be changed once every 30 days.`,
+                cooldown: cd,
+              };
+            }
+
+            const hasPurchasedSubdomain = !!(existingStore.subdomainPurchase?.isPurchased && existingStore.subdomainPurchase?.expiresAt && new Date(existingStore.subdomainPurchase.expiresAt) > new Date());
+            if (hasPurchasedSubdomain && normalizedRaw.confirmSubdomainChange !== true) {
+              return {
+                success: false,
+                requiresConfirmation: true,
+                error: `You have purchased "${existingStore.storeSlug}.rozare.com". Changing it will forfeit ownership of the old subdomain. Ask the seller to confirm before proceeding.`,
+                currentSubdomain: existingStore.storeSlug,
+                newSubdomain: slug,
+              };
+            }
+
+            const duplicate = await Store.findOne({ storeSlug: slug, _id: { $ne: existingStore._id } }).select('_id').lean();
+            if (duplicate) return { success: false, error: 'This subdomain is already taken by another store.' };
+            normalizedUpdates.storeSlug = slug;
+            normalizedUpdates.lastSlugChangeAt = new Date();
+            if (hasPurchasedSubdomain) {
+              normalizedUpdates.subdomainPurchase = {
+                isPurchased: false,
+                purchasedAt: null,
+                expiresAt: null,
+                stripePaymentId: '',
+                removalScheduledAt: null,
+              };
+            }
           }
         }
 
-        if (Object.keys(updates).length === 0) {
+        if (normalizedUpdates.sellerType !== undefined) {
+          if (!['store', 'brand'].includes(normalizedUpdates.sellerType)) {
+            delete normalizedUpdates.sellerType;
+          } else if (normalizedUpdates.sellerType === (existingStore.sellerType || 'store')) {
+            delete normalizedUpdates.sellerType;
+          } else {
+            const cd = cooldownStatus('sellerType', existingStore.lastTypeChangeAt);
+            if (!cd.canChange) {
+              return { success: false, error: `You can change your ${STORE_FIELD_LABELS.sellerType} again in ${cd.daysRemaining} day(s).`, cooldown: cd };
+            }
+            normalizedUpdates.lastTypeChangeAt = new Date();
+          }
+        }
+
+        if (Object.keys(normalizedUpdates).length === 0) {
           return { success: false, error: 'No changes to apply.' };
         }
 
-        const store = await Store.findOneAndUpdate(
+        const updatedStore = await Store.findOneAndUpdate(
           { seller: userId },
-          { $set: updates },
+          { $set: normalizedUpdates },
           { new: true, runValidators: true }
-        ).select('storeName description').lean();
+        ).select('storeName storeSlug description lastNameChangeAt lastSlugChangeAt lastTypeChangeAt').lean();
 
-        return { success: true, message: `Store "${store.storeName}" updated successfully! 🏪`, data: { updatedFields: Object.keys(updates).filter(k => !k.startsWith('last')) } };
+        return {
+          success: true,
+          message: `Store "${updatedStore.storeName}" updated successfully.`,
+          data: {
+            storeName: updatedStore.storeName,
+            slug: updatedStore.storeSlug,
+            updatedFields: Object.keys(normalizedUpdates).filter(k => !k.startsWith('last')),
+            changeLimits: storeChangeLimits(updatedStore),
+          },
+        };
       }
 
       case 'get_store_analytics': {
@@ -1442,8 +1655,11 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'update_shipping': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { method, cost, deliveryDays, isActive } = args;
+        const shippingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
+        let { method, cost, deliveryDays, isActive } = shippingUpdates;
+        if (!method && args.methodId) method = args.methodId;
         if (!method) return { success: false, error: 'Please specify a shipping method type (free, standard, fast).' };
+        if (!['free', 'standard', 'fast'].includes(method)) return { success: false, error: 'Shipping method must be free, standard, or fast.' };
 
         let shipping = await ShippingMethod.findOne({ seller: userId });
         if (!shipping) {
@@ -1474,19 +1690,35 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!c.code || !c.discountType || !c.discountValue || !c.expiryDate) {
           return { success: false, error: 'Please provide: code, discountType (percentage/fixed), discountValue, expiryDate.' };
         }
+        if (!['percentage', 'fixed'].includes(c.discountType)) {
+          return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
+        }
+        const discountValue = Number(c.discountValue);
+        if (!Number.isFinite(discountValue) || discountValue <= 0) {
+          return { success: false, error: 'Coupon discountValue must be a positive number.' };
+        }
+        if (c.discountType === 'percentage' && discountValue > 100) {
+          return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
+        }
+        const expiryDate = new Date(c.expiryDate);
+        if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
+        if (expiryDate <= new Date()) return { success: false, error: 'Coupon expiryDate must be in the future.' };
+        const code = String(c.code).toUpperCase().trim();
+        const duplicate = await Coupon.findOne({ seller: userId, code }).select('_id').lean();
+        if (duplicate) return { success: false, error: `Coupon "${code}" already exists for your store.` };
 
         const coupon = await Coupon.create({
           seller: userId,
-          code: c.code.toUpperCase().trim(),
+          code,
           discountType: c.discountType,
-          discountValue: Number(c.discountValue),
+          discountValue,
           applicableTo: c.applicableTo || 'all',
           applicableProducts: c.applicableProducts || [],
           maxUses: c.maxUses || null,
           maxUsesPerUser: c.maxUsesPerUser || 1,
           minOrderAmount: c.minOrderAmount || 0,
           maxDiscountAmount: c.maxDiscountAmount || null,
-          expiryDate: new Date(c.expiryDate),
+          expiryDate,
           description: c.description || '',
         });
 
@@ -1522,8 +1754,35 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'update_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { couponId, ...updates } = args;
+        const { couponId } = args;
+        const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
+        const allowedCouponFields = ['discountType', 'discountValue', 'applicableTo', 'applicableProducts', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount', 'startDate', 'expiryDate', 'isActive', 'description'];
+        const updates = {};
+        for (const field of allowedCouponFields) {
+          if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
+        }
         if (!couponId) return { success: false, error: 'Please specify couponId.' };
+        if (Object.keys(updates).length === 0) return { success: false, error: 'No valid coupon fields were provided to update.' };
+        if (updates.discountType && !['percentage', 'fixed'].includes(updates.discountType)) {
+          return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
+        }
+        for (const numericField of ['discountValue', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount']) {
+          if (updates[numericField] !== undefined && updates[numericField] !== null) {
+            const numericValue = Number(updates[numericField]);
+            if (!Number.isFinite(numericValue) || numericValue < 0) {
+              return { success: false, error: `${numericField} must be a non-negative number.` };
+            }
+            updates[numericField] = numericValue;
+          }
+        }
+        if (updates.discountType === 'percentage' && updates.discountValue > 100) {
+          return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
+        }
+        if (updates.expiryDate !== undefined) {
+          const expiryDate = new Date(updates.expiryDate);
+          if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
+          updates.expiryDate = expiryDate;
+        }
 
         const coupon = await Coupon.findOneAndUpdate(
           { _id: toId(couponId), seller: userId },
@@ -1582,7 +1841,7 @@ async function executeToolCall(toolName, args = {}, user) {
       // ─────────────────────────────────────────────
 
       case 'get_all_users': {
-        const { search, role: filterRole, page, limit } = args;
+        const { search, role: filterRole, status, page, limit } = args;
         const filter = {};
         if (search) {
           filter.$or = [
@@ -1591,6 +1850,7 @@ async function executeToolCall(toolName, args = {}, user) {
           ];
         }
         if (filterRole) filter.role = filterRole;
+        if (status) filter.status = status;
 
         const skip = (safePage(page) - 1) * safeLimit(limit, 20);
         const [users, total] = await Promise.all([
@@ -1603,7 +1863,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { users, total, page: safePage(page) },
-          message: `Found ${total} user${total !== 1 ? 's' : ''}${search ? ` matching "${search}"` : ''}${filterRole ? ` with role "${filterRole}"` : ''}. Showing ${users.length}.`,
+          message: `Found ${total} user${total !== 1 ? 's' : ''}${search ? ` matching "${search}"` : ''}${filterRole ? ` with role "${filterRole}"` : ''}${status ? ` with status "${status}"` : ''}. Showing ${users.length}.`,
         };
       }
 
@@ -1772,12 +2032,15 @@ async function executeToolCall(toolName, args = {}, user) {
       }
 
       case 'update_complaint': {
-        const { complaintId, status: newStatus, response: adminResp } = args;
+        const { complaintId, status: newStatus, priority } = args;
+        const adminResp = args.adminResponse || args.response;
         if (!complaintId) return { success: false, error: 'Please provide complaintId.' };
 
         const update = {};
         if (newStatus) update.status = newStatus;
+        if (priority) update.priority = priority;
         if (adminResp) update.adminResponse = adminResp;
+        if (Object.keys(update).length === 0) return { success: false, error: 'No valid complaint updates were provided.' };
 
         const complaint = await Complaint.findByIdAndUpdate(
           toId(complaintId),
@@ -1904,8 +2167,23 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'update_tax_config': {
         const { type, value, isActive } = args;
         const update = {};
-        if (type) update.type = type;
-        if (value != null) update.value = Number(value);
+        if (type) {
+          if (!['none', 'percentage', 'fixed'].includes(type)) {
+            return { success: false, error: 'Tax type must be none, percentage, or fixed.' };
+          }
+          update.type = type;
+        }
+        if (value != null) {
+          const numericValue = Number(value);
+          if (!Number.isFinite(numericValue) || numericValue < 0) {
+            return { success: false, error: 'Tax value must be a non-negative number.' };
+          }
+          if (type === 'percentage' && numericValue > 100) {
+            return { success: false, error: 'Percentage tax cannot exceed 100%.' };
+          }
+          update.value = numericValue;
+        }
+        if (type === 'none') update.value = 0;
         if (isActive != null) update.isActive = isActive;
         update.updatedBy = userId;
 
@@ -1935,17 +2213,66 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'send_broadcast': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { title, body, category, audience, channels, scheduleType, linkTo } = args;
+        const { title, category, channels, linkTo, recurrence, endsAt } = args;
+        const body = args.body || args.message;
         if (!title || !body) return { success: false, error: 'Please provide title and body for the broadcast.' };
+        const normalizedCategory = category || 'announcement';
+        if (!['announcement', 'promo', 'order', 'system', 'seller'].includes(normalizedCategory)) {
+          return { success: false, error: 'Broadcast category must be announcement, promo, order, system, or seller.' };
+        }
+
+        const validAudiences = ['all_users', 'all_sellers', 'both', 'specific'];
+        const audienceInput = args.audience;
+        const audienceTarget = typeof audienceInput === 'object' && audienceInput !== null
+          ? audienceInput.target
+          : audienceInput;
+        const audienceMap = {
+          all: 'both',
+          users: 'all_users',
+          sellers: 'all_sellers',
+          custom: 'specific',
+        };
+        const audience = audienceMap[audienceTarget] || audienceTarget || 'all_users';
+        const userIds = Array.isArray(args.userIds)
+          ? args.userIds
+          : Array.isArray(audienceInput?.userIds)
+            ? audienceInput.userIds
+            : [];
+        if (!validAudiences.includes(audience)) {
+          return { success: false, error: 'Audience must be all_users, all_sellers, both, or specific.' };
+        }
+        if (audience === 'specific' && userIds.length === 0) {
+          return { success: false, error: 'Please provide userIds when sending a broadcast to a specific audience.' };
+        }
+
+        const validChannels = ['inapp', 'push', 'email', 'whatsapp'];
+        const normalizedChannels = Array.isArray(channels) && channels.length ? channels : ['inapp', 'push'];
+        if (normalizedChannels.some(ch => !validChannels.includes(ch))) {
+          return { success: false, error: `Invalid broadcast channel. Valid channels: ${validChannels.join(', ')}.` };
+        }
+
+        let scheduleType = args.scheduleType || (args.scheduledAt ? 'one_time' : 'immediate');
+        if (!['immediate', 'one_time', 'recurring'].includes(scheduleType)) {
+          return { success: false, error: 'Schedule type must be immediate, one_time, or recurring.' };
+        }
+        let nextRunAt = new Date();
+        if (scheduleType === 'one_time' || scheduleType === 'recurring') {
+          if (!args.scheduledAt) return { success: false, error: 'scheduledAt is required for scheduled broadcasts.' };
+          nextRunAt = new Date(args.scheduledAt);
+          if (Number.isNaN(nextRunAt.getTime())) return { success: false, error: 'Invalid scheduledAt date.' };
+        }
 
         const broadcast = await BroadcastJob.create({
           title,
           body,
-          category: category || 'announcement',
-          audience: audience || 'all_users',
-          channels: channels || ['inapp', 'push'],
-          scheduleType: scheduleType || 'immediate',
-          nextRunAt: new Date(),
+          category: normalizedCategory,
+          audience,
+          userIds: audience === 'specific' ? userIds.map(toId).filter(Boolean) : [],
+          channels: normalizedChannels,
+          scheduleType,
+          recurrence: scheduleType === 'recurring' ? (recurrence || 'daily') : 'none',
+          nextRunAt,
+          endsAt: endsAt ? new Date(endsAt) : null,
           linkTo: linkTo || '',
           createdBy: userId,
         });
@@ -2028,7 +2355,7 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'get_verified_stores': {
         const stores = await Store.find({ 'verification.isVerified': true })
           .populate('seller', 'username')
-          .select('storeName storeSlug views trustCount verification')
+          .select('storeName storeSlug description views trustCount verification')
           .lean();
 
         return {
@@ -2038,6 +2365,7 @@ async function executeToolCall(toolName, args = {}, user) {
               _id: s._id,
               storeName: s.storeName,
               slug: s.storeSlug,
+              description: s.description,
               seller: s.seller?.username || 'Unknown',
               views: s.views,
               trustCount: s.trustCount,
@@ -2060,11 +2388,14 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!store) return { success: false, error: 'Store not found.' };
 
         const productCount = await Product.countDocuments({ seller: store.seller?._id });
-        const orderCount = await Order.countDocuments({
-          'orderItems.productId': {
-            $in: (await Product.find({ seller: store.seller?._id }).select('_id').lean()).map(p => p._id),
-          },
-        });
+        let orderCount;
+        if (role === 'admin') {
+          orderCount = await Order.countDocuments({
+            'orderItems.productId': {
+              $in: (await Product.find({ seller: store.seller?._id }).select('_id').lean()).map(p => p._id),
+            },
+          });
+        }
 
         return {
           success: true,
@@ -2073,32 +2404,36 @@ async function executeToolCall(toolName, args = {}, user) {
             slug: store.storeSlug,
             description: store.description,
             seller: store.seller?.username,
-            sellerEmail: store.seller?.email,
-            sellerStatus: store.seller?.status,
             isVerified: store.verification?.isVerified || false,
-            verificationStatus: store.verification?.status || 'none',
             views: store.views,
             trustCount: store.trustCount,
             productCount,
-            orderCount,
             createdAt: store.createdAt,
+            ...(role === 'admin' ? {
+              sellerEmail: store.seller?.email,
+              sellerStatus: store.seller?.status,
+              verificationStatus: store.verification?.status || 'none',
+              orderCount,
+            } : {}),
           },
-          message: `Store "${store.storeName}" — ${productCount} products, ${orderCount} orders, ${store.views} views.`,
+          message: `Store "${store.storeName}" - ${productCount} products${role === 'admin' ? `, ${orderCount} orders` : ''}, ${store.views} views.`,
         };
       }
 
       case 'search_stores': {
         const { query, limit } = args;
         if (!query) return { success: false, error: 'Please provide a search query.' };
+        const safeQuery = escapeRegExp(query);
 
         const stores = await Store.find({
           $or: [
-            { storeName: { $regex: query, $options: 'i' } },
-            { description: { $regex: query, $options: 'i' } },
+            { storeName: { $regex: safeQuery, $options: 'i' } },
+            { storeSlug: { $regex: safeQuery, $options: 'i' } },
+            { description: { $regex: safeQuery, $options: 'i' } },
           ],
         })
           .limit(safeLimit(limit, 10))
-          .select('storeName storeSlug views trustCount verification.isVerified')
+          .select('storeName storeSlug description views trustCount verification.isVerified')
           .lean();
 
         return {
@@ -2118,4 +2453,4 @@ async function executeToolCall(toolName, args = {}, user) {
   }
 }
 
-module.exports = { executeToolCall, isClientSideTool, CLIENT_SIDE_TOOLS };
+module.exports = { executeToolCall, isClientSideTool, CLIENT_SIDE_TOOLS, storeChangeLimits };

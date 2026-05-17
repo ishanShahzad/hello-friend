@@ -6,7 +6,7 @@ import {
   Sparkles, Palette, Clock, ArrowRight, Volume2, VolumeX, Trash2,
   Heart, MapPin, Bell, Ticket, CheckCircle, XCircle, Search,
   ShoppingBag, BarChart3, Shield, Megaphone, Settings,
-  Plus, Star, Eye, ShoppingCart, Maximize2
+  Plus, Star, Eye, ShoppingCart, Maximize2, Store
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -85,7 +85,11 @@ const TOOL_ICONS = {
   get_pending_verifications: Shield, approve_verification: Shield,
   send_broadcast: Megaphone, get_broadcasts: Megaphone,
   submit_complaint: AlertCircle, get_my_complaints: AlertCircle,
+  get_verified_stores: Store, search_stores: Store, get_store_details: Store,
 };
+
+const formatToolDisplayName = (name = '') =>
+  name.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
 
 // ─── Voice Waveform ───
 const VoiceWaveform = ({ isActive }) => (
@@ -176,18 +180,24 @@ const NavigationCard = ({ label }) => (
 const ActionResultCard = ({ result, actionName, icon: Icon = Package, color = 'hsl(150, 60%, 45%)' }) => {
   const bgColor = color.replace('hsl(', 'hsla(').replace(')', ', 0.1)');
   const borderColor = color.replace('hsl(', 'hsla(').replace(')', ', 0.2)');
+  const isBlocked = result?.blocked || result?.requiresConfirmation;
+  const isSuccess = result?.success !== false && !isBlocked;
+  const StatusIcon = isSuccess ? CheckCircle : isBlocked ? AlertCircle : XCircle;
+  const statusLabel = isSuccess ? 'Action completed' : isBlocked ? 'Action needs review' : 'Action failed';
+  const detail = result?.message || result?.error || `${formatToolDisplayName(actionName)} completed`;
   return (
     <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-2 p-2.5 rounded-xl mt-1"
       style={{ background: bgColor, border: `1px solid ${borderColor}` }}>
       <Icon size={14} style={{ color }} className="shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
-        <span className="text-[11px] font-medium block" style={{ color }}>
-          {result?.message || result?.error || `${actionName} completed`}
+        <span className="text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1" style={{ color }}>
+          <StatusIcon size={11} className="shrink-0" />
+          <span>{statusLabel} - {formatToolDisplayName(actionName)}</span>
         </span>
-        {result?.success === false && result?.error && (
-          <span className="text-[10px] block mt-0.5" style={{ color: 'hsl(0, 70%, 55%)' }}>⚠️ {result.error}</span>
-        )}
+        <span className="text-[11px] font-medium block mt-0.5" style={{ color: 'hsl(var(--foreground))' }}>
+          {detail}
+        </span>
       </div>
     </motion.div>
   );
@@ -312,7 +322,7 @@ const ProductCardGrid = ({ products, onViewProduct, onAddToCart, title }) => (
 //  MAIN CHATBOT COMPONENT
 // ═══════════════════════════════════════════════════════
 
-function ChatBot({ embedded = false, conversationId = null, initialMessages = null, loadingHistory = false, onConversationCreated = null }) {
+function ChatBot({ embedded = false, conversationId = null, initialMessages = null, loadingHistory = false, onConversationCreated = null, dashboardRole = null }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
@@ -332,7 +342,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const hasLoadedHistory = useRef(false);
 
   // Derived
-  const role = currentUser?.role || 'user';
+  const role = ['user', 'seller', 'admin'].includes(dashboardRole) ? dashboardRole : (currentUser?.role || 'user');
   const userName = currentUser?.username || '';
   const authToken = typeof window !== 'undefined' ? getAuthToken() : null;
   const chips = ROLE_CHIPS[role] || ROLE_CHIPS.user;
@@ -747,6 +757,35 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
               }
 
               // ── Single product detail card ──
+              const stores = result?.data?.stores;
+              if (stores?.length > 0 && (toolName === 'search_stores' || toolName === 'get_verified_stores')) {
+                return (
+                  <DataListCard
+                    key={i}
+                    title={result?.message || `${stores.length} stores`}
+                    items={stores}
+                    icon={Store}
+                    color="hsl(190, 70%, 45%)"
+                    renderItem={(store) => (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/store/${store.slug || store.storeSlug}`)}
+                        className="w-full flex items-center justify-between gap-2 p-2 rounded-lg text-left transition-all hover:scale-[1.01]"
+                        style={{ background: 'hsl(var(--muted) / 0.35)', color: 'hsl(var(--foreground))' }}
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-[11px] font-semibold truncate">{store.storeName}</span>
+                          <span className="block text-[10px] truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            {store.slug || store.storeSlug}
+                          </span>
+                        </span>
+                        <ArrowRight size={12} className="shrink-0" />
+                      </button>
+                    )}
+                  />
+                );
+              }
+
               if (toolName === 'get_product_detail' && result?.data?._id) {
                 return (
                   <div key={i} className="mt-2">
@@ -760,6 +799,35 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
               }
 
               // ── Cart items with images ──
+              if (toolName === 'send_product_image' && result?.data?.imageUrl) {
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 rounded-xl overflow-hidden"
+                    style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
+                  >
+                    <img
+                      src={result.data.imageUrl}
+                      alt={result.data.name || 'Product image'}
+                      className="w-full max-h-64 object-cover"
+                      loading="lazy"
+                    />
+                    <div className="px-3 py-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
+                        {result.data.caption || result.data.name || 'Product image'}
+                      </span>
+                      {result.data.price != null && (
+                        <span className="text-xs font-bold shrink-0" style={{ color: 'hsl(220, 70%, 55%)' }}>
+                          ${result.data.price}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              }
+
               if (toolName === 'view_cart' && result?.data?.items?.length > 0) {
                 return (
                   <ProductCardGrid
@@ -780,13 +848,18 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
 
               // ── Default: action result card ──
               const ToolIcon = TOOL_ICONS[toolName] || Package;
-              const isSuccess = result?.success !== false;
-              const color = isSuccess ? 'hsl(150, 60%, 45%)' : 'hsl(0, 60%, 55%)';
+              const isBlocked = result?.blocked || result?.requiresConfirmation;
+              const isSuccess = result?.success !== false && !isBlocked;
+              const color = isSuccess
+                ? 'hsl(150, 60%, 45%)'
+                : isBlocked
+                  ? 'hsl(38, 92%, 48%)'
+                  : 'hsl(0, 60%, 55%)';
               return (
                 <ActionResultCard
                   key={i}
                   result={result}
-                  actionName={toolName?.replace(/_/g, ' ')}
+                  actionName={toolName}
                   icon={ToolIcon}
                   color={color}
                 />
@@ -916,7 +989,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           >
             <Loader2 size={12} className="animate-spin" style={{ color: '#0EA5E9' }} />
             <span className="text-[11px] font-medium" style={{ color: '#0EA5E9' }}>
-              Executing {t.tool?.replace(/_/g, ' ')}…
+              Running action: {formatToolDisplayName(t.tool)}
             </span>
           </motion.div>
         ))}

@@ -16,12 +16,31 @@ const MIN_DELAY_MS = 8 * 1000;
 const MAX_DELAY_MS = 25 * 1000;
 const MAX_ATTEMPTS = 3;
 const HOURLY_CAP = 60;
+const OPEN_CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const openConversationWindows = new Map();
 
 let timer = null;
 let isProcessing = false;
 
 const randomDelay = () =>
     Math.floor(MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
+
+exports.markInboundConversationWindowOpen = (phone) => {
+    if (!phone) return;
+    openConversationWindows.set(String(phone), Date.now());
+};
+
+const hasOpenConversationWindow = (phone) => {
+    const lastInboundAt = openConversationWindows.get(String(phone || ''));
+    return !!lastInboundAt && Date.now() - lastInboundAt < OPEN_CONVERSATION_WINDOW_MS;
+};
+
+setInterval(() => {
+    const cutoff = Date.now() - OPEN_CONVERSATION_WINDOW_MS;
+    for (const [phone, lastInboundAt] of openConversationWindows.entries()) {
+        if (lastInboundAt < cutoff) openConversationWindows.delete(phone);
+    }
+}, 60 * 60 * 1000);
 
 // Soft hourly cap tracking
 const checkHourlyCap = async () => {
@@ -64,7 +83,9 @@ exports.enqueueOrderConfirmation = async (order) => {
             phone,
             buyerName: order.shippingInfo?.fullName || '',
             status: 'queued',
-            nextAttemptAt: new Date(Date.now() + randomDelay()),
+            nextAttemptAt: hasOpenConversationWindow(phone)
+                ? new Date()
+                : new Date(Date.now() + randomDelay()),
         });
         return pending;
     } catch (err) {

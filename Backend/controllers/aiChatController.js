@@ -19,7 +19,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const ChatHistory = require('../models/ChatHistory');
-const { executeToolCall, isClientSideTool } = require('../services/aiActionExecutor');
+const { executeToolCall, isClientSideTool, storeChangeLimits } = require('../services/aiActionExecutor');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -44,6 +44,7 @@ const USER_PROMPT = `You are Rozare AI — a warm, witty, incredibly helpful per
 ## What You Can Do For The User
 You help the user perform real actions on their account through tool calls. You can:
 - **Shop smart**: Search products, compare options, find coupons, save items to wishlist
+- **Browse stores**: Search public stores, open verified stores, and explain store details
 - **Manage orders**: View order history, check order details, track orders, cancel pending orders
 - **Manage profile**: Update profile info, manage saved addresses, set default address
 - **Notifications**: View notifications, mark them as read
@@ -541,6 +542,43 @@ const userTools = [
   {
     type: 'function',
     function: {
+      name: 'get_verified_stores',
+      description: 'List verified public stores that shoppers can browse.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_stores',
+      description: 'Search public stores by store name, slug, or description.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+          limit: { type: 'number' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_store_details',
+      description: 'Get public details for a store by ID or slug.',
+      parameters: {
+        type: 'object',
+        properties: {
+          storeId: { type: 'string' },
+          slug: { type: 'string' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_product_detail',
       description: 'Get full details of a specific product by its ID (price, description, stock, colors, options, reviews).',
       parameters: {
@@ -655,6 +693,7 @@ const sellerTools = [
           image: { type: 'string' },
           discountedPrice: { type: 'number' },
           tags: { type: 'array', items: { type: 'string' } },
+          sellerId: { type: 'string', description: 'Admin only: seller user id to create this product under' },
         },
         required: ['name', 'price', 'category', 'brand', 'stock'],
       },
@@ -795,13 +834,13 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'update_store',
-      description: "Update seller's own store settings.",
+      description: "Update seller's own store settings. Only call when the seller gives a clear instruction and the new value. For questions like 'can I change my store name?', use get_my_store first and answer from cooldown data. Store name cooldown is 7 days; subdomain cooldown is 30 days.",
       parameters: {
         type: 'object',
         properties: {
           updates: {
             type: 'object',
-            description: 'Fields: storeName, description, logo, banner, socialLinks, returnPolicy, address',
+            description: 'Fields: storeName, storeSlug, description, logo, banner, socialLinks, returnPolicy, address, sellerType, confirmSubdomainChange. Do not use placeholders.',
           },
         },
         required: ['updates'],
@@ -840,10 +879,12 @@ const sellerTools = [
       parameters: {
         type: 'object',
         properties: {
-          methodId: { type: 'string' },
-          updates: { type: 'object' },
+          method: { type: 'string', enum: ['free', 'standard', 'fast'] },
+          cost: { type: 'number' },
+          deliveryDays: { type: 'number' },
+          isActive: { type: 'boolean' },
         },
-        required: ['methodId', 'updates'],
+        required: ['method'],
       },
     },
   },
@@ -959,7 +1000,10 @@ const adminTools = [
       description: 'Toggle block/unblock for a user.',
       parameters: {
         type: 'object',
-        properties: { userId: { type: 'string' } },
+        properties: {
+          userId: { type: 'string' },
+          blocked: { type: 'boolean', description: 'true to block, false to unblock' },
+        },
         required: ['userId'],
       },
     },
@@ -1098,7 +1142,7 @@ const adminTools = [
       parameters: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['percentage', 'fixed'] },
+          type: { type: 'string', enum: ['none', 'percentage', 'fixed'] },
           value: { type: 'number' },
           isActive: { type: 'boolean' },
         },
@@ -1124,10 +1168,15 @@ const adminTools = [
         properties: {
           title: { type: 'string' },
           message: { type: 'string' },
+          body: { type: 'string' },
           audience: {
-            type: 'object',
-            description: 'Audience target: { target: "all"|"users"|"sellers"|"admins"|"custom", userIds?: [...] }',
+            type: 'string',
+            enum: ['all_users', 'all_sellers', 'both', 'specific'],
+            description: 'Audience target. Use all_users, all_sellers, both, or specific. Legacy object { target, userIds } is also accepted.',
           },
+          userIds: { type: 'array', items: { type: 'string' } },
+          channels: { type: 'array', items: { type: 'string', enum: ['inapp', 'push', 'email', 'whatsapp'] } },
+          scheduleType: { type: 'string', enum: ['immediate', 'one_time', 'recurring'] },
           scheduledAt: { type: 'string', description: 'ISO datetime string; omit for immediate' },
         },
         required: ['title', 'message'],
@@ -1160,42 +1209,6 @@ const adminTools = [
       name: 'get_all_subscriptions',
       description: 'View all seller subscriptions and their statuses.',
       parameters: { type: 'object', properties: {} },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_verified_stores',
-      description: 'List all verified stores on the platform.',
-      parameters: { type: 'object', properties: {} },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_store_details',
-      description: 'Get detailed info on a specific store by ID or slug.',
-      parameters: {
-        type: 'object',
-        properties: {
-          storeId: { type: 'string' },
-          slug: { type: 'string' },
-        },
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'search_stores',
-      description: 'Search stores by name or slug.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' },
-          limit: { type: 'number' },
-        },
-      },
     },
   },
 ];
@@ -1231,14 +1244,32 @@ function getSystemPrompt(role) {
   return base + FEMININE_GRAMMAR_ADDENDUM;
 }
 
+const GUEST_TOOL_NAMES = new Set([
+  'search_products',
+  'navigate',
+  'show_style_advice',
+  'suggest_outfit',
+  'get_product_detail',
+  'send_product_image',
+  'get_available_coupons',
+  'validate_coupon',
+  'get_verified_stores',
+  'get_store_details',
+  'search_stores',
+]);
+
+const guestTools = userTools.filter(t => GUEST_TOOL_NAMES.has(t.function.name));
+
 function getTools(role) {
   switch (role) {
     case 'seller':
       return sellerTools;
     case 'admin':
       return adminTools;
-    default:
+    case 'user':
       return userTools;
+    default:
+      return guestTools;
   }
 }
 
@@ -1251,18 +1282,77 @@ const ALLOWED_TOOLS_BY_ROLE = {
   user: new Set(userTools.map(t => t.function.name)),
   seller: new Set(sellerTools.map(t => t.function.name)),
   admin: new Set(adminTools.map(t => t.function.name)),
-  guest: new Set([
-    'search_products',
-    'navigate',
-    'show_style_advice',
-    'suggest_outfit',
-    'get_available_coupons',
-  ]),
+  guest: GUEST_TOOL_NAMES,
 };
 
 function isToolAllowedForRole(toolName, role) {
   const set = ALLOWED_TOOLS_BY_ROLE[role] || ALLOWED_TOOLS_BY_ROLE.guest;
   return set.has(toolName);
+}
+
+function getUpdatePayload(args) {
+  return args?.updates && typeof args.updates === 'object' && !Array.isArray(args.updates)
+    ? args.updates
+    : (args || {});
+}
+
+function looksLikeStoreChangeQuestion(text) {
+  const t = String(text || '').toLowerCase();
+  if (!/(store\s*name|subdomain|store\s*slug|slug)/.test(t)) return false;
+  if (!/(change|rename|update|edit|modify)/.test(t)) return false;
+  return /\b(can|could|may|allowed|able|possible|when|how soon)\b/.test(t) || t.includes('?');
+}
+
+function hasExplicitStoreTarget(text) {
+  const t = String(text || '').toLowerCase();
+  return /\b(change|rename|update|set)\b[\s\S]{0,80}\b(store\s*name|subdomain|store\s*slug|slug)\b[\s\S]{0,40}\b(to|as)\b\s+["']?[\w][\w\s.-]{2,}/.test(t);
+}
+
+function isPlaceholderStoreValue(value) {
+  const v = String(value || '').trim().toLowerCase();
+  return [
+    'your new store name',
+    'new store name',
+    'store name',
+    'your new subdomain',
+    'new subdomain',
+    'subdomain',
+    'your-new-store-name',
+    'new-store-name',
+    'your-new-subdomain',
+    'new-subdomain',
+  ].includes(v);
+}
+
+async function executeToolCallForChat(toolName, args, userObj, lastUserText = '') {
+  if (toolName !== 'update_store') {
+    return executeToolCall(toolName, args, userObj);
+  }
+
+  const updates = getUpdatePayload(args);
+  const identityFields = ['storeName', 'storeSlug', 'sellerType'];
+  const touchesIdentity = identityFields.some(field => updates[field] !== undefined);
+  const hasPlaceholder = identityFields.some(field => isPlaceholderStoreValue(updates[field]));
+
+  if (hasPlaceholder) {
+    return {
+      success: false,
+      blocked: true,
+      error: 'No store update was performed because the requested value looked like a placeholder. Ask for the exact new store name or subdomain first.',
+    };
+  }
+
+  if (touchesIdentity && looksLikeStoreChangeQuestion(lastUserText) && !hasExplicitStoreTarget(lastUserText)) {
+    const inspection = await executeToolCall('get_my_store', {}, userObj);
+    return {
+      success: false,
+      blocked: true,
+      error: 'No store update was performed because the user asked whether the change is allowed. Use the store changeLimits data to answer, then ask for the desired value if a change is currently available.',
+      data: inspection?.data ? { store: inspection.data } : undefined,
+    };
+  }
+
+  return executeToolCall(toolName, args, userObj);
 }
 
 /**
@@ -1341,7 +1431,7 @@ async function buildUserContext(userId, role) {
     // Seller-specific enrichment
     if (role === 'seller') {
       try {
-        const store = await Store.findOne({ seller: userId }).select('storeName storeSlug verification trustCount isActive');
+        const store = await Store.findOne({ seller: userId }).select('storeName storeSlug verification trustCount isActive lastNameChangeAt lastSlugChangeAt lastTypeChangeAt');
         if (store) {
           ctx.store = {
             name: store.storeName,
@@ -1349,6 +1439,7 @@ async function buildUserContext(userId, role) {
             isVerified: store.verification?.isVerified || false,
             trustCount: store.trustCount || 0,
             isActive: store.isActive,
+            changeLimits: storeChangeLimits(store),
           };
         }
         const productCount = await Product.countDocuments({ seller: userId });
@@ -1392,6 +1483,15 @@ function formatContextBlock(ctx, role) {
   }
   if (role === 'seller' && ctx.store) {
     s += `- Store: "${ctx.store.name}" (${ctx.store.slug}) — ${ctx.store.isVerified ? 'verified ✓' : 'not verified'} — ${ctx.productCount ?? 0} products — ${ctx.store.trustCount} trust\n`;
+  }
+  if (role === 'seller' && ctx.store?.changeLimits) {
+    const limits = ctx.store.changeLimits;
+    if (limits.storeName) {
+      s += `- Store name change: ${limits.storeName.canChange ? 'available now' : `available in ${limits.storeName.daysRemaining} day(s) on ${String(limits.storeName.nextAllowedAt).slice(0, 10)}`}\n`;
+    }
+    if (limits.subdomain) {
+      s += `- Subdomain change: ${limits.subdomain.canChange ? 'available now' : `available in ${limits.subdomain.daysRemaining} day(s) on ${String(limits.subdomain.nextAllowedAt).slice(0, 10)}`}\n`;
+    }
   }
   if (role === 'admin' && ctx.platform) {
     s += `- Platform snapshot: ${ctx.platform.totalUsers} users, ${ctx.platform.totalOrders} orders, ${ctx.platform.totalStores} stores, ${ctx.platform.pendingVerifications} pending verifications\n`;
@@ -1568,6 +1668,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
   const tools = getTools(effectiveRole);
   const toolResults = [];
   const clientActions = [];
+  const lastUserText = cleanMessages.filter(m => m.role === 'user').pop()?.content || '';
 
   const MAX_ITERATIONS = 5;
   let lastMessage = null;
@@ -1693,7 +1794,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
         }
       } else {
         // Server-side execution
-        const result = await executeToolCall(toolName, args, userObj);
+        const result = await executeToolCallForChat(toolName, args, userObj, lastUserText);
         toolResults.push({ tool: toolName, result, id: tc.id });
         conversationMessages.push({
           role: 'tool',
@@ -1720,7 +1821,15 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
         newMessages.push({ role: 'user', content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '' });
       }
       if (responseText) {
-        newMessages.push({ role: 'assistant', content: responseText });
+        const toolEvents = [
+          ...toolResults.map(t => ({ type: 'tool_result', tool: t.tool, result: t.result })),
+          ...clientActions.map(c => ({ type: 'client_action', action: c.action, args: c.args })),
+        ];
+        newMessages.push({
+          role: 'assistant',
+          content: responseText,
+          ...(toolEvents.length ? { toolEvents } : {}),
+        });
       }
 
       if (newMessages.length > 0) {
@@ -1808,6 +1917,7 @@ exports.streamChat = async (req, res) => {
 
     // Collect tool events from this turn so we can persist them with the assistant message
     const turnToolEvents = [];
+    const lastUserText = cleanMessages.filter(m => m.role === 'user').pop()?.content || '';
 
     // ═══ Tool Execution Loop ═══
     // The AI may request tool calls. We execute them server-side, feed results back,
@@ -1909,7 +2019,7 @@ exports.streamChat = async (req, res) => {
           // Server-side execution
           send({ type: 'tool_start', tool: toolName, id: tc.id });
 
-          const result = await executeToolCall(toolName, args, userObj);
+          const result = await executeToolCallForChat(toolName, args, userObj, lastUserText);
 
           send({ type: 'tool_result', tool: toolName, result, id: tc.id });
           turnToolEvents.push({ type: 'tool_result', tool: toolName, result });
@@ -2018,6 +2128,7 @@ exports.chatOnce = async (req, res) => {
     const tools = getTools(effectiveRole);
     const toolResults = []; // Collect tool results for client
     const clientActions = []; // Collect client-side actions
+    const lastUserText = cleanMessages.filter(m => m.role === 'user').pop()?.content || '';
 
     // Tool execution loop (non-streaming)
     const MAX_ITERATIONS = 5;
@@ -2083,7 +2194,7 @@ exports.chatOnce = async (req, res) => {
             content: JSON.stringify({ success: true, message: `${toolName} sent to client.` }),
           });
         } else {
-          const result = await executeToolCall(toolName, args, userObj);
+          const result = await executeToolCallForChat(toolName, args, userObj, lastUserText);
           toolResults.push({ tool: toolName, result, id: tc.id });
           conversationMessages.push({
             role: 'tool',
@@ -2104,7 +2215,15 @@ exports.chatOnce = async (req, res) => {
           newMessages.push({ role: 'user', content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '' });
         }
         if (responseText) {
-          newMessages.push({ role: 'assistant', content: responseText });
+          const toolEvents = [
+            ...toolResults.map(t => ({ type: 'tool_result', tool: t.tool, result: t.result })),
+            ...clientActions.map(c => ({ type: 'client_action', action: c.action, args: c.args })),
+          ];
+          newMessages.push({
+            role: 'assistant',
+            content: responseText,
+            ...(toolEvents.length ? { toolEvents } : {}),
+          });
         }
         if (newMessages.length > 0) {
           await saveToConversation(userId, body.conversationId || null, newMessages, 'web');

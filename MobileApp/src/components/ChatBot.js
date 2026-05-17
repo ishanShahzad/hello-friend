@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -393,9 +393,9 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
           {/* Tool results */}
           {item.toolResults?.map((tr, i) => (
             <View key={i}>
-              {tr.name === 'search_products' && tr.result.products?.length > 0 && (
+              {tr.name === 'search_products' && (tr.result?.data?.products || tr.result?.products)?.length > 0 && (
                 <View style={styles.productResults}>
-                  {tr.result.products.map((p, pi) => (
+                  {(tr.result?.data?.products || tr.result?.products).map((p, pi) => (
                     <TouchableOpacity key={pi} style={styles.productItem}
                       onPress={() => navigation?.navigate('ProductDetail', { productId: p._id })}>
                       <View style={styles.productDot} />
@@ -406,6 +406,18 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
                       <Ionicons name="chevron-forward" size={14} color={c.textLight} />
                     </TouchableOpacity>
                   ))}
+                </View>
+              )}
+              {tr.name === 'send_product_image' && tr.result?.data?.imageUrl && (
+                <View style={styles.productResults}>
+                  <Image
+                    source={{ uri: tr.result.data.imageUrl }}
+                    style={{ width: '100%', height: 180, borderRadius: 12, backgroundColor: c.surfaceVariant }}
+                    resizeMode="cover"
+                  />
+                  <Text style={[styles.productName, { marginTop: 8 }]} numberOfLines={1}>
+                    {tr.result.data.caption || tr.result.data.name || 'Product image'}
+                  </Text>
                 </View>
               )}
               {tr.name === 'navigate' && tr.result.navigated && (
@@ -463,10 +475,15 @@ export default function ChatBot({ embedded = false, dashboardRole = null, visibl
                   )}
                 </View>
               )}
-              {!['search_products', 'navigate', 'show_style_advice', 'suggest_outfit', 'get_my_orders', 'get_order_detail', 'get_my_complaints'].includes(tr.name) && tr.result?.msg && (
-                <View style={[styles.actionResult, { backgroundColor: c.successSubtle, borderColor: c.successLighter }]}>
-                  <Ionicons name="checkmark-circle" size={14} color={c.success} />
-                  <Text style={[styles.actionResultText, { color: c.success }]}>{tr.result.msg}</Text>
+              {!['search_products', 'send_product_image', 'navigate', 'show_style_advice', 'suggest_outfit', 'get_my_orders', 'get_order_detail', 'get_my_complaints'].includes(tr.name) && (tr.result?.msg || tr.result?.message || tr.result?.error) && (
+                <View style={[styles.actionResult, {
+                  backgroundColor: tr.result?.success === false ? c.errorSubtle : c.successSubtle,
+                  borderColor: tr.result?.success === false ? c.error : c.successLighter,
+                }]}>
+                  <Ionicons name={tr.result?.success === false ? 'alert-circle' : 'checkmark-circle'} size={14} color={tr.result?.success === false ? c.error : c.success} />
+                  <Text style={[styles.actionResultText, { color: tr.result?.success === false ? c.error : c.success }]}>
+                    {tr.result.msg || tr.result.message || tr.result.error}
+                  </Text>
                 </View>
               )}
             </View>

@@ -23,7 +23,7 @@ const WhatsAppConfig = require('../../models/WhatsAppConfig');
 const { sendEmail } = require('../../controllers/mailController');
 const { sellerOrderConfirmedByBuyerEmail } = require('../../utils/emailTemplates');
 const { sendPushToUser } = require('../../utils/expoPush');
-const { findPendingJobByPhone, findPendingJobByOrderId, applyVote } = require('./queue');
+const { findPendingJobByPhone, findPendingJobByOrderId, applyVote, markInboundConversationWindowOpen } = require('./queue');
 const { parseConfirmReply, buildReconfirmButtonsPayload } = require('./messageBuilder');
 const evolution = require('./evolutionClient');
 const { notifySeller } = require('./sellerNotificationService');
@@ -380,6 +380,7 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     if (remoteJid.endsWith('@g.us') || remoteJid.includes('@broadcast')) continue;
                     const phone = phoneFromJid(remoteJid);
                     if (!phone) continue;
+                    markInboundConversationWindowOpen(phone);
 
                     // Extract text from the message
                     const m = msg.message || {};
@@ -407,6 +408,7 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const remoteJid = msg?.key?.remoteJid || msg?.remoteJid || '';
                 const phone = phoneFromJid(remoteJid);
                 if (!phone) continue;
+                markInboundConversationWindowOpen(phone);
 
                 // 1) Try the rich extractor — recognises button clicks and text
                 //    replies in any of the 5 WhatsApp payload shapes.
