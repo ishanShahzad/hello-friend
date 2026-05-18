@@ -43,6 +43,42 @@ const resolveSellerIdForStoreCoupons = async (identifier) => {
     return store?.seller || null;
 };
 
+const normalizeCouponCode = (code) =>
+    String(code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+
+const parseOptionalPositiveNumber = (value, field, { allowNull = true, integer = false } = {}) => {
+    if (value === undefined || value === null || value === '') {
+        if (allowNull) return { value: null };
+        return { error: `${field} is required.` };
+    }
+    const number = Number(value);
+    if (!Number.isFinite(number) || number <= 0) return { error: `${field} must be greater than 0.` };
+    return { value: integer ? Math.floor(number) : number };
+};
+
+const parseOptionalNonNegativeNumber = (value, field, fallback = 0) => {
+    if (value === undefined || value === null || value === '') return { value: fallback };
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 0) return { error: `${field} must be zero or higher.` };
+    return { value: number };
+};
+
+const normalizeProductIds = (productIds) => (
+    Array.isArray(productIds)
+        ? [...new Set(productIds.map(id => String(id || '').trim()).filter(isObjectId))]
+        : []
+);
+
+const validateSelectedProducts = async (sellerId, applicableTo, productIds) => {
+    if (applicableTo !== 'selected') return { productIds: [] };
+    const normalizedIds = normalizeProductIds(productIds);
+    if (!normalizedIds.length) return { error: 'Choose at least one valid product for a selected-product coupon.' };
+
+    const count = await Product.countDocuments({ _id: { $in: normalizedIds }, seller: sellerId });
+    if (count !== normalizedIds.length) return { error: 'Some selected products were not found in your store.' };
+    return { productIds: normalizedIds };
+};
+
 // ─── Create a coupon ───
 exports.createCoupon = async (req, res) => {
     try {
@@ -53,43 +89,58 @@ exports.createCoupon = async (req, res) => {
             startDate, expiryDate, description,
         } = req.body;
 
-        if (!code || !discountType || discountValue === undefined || !expiryDate) {
-            return res.status(400).json({ msg: 'Code, discount type, discount value and expiry date are required.' });
+        const normalizedCode = normalizeCouponCode(code);
+        if (normalizedCode.length < 3 || normalizedCode.length > 32) {
+            return res.status(400).json({ msg: 'Coupon code must be 3 to 32 letters or numbers.' });
         }
 
-        if (discountType === 'percentage' && (discountValue <= 0 || discountValue > 100)) {
+        if (!['percentage', 'fixed'].includes(discountType)) {
+            return res.status(400).json({ msg: 'Discount type must be percentage or fixed.' });
+        }
+
+        const parsedDiscount = parseOptionalPositiveNumber(discountValue, 'Discount value', { allowNull: false });
+        if (parsedDiscount.error) return res.status(400).json({ msg: parsedDiscount.error });
+        if (discountType === 'percentage' && parsedDiscount.value > 100) {
             return res.status(400).json({ msg: 'Percentage discount must be between 1 and 100.' });
         }
 
-        if (discountType === 'fixed' && discountValue <= 0) {
-            return res.status(400).json({ msg: 'Fixed discount must be greater than 0.' });
+        const startsAt = startDate ? new Date(startDate) : new Date();
+        const expiresAt = expiryDate ? new Date(expiryDate) : null;
+        if (Number.isNaN(startsAt.getTime()) || !expiresAt || Number.isNaN(expiresAt.getTime())) {
+            return res.status(400).json({ msg: 'Start date or expiry date is invalid.' });
         }
-
-        if (new Date(expiryDate) <= new Date()) {
+        if (expiresAt <= new Date()) {
             return res.status(400).json({ msg: 'Expiry date must be in the future.' });
         }
+        if (startsAt >= expiresAt) {
+            return res.status(400).json({ msg: 'Expiry date must be after the start date.' });
+        }
 
-        // If selected products, verify they belong to this seller
-        if (applicableTo === 'selected' && applicableProducts?.length > 0) {
-            const products = await Product.find({ _id: { $in: applicableProducts }, seller: sellerId });
-            if (products.length !== applicableProducts.length) {
-                return res.status(400).json({ msg: 'Some products do not belong to you.' });
-            }
+        const couponScope = applicableTo === 'selected' ? 'selected' : 'all';
+        const selectedProducts = await validateSelectedProducts(sellerId, couponScope, applicableProducts);
+        if (selectedProducts.error) return res.status(400).json({ msg: selectedProducts.error });
+
+        const parsedMaxUses = parseOptionalPositiveNumber(maxUses, 'Max uses', { integer: true });
+        const parsedMaxUsesPerUser = parseOptionalPositiveNumber(maxUsesPerUser ?? 1, 'Max uses per user', { allowNull: false, integer: true });
+        const parsedMinOrderAmount = parseOptionalNonNegativeNumber(minOrderAmount, 'Minimum order amount', 0);
+        const parsedMaxDiscountAmount = parseOptionalPositiveNumber(maxDiscountAmount ?? req.body.maxDiscount, 'Maximum discount amount');
+        for (const parsed of [parsedMaxUses, parsedMaxUsesPerUser, parsedMinOrderAmount, parsedMaxDiscountAmount]) {
+            if (parsed.error) return res.status(400).json({ msg: parsed.error });
         }
 
         const coupon = await Coupon.create({
             seller: sellerId,
-            code: code.toUpperCase().trim(),
+            code: normalizedCode,
             discountType,
-            discountValue,
-            applicableTo: applicableTo || 'all',
-            applicableProducts: applicableTo === 'selected' ? applicableProducts : [],
-            maxUses: maxUses || null,
-            maxUsesPerUser: maxUsesPerUser || 1,
-            minOrderAmount: minOrderAmount || 0,
-            maxDiscountAmount: maxDiscountAmount || null,
-            startDate: startDate || new Date(),
-            expiryDate,
+            discountValue: parsedDiscount.value,
+            applicableTo: couponScope,
+            applicableProducts: selectedProducts.productIds,
+            maxUses: parsedMaxUses.value,
+            maxUsesPerUser: parsedMaxUsesPerUser.value,
+            minOrderAmount: parsedMinOrderAmount.value,
+            maxDiscountAmount: parsedMaxDiscountAmount.value,
+            startDate: startsAt,
+            expiryDate: expiresAt,
             description: description || '',
         });
 
@@ -125,16 +176,9 @@ exports.updateCoupon = async (req, res) => {
         const { id } = req.params;
         const updates = req.body;
 
+        if (!isObjectId(id)) return res.status(400).json({ msg: 'Invalid coupon id.' });
         const coupon = await Coupon.findOne({ _id: id, seller: sellerId });
         if (!coupon) return res.status(404).json({ msg: 'Coupon not found.' });
-
-        // Validate applicable products if changed
-        if (updates.applicableTo === 'selected' && updates.applicableProducts?.length > 0) {
-            const products = await Product.find({ _id: { $in: updates.applicableProducts }, seller: sellerId });
-            if (products.length !== updates.applicableProducts.length) {
-                return res.status(400).json({ msg: 'Some products do not belong to you.' });
-            }
-        }
 
         const allowedFields = [
             'code', 'discountType', 'discountValue', 'applicableTo', 'applicableProducts',
@@ -142,15 +186,101 @@ exports.updateCoupon = async (req, res) => {
             'startDate', 'expiryDate', 'isActive', 'description',
         ];
 
-        allowedFields.forEach(field => {
-            if (updates[field] !== undefined) {
-                coupon[field] = updates[field];
-            }
-        });
-
-        if (updates.applicableTo === 'all') {
-            coupon.applicableProducts = [];
+        if (!allowedFields.some(field => updates[field] !== undefined)) {
+            return res.status(400).json({ msg: 'No valid coupon fields were provided.' });
         }
+
+        if (updates.code !== undefined) {
+            const normalizedCode = normalizeCouponCode(updates.code);
+            if (normalizedCode.length < 3 || normalizedCode.length > 32) {
+                return res.status(400).json({ msg: 'Coupon code must be 3 to 32 letters or numbers.' });
+            }
+            coupon.code = normalizedCode;
+        }
+
+        if (updates.discountType !== undefined) {
+            if (!['percentage', 'fixed'].includes(updates.discountType)) {
+                return res.status(400).json({ msg: 'Discount type must be percentage or fixed.' });
+            }
+            coupon.discountType = updates.discountType;
+        }
+
+        if (updates.discountValue !== undefined) {
+            const parsedDiscount = parseOptionalPositiveNumber(updates.discountValue, 'Discount value', { allowNull: false });
+            if (parsedDiscount.error) return res.status(400).json({ msg: parsedDiscount.error });
+            coupon.discountValue = parsedDiscount.value;
+        }
+
+        if (coupon.discountType === 'percentage' && coupon.discountValue > 100) {
+            return res.status(400).json({ msg: 'Percentage discount must be between 1 and 100.' });
+        }
+
+        if (updates.startDate !== undefined) {
+            const startsAt = new Date(updates.startDate);
+            if (Number.isNaN(startsAt.getTime())) return res.status(400).json({ msg: 'Start date is invalid.' });
+            coupon.startDate = startsAt;
+        }
+
+        if (updates.expiryDate !== undefined) {
+            const expiresAt = new Date(updates.expiryDate);
+            if (Number.isNaN(expiresAt.getTime())) return res.status(400).json({ msg: 'Expiry date is invalid.' });
+            if (expiresAt <= new Date()) return res.status(400).json({ msg: 'Expiry date must be in the future.' });
+            coupon.expiryDate = expiresAt;
+        }
+
+        if (new Date(coupon.startDate) >= new Date(coupon.expiryDate)) {
+            return res.status(400).json({ msg: 'Expiry date must be after the start date.' });
+        }
+
+        if (updates.isActive !== undefined) {
+            const wantsActive = updates.isActive === true || updates.isActive === 'true';
+            if (wantsActive && new Date(coupon.expiryDate) <= new Date()) {
+                return res.status(400).json({ msg: 'Expired coupons cannot be activated.' });
+            }
+            coupon.isActive = wantsActive;
+        }
+
+        if (updates.maxUses !== undefined) {
+            const parsed = parseOptionalPositiveNumber(updates.maxUses, 'Max uses', { integer: true });
+            if (parsed.error) return res.status(400).json({ msg: parsed.error });
+            coupon.maxUses = parsed.value;
+        }
+
+        if (updates.maxUsesPerUser !== undefined) {
+            const parsed = parseOptionalPositiveNumber(updates.maxUsesPerUser, 'Max uses per user', { allowNull: false, integer: true });
+            if (parsed.error) return res.status(400).json({ msg: parsed.error });
+            coupon.maxUsesPerUser = parsed.value;
+        }
+
+        if (updates.minOrderAmount !== undefined) {
+            const parsed = parseOptionalNonNegativeNumber(updates.minOrderAmount, 'Minimum order amount', coupon.minOrderAmount);
+            if (parsed.error) return res.status(400).json({ msg: parsed.error });
+            coupon.minOrderAmount = parsed.value;
+        }
+
+        if (updates.maxDiscountAmount !== undefined) {
+            const parsed = parseOptionalPositiveNumber(updates.maxDiscountAmount, 'Maximum discount amount');
+            if (parsed.error) return res.status(400).json({ msg: parsed.error });
+            coupon.maxDiscountAmount = parsed.value;
+        }
+
+        if (updates.applicableTo !== undefined) {
+            if (!['all', 'selected'].includes(updates.applicableTo)) {
+                return res.status(400).json({ msg: 'Coupon scope must be all or selected.' });
+            }
+            coupon.applicableTo = updates.applicableTo;
+        }
+
+        if (updates.applicableProducts !== undefined || updates.applicableTo !== undefined) {
+            const productSource = updates.applicableProducts !== undefined
+                ? updates.applicableProducts
+                : coupon.applicableProducts;
+            const selectedProducts = await validateSelectedProducts(sellerId, coupon.applicableTo, productSource);
+            if (selectedProducts.error) return res.status(400).json({ msg: selectedProducts.error });
+            coupon.applicableProducts = selectedProducts.productIds;
+        }
+
+        if (updates.description !== undefined) coupon.description = String(updates.description || '');
 
         await coupon.save();
         res.json({ msg: 'Coupon updated successfully!', coupon });

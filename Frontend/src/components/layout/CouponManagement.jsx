@@ -137,11 +137,17 @@ const CouponManagement = () => {
 
     const validateForm = () => {
         const errors = {};
-        if (!form.code.trim()) errors.code = 'Coupon code is required';
+        const normalizedCode = form.code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+        if (normalizedCode.length < 3 || normalizedCode.length > 32) errors.code = 'Use 3-32 letters or numbers';
         if (!form.discountValue || Number(form.discountValue) <= 0) errors.discountValue = 'Discount value must be > 0';
         if (form.discountType === 'percentage' && Number(form.discountValue) > 100) errors.discountValue = 'Max 100%';
+        if (form.maxUses && Number(form.maxUses) <= 0) errors.maxUses = 'Must be greater than 0';
+        if (form.maxUsesPerUser && Number(form.maxUsesPerUser) <= 0) errors.maxUsesPerUser = 'Must be greater than 0';
+        if (form.minOrderAmount && Number(form.minOrderAmount) < 0) errors.minOrderAmount = 'Cannot be negative';
+        if (form.maxDiscountAmount && Number(form.maxDiscountAmount) <= 0) errors.maxDiscountAmount = 'Must be greater than 0';
         if (!form.expiryDate) errors.expiryDate = 'Expiry date is required';
         if (new Date(form.expiryDate) <= new Date()) errors.expiryDate = 'Must be in the future';
+        if (form.startDate && form.expiryDate && new Date(form.startDate) >= new Date(form.expiryDate)) errors.expiryDate = 'Must be after start date';
         if (form.applicableTo === 'selected' && form.applicableProducts.length === 0) {
             errors.applicableProducts = 'Select at least one product';
         }
@@ -156,6 +162,7 @@ const CouponManagement = () => {
             const token = getAuthToken();
             const payload = {
                 ...form,
+                code: form.code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
                 discountValue: Number(form.discountValue),
                 maxUses: form.maxUses ? Number(form.maxUses) : null,
                 maxUsesPerUser: form.maxUsesPerUser ? Number(form.maxUsesPerUser) : 1,
@@ -177,6 +184,7 @@ const CouponManagement = () => {
             setShowForm(false);
             resetForm();
             fetchCoupons();
+            fetchAnalytics();
         } catch (err) {
             toast.error(err.response?.data?.msg || 'Failed to save coupon');
         } finally {
@@ -206,8 +214,9 @@ const CouponManagement = () => {
             });
             toast.success(res.data.msg);
             fetchCoupons();
+            fetchAnalytics();
         } catch (err) {
-            toast.error('Failed to toggle coupon');
+            toast.error(err.response?.data?.msg || 'Failed to toggle coupon');
         }
     };
 
@@ -732,6 +741,7 @@ const CouponManagement = () => {
                                         <input type="number" min="1" value={form.maxUses}
                                             onChange={(e) => setForm(f => ({ ...f, maxUses: e.target.value }))}
                                             placeholder="Unlimited" className="glass-input w-full text-sm" />
+                                        {formErrors.maxUses && <p className="text-xs mt-1" style={{ color: 'hsl(0, 72%, 55%)' }}>{formErrors.maxUses}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
@@ -740,6 +750,7 @@ const CouponManagement = () => {
                                         <input type="number" min="1" value={form.maxUsesPerUser}
                                             onChange={(e) => setForm(f => ({ ...f, maxUsesPerUser: e.target.value }))}
                                             placeholder="1" className="glass-input w-full text-sm" />
+                                        {formErrors.maxUsesPerUser && <p className="text-xs mt-1" style={{ color: 'hsl(0, 72%, 55%)' }}>{formErrors.maxUsesPerUser}</p>}
                                     </div>
                                 </div>
 
@@ -752,6 +763,7 @@ const CouponManagement = () => {
                                         <input type="number" min="0" value={form.minOrderAmount}
                                             onChange={(e) => setForm(f => ({ ...f, minOrderAmount: e.target.value }))}
                                             placeholder="No minimum" className="glass-input w-full text-sm" />
+                                        {formErrors.minOrderAmount && <p className="text-xs mt-1" style={{ color: 'hsl(0, 72%, 55%)' }}>{formErrors.minOrderAmount}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
@@ -760,6 +772,7 @@ const CouponManagement = () => {
                                         <input type="number" min="0" value={form.maxDiscountAmount}
                                             onChange={(e) => setForm(f => ({ ...f, maxDiscountAmount: e.target.value }))}
                                             placeholder="No cap" className="glass-input w-full text-sm" />
+                                        {formErrors.maxDiscountAmount && <p className="text-xs mt-1" style={{ color: 'hsl(0, 72%, 55%)' }}>{formErrors.maxDiscountAmount}</p>}
                                     </div>
                                 </div>
 

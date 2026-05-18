@@ -14,6 +14,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const Fuse = require('fuse.js');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
@@ -345,6 +346,7 @@ function productLookupBaseFilter(role, userId, args = {}) {
 
 async function resolveProductCandidates({ role, userId, args = {}, productId, productIds, productName, productNames, excludeProductId, keepProductId }) {
   const filter = productLookupBaseFilter(role, userId, args);
+  const productCandidateSelect = 'name brand price stock category isFeatured createdAt updatedAt tags description';
   const ids = [
     ...(Array.isArray(productIds) ? productIds : []),
     ...(productId ? [productId] : []),
@@ -357,7 +359,7 @@ async function resolveProductCandidates({ role, userId, args = {}, productId, pr
 
   if (ids.length) {
     filter._id = { $in: ids, ...(excludedIds.size ? { $nin: [...excludedIds] } : {}) };
-    return Product.find(filter).sort({ updatedAt: -1, createdAt: -1 }).select('name brand price stock category isFeatured createdAt').lean();
+    return Product.find(filter).sort({ updatedAt: -1, createdAt: -1 }).select(productCandidateSelect).lean();
   }
 
   const names = [
@@ -373,7 +375,7 @@ async function resolveProductCandidates({ role, userId, args = {}, productId, pr
     $or: names.map(name => ({ name: { $regex: `^${escapeRegExp(name)}$`, $options: 'i' } })),
   };
   if (excludedIds.size) exactFilter._id = { $nin: [...excludedIds] };
-  let products = await Product.find(exactFilter).sort({ updatedAt: -1, createdAt: -1 }).select('name brand price stock category isFeatured createdAt').lean();
+  let products = await Product.find(exactFilter).sort({ updatedAt: -1, createdAt: -1 }).select(productCandidateSelect).lean();
 
   if (!products.length) {
     const looseFilter = {
@@ -381,7 +383,18 @@ async function resolveProductCandidates({ role, userId, args = {}, productId, pr
       $or: names.map(name => ({ name: { $regex: escapeRegExp(name), $options: 'i' } })),
     };
     if (excludedIds.size) looseFilter._id = { $nin: [...excludedIds] };
-    products = await Product.find(looseFilter).sort({ updatedAt: -1, createdAt: -1 }).limit(10).select('name brand price stock category isFeatured createdAt').lean();
+    products = await Product.find(looseFilter).sort({ updatedAt: -1, createdAt: -1 }).limit(10).select(productCandidateSelect).lean();
+  }
+
+  if (!products.length) {
+    const poolFilter = { ...filter };
+    if (excludedIds.size) poolFilter._id = { $nin: [...excludedIds] };
+    const pool = await Product.find(poolFilter)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(300)
+      .select(productCandidateSelect)
+      .lean();
+    products = fuzzyProductMatches(pool, names.join(' '), 10);
   }
 
   return products;
@@ -401,6 +414,102 @@ function formatProductCandidate(product) {
 }
 
 // ─── Smart Search: Synonym/Multilingual Expansion ───
+function compactSearchText(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function productSearchText(product) {
+  return [
+    product.name,
+    product.brand,
+    product.category,
+    product.description,
+    ...(Array.isArray(product.tags) ? product.tags : []),
+  ].filter(Boolean).join(' ');
+}
+
+function fuzzyProductMatches(products, query, limit = 20) {
+  const cleanedQuery = cleanString(query);
+  if (!cleanedQuery || !products?.length) return [];
+
+  const compactQuery = compactSearchText(cleanedQuery);
+  const queryParts = cleanedQuery
+    .toLowerCase()
+    .split(/\s+/)
+    .map(compactSearchText)
+    .filter(part => part.length >= 2);
+
+  const exactish = products.filter(product => {
+    const text = compactSearchText(productSearchText(product));
+    return compactQuery && (
+      text.includes(compactQuery) ||
+      queryParts.every(part => text.includes(part))
+    );
+  });
+
+  const fuse = new Fuse(products, {
+    includeScore: true,
+    threshold: 0.52,
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+    keys: [
+      { name: 'name', weight: 0.55 },
+      { name: 'brand', weight: 0.18 },
+      { name: 'category', weight: 0.12 },
+      { name: 'tags', weight: 0.1 },
+      { name: 'description', weight: 0.05 },
+    ],
+  });
+
+  const ranked = fuse.search(cleanedQuery)
+    .filter(result => result.score == null || result.score <= 0.55)
+    .map(result => result.item);
+
+  const seen = new Set();
+  return [...exactish, ...ranked]
+    .filter(product => {
+      const key = String(product._id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function baseCouponCode(coupon = {}) {
+  const explicit = cleanString(coupon.code).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  if (explicit) return explicit.slice(0, 32);
+  const value = Number(coupon.discountValue ?? coupon.discountPercent ?? coupon.fixedAmount ?? coupon.amount);
+  if (coupon.discountType === 'percentage' || coupon.discountPercent != null) return `SAVE${Math.round(value || 10)}`;
+  return `DEAL${Math.round(value || 10)}`;
+}
+
+async function uniqueCouponCode(userId, coupon) {
+  const base = baseCouponCode(coupon) || 'SAVE10';
+  let candidate = base;
+  let suffix = 2;
+  while (await Coupon.exists({ seller: userId, code: candidate })) {
+    candidate = `${base}${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+async function resolveSellerCoupon(userId, args = {}) {
+  const couponId = toId(args.couponId || args.id);
+  if (couponId) return Coupon.findOne({ _id: couponId, seller: userId });
+
+  const couponCode = cleanString(args.couponCode || args.code || args.couponId).toUpperCase();
+  if (!couponCode) return null;
+  return Coupon.findOne({ seller: userId, code: couponCode });
+}
+
 const SYNONYM_MAP = {
   // Multilingual (Urdu/Hindi → English)
   chapal: ['sandals', 'slippers', 'flip flops', 'slides'],
@@ -799,6 +908,26 @@ async function executeToolCall(toolName, args = {}, user) {
           .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
           .lean();
         products = await hydrateStoresForProducts(products);
+
+        if (products.length === 0 && query) {
+          const fuzzyFilter = { ...(storeScope.filter || {}) };
+          if (category) fuzzyFilter.category = { $regex: escapeRegExp(category), $options: 'i' };
+          if (brand) fuzzyFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
+          if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fuzzyFilter.stock = { $gt: 0 };
+          if (minPrice || maxPrice) {
+            fuzzyFilter.price = {};
+            if (minPrice) fuzzyFilter.price.$gte = Number(minPrice);
+            if (maxPrice) fuzzyFilter.price.$lte = Number(maxPrice);
+          }
+
+          const fuzzyPool = await Product.find(fuzzyFilter)
+            .sort({ rating: -1, numReviews: -1, createdAt: -1 })
+            .limit(300)
+            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags description createdAt')
+            .lean();
+          products = fuzzyProductMatches(fuzzyPool, query, safeLimit(limit, 20, 50));
+          products = await hydrateStoresForProducts(products);
+        }
 
         // If no results and we have a query, try a broader fallback: sort by popularity
         if (products.length === 0 && query) {
@@ -1906,7 +2035,26 @@ async function executeToolCall(toolName, args = {}, user) {
         if (updates.colors !== undefined) updates.colors = normalizeStringArray(updates.colors, { splitSpacesForColors: true });
         if (updates.optionGroups !== undefined) updates.optionGroups = normalizeOptionGroups(updates.optionGroups);
 
-        const safeProductId = toId(productId);
+        let safeProductId = toId(productId);
+        if (!safeProductId && productName) {
+          const candidates = await resolveProductCandidates({ role, userId, args, productName });
+          if (!candidates.length) {
+            return {
+              success: false,
+              error: `I couldn't find a product matching "${productName}" in your store. Try a broader word like the brand, category, or ask me to list matching products first.`,
+            };
+          }
+          if (candidates.length > 1) {
+            return {
+              success: false,
+              blocked: true,
+              requiresSelection: true,
+              error: `I found ${candidates.length} products that could match "${productName}". Please choose by name, price, or latest/oldest wording before I edit anything.`,
+              data: { matches: candidates.map(formatProductCandidate) },
+            };
+          }
+          safeProductId = candidates[0]._id;
+        }
         const filter = role === 'admin' ? {} : { seller: userId };
         if (safeProductId) {
           filter._id = safeProductId;
@@ -2063,7 +2211,6 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const { search, category, limit, page, sortBy } = args;
         const filter = role === 'admin' ? {} : { seller: userId };
-        if (search) filter.name = { $regex: search, $options: 'i' };
         if (category) filter.category = { $regex: category, $options: 'i' };
 
         let sort = { createdAt: -1 };
@@ -2072,12 +2219,13 @@ async function executeToolCall(toolName, args = {}, user) {
         else if (sortBy === 'name') sort = { name: 1 };
 
         const skip = (safePage(page) - 1) * safeLimit(limit, 20);
-        const [products, total] = await Promise.all([
-          Product.find(filter).sort(sort).skip(skip).limit(safeLimit(limit, 20))
-            .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups createdAt')
-            .lean(),
-          Product.countDocuments(filter),
-        ]);
+        let matchingProducts = await Product.find(filter).sort(sort)
+          .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups description createdAt')
+          .lean();
+        if (search) matchingProducts = fuzzyProductMatches(matchingProducts, search, 100);
+
+        const total = matchingProducts.length;
+        const products = matchingProducts.slice(skip, skip + safeLimit(limit, 20));
 
         return {
           success: true,
@@ -2545,45 +2693,63 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'create_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const c = args.coupon || args;
-        if (!c.code || !c.discountType || !c.discountValue || !c.expiryDate) {
-          return { success: false, error: 'Please provide: code, discountType (percentage/fixed), discountValue, expiryDate.' };
+        const inferredDiscountType = c.discountType || (c.discountPercent != null ? 'percentage' : 'fixed');
+        const rawDiscountValue = c.discountValue ?? c.discountPercent ?? c.fixedAmount ?? c.amount;
+        if (!rawDiscountValue) {
+          return { success: false, error: 'Please provide the coupon discount value, such as 10% or 500 off.' };
         }
-        if (!['percentage', 'fixed'].includes(c.discountType)) {
+        if (!['percentage', 'fixed'].includes(inferredDiscountType)) {
           return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
         }
-        const discountValue = Number(c.discountValue);
+        const discountValue = Number(rawDiscountValue);
         if (!Number.isFinite(discountValue) || discountValue <= 0) {
           return { success: false, error: 'Coupon discountValue must be a positive number.' };
         }
-        if (c.discountType === 'percentage' && discountValue > 100) {
+        if (inferredDiscountType === 'percentage' && discountValue > 100) {
           return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
         }
-        const expiryDate = new Date(c.expiryDate);
+        const expiryDate = c.expiryDate ? new Date(c.expiryDate) : addDays(new Date(), 30);
         if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
         if (expiryDate <= new Date()) return { success: false, error: 'Coupon expiryDate must be in the future.' };
-        const code = String(c.code).toUpperCase().trim();
-        const duplicate = await Coupon.findOne({ seller: userId, code }).select('_id').lean();
-        if (duplicate) return { success: false, error: `Coupon "${code}" already exists for your store.` };
+        const maxUses = c.maxUses == null || c.maxUses === '' ? null : Number(c.maxUses);
+        const maxUsesPerUser = c.maxUsesPerUser == null || c.maxUsesPerUser === '' ? 1 : Number(c.maxUsesPerUser);
+        const minOrderAmount = c.minOrderAmount == null || c.minOrderAmount === '' ? 0 : Number(c.minOrderAmount);
+        const rawMaxDiscountAmount = c.maxDiscountAmount ?? c.maxDiscount;
+        const maxDiscountAmount = rawMaxDiscountAmount == null || rawMaxDiscountAmount === '' ? null : Number(rawMaxDiscountAmount);
+        if (maxUses !== null && (!Number.isFinite(maxUses) || maxUses <= 0)) return { success: false, error: 'maxUses must be a positive number.' };
+        if (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser <= 0) return { success: false, error: 'maxUsesPerUser must be a positive number.' };
+        if (!Number.isFinite(minOrderAmount) || minOrderAmount < 0) return { success: false, error: 'minOrderAmount must be zero or higher.' };
+        if (maxDiscountAmount !== null && (!Number.isFinite(maxDiscountAmount) || maxDiscountAmount <= 0)) return { success: false, error: 'maxDiscountAmount must be a positive number.' };
+        const applicableTo = c.applicableTo === 'selected' ? 'selected' : 'all';
+        const applicableProducts = Array.isArray(c.applicableProducts)
+          ? c.applicableProducts.map(toId).filter(Boolean)
+          : [];
+        if (applicableTo === 'selected') {
+          if (!applicableProducts.length) return { success: false, error: 'Please choose at least one product for a selected-product coupon.' };
+          const ownedCount = await Product.countDocuments({ _id: { $in: applicableProducts }, seller: userId });
+          if (ownedCount !== applicableProducts.length) return { success: false, error: 'Some selected products were not found in your store.' };
+        }
+        const code = await uniqueCouponCode(userId, { ...c, discountType: inferredDiscountType, discountValue });
 
         const coupon = await Coupon.create({
           seller: userId,
           code,
-          discountType: c.discountType,
+          discountType: inferredDiscountType,
           discountValue,
-          applicableTo: c.applicableTo || 'all',
-          applicableProducts: c.applicableProducts || [],
-          maxUses: c.maxUses || null,
-          maxUsesPerUser: c.maxUsesPerUser || 1,
-          minOrderAmount: c.minOrderAmount || 0,
-          maxDiscountAmount: c.maxDiscountAmount || null,
+          applicableTo,
+          applicableProducts: applicableTo === 'selected' ? applicableProducts : [],
+          maxUses,
+          maxUsesPerUser,
+          minOrderAmount,
+          maxDiscountAmount,
           expiryDate,
           description: c.description || '',
         });
 
         return {
           success: true,
-          data: { couponId: coupon._id, code: coupon.code },
-          message: `Coupon "${coupon.code}" created — ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : '$' + coupon.discountValue} off! 🎟️`,
+          data: { couponId: coupon._id, code: coupon.code, expiryDate: coupon.expiryDate },
+          message: `Coupon "${coupon.code}" created - ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : '$' + coupon.discountValue} off, expiring ${coupon.expiryDate.toISOString().slice(0, 10)}.`,
         };
       }
 
@@ -2612,67 +2778,82 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'update_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { couponId } = args;
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
         const allowedCouponFields = ['discountType', 'discountValue', 'applicableTo', 'applicableProducts', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount', 'startDate', 'expiryDate', 'isActive', 'description'];
         const updates = {};
         for (const field of allowedCouponFields) {
           if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
         }
-        if (!couponId) return { success: false, error: 'Please specify couponId.' };
+        const coupon = await resolveSellerCoupon(userId, args);
+        if (!coupon) return { success: false, error: 'Please specify a valid coupon code or choose a coupon from your coupon list.' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid coupon fields were provided to update.' };
         if (updates.discountType && !['percentage', 'fixed'].includes(updates.discountType)) {
           return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
         }
-        for (const numericField of ['discountValue', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount']) {
+        for (const numericField of ['discountValue', 'maxUses', 'maxUsesPerUser', 'maxDiscountAmount']) {
           if (updates[numericField] !== undefined && updates[numericField] !== null) {
             const numericValue = Number(updates[numericField]);
-            if (!Number.isFinite(numericValue) || numericValue < 0) {
-              return { success: false, error: `${numericField} must be a non-negative number.` };
+            if (!Number.isFinite(numericValue) || numericValue <= 0) {
+              return { success: false, error: `${numericField} must be a positive number.` };
             }
             updates[numericField] = numericValue;
           }
         }
-        if (updates.discountType === 'percentage' && updates.discountValue > 100) {
+        for (const numericField of ['minOrderAmount']) {
+          if (updates[numericField] !== undefined && updates[numericField] !== null) {
+            const numericValue = Number(updates[numericField]);
+            if (!Number.isFinite(numericValue) || numericValue < 0) {
+              return { success: false, error: `${numericField} must be zero or higher.` };
+            }
+            updates[numericField] = numericValue;
+          }
+        }
+        const finalDiscountType = updates.discountType || coupon.discountType;
+        const finalDiscountValue = updates.discountValue ?? coupon.discountValue;
+        if (finalDiscountType === 'percentage' && finalDiscountValue > 100) {
           return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
         }
         if (updates.expiryDate !== undefined) {
           const expiryDate = new Date(updates.expiryDate);
           if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
+          if (expiryDate <= new Date()) return { success: false, error: 'Coupon expiryDate must be in the future.' };
           updates.expiryDate = expiryDate;
         }
+        const finalApplicableTo = updates.applicableTo || coupon.applicableTo;
+        if (finalApplicableTo === 'selected' && (updates.applicableProducts !== undefined || updates.applicableTo === 'selected')) {
+          const productSource = updates.applicableProducts !== undefined ? updates.applicableProducts : coupon.applicableProducts;
+          const productIds = Array.isArray(productSource) ? productSource.map(item => toId(item?._id || item)).filter(Boolean) : [];
+          if (!productIds.length) return { success: false, error: 'Please choose at least one product for a selected-product coupon.' };
+          const ownedCount = await Product.countDocuments({ _id: { $in: productIds }, seller: userId });
+          if (ownedCount !== productIds.length) return { success: false, error: 'Some selected products were not found in your store.' };
+          updates.applicableProducts = productIds;
+        }
+        if (updates.applicableTo === 'all') updates.applicableProducts = [];
 
-        const coupon = await Coupon.findOneAndUpdate(
-          { _id: toId(couponId), seller: userId },
-          { $set: updates },
-          { new: true }
-        ).lean();
-
-        if (!coupon) return { success: false, error: 'Coupon not found or you don\'t own it.' };
+        Object.assign(coupon, updates);
+        await coupon.save();
         return { success: true, message: `Coupon "${coupon.code}" updated.` };
       }
 
       case 'delete_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { couponId } = args;
-        if (!couponId) return { success: false, error: 'Please specify couponId.' };
-
-        const coupon = await Coupon.findOneAndDelete({ _id: toId(couponId), seller: userId });
-        if (!coupon) return { success: false, error: 'Coupon not found or you don\'t own it.' };
-        return { success: true, message: `Coupon "${coupon.code}" deleted. 🗑️` };
+        const coupon = await resolveSellerCoupon(userId, args);
+        if (!coupon) return { success: false, error: 'Please specify a valid coupon code or choose a coupon from your coupon list.' };
+        await coupon.deleteOne();
+        return { success: true, message: `Coupon "${coupon.code}" deleted.` };
       }
 
       case 'toggle_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { couponId } = args;
-        if (!couponId) return { success: false, error: 'Please specify couponId.' };
-
-        const coupon = await Coupon.findOne({ _id: toId(couponId), seller: userId });
-        if (!coupon) return { success: false, error: 'Coupon not found or you don\'t own it.' };
+        const coupon = await resolveSellerCoupon(userId, args);
+        if (!coupon) return { success: false, error: 'Please specify a valid coupon code or choose a coupon from your coupon list.' };
+        if (!coupon.isActive && new Date(coupon.expiryDate) <= new Date()) {
+          return { success: false, error: `Coupon "${coupon.code}" is expired. Extend its expiry date before activating it.` };
+        }
 
         coupon.isActive = !coupon.isActive;
         await coupon.save();
-        return { success: true, message: `Coupon "${coupon.code}" is now ${coupon.isActive ? 'active ✅' : 'inactive ⏸️'}.` };
+        return { success: true, message: `Coupon "${coupon.code}" is now ${coupon.isActive ? 'active' : 'inactive'}.` };
       }
 
       case 'get_subscription_status': {

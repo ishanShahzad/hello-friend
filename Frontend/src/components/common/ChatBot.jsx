@@ -19,6 +19,31 @@ import { resilientFetch } from '../../utils/httpResilience';
 // ─── Endpoint (our own backend — no Supabase) ───
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 const AI_CHAT_URL = `${API_BASE}api/ai-chat/stream`;
+const PRODUCT_IMAGE_ATTACHMENT_RE = /\n?\[Attached product image: (https?:\/\/[^\]\s]+)\]/gi;
+
+const extractImageAttachments = (content = '', explicit = []) => {
+  const attachments = Array.isArray(explicit) ? [...explicit] : [];
+  const text = String(content || '');
+  for (const match of text.matchAll(PRODUCT_IMAGE_ATTACHMENT_RE)) {
+    attachments.push({ type: 'image', url: match[1], name: 'Product image' });
+  }
+  return attachments;
+};
+
+const stripAttachmentMetadata = (content = '') => (
+  String(content || '').replace(PRODUCT_IMAGE_ATTACHMENT_RE, '').trim()
+);
+
+const normalizeChatMessage = (message) => {
+  const attachments = extractImageAttachments(message.content, message.attachments);
+  const cleanContent = stripAttachmentMetadata(message.content);
+  return {
+    role: message.role,
+    content: cleanContent || (attachments.length ? 'Image attached' : ''),
+    ...(attachments.length ? { attachments } : {}),
+    ...(Array.isArray(message.toolEvents) && message.toolEvents.length > 0 ? { toolEvents: message.toolEvents } : {}),
+  };
+};
 
 const COMPLAINT_CATEGORIES = [
   { value: 'product_issue', label: 'Product Issue' },
@@ -375,6 +400,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
+  const [pendingProductImage, setPendingProductImage] = useState(null);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -395,9 +421,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     if (initialMessages !== null) {
       if (initialMessages.length > 0) {
         setMessages(initialMessages.map(m => ({
-          role: m.role,
-          content: m.content,
-          ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+          ...normalizeChatMessage(m),
         })));
         setShowChips(false);
       } else {
@@ -440,9 +464,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         .then(convoData => {
           if (convoData && convoData.messages?.length > 0) {
             setMessages(convoData.messages.map(m => ({
-              role: m.role,
-              content: m.content,
-              ...(Array.isArray(m.toolEvents) && m.toolEvents.length > 0 ? { toolEvents: m.toolEvents } : {}),
+              ...normalizeChatMessage(m),
             })));
             setActiveConvoId(convoData._id);
             setShowChips(false);
@@ -484,6 +506,10 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
 
+  useEffect(() => () => {
+    if (pendingProductImage?.previewUrl) URL.revokeObjectURL(pendingProductImage.previewUrl);
+  }, [pendingProductImage?.previewUrl]);
+
   // ─── Handle client-side actions from the server ───
   const handleClientAction = useCallback((action, args) => {
     switch (action) {
@@ -507,41 +533,81 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsUploadingProductImage(true);
     try {
-      const imageUrl = await uploadImageToCloudinary(file);
-      setInput(prev => {
-        const prefix = prev.trim() ? `${prev.trim()} ` : '';
-        return `${prefix}Product image URL: ${imageUrl}`;
+      const previewUrl = URL.createObjectURL(file);
+      setPendingProductImage(prev => {
+        if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return { file, previewUrl, name: file.name, size: file.size, type: file.type };
       });
-      toast.success('Image uploaded. Send the message when the product details are ready.');
+      toast.success('Image attached. Add product details or send when ready.');
       setTimeout(() => inputRef.current?.focus(), 0);
     } catch (error) {
-      toast.error(error.message || 'Failed to upload image');
+      toast.error(error.message || 'Failed to attach image');
     } finally {
-      setIsUploadingProductImage(false);
       if (event.target) event.target.value = '';
     }
   }, []);
 
   // ─── Send message (SSE streaming with server-side tool execution) ───
-  const sendMessage = useCallback(async (text) => {
-    if (!text?.trim() || isLoading) return;
-    const userMsg = { role: 'user', content: text.trim() };
+  const sendMessage = useCallback(async (text, attachment = null) => {
+    const trimmedText = String(text || '').trim();
+    if ((!trimmedText && !attachment) || isLoading) return;
+
+    let uploadedAttachment = null;
+    if (attachment?.file) {
+      setIsUploadingProductImage(true);
+      try {
+        const imageUrl = await uploadImageToCloudinary(attachment.file);
+        uploadedAttachment = {
+          type: 'image',
+          url: imageUrl,
+          name: attachment.name || 'Product image',
+        };
+      } catch (error) {
+        toast.error(error.message || 'Failed to upload image');
+        setIsUploadingProductImage(false);
+        return;
+      }
+      setIsUploadingProductImage(false);
+    }
+
+    const visibleContent = trimmedText || 'Image attached';
+    const attachmentMetadata = uploadedAttachment?.url
+      ? `\n\n[Attached product image: ${uploadedAttachment.url}]`
+      : '';
+    const apiUserMsg = { role: 'user', content: `${visibleContent}${attachmentMetadata}` };
+    const userMsg = {
+      role: 'user',
+      content: visibleContent,
+      ...(uploadedAttachment ? { attachments: [uploadedAttachment] } : {}),
+    };
+
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setPendingProductImage(prev => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
     setShowChips(false);
     setIsLoading(true);
     setPendingTools([]);
 
     // Build conversation history for the API (only user/assistant text messages)
-    const apiMessages = [...messages, userMsg]
+    const apiMessages = [...messages, apiUserMsg]
       .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content)
       .map(m => {
         const toolMemory = summarizeToolEventsForPrompt(m.toolEvents);
+        const attachmentMemory = (m.attachments || [])
+          .filter(attachment => attachment?.type === 'image' && attachment.url)
+          .map(attachment => `[Attached product image: ${attachment.url}]`)
+          .join('\n');
+        const baseContent = stripAttachmentMetadata(m.content);
+        const content = attachmentMemory
+          ? `${baseContent || 'Image attached'}\n\n${attachmentMemory}`
+          : baseContent;
         return {
           role: m.role,
-          content: toolMemory ? `${m.content}\n\n${toolMemory}` : m.content,
+          content: toolMemory ? `${content}\n\n${toolMemory}` : content,
         };
       });
 
@@ -741,6 +807,10 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const renderMessage = (msg, idx) => {
     const isAssistant = msg.role === 'assistant';
     const isUser = msg.role === 'user';
+    const imageAttachments = isUser ? extractImageAttachments(msg.content, msg.attachments) : [];
+    const visibleUserContent = isUser
+      ? (stripAttachmentMetadata(msg.content) || (imageAttachments.length ? 'Image attached' : ''))
+      : msg.content;
 
     return (
       <motion.div
@@ -788,7 +858,23 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                 {msg.content || ''}
               </ReactMarkdown>
             ) : (
-              msg.content
+              <div className="space-y-2">
+                {imageAttachments.map((attachment, attachmentIdx) => (
+                  <div
+                    key={`${attachment.url}-${attachmentIdx}`}
+                    className="rounded-xl overflow-hidden"
+                    style={{ background: 'rgba(255,255,255,0.10)' }}
+                  >
+                    <img
+                      src={attachment.url}
+                      alt={attachment.name || 'Attached product image'}
+                      className="w-full max-h-56 object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+                {visibleUserContent && <p>{visibleUserContent}</p>}
+              </div>
             )}
             {msg.isStreaming && msg.content && (
               <span className="inline-block w-1.5 h-4 ml-0.5 rounded-sm animate-pulse"
@@ -1110,8 +1196,40 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           paddingBottom: embedded ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
         }}
       >
+        {pendingProductImage && (
+          <div
+            className="mb-2 flex items-center gap-3 rounded-2xl p-2"
+            style={{ background: 'hsl(var(--muted) / 0.45)', border: '1px solid hsl(var(--border))' }}
+          >
+            <img
+              src={pendingProductImage.previewUrl}
+              alt={pendingProductImage.name || 'Selected product image'}
+              className="h-14 w-14 rounded-xl object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
+                {pendingProductImage.name || 'Product image'}
+              </p>
+              <p className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                Ready to send with your message
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingProductImage(prev => {
+                if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+                return null;
+              })}
+              className="h-8 w-8 rounded-xl flex items-center justify-center transition-all hover:scale-[1.04] active:scale-95"
+              style={{ background: 'hsl(var(--background) / 0.7)', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+              aria-label="Remove attached image"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
         <form
-          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+          onSubmit={(e) => { e.preventDefault(); sendMessage(input, pendingProductImage); }}
           className="flex gap-2 items-end"
         >
           <div
@@ -1160,7 +1278,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           </div>
           <button
             type="submit"
-            disabled={isLoading || isUploadingProductImage || !input.trim()}
+            disabled={isLoading || isUploadingProductImage || (!input.trim() && !pendingProductImage)}
             className="h-11 w-11 shrink-0 rounded-2xl flex items-center justify-center transition-all disabled:opacity-40 hover:scale-[1.04] active:scale-95"
             style={{
               background: BRAND_GRADIENT,

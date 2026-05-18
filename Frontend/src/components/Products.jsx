@@ -59,9 +59,16 @@ function Products() {
   const [search, setSearch] = useState("")
   const [brands, setBrands] = useState([])
   const filtersRef = useRef(filters)
+  const searchRef = useRef(search)
+  const currentPageRef = useRef(currentPage)
+  const sortByRef = useRef(sortBy)
+  const sortOrderRef = useRef(sortOrder)
   const initialFetchDone = useRef(false)
 
-  useEffect(() => { if (search === '') fetchProducts() }, [search])
+  useEffect(() => {
+    searchRef.current = search
+    if (initialFetchDone.current && search === '') fetchProducts()
+  }, [search])
 
   const serializeFilters = useCallback(() => {
     const f = filtersRef.current
@@ -77,13 +84,13 @@ function Products() {
         else value.forEach(item => params.append(key, item))
       }
     })
-    if (search !== '') params.append('search', search)
-    params.append('page', currentPage)
+    if (searchRef.current !== '') params.append('search', searchRef.current)
+    params.append('page', currentPageRef.current)
     params.append('limit', PRODUCTS_PER_PAGE)
-    params.append('sortBy', sortBy)
-    params.append('sortOrder', sortOrder)
+    params.append('sortBy', sortByRef.current)
+    params.append('sortOrder', sortOrderRef.current)
     return params.toString()
-  }, [search, currentPage, sortBy, sortOrder])
+  }, [])
 
   const fetchProducts = useCallback(async () => {
     setLoading(true); setError(null)
@@ -113,13 +120,6 @@ function Products() {
   }, [serializeFilters, navigate, location.pathname])
 
   useEffect(() => {
-    if (!initialFetchDone.current) {
-      initialFetchDone.current = true
-      fetchProducts()
-    }
-  }, [])
-
-  useEffect(() => {
     const prev = JSON.stringify(filtersRef.current)
     filtersRef.current = filters
     if (initialFetchDone.current && prev !== JSON.stringify(filters)) {
@@ -130,6 +130,9 @@ function Products() {
   
   // Fetch products when page, sort, or sortOrder changes
   useEffect(() => {
+    currentPageRef.current = currentPage
+    sortByRef.current = sortBy
+    sortOrderRef.current = sortOrder
     if (initialFetchDone.current) {
       fetchProducts()
     }
@@ -143,7 +146,23 @@ function Products() {
       } catch (error) { setCategories([]); setBrands([]) }
     }
     fetchFilters()
-    reset(parseQueryParams(location.search))
+    const parsedFilters = parseQueryParams(location.search)
+    const params = new URLSearchParams(location.search)
+    const parsedPage = Math.max(1, parseInt(params.get('page'), 10) || 1)
+    const parsedSortBy = params.get('sortBy') || 'relevance'
+    const parsedSortOrder = params.get('sortOrder') || 'desc'
+    filtersRef.current = parsedFilters
+    searchRef.current = parsedFilters.search || ''
+    currentPageRef.current = parsedPage
+    sortByRef.current = parsedSortBy
+    sortOrderRef.current = parsedSortOrder
+    reset(parsedFilters)
+    setSearch(parsedFilters.search || '')
+    setCurrentPage(parsedPage)
+    setSortBy(parsedSortBy)
+    setSortOrder(parsedSortOrder)
+    initialFetchDone.current = true
+    fetchProducts()
   }, [])
 
   const parseQueryParams = (search) => {
@@ -345,7 +364,12 @@ function Products() {
 
       {/* Reset Button */}
       <button
-        onClick={() => { reset({ categories: [], brands: [], search: '', priceRange: ['0', '5000'] }); if (priceRangeRef.current) priceRangeRef.current.value = 0; }}
+        onClick={() => {
+          reset({ categories: [], brands: [], search: '', priceRange: ['0', '5000'] })
+          setSearch('')
+          setCurrentPage(1)
+          if (priceRangeRef.current) priceRangeRef.current.value = 0
+        }}
         className='w-full py-2.5 rounded-xl glass-button font-semibold text-sm transition-transform active:scale-[0.97] hover:scale-[1.02]' style={{ color: 'hsl(var(--primary))' }}>
         Reset All Filters
       </button>

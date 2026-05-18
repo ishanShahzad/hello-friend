@@ -137,6 +137,63 @@ const applySorting = (products, sortBy, sortOrder, sellerProductCounts, totalSel
     }
 };
 
+const compactProductSearchText = (value) =>
+    String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+const getProductSearchText = (product) => [
+    product.name,
+    product.brand,
+    product.category,
+    product.description,
+    ...(Array.isArray(product.tags) ? product.tags : []),
+].filter(Boolean).join(' ');
+
+const fuzzyRankProducts = (products, search) => {
+    const normalizedSearch = String(search || '').trim();
+    if (!normalizedSearch || !products.length) return products;
+
+    const compactSearch = compactProductSearchText(normalizedSearch);
+    const searchParts = normalizedSearch
+        .toLowerCase()
+        .split(/\s+/)
+        .map(compactProductSearchText)
+        .filter(part => part.length >= 2);
+
+    const directMatches = products.filter(product => {
+        const text = compactProductSearchText(getProductSearchText(product));
+        return compactSearch && (
+            text.includes(compactSearch) ||
+            searchParts.every(part => text.includes(part))
+        );
+    });
+
+    const fuse = new Fuse(products, {
+        includeScore: true,
+        threshold: 0.52,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+        keys: [
+            { name: 'name', weight: 0.55 },
+            { name: 'brand', weight: 0.18 },
+            { name: 'category', weight: 0.12 },
+            { name: 'tags', weight: 0.1 },
+            { name: 'description', weight: 0.05 },
+        ],
+    });
+
+    const fuzzyMatches = fuse.search(normalizedSearch)
+        .filter(result => result.score == null || result.score <= 0.55)
+        .map(result => result.item);
+
+    const seen = new Set();
+    return [...directMatches, ...fuzzyMatches].filter(product => {
+        const key = String(product._id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+
 exports.getProducts = async (req, res) => {
     const { 
         categories, 
@@ -190,14 +247,9 @@ exports.getProducts = async (req, res) => {
             })
             .lean()
 
-        // Apply fuzzy search with Fuse.js if search term is present
+        // Apply tolerant fuzzy search so buyers can find products with partial names and typos.
         if (search) {
-            const fuse = new Fuse(products, {
-                threshold: 0.4,
-                keys: ['name', 'description', 'brand', 'tags', 'category']
-            })
-            const results = fuse.search(search)
-            products = results.map(r => r.item)
+            products = fuzzyRankProducts(products, search)
         }
         
         // Count products per seller for diversity calculation
@@ -267,10 +319,29 @@ exports.getSingleProduct = async (req, res) => {
 
 exports.getFilters = async (req, res) => {
     try {
-        const categories = await Product.distinct('category')
-        const brands = await Product.distinct('brand')
-        // console.log('categories:', categories, 'brands:', brands);
-        res.status(200).json({ categories, brands })
+        const Store = require('../models/Store');
+        const activeStores = await Store.find({ isActive: true })
+            .select('seller')
+            .populate('seller', '_id')
+            .lean();
+        const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
+        const productScope = {
+            $or: [
+                { seller: null },
+                { seller: { $in: activeSellerIds } },
+            ],
+        };
+
+        const [categories, brands] = await Promise.all([
+            Product.distinct('category', productScope),
+            Product.distinct('brand', productScope),
+        ]);
+
+        const cleanList = (items) => [...new Set(
+            (items || []).map(item => String(item || '').trim()).filter(Boolean)
+        )].sort((a, b) => a.localeCompare(b));
+
+        res.status(200).json({ categories: cleanList(categories), brands: cleanList(brands) })
     } catch (err) {
         console.error(err)
         res.status(500).json({ error: err })

@@ -198,7 +198,8 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 - If the seller asks you to improve the description, write a polished description before calling add_product.
 - If the seller says "choose tags yourself", create sensible searchable tags and pass them to add_product or edit_product. Never say tags are unsupported.
 - If the seller provides colors, sizes, variants, image URLs, or tags in the same product request, include them in the original add_product call. If they provide those details after a successful add, use edit_product on the most recently added productId from tool results; do not add the product again.
-- Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add image URLs, colors, sizes, or other options. On web they can upload an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
+- Web chat image uploads arrive as hidden text like [Attached product image: https://...]. Treat that URL as a provided product image. Use it in add_product or edit_product only when the seller's intent connects it to a product; if the seller only sends an image with no context, ask which product it belongs to. Never echo the raw URL back to the seller.
+- Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add an image, colors, sizes, or other options. On web they can attach an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
 - If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
 - Product IDs are internal. Do not ask sellers to provide product IDs and do not show raw product IDs unless the seller specifically asks for them. Use product names, brand, price, stock, created order, and "latest/oldest" wording to identify products.
 - To delete products, confirm first, then use delete_product with productName/productNames or internal productIds found from list_my_products. If multiple products match and the seller says "delete them/all matching", pass deleteAllMatches: true.
@@ -303,11 +304,11 @@ const userTools = [
     type: 'function',
     function: {
       name: 'search_products',
-      description: 'Search for products in the Rozare catalog. Returns matching products.',
+      description: 'Search for products in the Rozare catalog. Supports partial names, keywords, common typos, and fuzzy matching.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Search query (product name, keyword, description)' },
+          query: { type: 'string', description: 'Search query (product name, partial name, keyword, description, or typo-tolerant phrase)' },
           category: { type: 'string', description: 'Category filter (optional)' },
           maxPrice: { type: 'number', description: 'Maximum price (optional)' },
           minPrice: { type: 'number', description: 'Minimum price (optional)' },
@@ -721,7 +722,7 @@ const sellerTools = [
           category: { type: 'string' },
           brand: { type: 'string' },
           stock: { type: 'number' },
-          image: { type: 'string', description: 'Primary product image URL. On WhatsApp, user must paste a public URL. On web, user may upload an image and send the resulting URL.' },
+          image: { type: 'string', description: 'Primary product image URL. On WhatsApp, user must paste a public URL. On web, use the hidden [Attached product image: URL] metadata when present.' },
           images: {
             type: 'array',
             description: 'Additional product image URLs.',
@@ -761,7 +762,7 @@ const sellerTools = [
         type: 'object',
         properties: {
           productId: { type: 'string', description: 'Preferred. Product ID from a previous add/list/search result.' },
-          productName: { type: 'string', description: 'Fallback only when productId is not available; exact product name.' },
+          productName: { type: 'string', description: 'Fallback only when productId is not available. Can be a partial, misspelled, or fuzzy product name; the tool will search the seller inventory.' },
           sellerId: { type: 'string', description: 'Admin only: restrict update to this seller.' },
           updates: {
             type: 'object',
@@ -975,13 +976,13 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'create_coupon',
-      description: "Create a new discount coupon for the seller's store.",
+      description: "Create a new discount coupon for the seller's store. If the seller gives only an offer like '10% off' or '500 off', generate a professional code and default the expiry to 30 days unless they specify otherwise.",
       parameters: {
         type: 'object',
         properties: {
           coupon: {
             type: 'object',
-            description: 'Coupon: { code, discountType ("percentage"|"fixed"), discountValue, minOrderAmount?, maxUses?, expiryDate?, maxDiscount? }',
+            description: 'Coupon: { code?, discountType? ("percentage"|"fixed"), discountValue? or discountPercent? or fixedAmount?, minOrderAmount?, maxUses?, maxUsesPerUser?, expiryDate?, maxDiscountAmount?, applicableTo?, applicableProducts?, description? }',
           },
         },
         required: ['coupon'],
@@ -1000,14 +1001,15 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'update_coupon',
-      description: "Update one of the seller's own coupons.",
+      description: "Update one of the seller's own coupons. Prefer couponCode when the seller names a coupon; use couponId only when already known from tool results.",
       parameters: {
         type: 'object',
         properties: {
           couponId: { type: 'string' },
+          couponCode: { type: 'string' },
           updates: { type: 'object' },
         },
-        required: ['couponId', 'updates'],
+        required: ['updates'],
       },
     },
   },
@@ -1015,11 +1017,10 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'delete_coupon',
-      description: "Delete one of the seller's own coupons. Confirm first.",
+      description: "Delete one of the seller's own coupons. Confirm first. Prefer couponCode when the seller names a coupon; use couponId only when already known from tool results.",
       parameters: {
         type: 'object',
-        properties: { couponId: { type: 'string' } },
-        required: ['couponId'],
+        properties: { couponId: { type: 'string' }, couponCode: { type: 'string' } },
       },
     },
   },
@@ -1027,11 +1028,10 @@ const sellerTools = [
     type: 'function',
     function: {
       name: 'toggle_coupon',
-      description: "Toggle active/inactive state of one of seller's coupons.",
+      description: "Toggle active/inactive state of one of seller's coupons. Prefer couponCode when the seller names a coupon; use couponId only when already known from tool results.",
       parameters: {
         type: 'object',
-        properties: { couponId: { type: 'string' } },
-        required: ['couponId'],
+        properties: { couponId: { type: 'string' }, couponCode: { type: 'string' } },
       },
     },
   },
