@@ -6,7 +6,7 @@ import { ToastContainer } from 'react-toastify'
 import { HelmetProvider } from 'react-helmet-async';
 import Analytics from './components/common/Analytics'
 
-function App() {
+function App() { 
   // Reserved system subdomain: docs.rozare.com
   const onDocs = isDocsSubdomain();
   // Store subdomain (storename.rozare.com) — full app routes still work,
