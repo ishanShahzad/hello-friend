@@ -81,28 +81,18 @@ export const identifyTikTokUser = async ({ email, phone, externalId } = {}) => {
 
 export const trackSellerPageView = () => {
   trackTikTokEvent('ViewContent', {
-    contents: [{
-      content_id: 'become_seller_page',
-      content_type: 'seller_registration',
-      content_name: 'Become a Seller Page',
-      content_category: 'Seller Registration',
-    }],
-    content_type: 'seller_registration',
-    content_ids: ['become_seller_page'],
+    content_id: 'become_seller_page',
+    content_name: 'Become a Seller Page',
+    content_category: 'Seller Registration',
     currency: DEFAULT_CURRENCY,
   });
 };
 
 export const trackSellerFormSubmitted = (stepName = 'seller_details') => {
   trackTikTokEvent('SubmitForm', {
-    contents: [{
-      content_id: stepName,
-      content_type: 'seller_registration',
-      content_name: stepName,
-      content_category: 'Seller Signup',
-    }],
-    content_type: 'seller_registration',
-    content_ids: [stepName],
+    content_id: stepName,
+    content_name: stepName,
+    content_category: 'Seller Signup',
     currency: DEFAULT_CURRENCY,
   });
 };
@@ -113,14 +103,9 @@ export const trackSellerRegistrationCompleted = async ({ user, storeName, email,
 
   // Track TikTok CompleteRegistration
   trackTikTokEvent('CompleteRegistration', {
-    contents: [{
-      content_id: externalId || 'new_seller',
-      content_type: 'seller_registration',
-      content_name: storeName || 'New Seller Store',
-      content_category: 'Seller Signup',
-    }],
-    content_type: 'seller_registration',
-    content_ids: [externalId || 'new_seller'],
+    content_id: externalId || 'new_seller',
+    content_name: storeName || 'New Seller Store',
+    content_category: 'Seller Signup',
     value: 1,
     currency: DEFAULT_CURRENCY,
   });
