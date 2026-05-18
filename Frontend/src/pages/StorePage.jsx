@@ -12,6 +12,12 @@ import SEOHead from '../components/common/SEOHead';
 import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
 import { getAuthToken } from "../utils/cookieHelper";
 
+const getEntityId = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return value._id || value.id || '';
+};
+
 const StorePage = ({ slugOverride = null }) => {
     const { slug: slugFromParams } = useParams();
     const slug = slugOverride || slugFromParams;
@@ -71,12 +77,20 @@ const StorePage = ({ slugOverride = null }) => {
         if (store?._id) {
             fetchTrustStatus();
         }
-        if (store?.seller) {
-            fetchStoreCoupons(store.seller);
+        const sellerId = getEntityId(store?.seller);
+        if (sellerId) {
+            fetchStoreCoupons(sellerId);
+        } else {
+            setStoreCoupons([]);
         }
     }, [store?._id, store?.seller]);
 
     const fetchStoreCoupons = async (sellerId) => {
+        if (!sellerId || typeof sellerId !== 'string') {
+            setStoreCoupons([]);
+            return;
+        }
+
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/store/${sellerId}`);
             setStoreCoupons(res.data.coupons || []);

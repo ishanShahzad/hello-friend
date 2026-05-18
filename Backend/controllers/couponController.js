@@ -1,5 +1,47 @@
 const Coupon = require('../models/Coupon');
 const Product = require('../models/Product');
+const Store = require('../models/Store');
+const mongoose = require('mongoose');
+
+const isObjectId = (value) => (
+    typeof value === 'string' &&
+    mongoose.Types.ObjectId.isValid(value) &&
+    String(new mongoose.Types.ObjectId(value)) === value.toLowerCase()
+);
+
+const isMissingIdentifier = (value) => {
+    const normalized = String(value || '').trim();
+    return !normalized || ['undefined', 'null', '[object Object]'].includes(normalized);
+};
+
+const stripInternalCouponFields = (coupon) => {
+    const obj = coupon.toObject ? coupon.toObject() : { ...coupon };
+    delete obj.maxUses;
+    delete obj.usedCount;
+    return obj;
+};
+
+const resolveSellerIdForStoreCoupons = async (identifier) => {
+    if (isMissingIdentifier(identifier)) return null;
+
+    const value = decodeURIComponent(String(identifier).trim());
+
+    if (isObjectId(value)) {
+        const store = await Store.findOne({
+            isActive: true,
+            $or: [{ _id: value }, { seller: value }],
+        }).select('seller');
+
+        return store?.seller || value;
+    }
+
+    const store = await Store.findOne({
+        isActive: true,
+        storeSlug: value.toLowerCase(),
+    }).select('seller');
+
+    return store?.seller || null;
+};
 
 // ─── Create a coupon ───
 exports.createCoupon = async (req, res) => {
@@ -364,6 +406,10 @@ exports.getCouponAnalytics = async (req, res) => {
 exports.getProductCoupons = async (req, res) => {
     try {
         const { productId } = req.params;
+        if (!isObjectId(productId)) {
+            return res.status(400).json({ coupons: [], msg: 'Invalid product id.' });
+        }
+
         const product = await Product.findById(productId).select('seller');
         if (!product) return res.status(404).json({ msg: 'Product not found.' });
 
@@ -377,9 +423,11 @@ exports.getProductCoupons = async (req, res) => {
                 { applicableTo: 'all' },
                 { applicableTo: 'selected', applicableProducts: productId }
             ]
-        }).select('code discountType discountValue applicableTo description expiryDate minOrderAmount maxDiscountAmount');
+        }).select('code discountType discountValue applicableTo description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
 
-        const validCoupons = coupons.filter(c => c.maxUses === null || c.usedCount < c.maxUses);
+        const validCoupons = coupons
+            .filter(c => c.maxUses === null || c.usedCount < c.maxUses)
+            .map(stripInternalCouponFields);
 
         res.json({ coupons: validCoupons });
     } catch (error) {
@@ -392,17 +440,22 @@ exports.getProductCoupons = async (req, res) => {
 exports.getStoreCoupons = async (req, res) => {
     try {
         const { sellerId } = req.params;
+        const resolvedSellerId = await resolveSellerIdForStoreCoupons(sellerId);
+        if (!resolvedSellerId) return res.json({ coupons: [] });
+
         const now = new Date();
         const coupons = await Coupon.find({
-            seller: sellerId,
+            seller: resolvedSellerId,
             isActive: true,
             startDate: { $lte: now },
             expiryDate: { $gte: now },
         })
             .populate('applicableProducts', 'name image')
-            .select('code discountType discountValue applicableTo applicableProducts description expiryDate minOrderAmount maxDiscountAmount');
+            .select('code discountType discountValue applicableTo applicableProducts description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
 
-        const validCoupons = coupons.filter(c => c.maxUses === null || c.usedCount < c.maxUses);
+        const validCoupons = coupons
+            .filter(c => c.maxUses === null || c.usedCount < c.maxUses)
+            .map(stripInternalCouponFields);
 
         res.json({ coupons: validCoupons });
     } catch (error) {
