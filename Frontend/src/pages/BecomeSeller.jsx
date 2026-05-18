@@ -50,6 +50,22 @@ export default function BecomeSeller() {
   const countdownRef = useRef(null);
   const resendRef = useRef(null);
 
+  // Track TikTok ViewContent event when page loads
+  useEffect(() => {
+    if (window.ttq) {
+      window.ttq.track('ViewContent', {
+        contents: [{
+          content_id: 'become_seller_page',
+          content_type: 'seller_registration',
+          content_name: 'Become a Seller Page',
+          content_category: 'Seller Registration'
+        }],
+        value: 0,
+        currency: 'USD'
+      });
+    }
+  }, []);
+
   // If user just came back from Google auth (redirected here), auto-advance to step 1
   useEffect(() => {
     if (searchParams.get('from') === 'google' && currentUser) {
@@ -322,6 +338,65 @@ export default function BecomeSeller() {
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
       }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.token) localStorage.setItem('jwtToken', res.data.token);
+      
+      // Track TikTok CompleteRegistration event for seller lead with customer information
+      if (window.ttq) {
+        // Helper function to hash data with SHA-256
+        const sha256Hash = async (str) => {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(str.toLowerCase().trim());
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        };
+
+        // Hash email and phone for privacy
+        const userEmail = currentUser?.email || signupData.email;
+        const userPhone = formData.phoneNumber.trim();
+        const userId = res.data.user?.id || currentUser?.id;
+
+        Promise.all([
+          userEmail ? sha256Hash(userEmail) : null,
+          userPhone ? sha256Hash(userPhone) : null,
+          userId ? sha256Hash(userId.toString()) : null
+        ]).then(([hashedEmail, hashedPhone, hashedId]) => {
+          // Identify user with hashed PII data
+          const identifyData = {};
+          if (hashedEmail) identifyData.email = hashedEmail;
+          if (hashedPhone) identifyData.phone_number = hashedPhone;
+          if (hashedId) identifyData.external_id = hashedId;
+          
+          if (Object.keys(identifyData).length > 0) {
+            window.ttq.identify(identifyData);
+          }
+
+          // Track CompleteRegistration event
+          window.ttq.track('CompleteRegistration', {
+            contents: [{
+              content_id: userId || 'new_seller',
+              content_type: 'seller_registration',
+              content_name: storeData.storeName?.trim() || 'New Seller Store',
+              content_category: 'Seller Signup'
+            }],
+            value: 1,
+            currency: 'USD'
+          });
+        }).catch(err => {
+          console.error('TikTok tracking error:', err);
+          // Fallback tracking without hashed data
+          window.ttq.track('CompleteRegistration', {
+            contents: [{
+              content_id: 'seller',
+              content_type: 'seller_registration',
+              content_name: storeData.storeName?.trim() || 'New Seller Store',
+              content_category: 'Seller Signup'
+            }],
+            value: 1,
+            currency: 'USD'
+          });
+        });
+      }
+      
       toast.success('Congratulations! You are now a seller!');
       await fetchAndUpdateCurrentUser();
       setTimeout(() => { window.location.href = '/seller-dashboard/store-overview'; }, 1500);
