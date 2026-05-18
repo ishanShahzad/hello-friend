@@ -12,8 +12,7 @@
  *   2. The current `value` already contains a country code
  *   3. Saved profile country (via `profileCountry` prop)
  *   4. `navigator.language` locale   (e.g. "en-PK" → "PK", instant, zero-network)
- *   5. Free IP geolocation           (ipapi.co, cached in localStorage for 24h)
- *   6. Final fallback: 'PK'          (Rozare's home market)
+ *   5. Final fallback: 'PK'          (Rozare's home market)
  *
  * Works with:
  *   - Plain controlled inputs:   <PhoneField value={v} onChange={setV} />
@@ -77,11 +76,6 @@ const readCachedGeo = () => {
     } catch { return null; }
 };
 
-const writeCachedGeo = (cc) => {
-    try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify({ cc, at: Date.now() })); }
-    catch { /* quota / private mode — ignore */ }
-};
-
 /** Fast, synchronous guess from browser locale (e.g. "en-PK" → "PK"). */
 const countryFromLocale = () => {
     try {
@@ -93,20 +87,6 @@ const countryFromLocale = () => {
         }
     } catch { /* noop */ }
     return null;
-};
-
-/** Async IP-based lookup — only runs if locale failed. 2-second timeout. */
-const countryFromIp = async () => {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 2000);
-    try {
-        // ipapi.co has a generous free tier, returns { country_code: "PK", ... }
-        const r = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
-        if (!r.ok) return null;
-        const data = await r.json();
-        return normaliseCountryCode(data?.country_code || data?.country);
-    } catch { return null; }
-    finally { clearTimeout(t); }
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -146,22 +126,6 @@ const PhoneField = forwardRef(function PhoneField(
             seededFromProfile.current = true;
         }
     }, [profileCountry]);
-
-    // Kick off IP geolocation in the background if we don't already have a cached hit.
-    useEffect(() => {
-        let cancelled = false;
-        // Don't overwrite an explicit/profile/value-driven choice.
-        if (defaultCountry || countryNameToIso(profileCountry) || readCachedGeo()) return;
-        (async () => {
-            const cc = await countryFromIp();
-            if (cancelled || !cc) return;
-            writeCachedGeo(cc);
-            // Only update if the user hasn't interacted yet (still empty).
-            if (!value) setCountry(cc);
-        })();
-        return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const hasError = Boolean(error?.message || (typeof error === 'string' && error));
     const errorMsg = error?.message || (typeof error === 'string' ? error : '');

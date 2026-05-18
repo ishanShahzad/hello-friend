@@ -416,6 +416,11 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
             const { consumeVerifiedWhatsAppNumber } = require('./sellerWhatsappController');
             whatsappVerifiedServerSide = await consumeVerifiedWhatsAppNumber(whatsappNumber);
         }
+        if (!whatsappVerifiedServerSide) {
+            return res.status(400).json({
+                msg: 'Please verify your WhatsApp number before creating your seller account.'
+            });
+        }
 
         const userData = { ...otpDoc.userData, isVerified: true };
         const newUser = new User(userData);

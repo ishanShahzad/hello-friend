@@ -95,6 +95,8 @@ const SellerSignUp = () => {
         setWhatsappError('WhatsApp verification is temporarily unavailable. Please try again later.');
       } else if (status === 429) {
         setWhatsappError(err.response?.data?.msg || 'Too many attempts. Please try again later.');
+      } else if (status === 409) {
+        setWhatsappError(err.response?.data?.msg || 'This number is already associated with an existing seller account.');
       } else {
         setWhatsappError(err.response?.data?.message || err.response?.data?.msg || 'Failed to send verification code');
       }

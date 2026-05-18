@@ -47,6 +47,32 @@ const buildProductContent = (product, quantity = 1) => {
   });
 };
 
+const buildSellerSignupPayload = ({
+  id = 'seller_account_signup',
+  name = 'Rozare Seller Account',
+  category = 'Seller Signup',
+  value = 1,
+} = {}) => {
+  const content = cleanPayload({
+    content_id: id,
+    content_type: 'product',
+    content_name: name,
+    content_category: category,
+    price: value,
+    quantity: 1,
+  });
+
+  return {
+    contents: [content],
+    content_type: 'product',
+    content_ids: [id],
+    content_name: name,
+    content_category: category,
+    value,
+    currency: DEFAULT_CURRENCY,
+  };
+};
+
 export const trackTikTokPage = () => {
   if (typeof window === 'undefined' || !window.ttq || typeof window.ttq.page !== 'function') return false;
   window.ttq.page();
@@ -80,21 +106,19 @@ export const identifyTikTokUser = async ({ email, phone, externalId } = {}) => {
 };
 
 export const trackSellerPageView = () => {
-  trackTikTokEvent('ViewContent', {
-    content_id: 'become_seller_page',
-    content_name: 'Become a Seller Page',
-    content_category: 'Seller Registration',
-    currency: DEFAULT_CURRENCY,
-  });
+  trackTikTokEvent('ViewContent', buildSellerSignupPayload({
+    id: 'become_seller_page',
+    name: 'Become a Seller Page',
+    category: 'Seller Registration',
+  }));
 };
 
 export const trackSellerFormSubmitted = (stepName = 'seller_details') => {
-  trackTikTokEvent('SubmitForm', {
-    content_id: stepName,
-    content_name: stepName,
-    content_category: 'Seller Signup',
-    currency: DEFAULT_CURRENCY,
-  });
+  trackTikTokEvent('SubmitForm', buildSellerSignupPayload({
+    id: stepName,
+    name: stepName,
+    category: 'Seller Signup',
+  }));
 };
 
 export const trackSellerRegistrationCompleted = async ({ user, storeName, email, phone } = {}) => {
@@ -102,13 +126,11 @@ export const trackSellerRegistrationCompleted = async ({ user, storeName, email,
   await identifyTikTokUser({ email: user?.email || email, phone, externalId });
 
   // Track TikTok CompleteRegistration
-  trackTikTokEvent('CompleteRegistration', {
-    content_id: externalId || 'new_seller',
-    content_name: storeName || 'New Seller Store',
-    content_category: 'Seller Signup',
-    value: 1,
-    currency: DEFAULT_CURRENCY,
-  });
+  trackTikTokEvent('CompleteRegistration', buildSellerSignupPayload({
+    id: externalId || 'new_seller',
+    name: storeName || 'New Seller Store',
+    category: 'Seller Signup',
+  }));
 
   // Track Meta (Facebook) CompleteRegistration
   if (hasMetaPixel()) {

@@ -199,6 +199,11 @@ exports.becomeSeller = async (req, res) => {
             const { consumeVerifiedWhatsAppNumber } = require('./sellerWhatsappController');
             whatsappVerifiedServerSide = await consumeVerifiedWhatsAppNumber(whatsappNumber);
         }
+        if (!whatsappVerifiedServerSide) {
+            return res.status(400).json({
+                message: 'Please verify your WhatsApp number before activating your seller account.'
+            });
+        }
 
         // Update user role to seller and save seller information
         user.role = 'seller'

@@ -264,19 +264,24 @@ exports.verifyWhatsAppOTP = async (req, res) => {
         otpRecord.verifiedAt = new Date();
         await otpRecord.save();
 
-        // For logged-in sellers: immediately update their user record AND delete
-        // the record (no signup consumption needed).
+        // For existing sellers updating WhatsApp settings: immediately update
+        // their user record and delete the OTP record. For buyers becoming
+        // sellers, keep the verified OTP record so the seller-registration
+        // endpoint can consume it as server-side proof.
         const sellerId = req.user?.id || req.user?._id || null;
         if (sellerId) {
-            // Store in E.164 form consistently: '+' + digits
-            const storedNumber = whatsappNumber.trim().startsWith('+')
-                ? whatsappNumber.trim()
-                : `+${digits}`;
-            await User.findByIdAndUpdate(sellerId, {
-                'sellerInfo.whatsappNumber': storedNumber,
-                'sellerInfo.whatsappVerified': true,
-            });
-            await WhatsAppOTP.deleteOne({ _id: otpRecord._id });
+            const user = await User.findById(sellerId).select('role');
+            if (user?.role === 'seller') {
+                // Store in E.164 form consistently: '+' + digits
+                const storedNumber = whatsappNumber.trim().startsWith('+')
+                    ? whatsappNumber.trim()
+                    : `+${digits}`;
+                await User.findByIdAndUpdate(sellerId, {
+                    'sellerInfo.whatsappNumber': storedNumber,
+                    'sellerInfo.whatsappVerified': true,
+                });
+                await WhatsAppOTP.deleteOne({ _id: otpRecord._id });
+            }
         }
         // For signup flow: the verified record stays in the DB. The registration
         // endpoint (verifySellerOTPAndRegister / becomeSeller) will call
