@@ -221,7 +221,15 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
 
 // ── CORS ──
-const normalizeOrigin = (origin) => String(origin || '').trim().replace(/\/+$/, '');
+const normalizeOrigin = (origin) => {
+  if (!origin) return '';
+  try {
+    const parsed = new URL(String(origin).trim());
+    return `${parsed.protocol}//${parsed.host}`.replace(/\/+$/, '');
+  } catch (_) {
+    return String(origin || '').trim().replace(/\/+$/, '');
+  }
+};
 const configuredOrigins = [
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
@@ -243,33 +251,84 @@ const allowedOrigins = new Set([
   ...configuredOrigins,
 ].map(normalizeOrigin));
 
+const allowedCorsHeaders = [
+  'Accept',
+  'accept',
+  'Authorization',
+  'authorization',
+  'Content-Type',
+  'content-type',
+  'Origin',
+  'origin',
+  'X-Requested-With',
+  'x-requested-with',
+];
+
+const isAllowedCorsOrigin = (origin) => {
+  if (!origin) return true;
+
+  const normalized = normalizeOrigin(origin);
+  if (allowedOrigins.has(normalized)) return true;
+
+  try {
+    const parsed = new URL(origin);
+    const hostname = parsed.hostname.toLowerCase();
+    const isRozareDomain = hostname === 'rozare.com' || hostname.endsWith('.rozare.com');
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+    if (parsed.protocol === 'https:' && isRozareDomain) return true;
+    if (process.env.NODE_ENV !== 'production' && isLocalhost) return true;
+  } catch (_) {
+    // Fall through to the environment fallback below.
+  }
+
+  return process.env.NODE_ENV !== 'production';
+};
+
+const setCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  if (!origin || !isAllowedCorsOrigin(origin)) return false;
+
+  const requestedHeaders = req.headers['access-control-request-headers'];
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    requestedHeaders || allowedCorsHeaders.join(', ')
+  );
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Vary', 'Origin, Access-Control-Request-Headers');
+
+  return true;
+};
+
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    const normalized = normalizeOrigin(origin);
-    if (allowedOrigins.has(normalized)) {
-      callback(null, true);
-    } else {
-      callback(null, process.env.NODE_ENV !== 'production');
-    }
+    return callback(null, isAllowedCorsOrigin(origin));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: allowedCorsHeaders,
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400
+  maxAge: 86400,
+  optionsSuccessStatus: 204
 };
 
+// Apply CORS before rate limits and body parsing so preflight requests from
+// store subdomains never get blocked before the browser sees the right headers.
+app.use((req, res, next) => {
+  setCorsHeaders(req, res);
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
+});
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // Ensure CORS headers on ALL responses (including errors)
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
+  setCorsHeaders(req, res);
   next();
 });
 
@@ -403,11 +462,7 @@ setTimeout(() => processDueBroadcasts().catch(() => {}), 15000);
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
   if (res.headersSent) return next(err);
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
+  setCorsHeaders(req, res);
   return res.status(err?.status || 500).json({ msg: err?.message || 'Internal Server Error' });
 });
 

@@ -8,6 +8,13 @@ const GlobalContext = createContext();
 
 const GUEST_CART_KEY = 'guestCart';
 const GUEST_CART_COOKIE = 'rozare_guest_cart';
+const TRANSIENT_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
+const isTransientReadError = (error) => (
+    error?.code === 'ERR_NETWORK' ||
+    error?.code === 'ECONNABORTED' ||
+    TRANSIENT_STATUSES.has(error?.response?.status)
+);
 
 // Helper functions for guest cart - now using cookies for cross-subdomain support
 const getGuestCart = () => { 
@@ -241,7 +248,9 @@ export const GlobalProvider = ({ children }) => {
             // Only log error if it's not a 403 (unauthorized)
             if (error.response?.status !== 403) {
                 console.error(error);
-                toast.error(error.response?.data?.msg || 'Failed to fetch cart')
+                if (!isTransientReadError(error)) {
+                    toast.error(error.response?.data?.msg || 'Failed to fetch cart')
+                }
             }
         }
         finally {

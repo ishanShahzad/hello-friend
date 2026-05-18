@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 import { getAuthToken } from "../../utils/cookieHelper";
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
+import { resilientFetch } from '../../utils/httpResilience';
 
 // ─── Endpoint (our own backend — no Supabase) ───
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
@@ -421,7 +422,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       hasLoadedHistory.current = true;
       setIsLoadingHistory(true);
       // Try to load the active conversation from the API
-      fetch(`${API_BASE}api/ai-chat/conversations`, {
+      resilientFetch(`${API_BASE}api/ai-chat/conversations`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
         .then(r => r.json())
@@ -430,7 +431,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           const activeConvo = data.conversations?.find(c => c._id === activeId);
           if (activeId && activeConvo && activeConvo.messageCount > 0) {
             // Load that conversation's messages
-            return fetch(`${API_BASE}api/ai-chat/conversations/${activeId}`, {
+            return resilientFetch(`${API_BASE}api/ai-chat/conversations/${activeId}`, {
               headers: { Authorization: `Bearer ${authToken}` },
             }).then(r => r.json());
           }

@@ -15,11 +15,28 @@ import SEOHead from './common/SEOHead'
 import { PRESET_CATEGORIES, isPresetCategory } from '../utils/categories'
 
 const PRODUCTS_PER_PAGE = 24
+const PRODUCTS_CACHE_KEY = 'rozare:last-products-response'
+
+const readProductsCache = () => {
+  try {
+    const cached = sessionStorage.getItem(PRODUCTS_CACHE_KEY)
+    return cached ? JSON.parse(cached) : null
+  } catch (_) {
+    return null
+  }
+}
+
+const writeProductsCache = (data) => {
+  try {
+    sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(data))
+  } catch (_) {}
+}
 
 function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [serviceNotice, setServiceNotice] = useState(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -77,7 +94,21 @@ function Products() {
       setProducts(res.data.products || [])
       setTotalPages(res.data.pagination?.totalPages || 1)
       setTotalProducts(res.data.pagination?.totalProducts || 0)
-    } catch (err) { console.log(err); setError(err) }
+      setServiceNotice(null)
+      writeProductsCache(res.data)
+    } catch (err) {
+      console.log(err)
+      const cached = readProductsCache()
+      if (cached?.products?.length) {
+        setProducts(cached.products || [])
+        setTotalPages(cached.pagination?.totalPages || 1)
+        setTotalProducts(cached.pagination?.totalProducts || cached.products.length || 0)
+        setError(null)
+        setServiceNotice('Connection is recovering. Showing the latest saved products for now.')
+      } else {
+        setError(err)
+      }
+    }
     finally { setLoading(false) }
   }, [serializeFilters, navigate, location.pathname])
 
@@ -411,6 +442,19 @@ function Products() {
       <main className='min-w-0 flex-1 p-4 lg:p-6'>
         {/* Personalized Sections */}
         <PersonalizedSections />
+
+        {serviceNotice && (
+          <div
+            className='mt-6 rounded-2xl px-4 py-3 text-sm font-medium'
+            style={{
+              background: 'rgba(14,165,233,0.10)',
+              border: '1px solid rgba(14,165,233,0.22)',
+              color: 'hsl(var(--foreground))',
+            }}
+          >
+            {serviceNotice}
+          </div>
+        )}
 
         <div className='mb-6 mt-8 flex flex-col gap-4'>
           {/* Product search */}

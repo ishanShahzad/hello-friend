@@ -7,7 +7,10 @@ import { BrowserRouter } from 'react-router-dom'
 import { GlobalProvider } from './contexts/GlobalContext.jsx'
 import { CurrencyProvider } from './contexts/CurrencyContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
+import { installHttpResilience } from './utils/httpResilience.js'
+import AppErrorBoundary from './components/common/AppErrorBoundary.jsx'
 
+installHttpResilience()
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -15,7 +18,9 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <CurrencyProvider>
           <GlobalProvider>
-            <App />
+            <AppErrorBoundary>
+              <App />
+            </AppErrorBoundary>
           </GlobalProvider>
         </CurrencyProvider>
       </AuthProvider>

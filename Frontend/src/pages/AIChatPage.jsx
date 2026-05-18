@@ -8,8 +8,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ChatBot from '../components/common/ChatBot';
 import { getAuthToken } from "../utils/cookieHelper";
+import { resilientFetch } from '../utils/httpResilience';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
+const readJsonResponse = async (response, message) => {
+  if (!response.ok) throw new Error(`${message} (${response.status})`);
+  return response.json();
+};
 
 // Brand gradient (matches Rozare logo: teal → sky → indigo)
 const BRAND_GRADIENT = 'linear-gradient(135deg, #14B8A6 0%, #0EA5E9 50%, #6366F1 100%)';
@@ -37,8 +42,8 @@ function AIChatPage() {
   const loadConversations = useCallback(async () => {
     if (!authToken) return;
     try {
-      const res = await fetch(`${API_BASE}api/ai-chat/conversations`, { headers });
-      const data = await res.json();
+      const res = await resilientFetch(`${API_BASE}api/ai-chat/conversations`, { headers });
+      const data = await readJsonResponse(res, 'Failed to load conversations');
       setConversations(data.conversations || []);
       if (data.activeConversationId && !activeConvoId) {
         setActiveConvoId(data.activeConversationId);
@@ -54,8 +59,8 @@ function AIChatPage() {
     if (!authToken || !convoId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}api/ai-chat/conversations/${convoId}`, { headers });
-      const data = await res.json();
+      const res = await resilientFetch(`${API_BASE}api/ai-chat/conversations/${convoId}`, { headers });
+      const data = await readJsonResponse(res, 'Failed to load conversation');
       setActiveConvoId(convoId);
       setLoadedMessages(data.messages || []);
       if (window.innerWidth < 768) setSidebarOpen(false);
