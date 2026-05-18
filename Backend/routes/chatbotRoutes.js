@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/authMiddleware');
+const { optionalAuth } = require('../middleware/authMiddleware');
 const {
     chat,
     getUserContext,
@@ -12,19 +13,6 @@ const {
     saveChatHistory,
     clearChatHistory
 } = require('../controllers/chatbotController');
-
-// Optional auth middleware (doesn't block guests)
-const optionalAuth = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-        const jwt = require('jsonwebtoken');
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decoded;
-        } catch (e) { /* guest user */ }
-    }
-    next();
-};
 
 // Chat endpoint (works for both authenticated and guest users)
 router.post('/chat', optionalAuth, chat);

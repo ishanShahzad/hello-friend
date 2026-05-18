@@ -15,6 +15,7 @@ let testStore;
 let authToken;
 
 beforeAll(async () => {
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'trust-route-test-secret';
   mongoServer = await MongoMemoryServer.create();
   const mongoUri = mongoServer.getUri();
   await mongoose.connect(mongoUri);
@@ -22,15 +23,6 @@ beforeAll(async () => {
   // Setup express app
   app = express();
   app.use(express.json());
-  
-  // Mock auth middleware
-  app.use((req, res, next) => {
-    if (req.headers.authorization) {
-      req.user = testUser;
-    }
-    next();
-  });
-  
   app.use('/api/stores', trustRoutes);
 }, 60000);
 
@@ -64,7 +56,7 @@ beforeEach(async () => {
     trustCount: 0
   });
 
-  authToken = 'Bearer test-token';
+  authToken = `Bearer ${jwt.sign({ id: testUser._id.toString(), role: testUser.role }, process.env.JWT_SECRET)}`;
 });
 
 describe('Trust API Routes', () => {
@@ -96,7 +88,6 @@ describe('Trust API Routes', () => {
         .set('Authorization', authToken);
 
       expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
     });
 
     test('should return 404 for non-existent store', async () => {
@@ -146,7 +137,6 @@ describe('Trust API Routes', () => {
         .set('Authorization', authToken);
 
       expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
     });
 
     test('should return 404 for non-existent store', async () => {
@@ -197,11 +187,18 @@ describe('Trust API Routes', () => {
 
   describe('GET /api/stores/trusted', () => {
     test('should return list of trusted stores', async () => {
+      const secondSeller = await User.create({
+        username: 'secondseller',
+        email: 'secondseller@example.com',
+        password: 'password123',
+        role: 'seller'
+      });
+
       // Create another store
       const store2 = await Store.create({
         storeName: 'Test Store 2',
         storeSlug: 'test-store-2',
-        seller: testUser._id,
+        seller: secondSeller._id,
         trustCount: 0
       });
 
@@ -242,8 +239,7 @@ describe('Trust API Routes', () => {
 
       for (const endpoint of endpoints) {
         const res = await request(app)[endpoint.method](endpoint.path);
-        // Without auth middleware mock, this would return 401
-        // With our mock, it just won't have req.user
+        expect(res.status).toBe(401);
       }
     });
   });

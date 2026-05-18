@@ -1,20 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/authMiddleware');
+const { optionalAuth } = require('../middleware/authMiddleware');
 const ai = require('../controllers/aiActionController');
-
-// Optional auth (for guests)
-const optionalAuth = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-        const jwt = require('jsonwebtoken');
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decoded;
-        } catch (e) { /* guest */ }
-    }
-    next();
-};
 
 // Rate Limit
 router.get('/rate-limit', optionalAuth, ai.getRateLimit);

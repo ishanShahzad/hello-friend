@@ -7,7 +7,8 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import SEOHead from '../components/common/SEOHead';
 import PhoneField, { isValidPhone } from '../components/common/PhoneField';
-import { getAuthToken } from "../utils/cookieHelper";
+import { getAuthToken, setCrossDomainCookie } from "../utils/cookieHelper";
+import { trackSellerFormSubmitted, trackSellerPageView, trackSellerRegistrationCompleted } from '../utils/tiktokPixel';
 
 export default function BecomeSeller() {
   const navigate = useNavigate();
@@ -50,20 +51,8 @@ export default function BecomeSeller() {
   const countdownRef = useRef(null);
   const resendRef = useRef(null);
 
-  // Track TikTok ViewContent event when page loads
   useEffect(() => {
-    if (window.ttq) {
-      window.ttq.track('ViewContent', {
-        contents: [{
-          content_id: 'become_seller_page',
-          content_type: 'seller_registration',
-          content_name: 'Become a Seller Page',
-          content_category: 'Seller Registration'
-        }],
-        value: 0,
-        currency: 'USD'
-      });
-    }
+    trackSellerPageView();
   }, []);
 
   // If user just came back from Google auth (redirected here), auto-advance to step 1
@@ -202,6 +191,7 @@ export default function BecomeSeller() {
       });
       // Account created, store token and user
       localStorage.setItem('jwtToken', res.data.token);
+      setCrossDomainCookie('rozare_jwt_token', res.data.token, 30);
       localStorage.setItem('currentUser', JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
       setFormError('');
@@ -293,6 +283,7 @@ export default function BecomeSeller() {
     if (!formData.address || formData.address.trim().length < 5) { setFormError('Please enter a valid address'); return; }
     if (!formData.city || formData.city.trim().length < 2) { setFormError('Please enter your city'); return; }
     if (!formData.country || formData.country.trim().length < 2) { setFormError('Please enter your country'); return; }
+    trackSellerFormSubmitted('seller_details');
     setFormStep(2);
   };
 
@@ -337,67 +328,20 @@ export default function BecomeSeller() {
         storeDescription: storeData.storeDescription?.trim() || '',
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
       }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data.token) localStorage.setItem('jwtToken', res.data.token);
-      
-      // Track TikTok CompleteRegistration event for seller lead with customer information
-      if (window.ttq) {
-        // Helper function to hash data with SHA-256
-        const sha256Hash = async (str) => {
-          const encoder = new TextEncoder();
-          const data = encoder.encode(str.toLowerCase().trim());
-          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-          const hashArray = Array.from(new Uint8Array(hashBuffer));
-          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        };
-
-        // Hash email and phone for privacy
-        const userEmail = currentUser?.email || signupData.email;
-        const userPhone = formData.phoneNumber.trim();
-        const userId = res.data.user?.id || currentUser?.id;
-
-        Promise.all([
-          userEmail ? sha256Hash(userEmail) : null,
-          userPhone ? sha256Hash(userPhone) : null,
-          userId ? sha256Hash(userId.toString()) : null
-        ]).then(([hashedEmail, hashedPhone, hashedId]) => {
-          // Identify user with hashed PII data
-          const identifyData = {};
-          if (hashedEmail) identifyData.email = hashedEmail;
-          if (hashedPhone) identifyData.phone_number = hashedPhone;
-          if (hashedId) identifyData.external_id = hashedId;
-          
-          if (Object.keys(identifyData).length > 0) {
-            window.ttq.identify(identifyData);
-          }
-
-          // Track CompleteRegistration event
-          window.ttq.track('CompleteRegistration', {
-            contents: [{
-              content_id: userId || 'new_seller',
-              content_type: 'seller_registration',
-              content_name: storeData.storeName?.trim() || 'New Seller Store',
-              content_category: 'Seller Signup'
-            }],
-            value: 1,
-            currency: 'USD'
-          });
-        }).catch(err => {
-          console.error('TikTok tracking error:', err);
-          // Fallback tracking without hashed data
-          window.ttq.track('CompleteRegistration', {
-            contents: [{
-              content_id: 'seller',
-              content_type: 'seller_registration',
-              content_name: storeData.storeName?.trim() || 'New Seller Store',
-              content_category: 'Seller Signup'
-            }],
-            value: 1,
-            currency: 'USD'
-          });
-        });
+      if (res.data.token) {
+        localStorage.setItem('jwtToken', res.data.token);
+        setCrossDomainCookie('rozare_jwt_token', res.data.token, 30);
       }
       
+      await trackSellerRegistrationCompleted({
+        user: res.data.user || currentUser,
+        storeName: storeData.storeName?.trim(),
+        email: currentUser?.email || signupData.email,
+        phone: formData.phoneNumber.trim(),
+      }).catch(() => {});
+
       toast.success('Congratulations! You are now a seller!');
+      if (res.data.user) setCurrentUser(res.data.user);
       await fetchAndUpdateCurrentUser();
       setTimeout(() => { window.location.href = '/seller-dashboard/store-overview'; }, 1500);
     } catch (error) { setFormError(error.response?.data?.message || 'Failed to create seller account'); }

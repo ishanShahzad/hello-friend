@@ -151,14 +151,15 @@ exports.getSellerNotifications = async (req, res) => {
         });
 
         recentOrders.forEach(order => {
-            const hasSellerProduct = order.orderItems.some(item => sellerProductIds.includes(item.productId.toString()));
-            if (!hasSellerProduct) return;
+            const sellerItems = order.orderItems.filter(item => sellerProductIds.includes(item.productId.toString()));
+            if (sellerItems.length === 0) return;
+            const sellerTotal = sellerItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
             if (order.orderStatus === 'pending') {
-                notifications.push({ id: `order-${order._id}`, type: 'info', category: 'order', title: `New order ${order.orderId}`, description: `${order.shippingInfo?.fullName} · ${order.orderItems.length} item(s)`, time: order.createdAt, read: false, orderId: order._id });
+                notifications.push({ id: `order-${order._id}`, type: 'info', category: 'order', title: `New order ${order.orderId}`, description: `${order.shippingInfo?.fullName} - ${sellerItems.length} item(s)`, time: order.createdAt, read: false, orderId: order._id });
             }
             if (order.isPaid && order.orderStatus === 'confirmed') {
-                notifications.push({ id: `paid-${order._id}`, type: 'success', category: 'payment', title: `Payment received for ${order.orderId}`, description: `$${order.orderSummary?.totalAmount?.toFixed(2)}`, time: order.paidAt || order.createdAt, read: false, orderId: order._id });
+                notifications.push({ id: `paid-${order._id}`, type: 'success', category: 'payment', title: `Payment received for ${order.orderId}`, description: `$${sellerTotal.toFixed(2)}`, time: order.paidAt || order.createdAt, read: false, orderId: order._id });
             }
             if (order.confirmation?.confirmedAt && order.confirmation?.confirmedVia === 'email') {
                 notifications.push({

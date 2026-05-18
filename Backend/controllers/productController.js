@@ -382,18 +382,16 @@ exports.addReview = async (req, res) => {
 
 
 exports.deleteProduct = async (req, res) => {
-    console.log(req.user);
     const { role, id: userId } = req.user
     const { id } = req.params
-    console.log('delete product id:::', req.params.id);
-    
+
     if (role !== 'admin' && role !== 'seller') {
         return res.status(403).json({ msg: 'Unauthorized to delete product' })
     }
 
     try {
         const product = await Product.findById(id)
-        
+
         if (!product) {
             return res.status(404).json({ msg: 'Product not found' })
         }
@@ -402,9 +400,8 @@ exports.deleteProduct = async (req, res) => {
         if (role === 'seller' && product.seller?.toString() !== userId) {
             return res.status(403).json({ msg: 'You can only delete your own products' })
         }
-        
+
         await Product.findByIdAndDelete({ _id: id })
-        console.log('product:::', product);
         res.status(200).json({ msg: 'Product deleted successfully' })
     } catch (error) {
         console.error(error.message);
@@ -501,7 +498,6 @@ exports.editProduct = async (req, res) => {
         const { id } = req.params
         const { product } = req.body
         const { role, id: userId } = req.user
-        console.log(role);
 
         if (role !== 'admin' && role !== 'seller') {
             return res.status(403).json({ msg: 'Unauthorized to edit product' })
@@ -530,7 +526,6 @@ exports.editProduct = async (req, res) => {
             }
         }
         
-        console.log(req.body);
         const updatedProduct = await Product.findByIdAndUpdate(id,
             { $set: product },
             { new: true, runValidators: true }
@@ -588,9 +583,7 @@ exports.addProduct = async (req, res) => {
             ...safeProduct,
             seller: role === 'seller' ? userId : null // Only set seller for seller role
         })
-        console.log('New product object:', newProduct);
         await newProduct.save()
-        console.log('Product saved successfully');
         res.status(200).json({ msg: 'Product added successfully.' })
 
     } catch (error) {

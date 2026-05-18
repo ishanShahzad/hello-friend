@@ -35,12 +35,13 @@ const hasOpenConversationWindow = (phone) => {
     return !!lastInboundAt && Date.now() - lastInboundAt < OPEN_CONVERSATION_WINDOW_MS;
 };
 
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
     const cutoff = Date.now() - OPEN_CONVERSATION_WINDOW_MS;
     for (const [phone, lastInboundAt] of openConversationWindows.entries()) {
         if (lastInboundAt < cutoff) openConversationWindows.delete(phone);
     }
 }, 60 * 60 * 1000);
+cleanupTimer.unref?.();
 
 // Soft hourly cap tracking
 const checkHourlyCap = async () => {
@@ -268,6 +269,7 @@ exports.startQueueProcessor = () => {
     if (timer) return;
     // Poll every 5s; random delay enforced via job.nextAttemptAt
     timer = setInterval(tick, 5000);
+    timer.unref?.();
     console.log('[whatsapp] queue processor started');
 };
 

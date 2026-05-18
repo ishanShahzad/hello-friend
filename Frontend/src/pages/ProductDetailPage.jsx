@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getAuthToken } from "../utils/cookieHelper";
+import { trackProductView } from '../utils/tiktokPixel';
 
 function ProductDetailPage() {
     const { id } = useParams();
@@ -138,6 +139,10 @@ function ProductDetailPage() {
     };
 
     useEffect(() => { fetchProduct(); fetchProductCoupons(); }, [id]);
+
+    useEffect(() => {
+        if (product?._id) trackProductView(product);
+    }, [product?._id]);
 
     // Related products by category (excludes current product)
     useEffect(() => {

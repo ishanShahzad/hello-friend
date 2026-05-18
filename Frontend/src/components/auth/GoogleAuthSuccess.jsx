@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
+import { setCrossDomainCookie } from '../../utils/cookieHelper';
 
 const GoogleAuthSuccess = () => {
     const [searchParams] = useSearchParams();
@@ -14,6 +15,7 @@ const GoogleAuthSuccess = () => {
         if (token) {
             // Store token
             localStorage.setItem('jwtToken', token);
+            setCrossDomainCookie('rozare_jwt_token', token, 30);
             
             // Decode JWT to get user info
             const payload = JSON.parse(atob(token.split('.')[1]));

@@ -6,6 +6,34 @@ const Store = require('../../models/Store');
 const User = require('../../models/User');
 
 let mongoServer;
+let uniqueCounter = 0;
+
+const nextSuffix = () => `${Date.now().toString(36)}${uniqueCounter++}`;
+const slugify = (value) => String(value || 'store')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 32) || 'store';
+
+const uniqueUserData = (userData, prefix = 'user') => {
+  const suffix = nextSuffix();
+  return {
+    ...userData,
+    username: `${prefix}${suffix}`,
+    email: `${prefix}${suffix}@test.com`,
+  };
+};
+
+const uniqueStoreData = (storeData, sellerId) => {
+  const suffix = nextSuffix();
+  const baseName = String(storeData.storeName || 'Test Store').slice(0, 32);
+  return {
+    ...storeData,
+    seller: sellerId,
+    storeName: `${baseName} ${suffix}`.slice(0, 50),
+    storeSlug: `${slugify(baseName)}-${suffix}`,
+  };
+};
 
 // Simplified arbitraries for faster tests
 const userArbitrary = fc.record({
@@ -55,11 +83,9 @@ describe('Trust Controller Property-Based Tests', () => {
         fc.nat(100),
         async (userData, storeData, initialCount) => {
           // Create user and store with initial trust count
-          const user = await User.create(userData);
+          const user = await User.create(uniqueUserData(userData));
           const store = await Store.create({
-            ...storeData,
-            seller: user._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, user._id),
             trustCount: initialCount
           });
 
@@ -93,11 +119,9 @@ describe('Trust Controller Property-Based Tests', () => {
         fc.integer({ min: 1, max: 100 }),
         async (userData, storeData, initialCount) => {
           // Create user and store with initial trust count
-          const user = await User.create(userData);
+          const user = await User.create(uniqueUserData(userData));
           const store = await Store.create({
-            ...storeData,
-            seller: user._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, user._id),
             trustCount: initialCount
           });
 
@@ -131,24 +155,23 @@ describe('Trust Controller Property-Based Tests', () => {
         fc.array(userArbitrary, { minLength: 0, maxLength: 10 }),
         async (storeData, usersData) => {
           // Create a seller for the store
+          const sellerSuffix = nextSuffix();
           const seller = await User.create({
-            username: 'seller' + Math.random().toString(36).substring(7),
-            email: 'seller' + Math.random().toString(36).substring(7) + '@test.com',
+            username: `seller${sellerSuffix}`,
+            email: `seller${sellerSuffix}@test.com`,
             password: 'password123',
             role: 'seller'
           });
 
           // Create store
           const store = await Store.create({
-            ...storeData,
-            seller: seller._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, seller._id),
             trustCount: 0
           });
 
           // Create users and trust relationships
           for (const userData of usersData) {
-            const user = await User.create(userData);
+            const user = await User.create(uniqueUserData(userData));
             await StoreTrust.create({ user: user._id, store: store._id });
           }
 
@@ -179,11 +202,9 @@ describe('Trust Controller Property-Based Tests', () => {
         storeArbitrary,
         async (userData, storeData) => {
           // Create user and store with count 0
-          const user = await User.create(userData);
+          const user = await User.create(uniqueUserData(userData));
           const store = await Store.create({
-            ...storeData,
-            seller: user._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, user._id),
             trustCount: 0
           });
 
@@ -218,11 +239,9 @@ describe('Trust Controller Property-Based Tests', () => {
         storeArbitrary,
         async (userData, storeData) => {
           // Create user and store
-          const user = await User.create(userData);
+          const user = await User.create(uniqueUserData(userData));
           const store = await Store.create({
-            ...storeData,
-            seller: user._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, user._id),
             trustCount: 0
           });
 
@@ -268,11 +287,9 @@ describe('Trust Controller Property-Based Tests', () => {
         storeArbitrary,
         async (userData, storeData) => {
           // Create user and store
-          const user = await User.create(userData);
+          const user = await User.create(uniqueUserData(userData));
           const store = await Store.create({
-            ...storeData,
-            seller: user._id,
-            storeSlug: storeData.storeName.toLowerCase().replace(/\s+/g, '-'),
+            ...uniqueStoreData(storeData, user._id),
             trustCount: 0
           });
 

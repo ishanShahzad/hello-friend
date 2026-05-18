@@ -16,6 +16,63 @@ const User = require('../models/User');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
+const toId = (value) => value?.toString?.() || String(value || '');
+
+const getSellerProductIds = async (sellerId) => {
+    const ids = await Product.find({ seller: sellerId }).distinct('_id');
+    return ids.map(toId);
+};
+
+const orderHasSellerProduct = (order, sellerProductIds) =>
+    (order.orderItems || []).some(item => sellerProductIds.includes(toId(item.productId)));
+
+const buildSellerOrderView = (order, sellerProductIds, sellerId) => {
+    const sellerOrderItems = (order.orderItems || []).filter(item =>
+        sellerProductIds.includes(toId(item.productId))
+    );
+
+    const sellerSubtotal = sellerOrderItems.reduce((sum, item) =>
+        sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0
+    );
+
+    const sellerShippingInfo = (order.sellerShipping || []).find(
+        ss => toId(ss.seller) === toId(sellerId)
+    );
+    const sellerShipping = Number(sellerShippingInfo?.shippingMethod?.price) || 0;
+
+    const summary = order.orderSummary || {};
+    const totalOrderValue = Number(summary.subtotal) || 0;
+    const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0;
+    const sellerTax = (Number(summary.tax) || 0) * sellerProportion;
+    const sellerTotal = sellerSubtotal + sellerShipping + sellerTax;
+
+    return {
+        ...order.toObject(),
+        orderItems: sellerOrderItems,
+        orderSummary: {
+            subtotal: Math.round(sellerSubtotal * 100) / 100,
+            shippingCost: Math.round(sellerShipping * 100) / 100,
+            tax: Math.round(sellerTax * 100) / 100,
+            totalAmount: Math.round(sellerTotal * 100) / 100,
+            _originalTotal: summary.totalAmount
+        }
+    };
+};
+
+const getSellerScopedOrders = async (query, sellerId, sort = null) => {
+    const sellerProductIds = await getSellerProductIds(sellerId);
+    if (sellerProductIds.length === 0) return [];
+
+    const dbQuery = {
+        ...query,
+        'orderItems.productId': { $in: sellerProductIds }
+    };
+    const finder = Order.find(dbQuery);
+    if (sort) finder.sort(sort);
+    const orders = await finder;
+    return orders.map(order => buildSellerOrderView(order, sellerProductIds, sellerId));
+};
+
 // Enqueue WhatsApp confirmation if admin connected AND any seller in the order has the bonus
 const maybeEnqueueWhatsAppConfirmation = async (order, productItems) => {
     try {
@@ -118,16 +175,11 @@ exports.placeOrder = async (req, res) => {
         // console.log(productIds);
         // return
         const orderItems = await Product.find({ _id: { $in: productIds } })
-        console.log('db product items:::', orderItems);
 
         // Calculate subtotal from frontend prices
         const subtotal = order.orderItems.reduce((acc, item) => {
             return acc + item.price * item.quantity
         }, 0)
-
-        console.log(subtotal);
-
-        console.log(order.shippingMethod);
 
         // Calculate total shipping cost from all sellers
         let shippingCost = 0;
@@ -392,10 +444,6 @@ exports.placeOrder = async (req, res) => {
 exports.getOrders = async (req, res) => {
     const { role, id: userId } = req.user
     const { search, paymentStatus, status, startDate, endDate } = { ...req.query }
-    
-    console.log('=== GET ORDERS DEBUG ===');
-    console.log('User role:', role);
-    console.log('User ID:', userId);
 
     // Hide awaiting-payment Stripe orders from seller/admin dashboards.
     let query = { awaitingPayment: { $ne: true } }
@@ -428,74 +476,12 @@ exports.getOrders = async (req, res) => {
     try {
         let orders
 
-        // If seller, only show orders containing their products
         if (role === 'seller') {
-            console.log('Filtering orders for seller...');
-            // First, get all seller's product IDs
-            const sellerProducts = await Product.find({ seller: userId }).select('_id')
-            const sellerProductIds = sellerProducts.map(p => p._id.toString())
-            console.log('Seller product IDs:', sellerProductIds);
-
-            // If seller has no products, return empty array
-            if (sellerProductIds.length === 0) {
-                console.log('Seller has no products - returning empty orders');
-                orders = []
-            } else {
-                // Find orders that contain at least one of seller's products
-                const allOrders = await Order.find(query)
-                console.log('Total orders found:', allOrders.length);
-                
-                // Filter and modify orders to show only seller's portion
-                orders = allOrders
-                    .filter(order => {
-                        const hasSellerProduct = order.orderItems.some(item => 
-                            sellerProductIds.includes(item.productId.toString())
-                        )
-                        return hasSellerProduct
-                    })
-                    .map(order => {
-                        // Filter order items to only seller's products
-                        const sellerOrderItems = order.orderItems.filter(item => 
-                            sellerProductIds.includes(item.productId.toString())
-                        )
-                        
-                        // Calculate seller's portion
-                        const sellerSubtotal = sellerOrderItems.reduce((sum, item) => 
-                            sum + (item.price * item.quantity), 0
-                        )
-                        
-                        // Get seller's actual shipping cost from sellerShipping array
-                        let sellerShipping = 0;
-                        if (order.sellerShipping && order.sellerShipping.length > 0) {
-                            const sellerShippingInfo = order.sellerShipping.find(
-                                ss => ss.seller.toString() === userId.toString()
-                            );
-                            sellerShipping = sellerShippingInfo ? sellerShippingInfo.shippingMethod.price : 0;
-                        }
-                        
-                        const totalOrderValue = order.orderSummary.subtotal
-                        const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0
-                        const sellerTax = order.orderSummary.tax * sellerProportion
-                        const sellerTotal = sellerSubtotal + sellerShipping + sellerTax
-                        
-                        // Return modified order with seller's portion
-                        return {
-                            ...order.toObject(),
-                            orderItems: sellerOrderItems,
-                            orderSummary: {
-                                subtotal: Math.round(sellerSubtotal * 100) / 100,
-                                shippingCost: Math.round(sellerShipping * 100) / 100,
-                                tax: Math.round(sellerTax * 100) / 100,
-                                totalAmount: Math.round(sellerTotal * 100) / 100
-                            }
-                        }
-                    })
-                console.log('Orders with seller products:', orders.length);
-            }
-        } else {
-            console.log('Admin - showing all orders');
-            // Admin sees all orders
+            orders = await getSellerScopedOrders(query, userId)
+        } else if (role === 'admin') {
             orders = await Order.find(query)
+        } else {
+            return res.status(403).json({ msg: 'Admin or seller access required for this order list' })
         }
 
         res.status(200).json({ msg: 'Orders fetched successfully', orders: orders })
@@ -538,6 +524,10 @@ exports.exportOrders = async (req, res) => {
     }
 
     try {
+        if (role !== 'seller' && role !== 'admin') {
+            return res.status(403).json({ msg: 'Admin or seller access required to export orders' });
+        }
+
         // Get branding info
         let brandName = 'Rozare';
         let storeName = '';
@@ -552,38 +542,7 @@ exports.exportOrders = async (req, res) => {
 
         let orders;
         if (role === 'seller') {
-            const sellerProducts = await Product.find({ seller: userId }).select('_id');
-            const sellerProductIds = sellerProducts.map(p => p._id.toString());
-            if (sellerProductIds.length === 0) {
-                orders = [];
-            } else {
-                const allOrders = await Order.find(query).sort({ createdAt: -1 });
-                orders = allOrders
-                    .filter(order => order.orderItems.some(item => sellerProductIds.includes(item.productId.toString())))
-                    .map(order => {
-                        const sellerOrderItems = order.orderItems.filter(item => sellerProductIds.includes(item.productId.toString()));
-                        const sellerSubtotal = sellerOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                        let sellerShipping = 0;
-                        if (order.sellerShipping && order.sellerShipping.length > 0) {
-                            const ss = order.sellerShipping.find(s => s.seller.toString() === userId.toString());
-                            sellerShipping = ss ? ss.shippingMethod.price : 0;
-                        }
-                        const totalOrderValue = order.orderSummary.subtotal;
-                        const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0;
-                        const sellerTax = order.orderSummary.tax * sellerProportion;
-                        const sellerTotal = sellerSubtotal + sellerShipping + sellerTax;
-                        return {
-                            ...order.toObject(),
-                            orderItems: sellerOrderItems,
-                            orderSummary: {
-                                subtotal: Math.round(sellerSubtotal * 100) / 100,
-                                shippingCost: Math.round(sellerShipping * 100) / 100,
-                                tax: Math.round(sellerTax * 100) / 100,
-                                totalAmount: Math.round(sellerTotal * 100) / 100
-                            }
-                        };
-                    });
-            }
+            orders = await getSellerScopedOrders(query, userId, { createdAt: -1 });
         } else {
             orders = await Order.find(query).sort({ createdAt: -1 });
         }
@@ -930,8 +889,12 @@ exports.updateStatus = async (req, res) => {
     const { role, id: userId } = req.user
 
     try {
+        if (role !== 'seller' && role !== 'admin') {
+            return res.status(403).json({ msg: 'Only sellers and admins can update order status' })
+        }
+
         const existingOrder = await Order.findById(_id)
-        
+
         if (!existingOrder) {
             return res.status(404).json({ msg: 'Order not found' })
         }
@@ -999,76 +962,26 @@ exports.updateStatus = async (req, res) => {
 exports.getOrderDetail = async (req, res) => {
     const { id } = req.params
     const { role, id: userId } = req.user
-    
-    console.log('=== GET ORDER DETAIL DEBUG ===');
-    console.log('Order ID:', id);
-    console.log('User role:', role);
-    console.log('User ID:', userId);
-    
+
     try {
         const order = await Order.findOne({ _id: id })
-        
+
         if (!order) {
-            console.log('Order not found');
             return res.status(404).json({ msg: 'Order not found' })
         }
 
-        console.log('Order found:', order.orderId);
-        console.log('Order items:', order.orderItems.map(i => ({ productId: i.productId, name: i.name })));
-
-        // If seller, filter order items to show only their products
         if (role === 'seller') {
-            const sellerProducts = await Product.find({ seller: userId }).select('_id')
-            const sellerProductIds = sellerProducts.map(p => p._id.toString())
-            
-            console.log('Seller product IDs:', sellerProductIds);
-            console.log('Order product IDs:', order.orderItems.map(i => i.productId.toString()));
-            
-            // Filter order items to only include seller's products
-            const sellerOrderItems = order.orderItems.filter(item => 
-                sellerProductIds.includes(item.productId.toString())
-            )
-            
-            console.log('Seller order items:', sellerOrderItems.length);
-            
-            if (sellerOrderItems.length === 0) {
-                console.log('Access denied - order does not contain seller products');
+            const sellerProductIds = await getSellerProductIds(userId)
+            if (!orderHasSellerProduct(order, sellerProductIds)) {
                 return res.status(403).json({ msg: 'You can only view orders containing your products' })
             }
-            
-            // Create a modified order object with only seller's items
-            const sellerSubtotal = sellerOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-            
-            // Get seller's actual shipping cost from sellerShipping array
-            let sellerShipping = 0;
-            if (order.sellerShipping && order.sellerShipping.length > 0) {
-                const sellerShippingInfo = order.sellerShipping.find(
-                    ss => ss.seller.toString() === userId.toString()
-                );
-                sellerShipping = sellerShippingInfo ? sellerShippingInfo.shippingMethod.price : 0;
-            }
-            
-            // Calculate proportional tax based on seller's portion
-            const totalOrderValue = order.orderSummary.subtotal
-            const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0
-            const sellerTax = order.orderSummary.tax * sellerProportion
-            const sellerTotal = sellerSubtotal + sellerShipping + sellerTax
-            
-            const filteredOrder = {
-                ...order.toObject(),
-                orderItems: sellerOrderItems,
-                // Show only seller's portion of the order
-                orderSummary: {
-                    subtotal: Math.round(sellerSubtotal * 100) / 100,
-                    shippingCost: Math.round(sellerShipping * 100) / 100,
-                    tax: Math.round(sellerTax * 100) / 100,
-                    totalAmount: Math.round(sellerTotal * 100) / 100,
-                    // Keep original for reference (optional)
-                    _originalTotal: order.orderSummary.totalAmount
-                }
-            }
-            
+
+            const filteredOrder = buildSellerOrderView(order, sellerProductIds, userId)
             return res.status(200).json({ msg: 'Order fetched successfully.', order: filteredOrder })
+        }
+
+        if (role !== 'admin' && toId(order.user) !== toId(userId)) {
+            return res.status(403).json({ msg: 'You can only view your own orders' })
         }
 
         res.status(200).json({ msg: 'Order fetched successfully.', order: order })
@@ -1106,16 +1019,20 @@ exports.trackGuestOrder = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
     const { id: _id } = req.params
-    const { role } = req.user
-    
+    const { role, id: userId } = req.user
+
     try {
         // Only admin and customers can cancel orders, not sellers
         if (role === 'seller') {
             return res.status(403).json({ msg: 'Sellers cannot cancel orders. Only customers and admins can cancel orders.' })
         }
-        
+
         const order = await Order.findById(_id);
         if (!order) return res.status(404).json({ msg: 'Order not found' })
+
+        if (role !== 'admin' && toId(order.user) !== toId(userId)) {
+            return res.status(403).json({ msg: 'You can only cancel your own orders' })
+        }
 
         // Track whether the buyer is overriding a prior WhatsApp confirmation.
         // This helps the seller see a clear note:

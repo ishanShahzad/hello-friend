@@ -215,6 +215,32 @@ storeSchema.pre('save', function(next) {
   next();
 });
 
+// Keep trust counters non-negative even for atomic update paths such as $inc.
+storeSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate() || {};
+
+  if (update.trustCount !== undefined && Number(update.trustCount) < 0) {
+    update.trustCount = 0;
+  }
+
+  if (update.$set?.trustCount !== undefined && Number(update.$set.trustCount) < 0) {
+    update.$set.trustCount = 0;
+  }
+
+  const trustIncrement = Number(update.$inc?.trustCount);
+  if (Number.isFinite(trustIncrement) && trustIncrement < 0) {
+    const current = await this.model.findOne(this.getQuery()).select('trustCount').lean();
+    if (current && (Number(current.trustCount) || 0) + trustIncrement < 0) {
+      update.$set = { ...(update.$set || {}), trustCount: 0 };
+      delete update.$inc.trustCount;
+      if (Object.keys(update.$inc).length === 0) delete update.$inc;
+    }
+  }
+
+  this.setUpdate(update);
+  next();
+});
+
 const Store = mongoose.model('Store', storeSchema);
 
 module.exports = Store;

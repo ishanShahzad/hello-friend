@@ -4,7 +4,7 @@ import { User, Mail, Phone, MapPin, Store, MessageCircle, Edit3, CheckCircle2, A
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
-import { getAuthToken } from "../../utils/cookieHelper";
+import { getAuthToken, setCrossDomainCookie } from "../../utils/cookieHelper";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -157,6 +157,7 @@ export default function SellerProfile() {
       setSuccessMsg('Email updated successfully.');
       if (res.data.token) {
         localStorage.setItem('jwtToken', res.data.token);
+        setCrossDomainCookie('rozare_jwt_token', res.data.token, 30);
       }
       setShowEmailChange(false);
       setEmailOtpSent(false);

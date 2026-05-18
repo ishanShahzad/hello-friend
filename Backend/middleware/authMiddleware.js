@@ -4,17 +4,31 @@ const User = require('../models/User')
 const verifyToken = async (req, res, next) => {
     const authHeader = req.header('Authorization')
     const token = authHeader?.split(' ')[1]
-    
+
     if (!token) return res.status(401).json({ msg: 'No token provided!' })
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        req.user = decoded
+        const userId = decoded.id || decoded._id;
+        if (!userId) return res.status(403).json({ msg: 'Login required' });
+
+        const user = await User.findById(userId).select('_id username email role avatar');
+        if (!user) return res.status(403).json({ msg: 'Login required' });
+
+        req.user = {
+            ...decoded,
+            id: user._id.toString(),
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            avatar: user.avatar,
+        }
         next()
     } catch (error) {
         console.error('Token verification error:', error.message);
-        res.status(403).json({ msg: 'Login required' }) 
-    }  
+        res.status(403).json({ msg: 'Login required' })
+    }
 }
 
 // Alias for consistency
@@ -100,12 +114,27 @@ const seller = async (req, res, next) => {
 // request continue anonymously. Used for endpoints that behave differently for
 // logged-in vs anonymous callers (e.g. seller WhatsApp OTP verify during signup
 // vs settings change).
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
     const authHeader = req.header('Authorization');
     const token = authHeader?.split(' ')[1];
     if (!token) return next();
     try {
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id || decoded._id;
+        if (!userId) return next();
+
+        const user = await User.findById(userId).select('_id username email role avatar');
+        if (!user) return next();
+
+        req.user = {
+            ...decoded,
+            id: user._id.toString(),
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            avatar: user.avatar,
+        };
     } catch {
         // Invalid/expired token — proceed without req.user rather than rejecting.
     }

@@ -777,18 +777,30 @@ exports.getStoreAnalytics = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found' });
         }
 
-        // Get product count
         const Product = require('../models/Product');
-        const productCount = await Product.countDocuments({ seller: sellerId });
+        const sellerProductIds = await Product.find({ seller: sellerId }).distinct('_id');
+        const productCount = sellerProductIds.length;
 
-        // Get total sales (from orders)
         const Order = require('../models/Order');
         const orders = await Order.find({
-            'orderItems.productId': { $in: await Product.find({ seller: sellerId }).distinct('_id') },
+            'orderItems.productId': { $in: sellerProductIds },
             isPaid: true
         });
 
-        const totalSales = orders.reduce((sum, order) => sum + order.orderSummary.totalAmount, 0);
+        const sellerProductIdSet = new Set(sellerProductIds.map(id => id.toString()));
+        const totalSales = orders.reduce((sum, order) => {
+            const sellerSubtotal = (order.orderItems || []).reduce((itemSum, item) => {
+                if (!sellerProductIdSet.has(item.productId?.toString())) return itemSum;
+                return itemSum + ((Number(item.price) || 0) * (Number(item.quantity) || 0));
+            }, 0);
+            const orderSubtotal = Number(order.orderSummary?.subtotal) || 0;
+            const sellerProportion = orderSubtotal > 0 ? sellerSubtotal / orderSubtotal : 0;
+            const sellerTax = (Number(order.orderSummary?.tax) || 0) * sellerProportion;
+            const sellerShipping = (order.sellerShipping || []).find(
+                ss => ss.seller?.toString() === sellerId.toString()
+            )?.shippingMethod?.price || 0;
+            return sum + sellerSubtotal + sellerTax + sellerShipping;
+        }, 0);
 
         res.status(200).json({
             msg: 'Analytics fetched successfully',

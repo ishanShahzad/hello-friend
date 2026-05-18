@@ -14,12 +14,7 @@ router.post('/add-review/:id', verifyToken, addReview)
 
 
 
-router.post('/add', (req, res, next) => {
-    console.log('=== /add ROUTE HIT ===');
-    console.log('Method:', req.method);
-    console.log('Path:', req.path);
-    next();
-}, verifyToken, addProduct)
+router.post('/add', verifyToken, addProduct)
 router.post('/bulk-discount', verifyToken, bulkDiscount)
 router.post('/bulk-price-update', verifyToken, bulkPriceUpdate)
 router.post('/remove-discount', verifyToken, removeDiscount)
@@ -27,13 +22,7 @@ router.get('/add-to-wishlist/:id', verifyToken, addToWishlist)
 router.get('/get-wishlist', verifyToken, getWishlist)
 router.delete('/delete-from-wishlist/:id', verifyToken, deleteFromWishlist)
 router.delete('/delete/:id', verifyToken, deleteProduct)
-router.put('/edit/:id', (req, res, next) => {
-    console.log('=== /edit/:id ROUTE HIT ===');
-    console.log('Method:', req.method);
-    console.log('Path:', req.path);
-    console.log('ID param:', req.params.id);
-    next();
-}, verifyToken, editProduct)
+router.put('/edit/:id', verifyToken, editProduct)
 router.get('/get-products', getProducts)
 router.get('/get-seller-products', verifyToken, getSellerProducts)
 router.get('/featured-stats', verifyToken, getFeaturedStats)

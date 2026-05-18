@@ -33,8 +33,18 @@ const SellerAnalytics = () => {
             });
             setAnalytics(res.data.analytics);
         } catch (err) {
-            // Fallback to local data if backend not available
-            console.error('Seller analytics API error, using local data:', err);
+            if ([401, 403].includes(err.response?.status)) {
+                setAnalytics({
+                    revenueByDay: [],
+                    topProducts: [],
+                    categoryBreakdown: [],
+                    summary: { totalRevenue: 0, paidOrders: 0, avgOrderValue: 0, totalUnitsSold: 0, conversionRate: 0 }
+                });
+                return;
+            }
+
+            // Fallback only for temporary network/server failures, never for auth failures.
+            console.error('Seller analytics API unavailable, using local seller-scoped data:', err);
             buildLocalAnalytics();
         } finally {
             setLoading(false);

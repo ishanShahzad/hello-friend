@@ -5,6 +5,7 @@ import { CheckCircle, Mail, CreditCard, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getAuthToken } from "../../utils/cookieHelper";
+import { trackPurchase } from "../../utils/tiktokPixel";
 
 export default function Success() {
   const [session, setSession] = useState(null);
@@ -38,6 +39,15 @@ export default function Success() {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/session/${sessionId}`);
       const sessionData = res.data?.session;
       setSession(sessionData);
+      const purchaseTrackKey = `tiktok_purchase_${sessionData?.id}`;
+      if (sessionData?.payment_status === 'paid' && !sessionStorage.getItem(purchaseTrackKey)) {
+        trackPurchase({
+          orderId: sessionData.id,
+          totalAmount: (sessionData.amount_total || 0) / 100,
+          currency: sessionData.currency?.toUpperCase() || 'USD',
+        });
+        sessionStorage.setItem(purchaseTrackKey, '1');
+      }
     } catch (error) { console.error(error); toast.error(error.response?.data?.msg); }
   };
 

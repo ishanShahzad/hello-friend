@@ -12,6 +12,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import Loader from "../common/Loader";
 import PhoneField, { isValidPhone } from "../common/PhoneField";
 import { getAuthToken } from "../../utils/cookieHelper";
+import { trackInitiateCheckout, trackPurchase } from "../../utils/tiktokPixel";
 
 export default function Checkout() {
 
@@ -412,7 +413,8 @@ export default function Checkout() {
         toast.error("Please select a shipping method for all sellers");
         return;
       }
-      
+
+      trackInitiateCheckout(cartItems?.cart || [], totalAmount);
       setCurrentStep((p) => p + 1);
       return;
     }
@@ -437,10 +439,7 @@ export default function Checkout() {
     }
     
     setIsProcessing(true);
-    console.log("cartItems::::", cartItems);
 
-
-    // Build seller shipping array
     // Build seller shipping array
     const sellerShipping = Object.entries(selectedShippingPerSeller).map(([sellerId, method]) => ({
       seller: sellerId,
@@ -516,12 +515,9 @@ export default function Checkout() {
     
 
     if (data.instructions !== '') order.instructions = data.instructions
-    if (data.instructions !== '') order.instructions = data.instructions
-
-    console.log("Order Object:", order);
 
     try {
-      const token = localStorage.getItem("jwtToken");
+      const token = getAuthToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}api/order/place`,
@@ -529,7 +525,6 @@ export default function Checkout() {
         { headers }
       );
 
-      console.log(res.data);
       toast.success(res.data.msg)
 
       // Check if shipping info changed - save it
@@ -557,6 +552,11 @@ export default function Checkout() {
 
       if (order.paymentMethod == 'cash_on_delivery') {
         setIsProcessing(false);
+        trackPurchase({
+          orderId: res.data.order?.orderId || res.data.order?._id,
+          cartItems: cartItems?.cart || [],
+          totalAmount,
+        });
         
         // If update prompt is showing, don't navigate yet - modal handles it
         if (hasChanged && currentUser) return;

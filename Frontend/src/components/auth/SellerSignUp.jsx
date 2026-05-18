@@ -7,6 +7,8 @@ import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2, Store, Phone, MapPin,
 import GlassBackground from '../common/GlassBackground';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { motion, AnimatePresence } from 'framer-motion';
+import { setCrossDomainCookie } from '../../utils/cookieHelper';
+import { trackSellerFormSubmitted, trackSellerRegistrationCompleted } from '../../utils/tiktokPixel';
 
 const SellerSignUp = () => {
   const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: WhatsApp verify, 5: email OTP
@@ -130,6 +132,7 @@ const SellerSignUp = () => {
     if (!sellerForm.address || sellerForm.address.trim().length < 5) { setError('Please enter a valid address'); return; }
     if (!sellerForm.city || sellerForm.city.trim().length < 2) { setError('Please enter your city'); return; }
     if (!sellerForm.country || sellerForm.country.trim().length < 2) { setError('Please enter your country'); return; }
+    trackSellerFormSubmitted('seller_details');
     setError(''); setStep(3);
   };
 
@@ -180,7 +183,14 @@ const SellerSignUp = () => {
       });
       localStorage.setItem("jwtToken", res.data.token);
       localStorage.setItem("currentUser", JSON.stringify(res.data.user));
+      setCrossDomainCookie('rozare_jwt_token', res.data.token, 30);
       setCurrentUser(res.data.user);
+      await trackSellerRegistrationCompleted({
+        user: res.data.user,
+        storeName: storeForm.storeName?.trim(),
+        email: form.email,
+        phone: sellerForm.phoneNumber,
+      }).catch(() => {});
       toast.success('Seller account created successfully!');
       navigate('/seller-dashboard/store-overview');
       location.reload();

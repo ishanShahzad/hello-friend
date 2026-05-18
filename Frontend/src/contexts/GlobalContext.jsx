@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie, getAuthToken } from "../utils/cookieHelper";
+import { trackAddToCart } from "../utils/tiktokPixel";
 
 const GlobalContext = createContext();
 
@@ -114,7 +115,6 @@ export const GlobalProvider = ({ children }) => {
                     Authorization: `Bearer ${token}`
                 }
             })
-            console.log(res.data);
             setWishlistItems(res.data.wishlist)
 
         } catch (error) {
@@ -197,6 +197,7 @@ export const GlobalProvider = ({ children }) => {
                     gc.push({ product: pData, qty: 1, selectedColor, selectedOptions: selectedOptions || undefined, _id: `guest_${Date.now()}` });
                     saveGuestCart(gc);
                     setCartItems({ cart: gc, totalCartPrice: calcGuestTotal(gc) });
+                    trackAddToCart(pData, 1);
                     toast.success('Added to cart');
                 } catch { toast.error('Failed to add to cart'); }
                 setIsCartLoading(false);
@@ -208,9 +209,14 @@ export const GlobalProvider = ({ children }) => {
             const res = await axios.post(`${import.meta.env.VITE_API_URL}api/cart/add/${id}`,
                 { selectedColor, selectedOptions: selectedOptions || undefined },
                 { headers: { Authorization: `Bearer ${token}` } })
-            console.log(res.data.msg);
             toast.success(res.data.msg)
-            
+
+            const addedItem = res.data.cart?.find(item =>
+                item?.product?._id === id &&
+                item?.selectedColor === selectedColor &&
+                optionsKeyOf(item?.selectedOptions) === myKey
+            );
+            if (addedItem?.product) trackAddToCart(addedItem.product, 1);
 
             // Update cart items with fresh data from backend
             // Update cart items with fresh data from backend
@@ -241,7 +247,6 @@ export const GlobalProvider = ({ children }) => {
                         Authorization: `Bearer ${token}`
                     }
                 })
-            console.log(res.data);
             // toast.success(res.data.msg)
             setCartItems((prev) => ({ ...prev, cart: res.data.cart, totalCartPrice: res.data.totalCartPrice }))
         } catch (error) {
@@ -257,12 +262,6 @@ export const GlobalProvider = ({ children }) => {
             setIsCartLoading(false)
         }
     }
-
-    useEffect(() => {
-        // console.log("isCartLoading:::", isCartLoading);
-        console.log("qtyUpdateId:::", qtyUpdateId);
-
-    }, [qtyUpdateId])
 
     const handleQtyInc = async (id) => {
         try {
@@ -301,7 +300,6 @@ export const GlobalProvider = ({ children }) => {
                 }
             )
             setCartItems((prev) => ({ ...prev, cart: res.data.cart, totalCartPrice: res.data.totalCartPrice }))
-            console.log(res.data.msg);
         } catch (error) {
             console.error(error?.response?.data?.msg || 'Failed to decrease quantity');
             toast.error(error?.response?.data?.msg || 'Failed to decrease quantity');
@@ -335,11 +333,9 @@ export const GlobalProvider = ({ children }) => {
             
 
             setCartItems((prev) => ({ ...prev, cart: res.data.cart, totalCartPrice: res.data.totalCartPrice }))
-            setCartItems((prev) => ({ ...prev, cart: res.data.cart, totalCartPrice: res.data.totalCartPrice }))
-            console.log(res.data.msg);
             toast.info(res.data?.msg || 'Item removed from your cart')
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
         finally {
             setQtyUpdateId(null)

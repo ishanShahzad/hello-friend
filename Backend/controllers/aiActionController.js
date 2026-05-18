@@ -9,6 +9,53 @@ const AIRateLimit = require('../models/AIRateLimit');
 
 // Helper: get today's date string
 const getToday = () => new Date().toISOString().split('T')[0];
+const toId = (value) => value?.toString?.() || String(value || '');
+
+const getSellerProductIds = async (sellerId) => {
+    const ids = await Product.find({ seller: sellerId }).distinct('_id');
+    return ids.map(toId);
+};
+
+const getSellerOrderItems = (order, sellerProductIds) =>
+    (order.orderItems || []).filter(item => sellerProductIds.includes(toId(item.productId)));
+
+const sellerOrderTotal = (items) =>
+    items.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
+
+const buildSellerOrderSummary = (order, sellerItems, sellerId) => {
+    const subtotal = sellerOrderTotal(sellerItems);
+    const orderSubtotal = Number(order.orderSummary?.subtotal) || 0;
+    const sellerProportion = orderSubtotal > 0 ? subtotal / orderSubtotal : 0;
+    const tax = (Number(order.orderSummary?.tax) || 0) * sellerProportion;
+    const shipping = Number((order.sellerShipping || []).find(
+        ss => toId(ss.seller) === toId(sellerId)
+    )?.shippingMethod?.price) || 0;
+
+    return {
+        subtotal: Math.round(subtotal * 100) / 100,
+        shippingCost: Math.round(shipping * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        totalAmount: Math.round((subtotal + shipping + tax) * 100) / 100,
+    };
+};
+
+const summarizeOrderForRole = (order, role, sellerProductIds = [], sellerId = null) => {
+    const items = role === 'seller' ? getSellerOrderItems(order, sellerProductIds) : (order.orderItems || []);
+    const total = role === 'seller'
+        ? buildSellerOrderSummary(order, items, sellerId).totalAmount
+        : (order.orderSummary?.totalAmount || 0);
+
+    return {
+        orderId: order.orderId,
+        _id: order._id,
+        status: order.orderStatus,
+        isPaid: order.isPaid,
+        total: Math.round(total * 100) / 100,
+        date: order.createdAt,
+        customer: role === 'admin' ? order.shippingInfo?.fullName : undefined,
+        itemCount: items.length,
+    };
+};
 
 // Rate limits per role (base limits - subscribed sellers get more)
 const RATE_LIMITS = {
@@ -271,14 +318,19 @@ exports.getSellerAnalytics = async (req, res) => {
         const products = await Product.find(role === 'seller' ? { seller: userId } : {});
         const productIds = products.map(p => p._id.toString());
 
-        const allOrders = await Order.find({});
+        const allOrders = await Order.find({ awaitingPayment: { $ne: true } });
         let revenue = 0, unitsSold = 0, orderCount = 0;
         
         allOrders.forEach(order => {
             const items = order.orderItems.filter(i => productIds.includes(i.productId.toString()));
             if (items.length > 0) {
                 orderCount++;
-                items.forEach(i => { revenue += i.price * i.quantity; unitsSold += i.quantity; });
+                items.forEach(i => {
+                    if (order.isPaid) {
+                        revenue += i.price * i.quantity;
+                        unitsSold += i.quantity;
+                    }
+                });
             }
         });
 
@@ -310,17 +362,17 @@ exports.getSellerOrders = async (req, res) => {
         let query = {};
         if (status) query.orderStatus = status;
 
-        const allOrders = await Order.find(query).sort({ createdAt: -1 }).limit(parseInt(limit));
-
         if (role === 'seller') {
-            const sellerProducts = await Product.find({ seller: userId }).select('_id');
-            const spIds = sellerProducts.map(p => p._id.toString());
+            const spIds = await getSellerProductIds(userId);
+            if (spIds.length === 0) return res.json({ orders: [] });
 
-            const filtered = allOrders.filter(o => o.orderItems.some(i => spIds.includes(i.productId.toString())));
-            return res.json({ orders: filtered.map(o => ({ orderId: o.orderId, _id: o._id, status: o.orderStatus, isPaid: o.isPaid, total: o.orderSummary?.totalAmount, date: o.createdAt, itemCount: o.orderItems.length })) });
+            query['orderItems.productId'] = { $in: spIds };
+            const sellerOrders = await Order.find(query).sort({ createdAt: -1 }).limit(parseInt(limit));
+            return res.json({ orders: sellerOrders.map(o => summarizeOrderForRole(o, role, spIds, userId)) });
         }
 
-        res.json({ orders: allOrders.map(o => ({ orderId: o.orderId, _id: o._id, status: o.orderStatus, isPaid: o.isPaid, total: o.orderSummary?.totalAmount, date: o.createdAt, customer: o.shippingInfo?.fullName, itemCount: o.orderItems.length })) });
+        const allOrders = await Order.find(query).sort({ createdAt: -1 }).limit(parseInt(limit));
+        res.json({ orders: allOrders.map(o => summarizeOrderForRole(o, role)) });
     } catch (error) {
         console.error('AI seller orders error:', error);
         res.status(500).json({ msg: 'Server error' });
@@ -331,12 +383,13 @@ exports.updateOrderStatus = async (req, res) => {
     const { orderId, newStatus } = req.body;
     const { role, id: userId } = req.user;
     try {
+        if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
+
         const order = await Order.findById(orderId);
         if (!order) return res.status(404).json({ msg: 'Order not found' });
 
         if (role === 'seller') {
-            const sellerProducts = await Product.find({ seller: userId }).select('_id');
-            const spIds = sellerProducts.map(p => p._id.toString());
+            const spIds = await getSellerProductIds(userId);
             if (!order.orderItems.some(i => spIds.includes(i.productId.toString()))) {
                 return res.status(403).json({ msg: 'This order does not contain your products' });
             }
@@ -543,12 +596,12 @@ exports.getAdminAnalytics = async (req, res) => {
         const totalUsers = await User.countDocuments();
         const usersByRole = await User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]);
         const totalProducts = await Product.countDocuments();
-        const totalOrders = await Order.countDocuments();
+        const totalOrders = await Order.countDocuments({ awaitingPayment: { $ne: true } });
         const totalStores = await Store.countDocuments();
         const verifiedStores = await Store.countDocuments({ 'verification.isVerified': true });
         const pendingVerifications = await Store.countDocuments({ 'verification.status': 'pending' });
 
-        const orders = await Order.find({ isPaid: true });
+        const orders = await Order.find({ isPaid: true, awaitingPayment: { $ne: true } });
         const totalRevenue = orders.reduce((sum, o) => sum + (o.orderSummary?.totalAmount || 0), 0);
 
         res.json({
@@ -568,7 +621,7 @@ exports.getAllOrders = async (req, res) => {
     try {
         if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
 
-        let query = {};
+        let query = { awaitingPayment: { $ne: true } };
         if (status) query.orderStatus = status;
 
         const orders = await Order.find(query).sort({ createdAt: -1 }).limit(parseInt(limit));
@@ -587,12 +640,28 @@ exports.getAllOrders = async (req, res) => {
 
 exports.getOrderDetail = async (req, res) => {
     const { orderId } = req.query;
-    const { role } = req.user;
+    const { role, id: userId } = req.user;
     try {
-        if (role !== 'admin' && role !== 'seller') return res.status(403).json({ msg: 'Unauthorized' });
-
         const order = await Order.findById(orderId);
         if (!order) return res.status(404).json({ msg: 'Order not found' });
+
+        if (role === 'seller') {
+            const sellerProductIds = await getSellerProductIds(userId);
+            const sellerItems = getSellerOrderItems(order, sellerProductIds);
+            if (sellerItems.length === 0) return res.status(403).json({ msg: 'You can only view orders containing your products' });
+
+            return res.json({
+                orderId: order.orderId, status: order.orderStatus, isPaid: order.isPaid,
+                orderItems: sellerItems, shippingInfo: order.shippingInfo,
+                orderSummary: buildSellerOrderSummary(order, sellerItems, userId),
+                paymentMethod: order.paymentMethod,
+                createdAt: order.createdAt,
+            });
+        }
+
+        if (role !== 'admin' && toId(order.user) !== toId(userId)) {
+            return res.status(403).json({ msg: 'You can only view your own orders' });
+        }
 
         res.json({
             orderId: order.orderId, status: order.orderStatus, isPaid: order.isPaid,
@@ -608,12 +677,16 @@ exports.getOrderDetail = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
     const { orderId } = req.body;
-    const { role } = req.user;
+    const { role, id: userId } = req.user;
     try {
         if (role === 'seller') return res.status(403).json({ msg: 'Sellers cannot cancel orders' });
 
         const order = await Order.findById(orderId);
         if (!order) return res.status(404).json({ msg: 'Order not found' });
+
+        if (role !== 'admin' && toId(order.user) !== toId(userId)) {
+            return res.status(403).json({ msg: 'You can only cancel your own orders' });
+        }
 
         order.orderStatus = 'cancelled';
         await order.save();

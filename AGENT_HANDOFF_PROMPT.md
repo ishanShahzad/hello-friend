@@ -16,7 +16,7 @@ You are taking over an **IN-PROGRESS** Evolution API upgrade from v1.7.4 to v2.3
 
 ---
 
-## WHAT WAS DONE (VERIFY THESE FIRST)
+## WHAT WAS DONE (VERIFY THESE FIRST)p event
 
 ### 1. Cleanup Phase ✅
 The previous agent cleaned up old v1.7.4 containers:
