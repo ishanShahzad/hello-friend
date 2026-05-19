@@ -360,10 +360,14 @@ export default function BecomeSeller() {
     finally { setLoading(false); }
   };
 
-  if (currentUser?.role === 'seller' || currentUser?.role === 'admin') { navigate('/'); return null; }
+  const isExistingSellerAccount = currentUser?.role === 'seller' || currentUser?.role === 'admin';
 
   // If guest (not logged in) tries to proceed past the landing page, show inline signup
   const handleGetStarted = () => {
+    if (isExistingSellerAccount) {
+      navigate(currentUser.role === 'admin' ? '/admin-dashboard' : '/seller-dashboard/store-overview');
+      return;
+    }
     if (!currentUser) {
       setFormStep(0.5); // Show guest signup form
     } else {
@@ -515,7 +519,7 @@ export default function BecomeSeller() {
               <motion.button onClick={handleGetStarted} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="font-bold text-lg px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-3"
                 style={{ background: 'white', color: 'hsl(220, 70%, 55%)' }}>
-                <Store size={24} /> Get Started
+                <Store size={24} /> {isExistingSellerAccount ? 'Open Dashboard' : 'Get Started'}
               </motion.button>
             </motion.div>
           </>
