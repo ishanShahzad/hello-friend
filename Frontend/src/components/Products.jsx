@@ -13,6 +13,7 @@ import CurrencySelector from './common/CurrencySelector'
 import { useCurrency } from '../contexts/CurrencyContext'
 import SEOHead from './common/SEOHead'
 import { PRESET_CATEGORIES, isPresetCategory } from '../utils/categories'
+import { trackSearch } from '../utils/tiktokPixel'
 
 const PRODUCTS_PER_PAGE = 24
 const PRODUCTS_CACHE_KEY = 'rozare:last-products-response'
@@ -103,6 +104,12 @@ function Products() {
       setTotalProducts(res.data.pagination?.totalProducts || 0)
       setServiceNotice(null)
       writeProductsCache(res.data)
+      if (searchRef.current?.trim()) {
+        trackSearch({
+          searchString: searchRef.current.trim(),
+          products: res.data.products || [],
+        })
+      }
     } catch (err) {
       console.log(err)
       const cached = readProductsCache()

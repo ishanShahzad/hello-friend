@@ -8,7 +8,13 @@ import { useAuth } from '../contexts/AuthContext';
 import SEOHead from '../components/common/SEOHead';
 import PhoneField, { isValidPhone } from '../components/common/PhoneField';
 import { getAuthToken, setCrossDomainCookie } from "../utils/cookieHelper";
-import { trackSellerFormSubmitted, trackSellerPageView, trackSellerRegistrationCompleted } from '../utils/tiktokPixel';
+import {
+  createTikTokEventId,
+  getTikTokTrackingContext,
+  trackSellerFormSubmitted,
+  trackSellerPageView,
+  trackSellerRegistrationCompleted
+} from '../utils/tiktokPixel';
 
 export default function BecomeSeller() {
   const navigate = useNavigate();
@@ -318,6 +324,7 @@ export default function BecomeSeller() {
       if (storeData.twitter) socialLinks.twitter = storeData.twitter;
       if (storeData.youtube) socialLinks.youtube = storeData.youtube;
       if (storeData.tiktok) socialLinks.tiktok = storeData.tiktok;
+      const tiktokEventId = createTikTokEventId('seller_registration');
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/user/become-seller`, {
         phoneNumber: formData.phoneNumber.trim(), address: formData.address.trim(),
@@ -326,7 +333,11 @@ export default function BecomeSeller() {
         whatsappVerified: true,
         storeName: storeData.storeName?.trim() || '',
         storeDescription: storeData.storeDescription?.trim() || '',
-        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
+        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
+        tracking: {
+          ...getTikTokTrackingContext(),
+          tiktokCompleteRegistrationEventId: tiktokEventId,
+        },
       }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.token) {
         localStorage.setItem('jwtToken', res.data.token);
@@ -338,6 +349,7 @@ export default function BecomeSeller() {
         storeName: storeData.storeName?.trim(),
         email: currentUser?.email || signupData.email,
         phone: formData.phoneNumber.trim(),
+        eventId: tiktokEventId,
       }).catch(() => {});
 
       toast.success('Congratulations! You are now a seller!');

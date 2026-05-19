@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie, getAuthToken } from "../utils/cookieHelper";
-import { trackAddToCart } from "../utils/tiktokPixel";
+import { trackAddToCart, trackAddToWishlist } from "../utils/tiktokPixel";
 
 const GlobalContext = createContext();
 
@@ -135,6 +135,9 @@ export const GlobalProvider = ({ children }) => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             toast.success(res.data.msg);
+            if (res.data.product) {
+                trackAddToWishlist(res.data.product);
+            }
             fetchWishlist();
         } catch (err) {
             toast.error(err.response?.data?.msg || 'Error adding to wishlist');

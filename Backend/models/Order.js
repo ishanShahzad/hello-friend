@@ -66,6 +66,15 @@ const orderSchema = mongoose.Schema(
             }
         ],
 
+        tracking: {
+            tiktokPlaceOrderEventId: { type: String, default: null },
+            tiktokPurchaseEventId: { type: String, default: null },
+            pageUrl: { type: String, default: '' },
+            referrer: { type: String, default: '' },
+            ttclid: { type: String, default: '' },
+            ttp: { type: String, default: '' },
+        },
+
         orderStatus: {
             type: String,
             enum: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"],
@@ -122,7 +131,7 @@ const orderSchema = mongoose.Schema(
             // (e.g., 'whatsapp' for a WhatsApp decline, 'email' for an email decline). The actual
             // action (confirm vs decline) is determined by checking confirmedAt vs declinedAt.
             // The `decidedVia` field below is more semantically clear for new code.
-            confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', 'dashboard', 'admin', null], default: null },
+            confirmedVia: { type: String, enum: ['email', 'whatsapp', 'manual', 'dashboard', 'admin', 'stripe_payment', null], default: null },
             declinedAt: { type: Date, default: null },
             voteChangeCount: { type: Number, default: 0 },
             lockMessageSent: { type: Boolean, default: false },

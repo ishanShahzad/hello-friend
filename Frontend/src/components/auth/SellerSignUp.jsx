@@ -8,7 +8,12 @@ import GlassBackground from '../common/GlassBackground';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { motion, AnimatePresence } from 'framer-motion';
 import { setCrossDomainCookie } from '../../utils/cookieHelper';
-import { trackSellerFormSubmitted, trackSellerRegistrationCompleted } from '../../utils/tiktokPixel';
+import {
+  createTikTokEventId,
+  getTikTokTrackingContext,
+  trackSellerFormSubmitted,
+  trackSellerRegistrationCompleted
+} from '../../utils/tiktokPixel';
 
 const SellerSignUp = () => {
   const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: WhatsApp verify, 5: email OTP
@@ -173,6 +178,7 @@ const SellerSignUp = () => {
       if (storeForm.twitter) socialLinks.twitter = storeForm.twitter;
       if (storeForm.youtube) socialLinks.youtube = storeForm.youtube;
       if (storeForm.tiktok) socialLinks.tiktok = storeForm.tiktok;
+      const tiktokEventId = createTikTokEventId('seller_registration');
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/seller/verify-otp`, {
         email: form.email, otp, ...sellerForm,
@@ -181,7 +187,11 @@ const SellerSignUp = () => {
         storeName: storeForm.storeName?.trim() || '',
         storeDescription: storeForm.storeDescription?.trim() || '',
         sellerType: storeForm.sellerType || 'store',
-        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined
+        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
+        tracking: {
+          ...getTikTokTrackingContext(),
+          tiktokCompleteRegistrationEventId: tiktokEventId,
+        },
       });
       localStorage.setItem("jwtToken", res.data.token);
       localStorage.setItem("currentUser", JSON.stringify(res.data.user));
@@ -192,6 +202,7 @@ const SellerSignUp = () => {
         storeName: storeForm.storeName?.trim(),
         email: form.email,
         phone: sellerForm.phoneNumber,
+        eventId: tiktokEventId,
       }).catch(() => {});
       toast.success('Seller account created successfully!');
       navigate('/seller-dashboard/store-overview');

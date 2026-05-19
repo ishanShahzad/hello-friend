@@ -33,6 +33,42 @@ const cleanPayload = (payload) => {
   return cleaned;
 };
 
+export const createTikTokEventId = (prefix = 'event') => {
+  const random = Math.random().toString(36).slice(2, 10);
+  return `${prefix}_${Date.now()}_${random}`;
+};
+
+export const getTikTokTrackingContext = () => {
+  if (typeof window === 'undefined') return {};
+
+  const getCookie = (name) => {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    if (!match) return undefined;
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  };
+
+  return cleanPayload({
+    pageUrl: window.location.href,
+    referrer: document.referrer,
+    ttclid: new URLSearchParams(window.location.search).get('ttclid') || getCookie('ttclid'),
+    ttp: getCookie('_ttp'),
+  });
+};
+
+export const captureTikTokClickId = () => {
+  if (typeof window === 'undefined') return;
+  const ttclid = new URLSearchParams(window.location.search).get('ttclid');
+  if (!ttclid) return;
+
+  const maxAge = 60 * 60 * 24 * 30;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `ttclid=${encodeURIComponent(ttclid)}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`;
+};
+
 const buildProductContent = (product, quantity = 1) => {
   const price = Number(product?.discountedPrice || product?.price || 0);
 
@@ -79,9 +115,14 @@ export const trackTikTokPage = () => {
   return true;
 };
 
-export const trackTikTokEvent = (eventName, payload = {}) => {
+export const trackTikTokEvent = (eventName, payload = {}, options = {}) => {
   if (!hasTikTokPixel()) return false;
-  window.ttq.track(eventName, cleanPayload(payload));
+  const eventOptions = cleanPayload(options);
+  if (Object.keys(eventOptions).length > 0) {
+    window.ttq.track(eventName, cleanPayload(payload), eventOptions);
+  } else {
+    window.ttq.track(eventName, cleanPayload(payload));
+  }
   return true;
 };
 
@@ -121,16 +162,15 @@ export const trackSellerFormSubmitted = (stepName = 'seller_details') => {
   }));
 };
 
-export const trackSellerRegistrationCompleted = async ({ user, storeName, email, phone } = {}) => {
+export const trackSellerRegistrationCompleted = async ({ user, storeName, email, phone, eventId } = {}) => {
   const externalId = user?._id || user?.id;
   await identifyTikTokUser({ email: user?.email || email, phone, externalId });
 
-  // Track TikTok CompleteRegistration
   trackTikTokEvent('CompleteRegistration', buildSellerSignupPayload({
     id: externalId || 'new_seller',
     name: storeName || 'New Seller Store',
     category: 'Seller Signup',
-  }));
+  }), eventId ? { event_id: eventId } : {});
 
   // Track Meta (Facebook) CompleteRegistration
   if (hasMetaPixel()) {
@@ -156,6 +196,22 @@ export const trackProductView = (product) => {
   });
 };
 
+export const trackSearch = ({ searchString, products = [] } = {}) => {
+  const contents = (products || [])
+    .slice(0, 10)
+    .map((product) => buildProductContent(product))
+    .filter((content) => content.content_id);
+
+  trackTikTokEvent('Search', {
+    contents,
+    content_type: contents.length > 0 ? 'product' : undefined,
+    content_ids: contents.map((content) => content.content_id),
+    value: contents.length > 0 ? contents.length : 1,
+    currency: DEFAULT_CURRENCY,
+    search_string: searchString,
+  });
+};
+
 export const trackAddToCart = (product, quantity = 1) => {
   const price = Number(product?.discountedPrice || product?.price || 0);
   const content = buildProductContent(product, quantity);
@@ -165,6 +221,19 @@ export const trackAddToCart = (product, quantity = 1) => {
     content_type: 'product',
     content_ids: [content.content_id],
     value: price > 0 ? price * quantity : undefined,
+    currency: DEFAULT_CURRENCY,
+  });
+};
+
+export const trackAddToWishlist = (product) => {
+  const price = Number(product?.discountedPrice || product?.price || 0);
+  const content = buildProductContent(product);
+
+  trackTikTokEvent('AddToWishlist', {
+    contents: content.content_id ? [content] : [],
+    content_type: content.content_id ? 'product' : undefined,
+    content_ids: content.content_id ? [content.content_id] : undefined,
+    value: price > 0 ? price : undefined,
     currency: DEFAULT_CURRENCY,
   });
 };
@@ -183,7 +252,36 @@ export const trackInitiateCheckout = (cartItems = [], totalAmount = 0) => {
   });
 };
 
-export const trackPurchase = ({ orderId, cartItems = [], totalAmount = 0, currency = DEFAULT_CURRENCY } = {}) => {
+export const trackAddPaymentInfo = ({ cartItems = [], totalAmount = 0, currency = DEFAULT_CURRENCY, eventId } = {}) => {
+  const contents = cartItems
+    .map((item) => buildProductContent(item.product || item, item.qty || item.quantity || 1))
+    .filter((content) => content.content_id);
+
+  trackTikTokEvent('AddPaymentInfo', {
+    contents,
+    content_type: contents.length > 0 ? 'product' : undefined,
+    content_ids: contents.map((content) => content.content_id),
+    value: Number(totalAmount) > 0 ? Number(totalAmount) : undefined,
+    currency,
+  }, eventId ? { event_id: eventId } : {});
+};
+
+export const trackPlaceAnOrder = ({ orderId, cartItems = [], totalAmount = 0, currency = DEFAULT_CURRENCY, eventId } = {}) => {
+  const contents = cartItems
+    .map((item) => buildProductContent(item.product || item, item.qty || item.quantity || 1))
+    .filter((content) => content.content_id);
+
+  trackTikTokEvent('PlaceAnOrder', {
+    contents,
+    content_type: contents.length > 0 ? 'product' : undefined,
+    content_ids: contents.map((content) => content.content_id),
+    order_id: orderId,
+    value: Number(totalAmount) > 0 ? Number(totalAmount) : undefined,
+    currency,
+  }, eventId ? { event_id: eventId } : {});
+};
+
+export const trackPurchase = ({ orderId, cartItems = [], totalAmount = 0, currency = DEFAULT_CURRENCY, eventId } = {}) => {
   const contents = cartItems
     .map((item) => buildProductContent(item.product || item, item.qty || item.quantity || 1))
     .filter((content) => content.content_id);
@@ -195,5 +293,5 @@ export const trackPurchase = ({ orderId, cartItems = [], totalAmount = 0, curren
     order_id: orderId,
     value: Number(totalAmount) > 0 ? Number(totalAmount) : undefined,
     currency,
-  });
+  }, eventId ? { event_id: eventId } : {});
 };

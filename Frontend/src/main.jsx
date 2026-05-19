@@ -8,9 +8,11 @@ import { GlobalProvider } from './contexts/GlobalContext.jsx'
 import { CurrencyProvider } from './contexts/CurrencyContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { installHttpResilience } from './utils/httpResilience.js'
+import { captureTikTokClickId } from './utils/tiktokPixel.js'
 import AppErrorBoundary from './components/common/AppErrorBoundary.jsx'
 
 installHttpResilience()
+captureTikTokClickId()
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>

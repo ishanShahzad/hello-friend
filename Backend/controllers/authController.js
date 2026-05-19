@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const { sendEmail } = require('./mailController')
 const { welcomeEmail, sellerAccountCreatedEmail } = require('../utils/emailTemplates');
+const { trackCompleteRegistration } = require('../services/tiktokEventsApi');
 
 
 // Step 1: Send OTP to email
@@ -483,6 +484,15 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
         } catch (emailErr) {
             console.error('Failed to send seller welcome email:', emailErr.message);
         }
+
+        trackCompleteRegistration({
+            req,
+            user: newUser,
+            storeName: storeName?.trim(),
+            phone: whatsappNumber || phoneNumber,
+            eventId: req.body?.tracking?.tiktokCompleteRegistrationEventId,
+            tracking: req.body?.tracking || {},
+        }).catch(() => {});
 
         res.status(200).json({ msg: 'Seller account created successfully!', token, user: payload });
     } catch (error) {

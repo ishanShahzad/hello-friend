@@ -12,7 +12,13 @@ import { loadStripe } from '@stripe/stripe-js'
 import Loader from "../common/Loader";
 import PhoneField, { isValidPhone } from "../common/PhoneField";
 import { getAuthToken } from "../../utils/cookieHelper";
-import { trackInitiateCheckout, trackPurchase } from "../../utils/tiktokPixel";
+import {
+  createTikTokEventId,
+  getTikTokTrackingContext,
+  trackAddPaymentInfo,
+  trackInitiateCheckout,
+  trackPlaceAnOrder
+} from "../../utils/tiktokPixel";
 
 export default function Checkout() {
 
@@ -457,6 +463,9 @@ export default function Checkout() {
       estimatedDays: 5
     };
     
+    const tiktokPlaceOrderEventId = createTikTokEventId('place_order');
+    const tiktokPurchaseEventId = createTikTokEventId('purchase');
+
     const order = {
       orderItems: cartItems.cart.map((item) => {
         const itemPrice = item.product.discountedPrice || item.product.price;
@@ -511,6 +520,12 @@ export default function Checkout() {
         data.paymentMethod === "stripe"
           ? "stripe"
           : "cash_on_delivery",
+
+      tracking: {
+        ...getTikTokTrackingContext(),
+        tiktokPlaceOrderEventId,
+        tiktokPurchaseEventId,
+      },
     };
     
 
@@ -552,10 +567,11 @@ export default function Checkout() {
 
       if (order.paymentMethod == 'cash_on_delivery') {
         setIsProcessing(false);
-        trackPurchase({
+        trackPlaceAnOrder({
           orderId: res.data.order?.orderId || res.data.order?._id,
           cartItems: cartItems?.cart || [],
           totalAmount,
+          eventId: tiktokPlaceOrderEventId,
         });
         
         // If update prompt is showing, don't navigate yet - modal handles it
@@ -576,6 +592,17 @@ export default function Checkout() {
         return;
       }
       
+      trackAddPaymentInfo({
+        cartItems: cartItems?.cart || [],
+        totalAmount,
+      });
+      trackPlaceAnOrder({
+        orderId: res.data.order?.orderId,
+        cartItems: cartItems?.cart || [],
+        totalAmount,
+        eventId: tiktokPlaceOrderEventId,
+      });
+
       const stripe = await stripePromise;
       await stripe.redirectToCheckout({ sessionId: res.data.id })
 

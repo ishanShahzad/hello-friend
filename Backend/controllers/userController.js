@@ -2,6 +2,7 @@
 const User = require('../models/User')
 const { sendEmail } = require('./mailController')
 const { sellerAccountCreatedEmail } = require('../utils/emailTemplates')
+const { trackCompleteRegistration } = require('../services/tiktokEventsApi')
 
 exports.getUsers = async (req, res) => {
     const { role: userRole, id: _id } = req.user
@@ -262,6 +263,15 @@ exports.becomeSeller = async (req, res) => {
         } catch (emailErr) {
             console.error('Failed to send seller account email:', emailErr.message);
         }
+
+        trackCompleteRegistration({
+            req,
+            user,
+            storeName: storeName?.trim(),
+            phone: whatsappVerifiedServerSide ? whatsappNumber.trim() : phoneNumber.trim(),
+            eventId: req.body?.tracking?.tiktokCompleteRegistrationEventId,
+            tracking: req.body?.tracking || {},
+        }).catch(() => {});
 
         res.status(200).json({ 
             message: 'Congratulations! You are now a seller',

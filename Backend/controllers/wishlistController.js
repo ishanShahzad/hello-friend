@@ -2,6 +2,7 @@
 
 
 const User = require("../models/User");
+const Product = require("../models/Product");
 
 
 exports.addToWishlist = async (req, res) => {
@@ -13,9 +14,11 @@ exports.addToWishlist = async (req, res) => {
 
 
         if (!targetedUser.wishlist.includes(id)) {
+            const product = await Product.findById(id).select('name price discountedPrice image category brand');
+            if (!product) return res.status(404).json({ msg: 'Product not found' });
             targetedUser.wishlist.push(id);
             await targetedUser.save();
-            return res.status(200).json({ msg: 'Added to wishlist' });
+            return res.status(200).json({ msg: 'Added to wishlist', product });
         } else {
             return res.status(400).json({ msg: 'Product already in wishlist' });
         }

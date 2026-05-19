@@ -15,6 +15,7 @@ const WhatsAppConfig = require('../models/WhatsAppConfig');
 const User = require('../models/User');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
+const { trackOrderEvent } = require('../services/tiktokEventsApi');
 
 const toId = (value) => value?.toString?.() || String(value || '');
 
@@ -251,6 +252,15 @@ exports.placeOrder = async (req, res) => {
 
             appliedCoupons: order.appliedCoupons || [],
 
+            tracking: {
+                tiktokPlaceOrderEventId: order.tracking?.tiktokPlaceOrderEventId || null,
+                tiktokPurchaseEventId: order.tracking?.tiktokPurchaseEventId || null,
+                pageUrl: order.tracking?.pageUrl || '',
+                referrer: order.tracking?.referrer || '',
+                ttclid: order.tracking?.ttclid || '',
+                ttp: order.tracking?.ttp || '',
+            },
+
             // ✅ Schema expects just string ("stripe" | "cash_on_delivery")
             paymentMethod: order.paymentMethod,
         });
@@ -342,7 +352,15 @@ exports.placeOrder = async (req, res) => {
                     { $inc: { stock: -item.quantity } }
                 );
             }
-            
+
+            trackOrderEvent({
+                event: 'PlaceAnOrder',
+                req,
+                order: newOrder,
+                eventId: newOrder.tracking?.tiktokPlaceOrderEventId,
+                tracking: newOrder.tracking || {},
+            }).catch(() => {});
+
             return res.status(200).json({
                 msg: 'Order placed successfully',
                 orderId: newOrder.orderId,
@@ -421,7 +439,10 @@ exports.placeOrder = async (req, res) => {
             // Auto-expire abandoned checkouts after 30 minutes (Stripe min) so the
             // `checkout.session.expired` webhook can mark the order as cancelled.
             expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-            metadata: { orderId: newOrder.orderId }
+            metadata: {
+                orderId: newOrder.orderId,
+                tiktokPurchaseEventId: newOrder.tracking?.tiktokPurchaseEventId || '',
+            }
         })
 
         // Persist the Stripe session id so webhook handlers can locate this order
@@ -429,9 +450,21 @@ exports.placeOrder = async (req, res) => {
         newOrder.stripeSessionId = session.id;
         await newOrder.save();
 
+        trackOrderEvent({
+            event: 'PlaceAnOrder',
+            req,
+            order: newOrder,
+            eventId: newOrder.tracking?.tiktokPlaceOrderEventId,
+            tracking: newOrder.tracking || {},
+        }).catch(() => {});
+
         return res.status(201).json({
             id: session.id,
             url: session.url,
+            order: {
+                orderId: newOrder.orderId,
+                totalAmount: newOrder.orderSummary.totalAmount,
+            },
         });
     } catch (error) {
         console.error("Stripe session error:::", error);

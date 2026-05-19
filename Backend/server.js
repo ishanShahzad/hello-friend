@@ -27,6 +27,7 @@ if (stripe) {
 const mongoose = require('mongoose')
 const Order = require('./models/Order')
 const Product = require('./models/Product')
+const { trackOrderEvent } = require('./services/tiktokEventsApi')
 
 
 // ── Stripe Webhook (raw body required — must come before express.json) ──
@@ -96,6 +97,14 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       await order.save();
       console.log("✅ Order updated & auto-confirmed:", order.orderId);
+
+      trackOrderEvent({
+        event: 'Purchase',
+        req,
+        order,
+        eventId: order.tracking?.tiktokPurchaseEventId || session.metadata?.tiktokPurchaseEventId,
+        tracking: order.tracking || {},
+      }).catch(() => {});
 
       // If this order was awaiting payment, send seller "new order" notifications
       // now (we deliberately deferred them at place-time so abandoned checkouts

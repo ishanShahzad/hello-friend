@@ -41,10 +41,18 @@ export default function Success() {
       setSession(sessionData);
       const purchaseTrackKey = `tiktok_purchase_${sessionData?.id}`;
       if (sessionData?.payment_status === 'paid' && !sessionStorage.getItem(purchaseTrackKey)) {
+        const lineItems = (sessionData.line_items?.data || []).map((item) => ({
+          id: item.price?.product || item.id,
+          name: item.description,
+          price: item.quantity ? (item.amount_subtotal || item.amount_total || 0) / 100 / item.quantity : undefined,
+          quantity: item.quantity || 1,
+        }));
         trackPurchase({
-          orderId: sessionData.id,
+          orderId: sessionData.metadata?.orderId || sessionData.id,
+          cartItems: lineItems,
           totalAmount: (sessionData.amount_total || 0) / 100,
           currency: sessionData.currency?.toUpperCase() || 'USD',
+          eventId: sessionData.metadata?.tiktokPurchaseEventId,
         });
         sessionStorage.setItem(purchaseTrackKey, '1');
       }
