@@ -8,7 +8,7 @@ import Analytics from './components/common/Analytics'
  
 function App() {  
   // Reserved system subdomain: docs.rozare.com
-  const onDocs = isDocsSubdomain();
+  const onDocs = isDocsSubdomain(); 
   // Store subdomain (storename.rozare.com) — full app routes still work,
   // we only override the home route to render the store page for this subdomain.
   const subdomainSlug = !onDocs && isSubdomain() ? getSubdomain() : null;
