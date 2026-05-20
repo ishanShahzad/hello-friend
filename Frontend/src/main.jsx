@@ -12,7 +12,7 @@ import { captureTikTokClickId } from './utils/tiktokPixel.js'
 import AppErrorBoundary from './components/common/AppErrorBoundary.jsx'
 
 installHttpResilience()
-captureTikTokClickId()
+captureTikTokClickId() 
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
