@@ -27,8 +27,8 @@ const slides = [
     icon: 'storefront',
     accent: '#6366f1',
     title: 'Discover Stores',
-    subtitle: 'Browse trusted stores from verified sellers across every category.',
-    features: ['Verified seller badges', 'Store trust ratings', 'Smart category filters'],
+    subtitle: 'Browse seller-run stores across every category, with badges and trust signals where available.',
+    features: ['Store trust signals', 'Store reviews', 'Smart category filters'],
   },
   {
     id: '2',
@@ -42,9 +42,9 @@ const slides = [
     id: '3',
     icon: 'navigate',
     accent: '#3b82f6',
-    title: 'Live Order Tracking',
-    subtitle: 'Real-time updates from confirmation to delivery, right inside the app.',
-    features: ['Live status updates', 'Shipping details', 'Full order history'],
+    title: 'Order Status Updates',
+    subtitle: 'Follow order progress from confirmation to delivery, right inside the app.',
+    features: ['Status updates', 'Shipping details', 'Full order history'],
   },
   {
     id: '4',

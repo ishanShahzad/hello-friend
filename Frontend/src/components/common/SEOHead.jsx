@@ -3,9 +3,9 @@ import { Helmet } from 'react-helmet-async';
 const SITE_NAME    = 'Rozare';
 const SITE_URL     = 'https://rozare.com';
 const TWITTER_SITE = '@RozareHQ';
-const DEFAULT_DESC = 'Rozare — A modern online shopping marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support, best deals, discounts, and worldwide shipping.';
+const DEFAULT_DESC = 'Rozare is an AI-powered marketplace where shoppers discover products from independent sellers and brands, while sellers manage storefronts through dashboard tools, AI chat, and WhatsApp.';
 const DEFAULT_IMG  = `${SITE_URL}/og-image.png`;
-const DEFAULT_KEYWORDS = 'rozare, rozare marketplace, rozare.com, online shopping, buy online, shop online, e-commerce, marketplace, online store, trusted sellers, verified sellers, independent sellers, secure checkout, multi-currency, global shipping, best deals, discounts, coupons, electronics, fashion, home decor, beauty products, accessories, jewelry, shoes, clothing, gadgets, trending products, new arrivals, best sellers, affordable shopping, free shipping, fast delivery, order tracking, wishlist, product reviews, seller dashboard, become a seller, sell online';
+const DEFAULT_KEYWORDS = 'rozare, rozare marketplace, rozare.com, AI shopping, AI marketplace, online shopping, buy online, shop online, e-commerce, marketplace, online store, independent sellers, brands, trusted stores, secure checkout, multi-currency, coupons, electronics, fashion, home decor, beauty products, accessories, jewelry, shoes, clothing, gadgets, trending products, new arrivals, order tracking, wishlist, product reviews, seller dashboard, WhatsApp store management, AI store assistant, become a seller, sell online';
 
 export default function SEOHead({
   title,
@@ -19,7 +19,7 @@ export default function SEOHead({
   jsonLd,
   children,
 }) {
-  const fullTitle    = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Shop Unique Products from Trusted Sellers`;
+  const fullTitle    = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - AI Shopping Marketplace`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : null;
   const imageAlt     = ogImageAlt || fullTitle;
   const allKeywords  = keywords ? `${keywords}, ${DEFAULT_KEYWORDS}` : DEFAULT_KEYWORDS;

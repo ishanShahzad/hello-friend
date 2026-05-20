@@ -30,7 +30,7 @@ const faqCategories = [
     icon: 'card-outline',
     questions: [
       { q: 'What payment methods are accepted?', a: 'We accept all major credit/debit cards through Stripe. Apple Pay and Google Pay are also supported.' },
-      { q: 'Is my payment information secure?', a: 'Absolutely. All payments are processed through Stripe with bank-level SSL encryption. We never store your card details.' },
+      { q: 'Is my payment information secure?', a: 'Payments are processed through Stripe where available, and Rozare does not store your card details.' },
       { q: 'Are there any hidden fees?', a: 'No hidden fees. The price you see includes all applicable taxes (calculated at checkout). Shipping costs are shown before you confirm.' },
     ],
   },
@@ -55,9 +55,9 @@ const faqCategories = [
     category: 'Selling',
     icon: 'storefront-outline',
     questions: [
-      { q: 'How do I become a seller?', a: 'Tap "Become a Seller" from your profile. Fill in your store details and submit for verification. Once approved, you can start listing products.' },
-      { q: 'What are the seller fees?', a: 'Rozare charges a small commission on each sale. There are no monthly fees or listing fees. You only pay when you make a sale.' },
-      { q: 'How do I manage my store?', a: 'The Seller Dashboard gives you full control: manage products, track orders, view analytics, configure shipping, and customize your store settings.' },
+      { q: 'How do I become a seller?', a: 'Tap "Become a Seller" from your profile, add your store details, verify WhatsApp, and activate your seller account. Your 15-day free trial starts when the store is created.' },
+      { q: 'What are the seller fees?', a: 'New sellers start with a 15-day free trial. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro).' },
+      { q: 'How do I manage my store?', a: 'The Seller Dashboard gives you full manual control: manage products, track orders, view analytics, configure shipping, and customize settings. You can also use Rozare AI for supported tasks.' },
     ],
   },
   {

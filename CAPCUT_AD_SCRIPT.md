@@ -27,16 +27,16 @@ Create a professional video advertisement using the provided studio/podcast imag
 ### Solution Introduction (20-30 seconds)
 **[Excited, leaning forward slightly]**
 
-"What if I told you there's a platform where you can list products for FREE, create your own professional store with a custom subdomain, and reach thousands of new customers?"
+"What if I told you there's a platform where you can start with a 15-day free trial, create your own professional store with a custom subdomain, and manage your selling workflow with AI?"
 
 ---
 
 ### Key Feature #1: AI Management (30-45 seconds)
 **[Confident, gesturing with hands]**
 
-"Here's what makes this revolutionary: You can manage EVERYTHING through AI. Just chat with our AI assistant from your website or even WhatsApp! 
+"Here's what makes this powerful: You can manage key store tasks through AI. Just chat with our AI assistant from your website or even WhatsApp!
 
-Add products, manage orders, get instant notifications - all by simply talking to AI. No complicated dashboards. Just say what you want, and it's done."
+Add products, manage orders, get instant notifications, and use the seller dashboard whenever you want full manual control."
 
 ---
 
@@ -59,9 +59,9 @@ And here's the game-changer: When someone places an order, our system AUTOMATICA
 ### Closing Call-to-Action (75-90 seconds)
 **[Warm, inviting smile, direct eye contact]**
 
-"This is the new era of e-commerce - fully automated, AI-powered, and completely FREE to start. 
+"This is a smarter way to start selling online - AI-powered, dashboard-backed, and free to try for 15 days.
 
-Whether you're struggling with your current business or just starting your e-commerce journey, join thousands of sellers who are already succeeding with us.
+Whether you're struggling with your current business or just starting your e-commerce journey, Rozare gives you the tools to build a cleaner, more professional store.
 
 Sign up now at Rozare.com and let AI handle the hard work while you focus on growing your business."
 
@@ -85,7 +85,7 @@ Sign up now at Rozare.com and let AI handle the hard work while you focus on gro
 - **"Join now"** - Welcoming gesture with open arms
 
 ### Pacing:
-- Slow down on key benefits (FREE, AI, custom subdomain)
+- Slow down on key benefits (15-day free trial, AI, custom subdomain)
 - Speed up slightly on problem statements (creates urgency)
 - Pause for 1 second after major benefits
 - End with confident, slower delivery
@@ -100,16 +100,16 @@ Sign up now at Rozare.com and let AI handle the hard work while you focus on gro
 
 "Tired of e-commerce headaches? 
 
-Introducing Rozare - the AI-powered platform that manages your entire store through simple chat. 
+Introducing Rozare - the AI-powered marketplace that helps you manage key store tasks through simple chat and a seller dashboard.
 
-✅ Free store with custom subdomain
+✅ 15-day free trial with custom subdomain
 ✅ AI writes your product descriptions
 ✅ Automatic WhatsApp & email confirmations
-✅ Manage everything by chatting with AI
+✅ Manage products, orders, and promotions with AI
 
-No complicated dashboards. No tech skills needed. Just chat, and AI does the rest.
+Use the dashboard for full control, or chat with AI for supported tasks.
 
-Join free at Rozare.com - The future of e-commerce is here!"
+Start your free trial at Rozare.com."
 
 **[Confident smile, thumbs up]**
 
@@ -121,10 +121,10 @@ Join free at Rozare.com - The future of e-commerce is here!"
 2. **Empathy** - "I understand your struggle"
 3. **Solution Promise** - "What if I told you..."
 4. **Proof of Innovation** - "Revolutionary," "Game-changer"
-5. **Simplicity** - "Just chat," "No complicated dashboards"
-6. **Social Proof** - "Thousands of sellers"
+5. **Simplicity** - "Use dashboard or AI chat"
+6. **Credibility** - Accurate trial and feature promises
 7. **Urgency** - "New era," "Join now"
-8. **Risk Reversal** - "FREE to start"
+8. **Risk Reversal** - "15-day free trial"
 9. **Professional Credibility** - Custom subdomain benefit
 10. **Clear CTA** - Direct website mention
 

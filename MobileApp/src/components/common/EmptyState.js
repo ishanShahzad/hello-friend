@@ -94,7 +94,7 @@ const EmptyState = ({
   );
 };
 
-export const EmptyCart = ({ onBrowse, onAction }) => <EmptyState icon="cart-outline" accent="primary" title="Your cart is empty" subtitle="Discover thousands of products from verified sellers and add your favourites to checkout in one tap." actionLabel="Browse Products" onAction={onBrowse || onAction} />;
+export const EmptyCart = ({ onBrowse, onAction }) => <EmptyState icon="cart-outline" accent="primary" title="Your cart is empty" subtitle="Discover products from independent sellers and brands, then add your favourites to checkout in one tap." actionLabel="Browse Products" onAction={onBrowse || onAction} />;
 export const EmptyWishlist = ({ onBrowse }) => <EmptyState icon="heart-outline" iconColor={colors.heart} accent="heart" title="Your wishlist is empty" subtitle="Tap the heart on any product to save it here for later." actionLabel="Discover Products" onAction={onBrowse} />;
 export const EmptyOrders = ({ onBrowse }) => <EmptyState icon="receipt-outline" accent="info" title="No orders yet" subtitle="When you place an order, it will appear here with full tracking and re-order options." actionLabel="Start Shopping" onAction={onBrowse} />;
 export const EmptyProducts = ({ onAdd }) => <EmptyState icon="cube-outline" accent="primary" title="No products yet" subtitle="Add your first product to start selling on Rozare." actionLabel={onAdd ? "Add Product" : undefined} onAction={onAdd} />;

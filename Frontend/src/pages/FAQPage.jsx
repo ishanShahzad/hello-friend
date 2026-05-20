@@ -19,7 +19,7 @@ const faqCategories = [
     icon: <CreditCard size={18} />,
     questions: [
       { q: 'What payment methods are accepted?', a: 'We accept all major credit/debit cards through Stripe, our secure payment processor. Apple Pay and Google Pay are also supported.' },
-      { q: 'Is my payment information secure?', a: 'Absolutely. All payments are processed through Stripe with bank-level SSL encryption. We never store your card details on our servers.' },
+      { q: 'Is my payment information secure?', a: 'Payments are processed through Stripe, and Rozare does not store your card details on its servers.' },
       { q: 'Are there any hidden fees?', a: 'No hidden fees. The price you see includes all applicable taxes (calculated at checkout). Shipping costs are shown before you confirm your order.' }
     ]
   },
@@ -44,9 +44,9 @@ const faqCategories = [
     category: 'Selling',
     icon: <Store size={18} />,
     questions: [
-      { q: 'How do I become a seller?', a: 'Go to "Become a Seller" from the navigation menu. Fill in your store details and submit for verification. Once approved, you can start listing products.' },
-      { q: 'What are the seller fees?', a: 'Rozare charges a small commission on each sale. There are no monthly fees or listing fees. You only pay when you make a sale.' },
-      { q: 'How do I manage my store?', a: 'The Seller Dashboard gives you full control: manage products, track orders, view analytics, configure shipping, and customize your store settings.' }
+      { q: 'How do I become a seller?', a: 'Go to "Become a Seller" from the navigation menu, create or sign in to your account, add your store details, and verify your WhatsApp number. Your store is created instantly and your 15-day free trial begins.' },
+      { q: 'What are the seller fees?', a: 'New sellers start with a 15-day free trial. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro) to keep your store active.' },
+      { q: 'How do I manage my store?', a: 'The Seller Dashboard gives you full manual control: manage products, track orders, view analytics, configure shipping, and customize your store settings. You can also manage supported tasks by chatting with the Rozare AI.' }
     ]
   },
   {
@@ -107,7 +107,7 @@ function FAQPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="FAQ — Help Center & Common Questions"
-        description="Answers about Rozare shopping: payments, shipping, returns, selling, order tracking, trust system, and account management."
+        description="Answers about Rozare shopping, seller plans, WhatsApp AI, payments, shipping, returns, order tracking, account management, and trust tools."
         canonical="/faq"
         keywords="rozare FAQ, rozare help, rozare questions, how to shop on rozare, rozare shipping, rozare returns, rozare payments, rozare refund, rozare seller FAQ, how to sell on rozare, rozare order tracking, rozare trust system, rozare verified stores, online shopping FAQ, marketplace help, e-commerce FAQ"
         jsonLd={faqJsonLd}

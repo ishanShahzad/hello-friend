@@ -1,4 +1,6 @@
-# 🚀 Rozare E-Commerce Platform - Innovative Features & Ideas
+# Rozare E-Commerce Platform - Innovative Feature Concepts
+
+> Status: concept backlog only. This file lists possible future product ideas and should not be read as current Rozare pricing, guarantees, support availability, shipping policy, return policy, marketplace scale, or live feature documentation. Public customer-facing truth lives in the app pages, FAQ, docs, policies, and SEO metadata.
 
 ## Table of Contents
 1. [AI-Powered Intelligence](#ai-powered-intelligence)
@@ -412,9 +414,9 @@
 - Loyal Customer (1 year anniversary)
 
 **Community Badges:**
-- Review Master (50+ reviews)
+- Review Master (configurable review milestone)
 - Helpful Reviewer (most upvotes)
-- Photo Pro (25+ photo reviews)
+- Photo Review Badge (configurable photo-review milestone)
 - Question Answerer
 - Collection Curator
 - Trendsetter (followed by 100+ users)
@@ -446,7 +448,7 @@
 
 **Silver ($500 spent or 5000 points):**
 - 5% discount on all purchases
-- Free shipping on orders $50+
+- Optional free-shipping perk for eligible orders
 - Priority email support
 - Early sale access (24 hours)
 - Birthday gift
@@ -1852,7 +1854,7 @@
 - 30-day return window
 - Full refund guarantee
 - Free return shipping
-- 24/7 support
+- Priority support
 
 **Requirements:**
 - Account in good standing
@@ -1939,7 +1941,7 @@
 ### 77. Multi-Language Support
 **Description:** Shopping in your preferred language
 **Features:**
-- 50+ languages
+- Configurable language catalog
 - Auto-detection
 - Manual selection
 - RTL support (Arabic, Hebrew)

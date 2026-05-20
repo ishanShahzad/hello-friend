@@ -54,7 +54,7 @@ function PrivacyPolicy() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="Privacy Policy — Data Protection & Security"
-        description="Learn how Rozare collects, uses, and protects your personal data. We use bank-level SSL encryption, never sell your data, and give you full control over your privacy. Read our comprehensive privacy policy for online shopping safety."
+        description="Learn how Rozare collects, uses, shares, and protects personal data for accounts, orders, payments, analytics, cookies, seller tools, and support."
         canonical="/privacy"
         keywords="rozare privacy policy, rozare data protection, rozare security, rozare cookies, online shopping privacy, marketplace privacy, e-commerce privacy, data security, personal data, GDPR, user data protection, secure shopping"
       />

@@ -5,17 +5,17 @@ import { motion } from 'framer-motion';
 import SEOHead from '../components/common/SEOHead';
 
 const values = [
-  { icon: <Shield size={22} />, title: 'Trust & Safety', desc: 'Every store is verified. Our trust system lets the community vouch for quality sellers.' },
-  { icon: <Zap size={22} />, title: 'Fast & Seamless', desc: 'From discovery to checkout in seconds. We optimize every step of the shopping journey.' },
-  { icon: <Globe size={22} />, title: 'Global Reach', desc: 'Multi-currency support and international shipping connect buyers and sellers worldwide.' },
+  { icon: <Shield size={22} />, title: 'Trust & Safety', desc: 'Stores can earn trust signals and verified badges, helping shoppers choose with more confidence.' },
+  { icon: <Zap size={22} />, title: 'Fast & Seamless', desc: 'Buyers can browse, compare, save, and checkout while sellers manage products, orders, and promotions from one place.' },
+  { icon: <Globe size={22} />, title: 'Flexible Commerce', desc: 'Multi-currency browsing, seller-managed shipping, and custom storefronts support growing online businesses.' },
   { icon: <Heart size={22} />, title: 'Community First', desc: 'Built for independent sellers and conscious shoppers who value quality over quantity.' }
 ];
 
 const stats = [
-  { value: '10K+', label: 'Products Listed' },
-  { value: '500+', label: 'Verified Sellers' },
-  { value: '50+', label: 'Countries Served' },
-  { value: '99.9%', label: 'Uptime' }
+  { value: '15 Days', label: 'Free Trial' },
+  { value: '2 Plans', label: 'Starter & Elite' },
+  { value: 'AI + Dashboard', label: 'Store Management' },
+  { value: 'Web + WhatsApp', label: 'Seller Workflows' }
 ];
 
 function AboutPage() {
@@ -24,21 +24,21 @@ function AboutPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
-        title="About Rozare — Our Story & Mission"
-        description="Learn about Rozare — a modern marketplace connecting independent sellers with shoppers worldwide through trust, transparency, and secure payments."
+        title="About Rozare - AI Marketplace for Shopping & Selling"
+        description="Learn about Rozare, an AI-powered marketplace where shoppers discover products and sellers manage storefronts through dashboard tools, AI chat, and WhatsApp."
         canonical="/about"
         keywords="about rozare, rozare story, rozare mission, rozare marketplace about, who is rozare, rozare company, rozare team, online marketplace mission, trusted marketplace, community marketplace, independent sellers platform, fair e-commerce, transparent shopping"
         jsonLd={{
             '@context': 'https://schema.org',
             '@type': 'AboutPage',
             name: 'About Rozare',
-            description: 'Learn about Rozare marketplace and our mission to empower independent sellers.',
+            description: 'Learn about Rozare marketplace and our mission to empower independent sellers with AI-assisted tools.',
             url: 'https://rozare.com/about',
             mainEntity: {
                 '@type': 'Organization',
                 name: 'Rozare',
                 url: 'https://rozare.com',
-                description: 'Modern online shopping marketplace for independent sellers',
+                description: 'AI-powered online marketplace for buyers, independent sellers, and brands',
             },
         }}
       />
@@ -57,8 +57,8 @@ function AboutPage() {
             About Rozare
           </h1>
           <p style={{ color: 'hsl(var(--muted-foreground))' }} className="text-base sm:text-lg max-w-2xl mx-auto">
-            A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers 
-            who believe in quality, transparency, and community.
+            An AI-powered marketplace built for independent sellers, brands, and thoughtful shoppers
+            who value clear information, flexible tools, and trust.
           </p>
         </div>
 
@@ -68,9 +68,9 @@ function AboutPage() {
             Our Mission
           </h2>
           <p style={{ color: 'hsl(var(--muted-foreground))' }} className="text-base leading-relaxed max-w-3xl mx-auto">
-            To empower independent sellers with beautiful storefronts and powerful tools, while giving 
-            shoppers a curated, trustworthy marketplace experience. We believe commerce should be personal, 
-            transparent, and accessible to everyone — no matter where they are in the world.
+            To empower independent sellers with storefronts, AI-assisted workflows, and practical dashboard
+            tools, while giving shoppers a clearer way to discover products, compare stores, and buy with
+            confidence.
           </p>
         </div>
 

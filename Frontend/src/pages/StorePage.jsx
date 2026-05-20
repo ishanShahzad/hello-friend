@@ -223,14 +223,14 @@ const StorePage = ({ slugOverride = null }) => {
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SEOHead
-                    title={`${store?.storeName || 'Store'} — Shop Products Online`}
+                    title={`${store?.storeName || 'Store'} - Shop Products Online`}
                     description={store?.description
-                        ? `${store.description.slice(0, 120)} — Shop products from ${store?.storeName} on Rozare marketplace. Verified seller, secure checkout, worldwide shipping.`
-                        : `Shop unique products from ${store?.storeName} on Rozare. Verified independent seller with trusted ratings. Secure checkout, best deals, and global delivery.`}
+                        ? `${store.description.slice(0, 120)} - Shop products from ${store?.storeName} on Rozare with secure checkout, trust signals, and seller-managed shipping.`
+                        : `Shop products from ${store?.storeName} on Rozare. Browse this seller's products, reviews, trust count, and shipping options before checkout.`}
                     canonical={`https://${slug}.rozare.com`}
                     ogImage={store?.logo || undefined}
-                    ogImageAlt={`${store?.storeName} — Shop on Rozare Marketplace`}
-                    keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, rozare store, verified seller, trusted store, online shop, independent seller`}
+                    ogImageAlt={`${store?.storeName} - Shop on Rozare Marketplace`}
+                    keywords={`${store?.storeName}, ${store?.storeName} store, ${store?.storeName} products, ${store?.storeName} shop, buy from ${store?.storeName}, ${store?.storeName} online, rozare store, trusted store, online shop, independent seller`}
                     jsonLd={{
                         '@context': 'https://schema.org',
                         '@type': 'Store',

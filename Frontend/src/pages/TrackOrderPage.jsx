@@ -21,10 +21,10 @@ export default function TrackOrderPage() {
   return (
     <>
       <SEOHead
-        title="Track Your Order — Real-Time Order Tracking"
-        description="Track your Rozare order in real-time. Enter your email and order ID to see live shipping status, delivery updates, and estimated arrival time. Fast, easy, and transparent order tracking."
+        title="Track Your Order - Order Status Lookup"
+        description="Track your Rozare order status. Enter your email and order ID to view order status, shipping updates when available, and seller-provided delivery details."
         canonical="/track-order"
-        keywords="track order, order tracking, rozare order tracking, track my order, order status, shipping status, delivery tracking, where is my order, order updates, track package, rozare tracking, real-time tracking"
+        keywords="track order, order tracking, rozare order tracking, track my order, order status, shipping status, delivery updates, where is my order, order updates, rozare tracking"
       />
       <TrackOrderContent />
     </>

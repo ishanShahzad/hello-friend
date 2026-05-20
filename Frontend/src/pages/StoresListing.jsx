@@ -31,29 +31,29 @@ const StoresListing = () => {
     // SEO meta varies per type
     const seoMeta = typeFilter === 'brand'
         ? {
-            title: 'Brands on Rozare — Verified Fashion, Tech & Lifestyle Brands',
-            description: 'Discover verified brands on Rozare. Shop directly from official fashion, beauty, electronics and lifestyle brands — authentic, trusted, and curated.',
+            title: 'Brands on Rozare - Fashion, Tech & Lifestyle Brands',
+            description: 'Discover brand storefronts on Rozare. Shop from fashion, beauty, electronics, lifestyle, and seller-run brands with reviews and trust signals.',
             canonical: '/marketplace?type=brand',
-            keywords: 'brands, official brands, verified brands, fashion brands, beauty brands, tech brands, rozare brands',
+            keywords: 'brands, brand storefronts, fashion brands, beauty brands, tech brands, lifestyle brands, rozare brands',
             heading: 'Brands',
-            subheading: 'Shop directly from verified brands worldwide',
+            subheading: 'Shop from brands and seller-run storefronts',
         }
         : typeFilter === 'store'
         ? {
-            title: 'Stores on Rozare — Independent Sellers & Local Shops',
-            description: 'Browse independent stores and local sellers on Rozare. Discover unique products from trusted small businesses worldwide.',
+            title: 'Stores on Rozare - Independent Sellers & Local Shops',
+            description: 'Browse independent stores and local sellers on Rozare. Discover products from seller-run storefronts with reviews, trust signals, and store details.',
             canonical: '/marketplace?type=store',
             keywords: 'stores, independent sellers, online stores, local shops, small business, rozare stores',
             heading: 'Stores',
-            subheading: 'Discover independent sellers worldwide',
+            subheading: 'Discover independent seller storefronts',
         }
         : {
-            title: 'Marketplace — Discover Trusted Stores & Brands',
-            description: 'Discover thousands of verified stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques and more — all in one place.',
+            title: 'Marketplace - Discover Stores & Brands',
+            description: 'Discover stores and brands on Rozare Marketplace. Browse independent sellers, fashion brands, electronics shops, beauty boutiques, and more in one place.',
             canonical: '/marketplace',
-            keywords: 'marketplace, online stores, brands, verified sellers, trusted brands, independent shops, fashion brands, electronics stores, rozare marketplace',
+            keywords: 'marketplace, online stores, brands, trusted stores, independent shops, fashion brands, electronics stores, rozare marketplace',
             heading: 'Marketplace',
-            subheading: 'Discover stores and brands from sellers worldwide',
+            subheading: 'Discover stores and brands from Rozare sellers',
         };
 
 

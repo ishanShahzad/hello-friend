@@ -384,11 +384,11 @@ function Products() {
   )
 
   const isProductsRoute = location.pathname === '/products'
-  const seoTitle = isProductsRoute ? 'All Products — Browse the Full Catalog' : null
+  const seoTitle = isProductsRoute ? 'All Products - Browse the Rozare Catalog' : null
   const seoCanonical = isProductsRoute ? '/products' : '/'
   const seoDescription = isProductsRoute
-    ? 'Browse the full Rozare product catalog — electronics, fashion, home decor, beauty, accessories and more from verified independent sellers worldwide.'
-    : 'Shop unique products from verified independent sellers on Rozare. Electronics, fashion, home decor, beauty & more with worldwide shipping.'
+    ? 'Browse the Rozare product catalog: electronics, fashion, home decor, beauty, accessories and more from independent sellers and brands.'
+    : 'Shop products from independent sellers and brands on Rozare. Discover electronics, fashion, home decor, beauty and more with secure checkout, coupons, wishlists, and seller-managed shipping.'
   const collectionUrl = `https://rozare.com${isProductsRoute ? '/products' : '/'}`
 
   return (
@@ -397,7 +397,7 @@ function Products() {
         title={seoTitle}
         description={seoDescription}
         canonical={seoCanonical}
-        keywords="shop online, buy products online, online shopping website, best online store, rozare products, all products, product catalog, trending products, new arrivals, best sellers, cheap products online, affordable shopping, discount shopping, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, free shipping products, best deals, sale, clearance, promotional offers"
+        keywords="shop online, buy products online, online shopping website, rozare products, all products, product catalog, trending products, new arrivals, independent sellers, brands, affordable shopping, discount shopping, coupons, electronics store, fashion store, home decor shop, beauty products, jewelry store, shoes online, clothing online, accessories, gadgets, gifts online, promotional offers"
         jsonLd={[
           ...(!isProductsRoute ? [{
             '@context': 'https://schema.org',
@@ -405,7 +405,7 @@ function Products() {
             name: 'Rozare',
             alternateName: 'Rozare Marketplace',
             url: 'https://rozare.com',
-            description: 'Rozare is the best online shopping marketplace to buy unique products from trusted independent sellers worldwide.',
+            description: 'Rozare is an AI-powered marketplace where shoppers discover products from independent sellers and brands.',
             potentialAction: {
               '@type': 'SearchAction',
               target: {
@@ -418,7 +418,7 @@ function Products() {
           {
             '@context': 'https://schema.org',
             '@type': 'CollectionPage',
-            name: isProductsRoute ? 'All Products — Rozare' : 'Rozare Marketplace',
+            name: isProductsRoute ? 'All Products - Rozare' : 'Rozare Marketplace',
             description: isProductsRoute
               ? 'Complete catalog of products available on Rozare marketplace.'
               : 'Browse and shop products available on Rozare marketplace.',

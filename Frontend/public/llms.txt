@@ -1,15 +1,15 @@
 # Rozare
 
-> Rozare is a modern online shopping marketplace where buyers discover unique products from verified independent sellers worldwide, with secure checkout, multi-currency support, and global shipping.
+> Rozare is an AI-powered online marketplace where buyers discover products from independent sellers and brands, while sellers manage storefronts through dashboard tools, AI chat, and WhatsApp.
 
-Rozare connects shoppers with trusted independent sellers across electronics, fashion, home decor, beauty, jewelry and more. Sellers get a custom subdomain storefront, AI-assisted tools, WhatsApp order management, and built-in analytics. Shoppers get verified sellers, transparent reviews, a trust system, and secure payments.
+Rozare connects shoppers with seller-run storefronts across electronics, fashion, home decor, beauty, jewelry and more. Sellers get a custom subdomain storefront, AI-assisted tools, WhatsApp store management, coupons, shipping settings, and analytics. Shoppers get product discovery, reviews, trust signals, secure checkout, multi-currency browsing, and seller-managed shipping.
 
 ## Pages
 
 - [Home](https://rozare.com/): Marketplace homepage with trending products and curated picks.
-- [Marketplace](https://rozare.com/marketplace): Browse all products from verified sellers.
+- [Marketplace](https://rozare.com/marketplace): Browse products from independent sellers and brands.
 - [Trusted Stores](https://rozare.com/marketplace/trusted): Top-rated and most-followed seller stores.
-- [Become a Seller](https://rozare.com/become-seller): Open a Rozare store with a custom subdomain.
+- [Become a Seller](https://rozare.com/become-seller): Start a Rozare store with a 15-day free trial, then choose Starter or Elite to keep selling.
 - [About](https://rozare.com/about): Our mission and how Rozare works.
 - [Contact](https://rozare.com/contact): Reach the Rozare team.
 - [FAQ](https://rozare.com/faq): Common questions about buying, selling, payments, and shipping.

@@ -12,9 +12,9 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
 const getContactMethods = (palette) => [
-  { icon: 'mail-outline', title: 'Email Us', value: 'support@rozare.com', desc: 'We respond within 24 hours', color: palette.colors.primary },
-  { icon: 'chatbubbles-outline', title: 'Live Chat', value: 'Available on platform', desc: 'Mon–Fri, 9 AM – 6 PM EST', color: palette.colors.success },
-  { icon: 'location-outline', title: 'Headquarters', value: 'Global / Remote', desc: 'Serving customers worldwide', color: palette.colors.info },
+  { icon: 'mail-outline', title: 'Email Us', value: 'support@rozare.com', desc: 'For order, account, and seller questions', color: palette.colors.primary },
+  { icon: 'chatbubbles-outline', title: 'AI Chat', value: 'Available on platform', desc: 'Use Rozare AI for product and account help', color: palette.colors.success },
+  { icon: 'location-outline', title: 'Operations', value: 'Online / Remote', desc: 'Supporting buyers and sellers digitally', color: palette.colors.info },
 ];
 
 export default function ContactScreen({ navigation }) {
@@ -31,11 +31,11 @@ export default function ContactScreen({ navigation }) {
       return;
     }
     setSending(true);
-    setTimeout(() => {
-      Alert.alert('Message Sent!', 'We\'ll get back to you soon.');
-      setForm({ name: '', email: '', subject: '', message: '' });
-      setSending(false);
-    }, 1200);
+    const subject = encodeURIComponent(form.subject || `Rozare support request from ${form.name}`);
+    const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`);
+    Linking.openURL(`mailto:support@rozare.com?subject=${subject}&body=${body}`)
+      .catch(() => Alert.alert('Email app unavailable', 'Please email support@rozare.com directly.'))
+      .finally(() => setSending(false));
   };
 
   return (
@@ -72,7 +72,7 @@ export default function ContactScreen({ navigation }) {
 
             {/* Contact Form */}
             <GlassPanel variant="card" style={styles.formCard}>
-              <Text style={styles.formTitle}>Send us a message</Text>
+              <Text style={styles.formTitle}>Email support</Text>
 
               <Text style={styles.label}>Name *</Text>
               <TextInput style={styles.input} value={form.name} onChangeText={t => setForm({ ...form, name: t })} placeholder="Your name" placeholderTextColor={palette.colors.textLight} />
@@ -88,7 +88,7 @@ export default function ContactScreen({ navigation }) {
 
               <TouchableOpacity style={[styles.submitBtn, sending && { opacity: 0.6 }]} onPress={handleSubmit} disabled={sending} activeOpacity={0.7}>
                 <Ionicons name="send-outline" size={16} color={palette.colors.white} />
-                <Text style={styles.submitText}>{sending ? 'Sending...' : 'Send Message'}</Text>
+                <Text style={styles.submitText}>{sending ? 'Opening...' : 'Open Email Draft'}</Text>
               </TouchableOpacity>
             </GlassPanel>
 

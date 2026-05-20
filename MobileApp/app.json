@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Rozare — Trusted Marketplace",
+    "name": "Rozare - AI Marketplace",
     "slug": "rozare",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "rozare",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "description": "Rozare is a modern marketplace built on trust. Shop from verified independent sellers, discover unique products, and enjoy a seamless shopping experience with secure payments, real-time order tracking, and multi-currency support.",
+    "description": "Rozare is an AI-powered marketplace where shoppers discover products from independent sellers and brands, while sellers manage their stores with dashboard tools, AI chat, WhatsApp workflows, secure checkout, order status updates, and multi-currency support.",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",

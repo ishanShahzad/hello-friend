@@ -177,8 +177,8 @@ const SubdomainStorePage = () => {
                 <SEOHead
                     title={store?.storeName || 'Store'}
                     description={store?.description
-                        ? `${store.description.slice(0, 140)} — Shop on Rozare.`
-                        : `Shop products from ${store?.storeName} on Rozare. Verified independent seller.`}
+                        ? `${store.description.slice(0, 140)} - Shop on Rozare.`
+                        : `Shop products from ${store?.storeName} on Rozare. Browse products, reviews, trust signals, and seller-managed shipping options.`}
                     canonical={`/`}
                     ogImage={store?.logo || undefined}
                     ogImageAlt={`${store?.storeName} store logo`}

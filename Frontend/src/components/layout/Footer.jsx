@@ -23,7 +23,7 @@ function Footer() {
                 <img src="/rozare-logo.svg" alt="Rozare" className="h-8" />
               </Link>
               <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Shop and manage your store or brand by chatting with AI — through the app or WhatsApp. The world's first AI-powered marketplace built on trust, designed for independent sellers and thoughtful shoppers.
+                Shop from independent sellers and manage your store or brand with dashboard tools, AI chat, and WhatsApp workflows.
               </p>
             </div>
 

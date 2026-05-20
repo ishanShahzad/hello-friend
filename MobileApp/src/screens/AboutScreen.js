@@ -12,16 +12,16 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../styles/theme';
 import { useTheme } from '../contexts/ThemeContext';
 
 const stats = [
-  { value: '10K+', label: 'Products Listed' },
-  { value: '500+', label: 'Verified Sellers' },
-  { value: '50+', label: 'Countries Served' },
-  { value: '99.9%', label: 'Uptime' },
+  { value: '15 Days', label: 'Free Trial' },
+  { value: '2 Plans', label: 'Starter & Elite' },
+  { value: 'AI + Dashboard', label: 'Store Management' },
+  { value: 'Web + WhatsApp', label: 'Seller Workflows' },
 ];
 
 const values = [
-  { icon: 'shield-checkmark-outline', title: 'Trust & Safety', desc: 'Every store is verified. Our trust system lets the community vouch for quality sellers.' },
-  { icon: 'flash-outline', title: 'Fast & Seamless', desc: 'From discovery to checkout in seconds. We optimize every step of the shopping journey.' },
-  { icon: 'globe-outline', title: 'Global Reach', desc: 'Multi-currency support and international shipping connect buyers and sellers worldwide.' },
+  { icon: 'shield-checkmark-outline', title: 'Trust & Safety', desc: 'Stores can earn trust signals and verified badges, helping shoppers choose with more confidence.' },
+  { icon: 'flash-outline', title: 'Fast & Seamless', desc: 'Buyers can browse, compare, save, and checkout while sellers manage products, orders, and promotions from one place.' },
+  { icon: 'globe-outline', title: 'Flexible Commerce', desc: 'Multi-currency browsing, seller-managed shipping, and custom storefronts support growing online businesses.' },
   { icon: 'heart-outline', title: 'Community First', desc: 'Built for independent sellers and conscious shoppers who value quality over quantity.' },
 ];
 
@@ -49,14 +49,14 @@ export default function AboutScreen({ navigation }) {
           {/* Hero */}
           <Text style={styles.heroTitle}>About Rozare</Text>
           <Text style={styles.heroDesc}>
-            A modern marketplace built on trust, designed for independent sellers and thoughtful shoppers who believe in quality, transparency, and community.
+            An AI-powered marketplace built for independent sellers, brands, and thoughtful shoppers who value clear information, flexible tools, and trust.
           </Text>
 
           {/* Mission */}
           <GlassPanel variant="card" style={styles.missionCard}>
             <Text style={styles.missionTitle}>Our Mission</Text>
             <Text style={styles.missionText}>
-              To empower independent sellers with beautiful storefronts and powerful tools, while giving shoppers a curated, trustworthy marketplace experience. We believe commerce should be personal, transparent, and accessible to everyone — no matter where they are in the world.
+              To empower independent sellers with storefronts, AI-assisted workflows, and practical dashboard tools, while giving shoppers a clearer way to discover products, compare stores, and buy with confidence.
             </Text>
           </GlassPanel>
 

@@ -103,9 +103,9 @@ export default function ProfileScreen({ navigation }) {
 
           <GlassPanel variant="card" style={styles.featuresCard}>
             {[
-              { icon: 'receipt-outline', title: 'Track Orders', desc: 'Monitor your purchases in real time' },
+              { icon: 'receipt-outline', title: 'Track Orders', desc: 'Follow purchase status updates' },
               { icon: 'heart-outline', title: 'Save Favorites', desc: 'Build and manage your wishlist' },
-              { icon: 'shield-checkmark-outline', title: 'Trusted Stores', desc: 'Shop from verified sellers' },
+              { icon: 'shield-checkmark-outline', title: 'Trusted Stores', desc: 'Use reviews, badges, and trust signals' },
             ].map((f) => (
               <View key={f.icon} style={styles.featureRow}>
                 <View style={styles.featureIcon}>

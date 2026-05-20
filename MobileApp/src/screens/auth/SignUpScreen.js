@@ -93,7 +93,7 @@ export default function SignUpScreen({ navigation }) {
           {/* Hero */}
           <View style={styles.heroSection}>
             <Text style={styles.heroTitle}>Create Account ✨</Text>
-            <Text style={styles.heroSubtitle}>Join thousands of shoppers on Rozare</Text>
+            <Text style={styles.heroSubtitle}>Create your Rozare account to shop, save products, and track orders</Text>
           </View>
 
           {/* Form Card */}

@@ -6,9 +6,9 @@ import { Link } from 'react-router-dom';
 import SEOHead from '../components/common/SEOHead';
 
 const contactMethods = [
-  { icon: <Mail size={22} />, title: 'Email Us', value: 'support@rozare.com', desc: 'We respond within 24 hours' },
-  { icon: <MessageSquare size={22} />, title: 'Live Chat', value: 'Available on platform', desc: 'Mon–Fri, 9 AM – 6 PM EST' },
-  { icon: <MapPin size={22} />, title: 'Headquarters', value: 'Global / Remote', desc: 'Serving customers worldwide' }
+  { icon: <Mail size={22} />, title: 'Email Us', value: 'support@rozare.com', desc: 'For order, account, and seller questions' },
+  { icon: <MessageSquare size={22} />, title: 'AI Chat', value: 'Available on platform', desc: 'Use Rozare AI for product and account help' },
+  { icon: <MapPin size={22} />, title: 'Operations', value: 'Online / Remote', desc: 'Supporting buyers and sellers digitally' }
 ];
 
 function ContactPage() {
@@ -24,18 +24,18 @@ function ContactPage() {
       return;
     }
     setSending(true);
-    setTimeout(() => {
-      toast.success('Message sent! We\'ll get back to you soon.');
-      setForm({ name: '', email: '', subject: '', message: '' });
-      setSending(false);
-    }, 1200);
+    const subject = encodeURIComponent(form.subject || `Rozare support request from ${form.name}`);
+    const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`);
+    window.location.href = `mailto:support@rozare.com?subject=${subject}&body=${body}`;
+    toast.info('Opening your email app with a support draft.');
+    setSending(false);
   };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <SEOHead
         title="Contact Us — Customer Support & Help"
-        description="Contact the Rozare support team for help with orders, shipping, payments, seller inquiries, and more. Email support@rozare.com — we respond within 24 hours. Live chat available Mon–Fri 9AM–6PM EST."
+        description="Contact the Rozare support team for help with orders, shipping, payments, seller inquiries, account questions, and marketplace feedback."
         canonical="/contact"
         keywords="contact rozare, rozare support, rozare help, rozare customer service, rozare email, support@rozare.com, rozare phone, rozare live chat, order help, shipping help, payment help, seller support, buyer support, complaint, feedback"
         jsonLd={{
@@ -98,7 +98,7 @@ function ContactPage() {
         {/* Contact Form */}
         <div className="glass-panel-strong p-6 sm:p-8">
           <h2 className="text-xl font-bold mb-6" style={{ color: 'hsl(var(--foreground))' }}>
-            Send us a message
+            Email support
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
@@ -149,7 +149,7 @@ function ContactPage() {
               style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', opacity: sending ? 0.7 : 1 }}
             >
               <Send size={16} />
-              {sending ? 'Sending...' : 'Send Message'}
+              {sending ? 'Opening...' : 'Open Email Draft'}
             </button>
           </form>
         </div>

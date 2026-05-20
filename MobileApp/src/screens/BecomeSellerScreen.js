@@ -83,12 +83,12 @@ export default function BecomeSellerScreen({ navigation }) {
   }
 
   const benefits = [
-    { icon: 'trending-up', title: 'Grow Your Business', description: 'Reach millions of customers' },
-    { icon: 'shield-checkmark', title: 'Secure Platform', description: 'Safe payments guaranteed' },
+    { icon: 'trending-up', title: 'Grow Your Business', description: 'Create a storefront and list products' },
+    { icon: 'shield-checkmark', title: 'Secure Platform', description: 'Stripe where available plus trust tools' },
     { icon: 'bar-chart', title: 'Analytics & Insights', description: 'Track your performance' },
   ];
 
-  const features = ['Full store management dashboard', 'Product listing & inventory control', 'Order management system', 'Secure payment processing', 'Real-time sales analytics', 'Customer communication tools', 'Marketing & promotion features', '24/7 seller support'];
+  const features = ['Seller management dashboard', 'Product listing & inventory control', 'Order management system', 'Stripe and Cash on Delivery support', 'Sales analytics', 'Customer communication tools', 'Coupons and promotion tools', 'AI-assisted seller workflows'];
 
   return (
     <GlassBackground>
@@ -108,9 +108,9 @@ export default function BecomeSellerScreen({ navigation }) {
           {/* Hero Header */}
           <GlassPanel variant="strong" style={styles.heroPanel}>
             <View style={styles.heroIcon}><Ionicons name="storefront" size={40} color={palette.colors.primary} /></View>
-            <Text style={styles.heroTitle}>Become a Seller — FREE</Text>
-            <Text style={styles.heroSub}>Join thousands of successful sellers and start your e-commerce journey today</Text>
-            <View style={styles.freeBadge}><Ionicons name="gift-outline" size={16} color={palette.colors.warning} /><Text style={styles.freeText}>Create your store for FREE — No hidden costs!</Text></View>
+            <Text style={styles.heroTitle}>Become a Seller</Text>
+            <Text style={styles.heroSub}>Start with a 15-day free trial, then choose Starter or Elite to keep your store active.</Text>
+            <View style={styles.freeBadge}><Ionicons name="gift-outline" size={16} color={palette.colors.warning} /><Text style={styles.freeText}>15-day free trial first. Starter and Elite include free intro periods when eligible.</Text></View>
           </GlassPanel>
 
           {!showForm ? (

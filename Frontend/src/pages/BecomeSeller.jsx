@@ -376,7 +376,7 @@ export default function BecomeSeller() {
   };
 
   const benefits = [
-    { icon: <Bot size={28} />, title: 'Run Your Store with AI', description: 'Add products, set prices, reply to customers, and manage orders just by chatting — on the app or WhatsApp.', color: 'hsl(280, 70%, 60%)' },
+    { icon: <Bot size={28} />, title: 'Run Your Store with AI', description: 'Add products, set prices, and manage supported order workflows by chatting on the app or WhatsApp.', color: 'hsl(280, 70%, 60%)' },
     { icon: <TrendingUp size={28} />, title: 'Reach Global Buyers', description: 'Multi-currency checkout, mobile + web storefronts, and SEO baked in to help you scale fast.', color: 'hsl(220, 70%, 55%)' },
     { icon: <Shield size={28} />, title: 'Secure & Trusted', description: 'Stripe-powered payments, verified store badges, and a built-in trust system that protects buyers and sellers.', color: 'hsl(200, 80%, 50%)' },
   ];
@@ -384,8 +384,8 @@ export default function BecomeSeller() {
   const aiSuperpowers = [
     { icon: <Wand2 size={20} />, title: 'AI Description Polish', desc: 'Turn rough notes into compelling product copy in one click.' },
     { icon: <Tag size={20} />, title: 'Smart Tag Generator', desc: 'Auto-generate SEO tags so your products get discovered.' },
-    { icon: <MessageCircle size={20} />, title: 'WhatsApp Commerce', desc: 'Manage your entire store by chatting with AI on WhatsApp.' },
-    { icon: <Mic size={20} />, title: 'Voice Assistant', desc: 'Talk to your AI co-pilot — hands-free store management.' },
+    { icon: <MessageCircle size={20} />, title: 'WhatsApp Commerce', desc: 'Manage supported store tasks by chatting with AI on WhatsApp.' },
+    { icon: <Mic size={20} />, title: 'Voice Assistant', desc: 'Talk to your AI co-pilot for supported store tasks.' },
     { icon: <LineChart size={20} />, title: 'Insights On Demand', desc: 'Ask "How are sales this week?" and get instant answers.' },
     { icon: <Megaphone size={20} />, title: 'Marketing Help', desc: 'AI drafts coupons, promotions, and customer broadcasts.' },
   ];
@@ -402,21 +402,21 @@ export default function BecomeSeller() {
     'Order management & shipping tools',
     'Coupon & discount engine',
     'Push & WhatsApp notifications',
-    'Mobile app for sellers (iOS & Android)',
+    'Mobile app support for sellers (iOS & Android)',
   ];
 
   return (
     <div className="min-h-screen py-12 px-4">
       <SEOHead
-        title="Become a Seller — Start Selling Online for Free"
-        description="Join Rozare as a seller and start your e-commerce business for free. Create your online store, list unlimited products, manage orders, track sales analytics, and reach millions of customers worldwide. No hidden costs, no monthly fees — just sell and grow."
+        title="Become a Seller — Start Selling Online with a Free Trial"
+        description="Join Rozare as a seller and start with a 15-day free trial. Create your online store, list products, manage orders, track sales analytics, and run your store from the seller dashboard or by chatting with AI. After the trial, continue with Starter or Elite, each with its own free intro period."
         canonical="/become-seller"
-        keywords="become a seller, sell online free, start selling online, open online store, create store free, rozare seller, sell products online, e-commerce seller, online business, start online business, vendor registration, seller signup, free seller account, sell from home, side hustle, make money online, dropshipping, sell handmade products, sell crafts online, sell electronics online, sell fashion online, online shop owner"
+        keywords="become a seller, sell online, start selling online, open online store, online store free trial, rozare seller, sell products online, e-commerce seller, online business, start online business, vendor registration, seller signup, seller account, sell from home, side hustle, make money online, dropshipping, sell handmade products, sell crafts online, sell electronics online, sell fashion online, online shop owner"
         jsonLd={{
             '@context': 'https://schema.org',
             '@type': 'WebPage',
             name: 'Become a Seller on Rozare',
-            description: 'Start selling online for free on Rozare marketplace. Create your store and reach customers worldwide.',
+            description: 'Start selling on Rozare with a 15-day free trial, then continue with a Starter or Elite subscription plan.',
             url: 'https://rozare.com/become-seller',
             potentialAction: {
                 '@type': 'RegisterAction',
@@ -443,13 +443,13 @@ export default function BecomeSeller() {
             </div>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-3" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Become a Seller - FREE
+            Become a Seller
           </h1>
           <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-            The first marketplace where you can <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>run your entire store by chatting with AI</span> — on the app or WhatsApp.
+            Use the seller dashboard for full control, or <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>manage supported store tasks by chatting with AI</span> on the app or WhatsApp.
           </p>
           <p className="text-xl font-bold" style={{ color: 'hsl(150, 60%, 45%)' }}>
-            <Sparkles size={18} className="inline mr-1" /> Create your store for FREE - No hidden costs!
+            <Sparkles size={18} className="inline mr-1" /> Start with 15 days free, then choose Starter or Elite.
           </p>
         </motion.div>
 
@@ -480,7 +480,7 @@ export default function BecomeSeller() {
                 Your AI Co-Pilot for Selling
               </h2>
               <p className="text-sm sm:text-base mb-6 max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Stop wrestling with spreadsheets and dashboards. Just <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>tell Rozare AI what you want</span> — in the app, by voice, or even on WhatsApp — and it gets done.
+                Use the seller dashboard when you want hands-on control, or just <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>tell Rozare AI what you want</span> — in the app, by voice, or even on WhatsApp — and it gets done.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {aiSuperpowers.map((s, i) => (
@@ -514,7 +514,7 @@ export default function BecomeSeller() {
               <h2 className="text-3xl font-bold mb-4">Ready to Start Selling?</h2>
               <p className="text-white/90 mb-2 max-w-2xl mx-auto text-lg">Click below to provide your details and activate your seller account!</p>
               <p className="font-semibold text-xl mb-6" style={{ color: 'hsl(45, 93%, 70%)' }}>
-                <Sparkles size={18} className="inline mr-1" /> 100% FREE - No setup fees, no monthly charges!
+                <Sparkles size={18} className="inline mr-1" /> 15-day free trial first. Starter includes 30 days free; Elite includes 45 days free.
               </p>
               <motion.button onClick={handleGetStarted} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="font-bold text-lg px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-3"

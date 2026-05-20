@@ -88,9 +88,9 @@ function DocsPage() {
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'TechArticle',
-    headline: 'Rozare Documentation — Shop & Manage Your Store by Chatting with AI',
+    headline: 'Rozare Documentation - AI Shopping, Seller Dashboard & WhatsApp Store Management',
     name: 'Rozare Documentation',
-    description: 'Complete guide to Rozare — the AI-powered marketplace where you shop and manage your store or brand by chatting with AI through the app or WhatsApp.',
+    description: 'Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, subscriptions, coupons, shipping, orders, and trust tools.',
     inLanguage: 'en',
     url: DOCS_URL,
     image: 'https://rozare.com/og-image.png?v=4',
@@ -108,11 +108,11 @@ function DocsPage() {
     mainEntity: {
       '@type': 'FAQPage',
       mainEntity: [
-        { '@type': 'Question', name: 'What is Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare is an AI-powered marketplace where you can shop and manage your entire store or brand simply by chatting with an AI assistant — through the website, the mobile app, or WhatsApp.' } },
-        { '@type': 'Question', name: 'How do I become a seller on Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Go to /become-seller, enter your email, verify with the OTP, fill in your store details, and you instantly get a 15-day free trial of all features.' } },
+        { '@type': 'Question', name: 'What is Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare is an AI-powered marketplace where shoppers discover products and sellers manage stores through dashboard tools, AI chat, and WhatsApp.' } },
+        { '@type': 'Question', name: 'How do I become a seller on Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Go to /become-seller, create or sign in to your account, add your store details, verify your WhatsApp number, and activate your seller account to start the 15-day free trial.' } },
         { '@type': 'Question', name: 'Can I manage my Rozare store from WhatsApp?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Connect your WhatsApp number in seller settings and chat with the Rozare AI to add products, update stock, manage orders, run analytics, and get instant new-order notifications.' } },
-        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month) or Rozare Elite ($12.99/month).' } },
-        { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. The Rozare mobile app is available for iOS and Android with full shopping, selling, AI chat, and push notification support.' } },
+        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro).' } },
+        { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare includes a React Native / Expo mobile app experience for iOS and Android with shopping, selling, AI chat, and push notification support.' } },
       ],
     },
   };
@@ -129,23 +129,23 @@ function DocsPage() {
   return (
     <>
       <Helmet>
-        <title>Rozare Docs — Shop & Manage Your Store by Chatting with AI</title>
-        <meta name="description" content="The complete guide to Rozare — shop and manage your store or brand by chatting with AI through the app or WhatsApp. Learn how to sell, set up payments, ship orders, get verified, and grow with AI." />
+        <title>Rozare Docs - AI Shopping, Seller Dashboard & WhatsApp Store Management</title>
+        <meta name="description" content="Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, subscriptions, coupons, shipping, orders, and trust tools." />
         <meta name="keywords" content="Rozare, Rozare docs, Rozare documentation, AI marketplace, AI shopping, AI commerce, conversational commerce, sell online, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller, Rozare guide, Rozare help" />
         <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
         <link rel="canonical" href={DOCS_URL} />
         <meta property="og:site_name" content="Rozare" />
         <meta property="og:type" content="article" />
-        <meta property="og:title" content="Rozare Documentation — AI-Powered Shopping & Selling" />
-        <meta property="og:description" content="Shop and manage your store or brand by chatting with AI through the app or WhatsApp. The complete Rozare guide." />
+        <meta property="og:title" content="Rozare Documentation - AI Shopping & Selling" />
+        <meta property="og:description" content="Learn how Rozare shopping, seller dashboards, AI chat, WhatsApp store management, subscriptions, coupons, shipping, and trust tools work." />
         <meta property="og:url" content={DOCS_URL} />
         <meta property="og:image" content="https://rozare.com/og-image.png?v=4" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@RozareHQ" />
-        <meta name="twitter:title" content="Rozare Docs — Shop & Manage Your Store by Chatting with AI" />
-        <meta name="twitter:description" content="Complete guide to Rozare's AI marketplace — shop or sell by chatting with AI on app or WhatsApp." />
+        <meta name="twitter:title" content="Rozare Docs - AI Shopping & Selling" />
+        <meta name="twitter:description" content="Complete guide to Rozare shopping, seller dashboard tools, AI chat, WhatsApp store management, subscriptions, and trust tools." />
         <meta name="twitter:image" content="https://rozare.com/og-image.png?v=4" />
         <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
         <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
@@ -165,7 +165,7 @@ function DocsPage() {
                 Rozare <span style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 65%), hsl(280, 60%, 65%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Documentation</span>
               </h1>
               <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ color: 'hsl(220, 20%, 70%)' }}>
-                Shop and manage your store or brand by chatting with AI — through the app or WhatsApp. The complete guide to a modern, conversational marketplace.
+                Shop on Rozare and manage a store or brand with dashboard tools, AI chat, and WhatsApp workflows. This guide explains the marketplace end to end.
               </p>
               <div className="max-w-lg mx-auto relative">
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'hsl(220, 20%, 50%)' }} />
@@ -241,7 +241,7 @@ function DocsPage() {
               {/* WHAT IS ROZARE */}
               <DocSection id="what-is-rozare" title="What is Rozare?" icon={Sparkles}>
                 <p>
-                  <strong>Rozare</strong> is a modern, AI-powered marketplace where you can <strong>shop and manage your store or brand by chatting with AI</strong> — through the website, the mobile app, or even WhatsApp. Instead of clicking through long menus, filling out endless forms, or jumping between tools, you simply talk to the Rozare AI in plain language and it does the work for you.
+                  <strong>Rozare</strong> is a modern, AI-powered marketplace where shoppers can discover products and sellers can manage stores through the dashboard, AI chat, and WhatsApp. Instead of jumping between tools for supported tasks, you can talk to the Rozare AI in plain language and let it help.
                 </p>
                 <FeatureGrid features={[
                   { icon: Bot, title: 'Chat-First Experience', desc: 'Search products, place orders, add inventory, run discounts, and pull analytics — all by chatting in natural language.' },
@@ -379,24 +379,24 @@ function DocsPage() {
 
               {/* BECOME A SELLER */}
               <DocSection id="become-a-seller" title="Become a Seller" icon={Store}>
-                <p>Anyone can sell on Rozare. Sign-up is free and you start with a <strong>15-day free trial of every feature</strong>.</p>
+                <p>Anyone can start selling on Rozare with a <strong>15-day free trial of every feature</strong>. After that, sellers choose Starter or Elite to keep the store active, with a free intro period on the selected plan.</p>
 
                 <h3>How to sign up as a seller</h3>
                 <StepList steps={[
                   'Visit /become-seller.',
-                  'Step 1 — Enter your email and click "Get Started".',
-                  'Step 2 — Verify your email with the 6-digit OTP.',
-                  'Step 3 — Fill in your business details: store name, description, category, country.',
-                  'Step 4 — Set your seller password and complete sign-up.',
+                  'Create a new account or sign in to your existing Rozare account.',
+                  'Add your business details, address, store name, and store description.',
+                  'Verify your WhatsApp number with the OTP.',
+                  'Click the final activation button to create your seller account.',
                   'Your store is created instantly and your 15-day free trial begins. You can start adding products immediately.',
                 ]} />
 
                 <h3>What you get as a seller</h3>
                 <FeatureGrid features={[
-                  { icon: Store, title: 'Free Online Store', desc: 'A fully customizable storefront with your own slug, optional custom subdomain, logo, banner, description, and social links.' },
+                  { icon: Store, title: 'Online Storefront', desc: 'A fully customizable storefront with your own slug, optional custom subdomain, logo, banner, description, and social links.' },
                   { icon: Bot, title: 'AI Business Partner', desc: 'A built-in AI assistant that adds products, updates stock, runs analytics, manages orders, creates coupons, and gives growth advice.' },
                   { icon: BarChart3, title: 'Real-Time Analytics', desc: 'Revenue, top products, order trends, customer insights, low-stock alerts and period comparisons.' },
-                  { icon: Smartphone, title: 'WhatsApp Management', desc: 'Manage your full store from WhatsApp by chatting with AI. Get instant alerts on every new order.' },
+                  { icon: Smartphone, title: 'WhatsApp Management', desc: 'Manage key store tasks from WhatsApp by chatting with AI. Get instant alerts on every new order.' },
                   { icon: Ticket, title: 'Coupons & Discounts', desc: 'Percent or fixed-amount coupons with min order amount, max uses, expiry, and per-user limits.' },
                   { icon: Truck, title: 'Shipping Control', desc: 'Configure free, standard, and express shipping methods with custom costs and delivery windows.' },
                 ]} />
@@ -412,7 +412,7 @@ function DocsPage() {
 
               {/* SELLER DASHBOARD */}
               <DocSection id="seller-guide" title="Seller Dashboard Guide" icon={Settings}>
-                <p>The seller dashboard is your command center. Open it at <code>/seller/dashboard</code> after logging in as a seller.</p>
+                <p>The seller dashboard is your command center. Open it at <code>/seller-dashboard/store-overview</code> after logging in as a seller. You can manage the store manually from the dashboard or ask the AI to handle supported tasks for you.</p>
 
                 <h3>Dashboard tabs</h3>
                 <ul>
@@ -512,12 +512,12 @@ function DocsPage() {
 
               {/* WHATSAPP INTEGRATION */}
               <DocSection id="whatsapp-integration" title="Manage Your Store via WhatsApp" icon={Smartphone}>
-                <p>Rozare brings your entire store to WhatsApp. Add products, manage orders, ask for analytics, and get instant new-order notifications — all without opening a browser.</p>
+                <p>Rozare brings key store workflows to WhatsApp. Add products, manage orders, ask for analytics, and get instant new-order notifications without opening a browser.</p>
 
                 <h3>For sellers</h3>
                 <ul>
                   <li><strong>New-order notifications</strong> — Instant WhatsApp message every time a customer places an order on one of your products.</li>
-                  <li><strong>Full AI store management</strong> — Chat with the Rozare AI on WhatsApp to add, edit, or remove products, update stock, mark orders shipped, run discounts, and more.</li>
+                  <li><strong>Supported AI store management</strong> — Chat with the Rozare AI on WhatsApp to add, edit, or remove products, update stock, mark orders shipped, run discounts, and more where supported by your role and store settings.</li>
                   <li><strong>Analytics on the go</strong> — "How many orders today?" or "What's my best seller this week?" — get answers in seconds on WhatsApp.</li>
                   <li><strong>Order confirmation automation</strong> — Customers can confirm Cash-on-Delivery orders right from WhatsApp.</li>
                 </ul>
@@ -746,7 +746,7 @@ function DocsPage() {
 
               {/* MOBILE APP */}
               <DocSection id="mobile-app" title="Rozare Mobile App" icon={Smartphone}>
-                <p>The Rozare mobile app (iOS &amp; Android, built with React Native / Expo) brings the full marketplace and seller dashboard to your phone.</p>
+                <p>The Rozare mobile app experience (iOS &amp; Android, built with React Native / Expo) brings marketplace and seller dashboard workflows to your phone.</p>
                 <h3>Mobile features</h3>
                 <ul>
                   <li>Browse products, place orders, and chat with the AI from your phone.</li>
@@ -781,25 +781,25 @@ function DocsPage() {
                 </ul>
 
                 <h3>Contact support</h3>
-                <p>Visit <a href={mainHref('/contact')} style={{ color: 'hsl(220, 70%, 65%)' }}>/contact</a> to send us a message, or open the in-app chatbot and say "I need help with…" — the AI will collect details and create a support ticket for you.</p>
+                <p>Visit <a href={mainHref('/contact')} style={{ color: 'hsl(220, 70%, 65%)' }}>/contact</a> to email support, or open the in-app chatbot and say "I need help with..." so the AI can guide you and collect details for supported complaint flows.</p>
               </DocSection>
 
               {/* FAQ */}
               <DocSection id="faq" title="Frequently Asked Questions" icon={HelpCircle}>
                 <FAQItem q="Is Rozare free for shoppers?" a="Yes. Shopping is completely free. You only pay for the products you buy. There are no membership fees." />
                 <FAQItem q="How much does it cost to sell on Rozare?" a="Every new seller gets a 15-day free trial of every feature. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro)." />
-                <FAQItem q="Can I really run my whole store from WhatsApp?" a="Yes. Once you connect your WhatsApp number in seller settings, you can chat with the Rozare AI to add products, update stock, manage orders, run discounts, pull analytics, and you'll get instant notifications for every new order." />
-                <FAQItem q="Does Rozare have a mobile app?" a="Yes. The Rozare mobile app is available for iOS and Android with full shopping, selling, AI chat, push notifications, voice search, and a polished liquid-glass design." />
+                <FAQItem q="Can I manage my store from WhatsApp?" a="Yes. Once you connect your WhatsApp number in seller settings, you can chat with the Rozare AI to handle supported tasks such as adding products, updating stock, managing orders, running discounts, and checking analytics. You can also get instant notifications for new orders." />
+                <FAQItem q="Does Rozare have a mobile app?" a="Rozare includes a React Native / Expo mobile app experience for iOS and Android with shopping, selling, AI chat, push notifications, voice search, and the same core marketplace workflows." />
                 <FAQItem q="How does the AI know about my store?" a="The AI calls secure server-side tools that read and write only your store's data. Other sellers cannot see your data, and you cannot see theirs." />
                 <FAQItem q="Is my data safe?" a="Yes. All traffic is encrypted (HTTPS). Authentication uses JWT tokens. Personal data is never sold or shared with third parties outside what's required to fulfil your order." />
                 <FAQItem q="What payment methods are available?" a="Currently Cash on Delivery and Stripe (Visa, Mastercard, Amex and more). Additional methods are added over time." />
                 <FAQItem q="What's the difference between Starter and Elite?" a="Both plans include unlimited listings, a custom subdomain, WhatsApp store management, new-order WhatsApp notifications, and the core marketplace features. Elite adds 250 AI messages/day (vs 100), the smart description generator with AI, advanced analytics, smart tag AI, coupon and bulk tools permanently, priority support, and 12 featured products (vs 6)." />
-                <FAQItem q="What happens after my 15-day free trial ends?" a="If you don't subscribe, your store and products are temporarily hidden until you subscribe — your data is preserved. Subscribe to Starter or Elite to instantly reactivate everything." />
+                <FAQItem q="What happens after my 15-day free trial ends?" a="If you don't subscribe, your store and products are temporarily hidden until you subscribe — your data is preserved. Subscribe to Starter or Elite to instantly reactivate everything, with the plan's free intro period applied when eligible." />
                 <FAQItem q="Can I cancel anytime?" a="Yes. Cancel from Seller Dashboard → Subscription. Your store stays active until the end of your current billing period." />
                 <FAQItem q="What's the maximum number of tags per product?" a="15 tags per product. Both manual entry and AI generation respect this limit." />
                 <FAQItem q="How long can my product description be?" a="Up to 2000 characters. A live counter is shown in the form." />
                 <FAQItem q="Can I sell physical and digital products?" a="Today, Rozare focuses on physical products with shipping. Digital product support may expand in the future." />
-                <FAQItem q="What makes Rozare different from other marketplaces?" a="Rozare is built around chatting with AI. You can shop or run your entire store and brand by talking — on the website, the mobile app, or WhatsApp. No other marketplace gives you a full conversational store-management AI alongside a multi-vendor shopping experience." />
+                <FAQItem q="What makes Rozare different from other marketplaces?" a="Rozare combines marketplace shopping with seller dashboard tools, AI chat, and WhatsApp workflows, so buyers can get help faster and sellers can manage supported store tasks conversationally." />
               </DocSection>
 
             </div>
@@ -807,7 +807,7 @@ function DocsPage() {
             {/* Bottom CTA */}
             <div className="mt-20 mb-8 text-center p-8 rounded-2xl" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%, 0.1), hsl(280, 60%, 55%, 0.1))', border: '1px solid hsl(220, 70%, 55%, 0.2)' }}>
               <h2 className="text-2xl font-bold mb-3" style={{ color: 'hsl(var(--foreground))' }}>Ready to Get Started?</h2>
-              <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>Join the marketplace where you can shop and run your store just by chatting with AI.</p>
+              <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>Join the marketplace where shoppers discover products and sellers manage stores with dashboard tools, AI chat, and WhatsApp.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 <a href={mainHref('/signup')} className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(280, 60%, 55%))' }}>
                   Start Shopping

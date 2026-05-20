@@ -14,7 +14,7 @@ function HomePageShell() {
     '@type': 'WebSite',
     name: 'Rozare',
     url: 'https://rozare.com',
-    description: 'Rozare — A modern online shopping marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support, best deals, discounts, and worldwide shipping.',
+    description: 'Rozare is an AI-powered marketplace where shoppers discover products and sellers manage stores through dashboard tools, AI chat, and WhatsApp.',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -50,8 +50,8 @@ function HomePageShell() {
   return (
     <>
       <SEOHead
-        title="Rozare — Shop Unique Products from Trusted Sellers"
-        description="Rozare — A modern online shopping marketplace for unique products from trusted independent sellers. Shop securely with multi-currency support, best deals, discounts, and worldwide shipping."
+        title="Rozare - AI Shopping Marketplace for Buyers & Sellers"
+        description="Rozare is an AI-powered marketplace where shoppers discover products from independent sellers and brands, while sellers manage stores through dashboard tools, AI chat, and WhatsApp."
         canonical="/"
         jsonLd={[schemaData, breadcrumbSchema]}
       />

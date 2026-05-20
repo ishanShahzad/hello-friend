@@ -395,7 +395,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.storesBannerIcon}><Ionicons name="storefront-outline" size={28} color={palette.colors.white} /></View>
           <View style={styles.storesBannerText}>
             <Text style={styles.storesBannerTitle}>Explore Our Stores</Text>
-            <Text style={styles.storesBannerSub}>Shop from verified sellers</Text>
+            <Text style={styles.storesBannerSub}>Shop from independent stores</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={22} color={palette.colors.white} />

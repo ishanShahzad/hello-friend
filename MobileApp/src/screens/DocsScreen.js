@@ -20,7 +20,7 @@ const SECTIONS = [
     id: 'what-is-rozare',
     title: 'What is Rozare?',
     icon: 'sparkles-outline',
-    body: 'Rozare is an AI-powered marketplace where you can shop and manage your entire store or brand simply by chatting with an AI assistant — through the app, the website, or WhatsApp.',
+    body: 'Rozare is an AI-powered marketplace where shoppers discover products and sellers manage stores through dashboard tools, AI chat, and WhatsApp.',
   },
   {
     id: 'ai-shopping',
@@ -68,7 +68,7 @@ const SECTIONS = [
     id: 'subscription',
     title: 'Subscription Plans',
     icon: 'diamond-outline',
-    body: 'Free 15-day trial for new sellers. Rozare Starter ($5.99/mo) covers basic selling. Rozare Elite ($12.99/mo) unlocks 250 AI messages/day, Smart Description, and full WhatsApp store management.',
+    body: 'New sellers get a 15-day free trial. Rozare Starter ($5.99/mo) includes 100 AI messages/day and a 30-day free intro when eligible. Rozare Elite ($12.99/mo) includes 250 AI messages/day, advanced AI tools, and a 45-day free intro when eligible.',
   },
   {
     id: 'payments',
@@ -104,7 +104,7 @@ const SECTIONS = [
     id: 'subdomain',
     title: 'Custom Subdomain',
     icon: 'globe-outline',
-    body: 'Sellers can claim a free yourstore.rozare.com subdomain in Subdomain Management — share it as your branded storefront.',
+    body: 'Sellers can claim a yourstore.rozare.com subdomain in Subdomain Management and share it as a branded storefront while their store is active.',
   },
   {
     id: 'notifications',
@@ -157,7 +157,7 @@ export default function DocsScreen({ navigation }) {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Text style={styles.heroText}>
-            Shop and manage your store or brand by chatting with AI — through the app or WhatsApp.
+            Shop on Rozare and manage a store or brand with dashboard tools, AI chat, and WhatsApp workflows.
           </Text>
 
           <GlassPanel variant="card" style={styles.searchCard}>
