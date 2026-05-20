@@ -408,15 +408,15 @@ export default function BecomeSeller() {
   return (
     <div className="min-h-screen py-12 px-4">
       <SEOHead
-        title="Become a Seller — Start Selling Online with a Free Trial"
-        description="Join Rozare as a seller and start with a 15-day free trial. Create your online store, list products, manage orders, track sales analytics, and run your store from the seller dashboard or by chatting with AI. After the trial, continue with Starter or Elite, each with its own free intro period."
+        title="Become a Seller for Free — Start Selling Online"
+        description="Join Rozare as a seller for free. Create your online store, list products, manage orders, track sales analytics, and use a professional seller dashboard with powerful tools plus AI chat on the website and WhatsApp."
         canonical="/become-seller"
         keywords="become a seller, sell online, start selling online, open online store, online store free trial, rozare seller, sell products online, e-commerce seller, online business, start online business, vendor registration, seller signup, seller account, sell from home, side hustle, make money online, dropshipping, sell handmade products, sell crafts online, sell electronics online, sell fashion online, online shop owner"
         jsonLd={{
             '@context': 'https://schema.org',
             '@type': 'WebPage',
             name: 'Become a Seller on Rozare',
-            description: 'Start selling on Rozare with a 15-day free trial, then continue with a Starter or Elite subscription plan.',
+            description: 'Become a seller on Rozare for free, create your online store, and manage your business with a professional dashboard, AI chat, and WhatsApp workflows.',
             url: 'https://rozare.com/become-seller',
             potentialAction: {
                 '@type': 'RegisterAction',
@@ -443,13 +443,13 @@ export default function BecomeSeller() {
             </div>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-3" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Become a Seller
+            Become a Seller for Free
           </h1>
           <p className="text-lg max-w-2xl mx-auto mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-            Use the seller dashboard for full control, or <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>manage supported store tasks by chatting with AI</span> on the app or WhatsApp.
+            Get a professional dashboard with powerful tools and <span className="font-semibold" style={{ color: 'hsl(280, 70%, 60%)' }}>manage your whole store by just chatting with AI</span> on the website or even on WhatsApp.
           </p>
           <p className="text-xl font-bold" style={{ color: 'hsl(150, 60%, 45%)' }}>
-            <Sparkles size={18} className="inline mr-1" /> Start with 15 days free, then choose Starter or Elite.
+            <Sparkles size={18} className="inline mr-1" /> Start and grow your ecommerce business for free.
           </p>
         </motion.div>
 
@@ -514,7 +514,7 @@ export default function BecomeSeller() {
               <h2 className="text-3xl font-bold mb-4">Ready to Start Selling?</h2>
               <p className="text-white/90 mb-2 max-w-2xl mx-auto text-lg">Click below to provide your details and activate your seller account!</p>
               <p className="font-semibold text-xl mb-6" style={{ color: 'hsl(45, 93%, 70%)' }}>
-                <Sparkles size={18} className="inline mr-1" /> 15-day free trial first. Starter includes 30 days free; Elite includes 45 days free.
+                <Sparkles size={18} className="inline mr-1" /> Start and grow your ecommerce business for free.
               </p>
               <motion.button onClick={handleGetStarted} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="font-bold text-lg px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-3"
