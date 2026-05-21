@@ -719,7 +719,10 @@ exports.getAllStores = async (req, res) => {
         const Product = require('../models/Product');
         const storesWithProductCount = await Promise.all(
             stores.map(async (store) => {
-                const productCount = await Product.countDocuments(publicProductFilter({ seller: store.seller._id }));
+                const sellerId = store.seller?._id || store.seller;
+                const productCount = sellerId
+                    ? await Product.countDocuments(publicProductFilter({ seller: sellerId }))
+                    : 0;
                 return {
                     ...store.toObject(),
                     productCount
@@ -1050,7 +1053,10 @@ exports.getVerifiedStores = async (req, res) => {
         const Product = require('../models/Product');
         const storesWithProductCount = await Promise.all(
             stores.map(async (store) => {
-                const productCount = await Product.countDocuments(publicProductFilter({ seller: store.seller._id }));
+                const sellerId = store.seller?._id || store.seller;
+                const productCount = sellerId
+                    ? await Product.countDocuments(publicProductFilter({ seller: sellerId }))
+                    : 0;
                 return {
                     ...store.toObject(),
                     productCount
