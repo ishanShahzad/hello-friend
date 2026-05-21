@@ -7,6 +7,7 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Loader from '../common/Loader'
+import { getMainDomainUrl, isSubdomain } from "../../utils/subdomainHelper";
 
 const CartDropdown = () => {
   const { cartItems, handleQtyInc, handleQtyDec, isOpen, dropdownRef, toggleCart, handleRemoveCartItem, isCartLoading, qtyUpdateId } = useGlobal()
@@ -23,6 +24,8 @@ const CartDropdown = () => {
   const handleGoToCheckout = () => {
     if (isEmpty) return toast.error('Your cart is empty')
   }
+
+  const mainDomainPath = (path) => (isSubdomain() ? getMainDomainUrl(path) : path)
 
   return (
     <div ref={dropdownRef}>
@@ -75,7 +78,7 @@ const CartDropdown = () => {
                     <p className="font-semibold text-lg" style={{ color: 'hsl(var(--foreground))' }}>Your cart is empty</p>
                     <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Add some products to get started</p>
                   </div>
-                  <Link to="/" onClick={toggleCart}
+                  <Link to={mainDomainPath('/')} onClick={toggleCart}
                     className="inline-flex items-center gap-2 font-semibold px-5 py-2.5 rounded-xl text-sm glow-soft"
                     style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }}>
                     Browse Products <ArrowRight size={16} />
@@ -142,7 +145,7 @@ const CartDropdown = () => {
                   <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal)}</span>
                 </div>
                 <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>Taxes & shipping calculated at checkout</p>
-                <Link to="/checkout" onClick={handleGoToCheckout}>
+                <Link to={mainDomainPath('/checkout')} onClick={handleGoToCheckout}>
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     disabled={isCartLoading}
                     className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 glow-soft transition-all cursor-pointer"

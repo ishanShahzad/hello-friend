@@ -62,8 +62,8 @@ export const isSubdomain = () => {
 export const getMainDomain = () => {
     const host = window.location.hostname;
     
-    if (host === 'localhost') {
-        return 'localhost:5173'; // or your dev port
+    if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        return `${host}${window.location.port ? `:${window.location.port}` : ''}`;
     }
     
     const parts = host.split('.');
@@ -77,9 +77,14 @@ export const getMainDomain = () => {
 };
 
 export const redirectToMainDomain = (path = '/') => {
+    window.location.href = getMainDomainUrl(path);
+};
+
+export const getMainDomainUrl = (path = '/') => {
     const mainDomain = getMainDomain();
     const protocol = window.location.protocol;
-    window.location.href = `${protocol}//${mainDomain}${path}`;
+    const safePath = path.startsWith('/') ? path : `/${path}`;
+    return `${protocol}//${mainDomain}${safePath}`;
 };
 
 export const getStoreSubdomainUrl = (storeSlug) => {
@@ -118,14 +123,20 @@ export const navigateToMainDomainPath = (path = '/') => {
     
     // If on a subdomain, redirect to main domain
     const mainDomain = getMainDomain();
-    const protocol = window.location.protocol;
-    
+
     // For localhost, just navigate normally
     if (mainDomain.includes('localhost')) {
         return null;
     }
     
     // Full redirect to main domain
-    window.location.href = `${protocol}//${mainDomain}${path}`;
+    window.location.href = getMainDomainUrl(path);
     return true; // Indicate redirect happened
+};
+
+export const isStorefrontSubdomainPath = (path = '/') => {
+    if (path === '/' || path === '') return true;
+    if (/^\/single-product\/[^/]+\/?$/.test(path)) return true;
+    if (/^\/store\/[^/]+\/?$/.test(path)) return true;
+    return false;
 };

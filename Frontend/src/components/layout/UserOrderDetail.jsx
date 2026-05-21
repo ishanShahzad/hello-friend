@@ -6,6 +6,7 @@ import { ArrowLeft, Package, XCircle, Clock, RefreshCw, Truck, CheckCircle, Cred
 import { Link, useParams } from "react-router-dom";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import Loader from "../common/Loader";
+import { getAuthToken } from "../../utils/cookieHelper";
 
 const OrderDetail = () => {
     const { formatPrice } = useCurrency();
@@ -33,7 +34,7 @@ const OrderDetail = () => {
     };
 
     const fetchOrderDetail = async () => {
-        const token = localStorage.getItem("jwtToken");
+        const token = getAuthToken();
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/order/detail/${id}`, { headers: { Authorization: `Bearer ${token}` } });
             setOrder(res.data.order);
@@ -44,7 +45,7 @@ const OrderDetail = () => {
 
     const handleStatusUpdate = async () => {
         try {
-            const token = localStorage.getItem("jwtToken");
+            const token = getAuthToken();
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/order/update-status/${order?._id}`, { newStatus }, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.msg || "Updated status successfully.");
             fetchOrderDetail();
@@ -54,7 +55,7 @@ const OrderDetail = () => {
 
     const handleCancelOrder = async () => {
         try {
-            const token = localStorage.getItem("jwtToken");
+            const token = getAuthToken();
             const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/order/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
             // Use the response order directly for immediate UI update
             if (res.data?.order) {

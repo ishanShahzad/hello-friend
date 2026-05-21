@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
 import { motion, AnimatePresence } from 'framer-motion';
+import { setCrossDomainCookie } from '../../utils/cookieHelper';
 
 const GlassSignUpPage = () => {
   const [step, setStep] = useState(1);
@@ -46,6 +47,7 @@ const GlassSignUpPage = () => {
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/auth/verify-otp`, { email: form.email, otp });
       localStorage.setItem("jwtToken", res.data.token);
+      setCrossDomainCookie('rozare_jwt_token', res.data.token, 30);
       localStorage.setItem("currentUser", JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
       toast.success(res.data.msg);

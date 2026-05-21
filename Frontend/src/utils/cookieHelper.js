@@ -1,5 +1,37 @@
 // Cookie helper functions for cross-subdomain data storage
 
+const AUTH_TOKEN_COOKIE = 'rozare_jwt_token';
+const CURRENT_USER_KEY = 'currentUser';
+const AUTH_LOGOUT_COOKIE = 'rozare_auth_logged_out_at';
+
+const getCookieDomain = () => {
+    const host = window.location.hostname;
+
+    if (host.includes('rozare.com')) {
+        return '.rozare.com';
+    }
+
+    if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        return '';
+    }
+
+    const parts = host.split('.');
+    if (parts.length >= 2) {
+        return `.${parts.slice(-2).join('.')}`;
+    }
+
+    return '';
+};
+
+const buildCookieAttributes = (days, includeDomain = true) => {
+    const domainValue = includeDomain ? getCookieDomain() : '';
+    const domain = domainValue ? `; domain=${domainValue}` : '';
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    return `${domain}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${secure}`;
+};
+
 /**
  * Set a cookie that works across all subdomains
  * @param {string} name - Cookie name
@@ -8,29 +40,11 @@
  */
 export const setCrossDomainCookie = (name, value, days = 30) => {
     try {
-        const host = window.location.hostname;
-        let domain = '';
-        
-        // For production (rozare.com and subdomains)
-        if (host.includes('rozare.com')) {
-            domain = '; domain=.rozare.com';
+        if (name === AUTH_TOKEN_COOKIE && value) {
+            clearAuthLogoutMarker();
         }
-        // For localhost, don't set domain (cookies work on localhost without domain)
-        else if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-            domain = '';
-        }
-        // For other domains (vercel, etc.), use the root domain
-        else {
-            const parts = host.split('.');
-            if (parts.length >= 2) {
-                domain = `; domain=.${parts.slice(-2).join('.')}`;
-            }
-        }
-        
-        const expires = new Date();
-        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-        
-        document.cookie = `${name}=${encodeURIComponent(value)}${domain}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+
+        document.cookie = `${name}=${encodeURIComponent(value)}${buildCookieAttributes(days)}`;
     } catch (error) {
         console.error('Error setting cookie:', error);
     }
@@ -65,22 +79,29 @@ export const getCookie = (name) => {
  */
 export const deleteCookie = (name) => {
     try {
-        const host = window.location.hostname;
-        let domain = '';
-        
-        if (host.includes('rozare.com')) {
-            domain = '; domain=.rozare.com';
-        } else if (host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-            const parts = host.split('.');
-            if (parts.length >= 2) {
-                domain = `; domain=.${parts.slice(-2).join('.')}`;
-            }
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        const domainValue = getCookieDomain();
+        const domain = domainValue ? `; domain=${domainValue}` : '';
+
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${secure}`;
+        if (domain) {
+            document.cookie = `${name}=;${domain}; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${secure}`;
         }
-        
-        document.cookie = `${name}=''${domain}; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     } catch (error) {
         console.error('Error deleting cookie:', error);
     }
+};
+
+export const markAuthLoggedOut = () => {
+    setCrossDomainCookie(AUTH_LOGOUT_COOKIE, String(Date.now()), 30);
+};
+
+export const clearAuthLogoutMarker = () => {
+    deleteCookie(AUTH_LOGOUT_COOKIE);
+};
+
+export const hasAuthLogoutMarker = () => {
+    return Boolean(getCookie(AUTH_LOGOUT_COOKIE));
 };
 
 /**
@@ -106,20 +127,26 @@ export const migrateLocalStorageToCookie = (localStorageKey, cookieName) => {
  * @returns {string|null} - JWT token or null if not found
  */
 export const getAuthToken = () => {
-    const JWT_TOKEN_COOKIE = 'rozare_jwt_token';
     const JWT_TOKEN_KEY = 'jwtToken';
     
     // Try cookie first (new method - works across subdomains)
-    const cookieToken = getCookie(JWT_TOKEN_COOKIE);
+    const cookieToken = getCookie(AUTH_TOKEN_COOKIE);
     if (cookieToken) {
         return cookieToken;
+    }
+
+    // If the shared logout marker exists, never revive a stale per-subdomain localStorage token.
+    if (hasAuthLogoutMarker()) {
+        localStorage.removeItem(JWT_TOKEN_KEY);
+        localStorage.removeItem(CURRENT_USER_KEY);
+        return null;
     }
     
     // Fallback to localStorage (old method) and migrate
     const localToken = localStorage.getItem(JWT_TOKEN_KEY);
     if (localToken) {
         // Migrate to cookie for future use
-        setCrossDomainCookie(JWT_TOKEN_COOKIE, localToken, 30);
+        setCrossDomainCookie(AUTH_TOKEN_COOKIE, localToken, 30);
         return localToken;
     }
     

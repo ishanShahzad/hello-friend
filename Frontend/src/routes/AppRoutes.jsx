@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react'
-import { Route, Routes, useNavigate, Navigate } from 'react-router-dom'
+import { Route, Routes, useNavigate, Navigate, useLocation } from 'react-router-dom'
 import MainLayoutPage from '../pages/MainLayoutPage'
 import Products from '../components/Products'
 import ProtectedRoute from '../components/common/ProtectedRoute'
 import Loader from '../components/common/Loader'
+import { getMainDomainUrl, isStorefrontSubdomainPath } from '../utils/subdomainHelper'
 
 // CRITICAL (eager): home grid + layout shell are above-the-fold for the LCP.
 // Everything else is code-split so the initial JS bundle stays small.
@@ -94,6 +95,18 @@ const SuspenseFallback = () => (
 
 function AppRoutes({ subdomainSlug = null }) {
     const navigate = useNavigate()
+    const location = useLocation()
+    const shouldLeaveSubdomain = Boolean(subdomainSlug) && !isStorefrontSubdomainPath(location.pathname)
+
+    React.useEffect(() => {
+        if (!shouldLeaveSubdomain) return;
+        const targetPath = `${location.pathname}${location.search}${location.hash}`;
+        window.location.replace(getMainDomainUrl(targetPath));
+    }, [shouldLeaveSubdomain, location.pathname, location.search, location.hash]);
+
+    if (shouldLeaveSubdomain) {
+        return <SuspenseFallback />;
+    }
 
     return (
         <Suspense fallback={<SuspenseFallback />}>

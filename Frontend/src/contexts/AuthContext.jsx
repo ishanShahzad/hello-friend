@@ -4,7 +4,15 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useGlobal } from "./GlobalContext";
-import { setCrossDomainCookie, getCookie, deleteCookie } from "../utils/cookieHelper";
+import {
+    setCrossDomainCookie,
+    getCookie,
+    deleteCookie,
+    markAuthLoggedOut,
+    clearAuthLogoutMarker,
+    hasAuthLogoutMarker,
+} from "../utils/cookieHelper";
+import { isSubdomain, navigateToMainDomainPath } from "../utils/subdomainHelper";
 
 const AuthContext = createContext();
 
@@ -20,7 +28,13 @@ const getJwtToken = () => {
     if (cookieToken) {
         return cookieToken;
     }
-    
+
+    if (hasAuthLogoutMarker()) {
+        localStorage.removeItem(JWT_TOKEN_KEY);
+        localStorage.removeItem(CURRENT_USER_KEY);
+        return null;
+    }
+
     // Fallback to localStorage (old method) and migrate
     const localToken = localStorage.getItem(JWT_TOKEN_KEY);
     if (localToken) {
@@ -28,11 +42,12 @@ const getJwtToken = () => {
         setJwtToken(localToken);
         return localToken;
     }
-    
+
     return null;
 };
 
 const setJwtToken = (token) => {
+    clearAuthLogoutMarker();
     // Save to cookie (primary storage)
     setCrossDomainCookie(JWT_TOKEN_COOKIE, token, 30);
     // Also save to localStorage as backup
@@ -42,10 +57,16 @@ const setJwtToken = (token) => {
 const removeJwtToken = () => {
     deleteCookie(JWT_TOKEN_COOKIE);
     localStorage.removeItem(JWT_TOKEN_KEY);
+    markAuthLoggedOut();
 };
 
 // Helper functions for current user storage
 const getCurrentUserFromStorage = () => {
+    if (hasAuthLogoutMarker() && !getCookie(JWT_TOKEN_COOKIE)) {
+        localStorage.removeItem(CURRENT_USER_KEY);
+        return null;
+    }
+
     // Try cookie first
     const cookieUser = getCookie(CURRENT_USER_COOKIE);
     if (cookieUser && cookieUser !== 'undefined' && cookieUser !== 'null') {
@@ -114,7 +135,13 @@ export const AuthProvider = ({ children }) => {
             )
             setCurrentUser(res.data?.user)
         } catch (error) {
-            // Only log error if it's not a 403 (unauthorized)
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                removeJwtToken();
+                removeCurrentUserFromStorage();
+                setCurrentUser(null);
+                return;
+            }
+            // Only log unexpected errors.
             if (error.response?.status !== 403) {
                 console.error(error);
             }
@@ -124,6 +151,23 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         fetchAndUpdateCurrentUser()
     }, [])
+
+    useEffect(() => {
+        const syncAuthState = () => {
+            const token = getJwtToken();
+            if (!token && currentUser) {
+                removeCurrentUserFromStorage();
+                setCurrentUser(null);
+            }
+        };
+
+        window.addEventListener('focus', syncAuthState);
+        document.addEventListener('visibilitychange', syncAuthState);
+        return () => {
+            window.removeEventListener('focus', syncAuthState);
+            document.removeEventListener('visibilitychange', syncAuthState);
+        };
+    }, [currentUser]);
     
     useEffect(() => {
         if (currentUser) {
@@ -173,9 +217,14 @@ export const AuthProvider = ({ children }) => {
     // ✅ LOGOUT FUNCTION
     const logout = () => {
         removeJwtToken();
+        removeCurrentUserFromStorage();
         setCurrentUser(null);
         toast.info("Logged out successfully");
-        navigate('/')
+        if (isSubdomain()) {
+            navigateToMainDomainPath('/');
+        } else {
+            navigate('/');
+        }
     };
 
     // Memoize context value to prevent unnecessary re-renders

@@ -73,7 +73,7 @@ const NavDropdown = () => {
     }
     menuItems.push(
         { divider: true },
-        { label: (<span onClick={logout} className="flex items-center gap-2 w-full"><LogOutIcon size={20} /> Logout</span>) }
+        { label: "Logout", icon: <LogOutIcon size={20} />, onClick: () => { setOpen(false); logout(); } }
     );
 
     const dropdownMenu = (
