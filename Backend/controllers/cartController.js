@@ -2,6 +2,7 @@
 const users = require('../models/User')
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
+const { isProductBlocked, publicProductFilter } = require('../services/productModerationService');
 
 // Stable string key for an option set, used to dedupe cart lines per variant combo
 const optionsKey = (opts) => {
@@ -17,6 +18,11 @@ exports.addToCart = async (req, res) => {
     const incomingKey = optionsKey(selectedOptions);
 
     try {
+        const product = await Product.findOne(publicProductFilter({ _id: id })).select('_id stock').lean();
+        if (!product) {
+            return res.status(404).json({ msg: 'Product is not available' });
+        }
+
         const existingCart = await Cart.findOne({ user: userId })
 
         if (existingCart) {
@@ -75,8 +81,8 @@ exports.getCart = async (req, res) => {
 
         await userCart.populate('cartItems.product')
         
-        // Filter out items with null products (deleted products)
-        const validCartItems = userCart.cartItems.filter(item => item.product !== null);
+        // Filter out items with null/deleted/blocked products
+        const validCartItems = userCart.cartItems.filter(item => item.product !== null && !isProductBlocked(item.product));
         
         // If items were removed, update the cart
         if (validCartItems.length !== userCart.cartItems.length) {
@@ -183,4 +189,4 @@ exports.clearCart = async (req, res) => {
         console.error('Error clearing cart:', error.message);
         res.status(500).json({ msg: ' Failed to clear cart' });
     }
-} 
+}

@@ -16,6 +16,7 @@ const User = require('../models/User');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
+const { publicProductFilter } = require('../services/productModerationService');
 
 const toId = (value) => value?.toString?.() || String(value || '');
 
@@ -175,7 +176,11 @@ exports.placeOrder = async (req, res) => {
         const productQtys = order.orderItems.map(item => item.quantity)
         // console.log(productIds);
         // return
-        const orderItems = await Product.find({ _id: { $in: productIds } })
+        const orderItems = await Product.find(publicProductFilter({ _id: { $in: productIds } }))
+        const uniqueProductIds = [...new Set(productIds.map(toId).filter(Boolean))];
+        if (orderItems.length !== uniqueProductIds.length) {
+            return res.status(400).json({ msg: 'One or more products in this order are no longer available.' });
+        }
 
         // Calculate subtotal from frontend prices
         const subtotal = order.orderItems.reduce((acc, item) => {

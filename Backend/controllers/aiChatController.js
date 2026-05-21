@@ -20,6 +20,7 @@ const Product = require('../models/Product');
 const Store = require('../models/Store');
 const ChatHistory = require('../models/ChatHistory');
 const { executeToolCall, isClientSideTool, storeChangeLimits } = require('../services/aiActionExecutor');
+const { publicProductFilter } = require('../services/productModerationService');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -201,6 +202,7 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 - Web chat image uploads arrive as hidden text like [Attached product image: https://...]. Treat that URL as a provided product image. Use it in add_product or edit_product only when the seller's intent connects it to a product; if the seller only sends an image with no context, ask which product it belongs to. Never echo the raw URL back to the seller.
 - Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add an image, colors, sizes, or other options. On web they can attach an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
 - If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
+- If add_product or edit_product says a product is blocked, be direct: the item is saved in Products but customers cannot see it because it looks like test/placeholder content. Ask the seller to edit the real product name and description; do not claim it is live.
 - Product IDs are internal. Do not ask sellers to provide product IDs and do not show raw product IDs unless the seller specifically asks for them. Use product names, brand, price, stock, created order, and "latest/oldest" wording to identify products.
 - To delete products, confirm first, then use delete_product with productName/productNames or internal productIds found from list_my_products. If multiple products match and the seller says "delete them/all matching", pass deleteAllMatches: true.
 - To feature or unfeature a product, use feature_product. Do not say this capability is missing.
@@ -1818,7 +1820,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       // Special handling for send_product_image in WhatsApp mode
       if (toolName === 'send_product_image' && isWhatsApp) {
         try {
-          const product = await Product.findById(args.productId).select('name image images price discountedPrice stock').lean();
+          const product = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice stock').lean();
           const imageUrl = product?.image || product?.images?.[0]?.url || product?.images?.[0];
           if (!product || !imageUrl) {
             conversationMessages.push({

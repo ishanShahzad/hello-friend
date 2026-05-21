@@ -1,6 +1,12 @@
 // const { default: Fuse } = require("fuse.js")
 const Product = require("../models/Product")
 const Fuse = require('fuse.js')
+const {
+    buildModerationFields,
+    isProductBlocked,
+    notifyProductBlocked,
+    publicProductFilter,
+} = require('../services/productModerationService')
 
 /**
  * Calculate relevance score for product ranking
@@ -211,7 +217,7 @@ exports.getProducts = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     try {
-        let query = {}
+        let query = publicProductFilter()
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
         if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
         if (priceRange) {
@@ -295,6 +301,9 @@ exports.getSingleProduct = async (req, res) => {
         if (!singleProduct) {
             return res.status(404).json({ msg: 'Product not found' });
         }
+        if (isProductBlocked(singleProduct)) {
+            return res.status(404).json({ msg: 'Product not available' });
+        }
 
         // Check if seller's store is active (hide products from blocked sellers)
         if (singleProduct.seller) {
@@ -325,12 +334,12 @@ exports.getFilters = async (req, res) => {
             .populate('seller', '_id')
             .lean();
         const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
-        const productScope = {
+        const productScope = publicProductFilter({
             $or: [
                 { seller: null },
                 { seller: { $in: activeSellerIds } },
             ],
-        };
+        });
 
         const [categories, brands] = await Promise.all([
             Product.distinct('category', productScope),
@@ -358,6 +367,9 @@ exports.addReview = async (req, res) => {
 
     try {
         const product = await Product.findById(prodId)
+        if (!product || isProductBlocked(product)) {
+            return res.status(404).json({ msg: 'Product not available' })
+        }
 
         product.reviews.push({
             user: userId,
@@ -459,7 +471,7 @@ async function sellerCanFeatureProduct(userId, excludeProductId = null) {
         const max = FEATURED_LIMITS[plan] || FEATURED_LIMITS.free_trial;
 
         // Count current featured products for this seller
-        const query = { seller: userId, isFeatured: true };
+        const query = publicProductFilter({ seller: userId, isFeatured: true });
         if (excludeProductId) {
             query._id = { $ne: excludeProductId };
         }
@@ -514,24 +526,50 @@ exports.editProduct = async (req, res) => {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
+        const safeProduct = { ...product };
+
         // Gate: enforce featured product limits based on subscription tier.
-        if (role === 'seller' && product && product.isFeatured === true) {
+        if (role === 'seller' && safeProduct && safeProduct.isFeatured === true) {
             // Exclude this product from the count (since we're editing it)
             const featCheck = await sellerCanFeatureProduct(userId, id);
             if (!featCheck.allowed) {
                 if (featCheck.reason === 'limit_reached') {
                     return res.status(403).json({ msg: `You've reached your featured product limit (${featCheck.max}). Upgrade your plan to feature more products.`, featuredStats: featCheck });
                 }
-                product.isFeatured = false;
+                safeProduct.isFeatured = false;
             }
         }
-        
+
+        const wasBlocked = isProductBlocked(existingProduct);
+        const mergedProduct = {
+            ...existingProduct.toObject(),
+            ...safeProduct,
+        };
+        const { fields: moderationFields } = buildModerationFields(mergedProduct);
+        Object.assign(safeProduct, moderationFields);
+
         const updatedProduct = await Product.findByIdAndUpdate(id,
-            { $set: product },
+            { $set: safeProduct },
             { new: true, runValidators: true }
         )
 
-        res.status(200).json({ msg: 'Product updated successfully.' })
+        if (isProductBlocked(updatedProduct) && !wasBlocked) {
+            notifyProductBlocked({ sellerId: updatedProduct.seller, product: updatedProduct }).catch(err =>
+                console.error('[productController] product blocked notification failed:', err.message)
+            );
+        }
+
+        const msg = isProductBlocked(updatedProduct)
+            ? `Product updated, but it is blocked because ${updatedProduct.blockedReason || updatedProduct.moderationReason}. Customers cannot see it until it has real product details.`
+            : wasBlocked
+                ? 'Product updated successfully. It is available to customers again.'
+                : 'Product updated successfully.';
+
+        res.status(200).json({
+            msg,
+            blocked: isProductBlocked(updatedProduct),
+            moderationReason: updatedProduct.moderationReason || updatedProduct.blockedReason || '',
+        })
 
     } catch (error) {
         console.error(error.message);
@@ -579,12 +617,25 @@ exports.addProduct = async (req, res) => {
             }
         }
 
+        const { fields: moderationFields } = buildModerationFields(safeProduct);
         const newProduct = new Product({
             ...safeProduct,
+            ...moderationFields,
             seller: role === 'seller' ? userId : null // Only set seller for seller role
         })
         await newProduct.save()
-        res.status(200).json({ msg: 'Product added successfully.' })
+        if (isProductBlocked(newProduct)) {
+            await notifyProductBlocked({ sellerId: newProduct.seller, product: newProduct });
+        }
+
+        res.status(200).json({
+            msg: isProductBlocked(newProduct)
+                ? `Product added, but it was blocked because ${newProduct.blockedReason || newProduct.moderationReason}. Customers cannot see it until you edit it with real product details.`
+                : 'Product added successfully.',
+            product: newProduct,
+            blocked: isProductBlocked(newProduct),
+            moderationReason: newProduct.moderationReason || newProduct.blockedReason || '',
+        })
 
     } catch (error) {
         console.error(error.message);

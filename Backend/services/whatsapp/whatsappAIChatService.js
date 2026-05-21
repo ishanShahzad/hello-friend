@@ -208,6 +208,7 @@ function formatToolActivitySummary(toolResults = [], clientActions = []) {
         let label = TOOL_ACTIVITY_LABELS[event.name] || event.name.replace(/_/g, ' ');
         if (event.name === 'update_store' && event.result?.blocked) label = 'checked store change eligibility';
         if (event.name === 'add_product' && event.result?.duplicate) label = 'blocked a duplicate product';
+        if (event.name === 'add_product' && event.result?.blocked && !event.result?.duplicate) label = 'blocked a test product';
         if (event.name === 'delete_product' && event.result?.blocked) label = 'checked matching products';
         if (event.name === 'feature_product' && event.result?.blocked) label = 'checked featured product eligibility';
         if (event.result?.success === false && !event.result?.blocked) label = `action failed: ${label}`;
@@ -227,7 +228,9 @@ function summarizeToolEventsForMemory(toolEvents = []) {
         const result = event.result || {};
         const data = result.data || {};
 
-        if (tool === 'add_product' && result.success && data.productId) {
+        if (tool === 'add_product' && result.success && result.blocked && data.productId) {
+            lines.push(`[Tool memory: add_product saved but blocked. productId=${data.productId}; name="${data.name || ''}"; reason="${data.moderationReason || result.message || ''}". Tell the seller it is blocked and ask them to edit the real product details; do not add it again.]`);
+        } else if (tool === 'add_product' && result.success && data.productId) {
             lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless the seller explicitly asks for a duplicate.]`);
         } else if (tool === 'edit_product' && result.success && (data._id || data.productId)) {
             lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}". Continue editing this product if the seller gives more details.]`);
@@ -236,7 +239,7 @@ function summarizeToolEventsForMemory(toolEvents = []) {
         } else if (tool === 'delete_product' && result.success && Array.isArray(data.deleted)) {
             lines.push(`[Tool memory: delete_product succeeded. Deleted products: ${data.deleted.map(p => `${p.productId || p._id}:${p.name}`).join(', ')}.]`);
         } else if (tool === 'list_my_products' && result.success && Array.isArray(data.products)) {
-            const products = data.products.slice(0, 10).map(p => `${p._id || p.productId}:${p.name}; brand=${p.brand || ''}; price=${p.price ?? ''}; stock=${p.stock ?? ''}; featured=${p.isFeatured === true}; createdAt=${p.createdAt || ''}`);
+            const products = data.products.slice(0, 10).map(p => `${p._id || p.productId}:${p.name}; brand=${p.brand || ''}; price=${p.price ?? ''}; stock=${p.stock ?? ''}; featured=${p.isFeatured === true}; blocked=${p.blocked === true || p.isBlocked === true || p.moderationStatus === 'blocked'}; createdAt=${p.createdAt || ''}`);
             lines.push(`[Tool memory: list_my_products returned ${data.total ?? data.products.length} products. Internal product lookup: ${products.join(' | ')}. Use these ids internally only; do not show or ask the seller for product IDs.]`);
         } else if (tool === 'search_products' && result.success && Array.isArray(data.products)) {
             const products = data.products.slice(0, 12).map(p => `${p._id || p.productId}:${p.name}; store=${p.storeName || ''}; slug=${p.storeSlug || ''}; price=${p.discountedPrice || p.price || ''}; stock=${p.stock ?? ''}; colors=${JSON.stringify(p.colors || [])}; options=${JSON.stringify(p.optionGroups || [])}`);

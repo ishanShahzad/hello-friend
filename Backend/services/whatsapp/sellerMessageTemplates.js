@@ -60,6 +60,10 @@ const templates = {
         return `🚫 *Store Blocked*\n\nYour store has been blocked${reason ? `: ${reason}` : ''}.\n\nCustomers can no longer see your products. Subscribe or contact support to reactivate.`;
     },
 
+    product_blocked: (productName, reason) => {
+        return `*Product Blocked*\n\n"${productName || 'Your product'}" was blocked because ${reason || 'it looks like test or placeholder content'}.\n\nIt is saved in your Products tab as blocked, but customers cannot see it. Edit it with a real product name and description to make it available again.`;
+    },
+
     // ── Bonus ──
     bonus_expiring: (daysLeft) => {
         return `⏳ *Bonus Features Expiring*\n\nYour bonus features expire in *${daysLeft} day${daysLeft !== 1 ? 's' : ''}*.\n\nUpgrade to Rozare Elite ($12.99/mo) to keep them permanently.`;

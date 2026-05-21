@@ -3,6 +3,7 @@ const Store = require('../models/Store');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const { publicProductFilter } = require('../services/productModerationService');
 
 // Get store data for subdomain
 exports.getSubdomainStore = async (req, res) => {
@@ -42,7 +43,7 @@ exports.getSubdomainProducts = async (req, res) => {
         const store = req.subdomainStore;
 
         // Build query for products
-        let query = { seller: store.seller };
+        let query = publicProductFilter({ seller: store.seller });
 
         // Apply filters
         if (categories) {

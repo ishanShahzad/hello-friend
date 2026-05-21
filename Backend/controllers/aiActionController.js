@@ -6,6 +6,12 @@ const Complaint = require('../models/Complaint');
 const TaxConfig = require('../models/TaxConfig');
 const ShippingMethod = require('../models/ShippingMethod');
 const AIRateLimit = require('../models/AIRateLimit');
+const {
+    buildModerationFields,
+    isProductBlocked,
+    notifyProductBlocked,
+    publicProductFilter,
+} = require('../services/productModerationService');
 
 // Helper: get today's date string
 const getToday = () => new Date().toISOString().split('T')[0];
@@ -164,9 +170,20 @@ exports.addProduct = async (req, res) => {
             return res.status(400).json({ msg: `Missing required fields: ${missing.join(', ')}`, missingFields: missing });
         }
 
-        const newProduct = new Product({ ...product, seller: role === 'seller' ? userId : null });
+        const productData = { ...product, seller: role === 'seller' ? userId : null };
+        const { fields: moderationFields } = buildModerationFields(productData);
+        const newProduct = new Product({ ...productData, ...moderationFields });
         await newProduct.save();
-        res.json({ msg: 'Product added successfully', product: { _id: newProduct._id, name: newProduct.name, price: newProduct.price } });
+        if (isProductBlocked(newProduct)) {
+            await notifyProductBlocked({ sellerId: newProduct.seller, product: newProduct });
+        }
+        res.json({
+            msg: isProductBlocked(newProduct)
+                ? `Product added, but it was blocked because ${newProduct.blockedReason || newProduct.moderationReason}.`
+                : 'Product added successfully',
+            blocked: isProductBlocked(newProduct),
+            product: { _id: newProduct._id, name: newProduct.name, price: newProduct.price, blocked: isProductBlocked(newProduct), moderationReason: newProduct.moderationReason },
+        });
     } catch (error) {
         console.error('AI add product error:', error);
         res.status(500).json({ msg: 'Server error while adding product' });
@@ -183,9 +200,22 @@ exports.editProduct = async (req, res) => {
         if (!product) return res.status(404).json({ msg: 'Product not found' });
         if (role === 'seller' && product.seller?.toString() !== userId) return res.status(403).json({ msg: 'You can only edit your own products' });
 
+        const wasBlocked = isProductBlocked(product);
         Object.assign(product, updates);
+        const { fields: moderationFields } = buildModerationFields(product.toObject());
+        Object.assign(product, moderationFields);
         await product.save();
-        res.json({ msg: `Product "${product.name}" updated successfully` });
+        if (isProductBlocked(product) && !wasBlocked) {
+            notifyProductBlocked({ sellerId: product.seller, product }).catch(err =>
+                console.error('[aiActionController] product blocked notification failed:', err.message)
+            );
+        }
+        res.json({
+            msg: isProductBlocked(product)
+                ? `Product "${product.name}" updated, but it is blocked because ${product.blockedReason || product.moderationReason}.`
+                : `Product "${product.name}" updated successfully`,
+            blocked: isProductBlocked(product),
+        });
     } catch (error) {
         console.error('AI edit product error:', error);
         res.status(500).json({ msg: 'Server error' });
@@ -226,7 +256,7 @@ exports.listMyProducts = async (req, res) => {
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const products = await Product.find(query).skip(skip).limit(parseInt(limit)).select('name price stock category brand discountedPrice image');
+        const products = await Product.find(query).skip(skip).limit(parseInt(limit)).select('name price stock category brand discountedPrice image isBlocked blockedReason moderationStatus moderationReason');
         const total = await Product.countDocuments(query);
 
         res.json({ products, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
@@ -359,7 +389,7 @@ exports.getSellerOrders = async (req, res) => {
     try {
         if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
 
-        let query = {};
+        let query = publicProductFilter();
         if (status) query.orderStatus = status;
 
         if (role === 'seller') {
@@ -513,7 +543,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         if (userRole !== 'admin') return res.status(403).json({ msg: 'Admin access only' });
 
-        let query = {};
+        let query = publicProductFilter();
         if (role) query.role = role;
         if (status) query.status = status;
         if (search) {
@@ -900,15 +930,19 @@ exports.searchProducts = async (req, res) => {
 
 exports.getWishlist = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('wishlist', 'name price discountedPrice image category brand stock');
+        const user = await User.findById(req.user.id).populate({
+            path: 'wishlist',
+            match: publicProductFilter(),
+            select: 'name price discountedPrice image category brand stock',
+        });
         if (!user) return res.status(404).json({ msg: 'User not found' });
         res.json({ 
-            wishlist: (user.wishlist || []).map(p => ({
+            wishlist: (user.wishlist || []).filter(Boolean).map(p => ({
                 _id: p._id, name: p.name, price: p.price, 
                 discountedPrice: p.discountedPrice, image: p.image,
                 category: p.category, brand: p.brand, inStock: p.stock > 0
             })),
-            count: (user.wishlist || []).length
+            count: (user.wishlist || []).filter(Boolean).length
         });
     } catch (error) {
         console.error('AI get wishlist error:', error);
@@ -919,7 +953,7 @@ exports.getWishlist = async (req, res) => {
 exports.addToWishlist = async (req, res) => {
     const { productId } = req.body;
     try {
-        const product = await Product.findById(productId);
+        const product = await Product.findOne(publicProductFilter({ _id: productId }));
         if (!product) return res.status(404).json({ msg: 'Product not found' });
         
         const user = await User.findById(req.user.id);

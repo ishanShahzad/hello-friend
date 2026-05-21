@@ -1,5 +1,6 @@
 const ShippingMethod = require('../models/ShippingMethod');
 const Product = require('../models/Product');
+const { publicProductFilter } = require('../services/productModerationService');
 
 // Get shipping methods for a specific seller
 const getSellerShippingMethods = async (req, res) => {
@@ -127,7 +128,7 @@ const getShippingMethodsForCart = async (req, res) => {
     
     // Extract unique seller IDs from cart items
     const productIds = cartItems.map(item => item.productId || item.product?._id);
-    const products = await Product.find({ _id: { $in: productIds } }).select('seller');
+    const products = await Product.find(publicProductFilter({ _id: { $in: productIds } })).select('seller');
     
     const sellerIds = [...new Set(products.map(p => p.seller.toString()))];
     

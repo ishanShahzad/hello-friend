@@ -37,6 +37,12 @@ const { sellerHasWhatsAppVerify } = require('../controllers/subscriptionControll
 const { enqueueOrderConfirmation } = require('./whatsapp/queue');
 const { notifySeller } = require('./whatsapp/sellerNotificationService');
 const sellerTemplates = require('./whatsapp/sellerMessageTemplates');
+const {
+  buildModerationFields,
+  isProductBlocked,
+  notifyProductBlocked,
+  publicProductFilter,
+} = require('./productModerationService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -346,7 +352,7 @@ function productLookupBaseFilter(role, userId, args = {}) {
 
 async function resolveProductCandidates({ role, userId, args = {}, productId, productIds, productName, productNames, excludeProductId, keepProductId }) {
   const filter = productLookupBaseFilter(role, userId, args);
-  const productCandidateSelect = 'name brand price stock category isFeatured createdAt updatedAt tags description';
+  const productCandidateSelect = 'name brand price stock category isFeatured isBlocked blockedReason moderationStatus moderationReason createdAt updatedAt tags description';
   const ids = [
     ...(Array.isArray(productIds) ? productIds : []),
     ...(productId ? [productId] : []),
@@ -409,6 +415,8 @@ function formatProductCandidate(product) {
     stock: product.stock,
     category: product.category,
     isFeatured: !!product.isFeatured,
+    blocked: isProductBlocked(product),
+    moderationReason: product.moderationReason || product.blockedReason || '',
     createdAt: product.createdAt,
   };
 }
@@ -861,7 +869,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const { query, category, minPrice, maxPrice, sortBy, brand, limit } = args;
         
         // Use smart search with synonym expansion
-        const filter = buildSmartSearchFilter(query, category);
+        const filter = publicProductFilter(buildSmartSearchFilter(query, category));
         const storeScope = await resolveStoreScope(args);
         if (storeScope.notFound) {
           return {
@@ -910,7 +918,7 @@ async function executeToolCall(toolName, args = {}, user) {
         products = await hydrateStoresForProducts(products);
 
         if (products.length === 0 && query) {
-          const fuzzyFilter = { ...(storeScope.filter || {}) };
+          const fuzzyFilter = publicProductFilter({ ...(storeScope.filter || {}) });
           if (category) fuzzyFilter.category = { $regex: escapeRegExp(category), $options: 'i' };
           if (brand) fuzzyFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fuzzyFilter.stock = { $gt: 0 };
@@ -932,7 +940,7 @@ async function executeToolCall(toolName, args = {}, user) {
         // If no results and we have a query, try a broader fallback: sort by popularity
         if (products.length === 0 && query) {
           // Fallback: return popular/recent products when search yields nothing
-          const fallbackFilter = { ...(storeScope.filter || {}) };
+          const fallbackFilter = publicProductFilter({ ...(storeScope.filter || {}) });
           if (category) fallbackFilter.category = { $regex: category, $options: 'i' };
           if (brand) fallbackFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fallbackFilter.stock = { $gt: 0 };
@@ -1184,10 +1192,14 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'get_wishlist': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const user = await User.findById(userId)
-          .populate('wishlist', 'name price discountedPrice image category rating stock')
+          .populate({
+            path: 'wishlist',
+            match: publicProductFilter(),
+            select: 'name price discountedPrice image category rating stock',
+          })
           .lean();
 
-        const items = (user?.wishlist || []).map(p => ({
+        const items = (user?.wishlist || []).filter(Boolean).map(p => ({
           _id: p._id,
           name: p.name,
           price: p.price,
@@ -1211,7 +1223,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const { productId } = args;
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
-        const product = await Product.findById(toId(productId)).select('name').lean();
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name').lean();
         if (!product) return { success: false, error: 'Product not found.' };
 
         await User.findByIdAndUpdate(userId, { $addToSet: { wishlist: productId } });
@@ -1355,7 +1367,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const { productId } = args;
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
-        const product = await Product.findById(toId(productId))
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) }))
           .populate('seller', 'username')
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
@@ -1394,7 +1406,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const { productId, caption } = args;
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
-        const product = await Product.findById(toId(productId))
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) }))
           .select('name image images price discountedPrice stock')
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
@@ -1404,6 +1416,7 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
+          blocked: isProductBlocked(product),
           data: {
             productId: product._id,
             name: product.name,
@@ -1448,7 +1461,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const quantity = parseQuantity(args.quantity, 1);
         if (!quantity) return { success: false, error: 'Please provide a valid quantity of at least 1.' };
 
-        const product = await Product.findById(toId(productId)).select('name price discountedPrice stock image colors optionGroups').lean();
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name price discountedPrice stock image colors optionGroups').lean();
         if (!product) return { success: false, error: 'Product not found.' };
         if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
         if (quantity > product.stock) return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
@@ -1515,7 +1528,7 @@ async function executeToolCall(toolName, args = {}, user) {
           return { success: true, data: { items: [], total: 0 }, message: 'Your cart is empty. Start shopping! 🛍️' };
         }
 
-        const items = cart.cartItems.filter(i => i.product).map(item => {
+        const items = cart.cartItems.filter(i => i.product && !isProductBlocked(i.product)).map(item => {
           const p = item.product;
           const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
           return {
@@ -1532,10 +1545,12 @@ async function executeToolCall(toolName, args = {}, user) {
           };
         });
 
+        const visibleCartTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+
         return {
           success: true,
-          data: { items, total: cart.totalCartPrice, itemCount: items.length },
-          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: $${cart.totalCartPrice?.toFixed(2)}. Items: ${items.map(i => `${i.name} ($${i.price})`).join(', ')}`,
+          data: { items, total: visibleCartTotal, itemCount: items.length },
+          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: $${visibleCartTotal.toFixed(2)}. Items: ${items.map(i => `${i.name} ($${i.price})`).join(', ')}`,
         };
       }
 
@@ -1626,7 +1641,7 @@ async function executeToolCall(toolName, args = {}, user) {
         let productItems = [];
         if (productId) {
           // Single product order
-          const product = await Product.findById(toId(productId)).lean();
+          const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).lean();
           if (!product) return { success: false, error: 'Product not found.' };
           if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
           productItems = [product];
@@ -1667,6 +1682,10 @@ async function executeToolCall(toolName, args = {}, user) {
           const cart = await Cart.findOne({ user: userId }).populate('cartItems.product').lean();
           if (!cart || !cart.cartItems?.length) {
             return { success: false, error: 'Cart is empty. Add products first or specify a productId.' };
+          }
+          const unavailableItems = cart.cartItems.filter(i => !i.product || isProductBlocked(i.product));
+          if (unavailableItems.length) {
+            return { success: false, error: 'Some items in your cart are no longer available. Please refresh your cart before placing the order.' };
           }
           productItems = cart.cartItems.filter(i => i.product).map(item => item.product);
           orderItems = cart.cartItems.filter(i => i.product).map(item => {
@@ -1792,7 +1811,7 @@ async function executeToolCall(toolName, args = {}, user) {
         for (const item of orderItems) {
           const productIdToUpdate = item.productId || item.id;
           const updated = await Product.findOneAndUpdate(
-            { _id: productIdToUpdate, stock: { $gte: item.quantity } },
+            publicProductFilter({ _id: productIdToUpdate, stock: { $gte: item.quantity } }),
             { $inc: { stock: -item.quantity, totalSales: item.quantity } },
             { new: true }
           );
@@ -1965,7 +1984,7 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
 
-        const product = await Product.create({
+        const productData = {
           name: cleanString(p.name),
           description: cleanString(p.description) || cleanString(p.name),
           price,
@@ -1981,7 +2000,15 @@ async function executeToolCall(toolName, args = {}, user) {
           isFeatured,
           ...(Object.keys(pickObject(p.returnPolicy)).length ? { returnPolicy: p.returnPolicy } : {}),
           seller: targetSellerId,
+        };
+        const { fields: moderationFields } = buildModerationFields(productData);
+        const product = await Product.create({
+          ...productData,
+          ...moderationFields,
         });
+        if (isProductBlocked(product)) {
+          await notifyProductBlocked({ sellerId: targetSellerId, product });
+        }
 
         return {
           success: true,
@@ -1999,8 +2026,12 @@ async function executeToolCall(toolName, args = {}, user) {
             optionGroups: product.optionGroups,
             isFeatured: product.isFeatured,
             returnPolicy: product.returnPolicy,
+            blocked: isProductBlocked(product),
+            moderationReason: product.moderationReason || product.blockedReason || '',
           },
-          message: `Product "${product.name}" added to your store "${store.storeName}" at $${product.price}! 🎉`,
+          message: isProductBlocked(product)
+            ? `Product "${product.name}" was saved to your Products tab, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until you edit it with real product details.`
+            : `Product "${product.name}" added to your store "${store.storeName}" at $${product.price}! 🎉`,
         };
       }
 
@@ -2092,17 +2123,38 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
 
+        const existingForModeration = await Product.findOne(filter)
+          .sort({ updatedAt: -1, createdAt: -1 })
+          .lean();
+        if (!existingForModeration) return { success: false, error: 'Product not found or you don\'t own it.' };
+        const wasBlocked = isProductBlocked(existingForModeration);
+        const { fields: moderationFields } = buildModerationFields({
+          ...existingForModeration,
+          ...updates,
+        });
+        Object.assign(updates, moderationFields);
+
         const product = await Product.findOneAndUpdate(
           filter,
           { $set: updates },
           { new: true, runValidators: true, sort: { updatedAt: -1, createdAt: -1 } }
-        ).select('name price stock category brand image images tags colors optionGroups isFeatured').lean();
+        ).select('name price stock category brand image images tags colors optionGroups isFeatured seller isBlocked blockedReason moderationStatus moderationReason').lean();
 
         if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
+        if (isProductBlocked(product) && !wasBlocked) {
+          notifyProductBlocked({ sellerId: product.seller, product }).catch(err =>
+            console.error('[aiActionExecutor] product blocked notification failed:', err.message)
+          );
+        }
         return {
           success: true,
           data: product,
-          message: `Product "${product.name}" updated successfully! ✅`,
+          blocked: isProductBlocked(product),
+          message: isProductBlocked(product)
+            ? `Product "${product.name}" was updated, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until it has real product details.`
+            : wasBlocked
+              ? `Product "${product.name}" updated successfully and is available to customers again.`
+              : `Product "${product.name}" updated successfully! ✅`,
         };
       }
 
@@ -2220,7 +2272,7 @@ async function executeToolCall(toolName, args = {}, user) {
 
         const skip = (safePage(page) - 1) * safeLimit(limit, 20);
         let matchingProducts = await Product.find(filter).sort(sort)
-          .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups description createdAt')
+          .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups description isBlocked blockedReason moderationStatus moderationReason createdAt')
           .lean();
         if (search) matchingProducts = fuzzyProductMatches(matchingProducts, search, 100);
 
@@ -3426,8 +3478,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
         if (!store) return { success: false, error: 'Store not found.' };
 
-        const productCount = await Product.countDocuments({ seller: store.seller?._id });
-        const productPreview = await Product.find({ seller: store.seller?._id, stock: { $gt: 0 } })
+        const productCount = await Product.countDocuments(publicProductFilter({ seller: store.seller?._id }));
+        const productPreview = await Product.find(publicProductFilter({ seller: store.seller?._id, stock: { $gt: 0 } }))
           .sort({ isFeatured: -1, rating: -1, createdAt: -1 })
           .limit(8)
           .select('name price discountedPrice category brand image stock colors optionGroups rating numReviews isFeatured')
@@ -3482,7 +3534,7 @@ async function executeToolCall(toolName, args = {}, user) {
           .select('_id seller storeName storeSlug description views trustCount verification.isVerified')
           .lean();
 
-        const productFilter = buildSmartSearchFilter(query, category);
+        const productFilter = publicProductFilter(buildSmartSearchFilter(query, category));
         if (brand) productFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
         productFilter.stock = { $gt: 0 };
         const matchingProducts = await Product.find(productFilter)

@@ -2,6 +2,7 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const { sendEmail } = require('./mailController');
 const { initializeSubscription } = require('./subscriptionController');
+const { publicProductFilter } = require('../services/productModerationService');
 
 // Email template helper
 const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
@@ -630,7 +631,7 @@ exports.getStoreProducts = async (req, res) => {
 
         // Build query for products
         const Product = require('../models/Product');
-        let query = { seller: store.seller };
+        let query = publicProductFilter({ seller: store.seller });
 
         // Apply filters
         if (categories) {
@@ -718,7 +719,7 @@ exports.getAllStores = async (req, res) => {
         const Product = require('../models/Product');
         const storesWithProductCount = await Promise.all(
             stores.map(async (store) => {
-                const productCount = await Product.countDocuments({ seller: store.seller._id });
+                const productCount = await Product.countDocuments(publicProductFilter({ seller: store.seller._id }));
                 return {
                     ...store.toObject(),
                     productCount
@@ -1049,7 +1050,7 @@ exports.getVerifiedStores = async (req, res) => {
         const Product = require('../models/Product');
         const storesWithProductCount = await Promise.all(
             stores.map(async (store) => {
-                const productCount = await Product.countDocuments({ seller: store.seller._id });
+                const productCount = await Product.countDocuments(publicProductFilter({ seller: store.seller._id }));
                 return {
                     ...store.toObject(),
                     productCount

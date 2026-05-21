@@ -29,7 +29,19 @@ const productSchema = mongoose.Schema(
         reviews: [reviewSchema],
         rating: { type: Number, default: 0 },
         numReviews: { type: Number, default: 0 },
-        isFeatured: { type: Boolean, default: false }, 
+        isFeatured: { type: Boolean, default: false },
+        isBlocked: { type: Boolean, default: false, index: true },
+        blockedAt: { type: Date, default: null },
+        blockedReason: { type: String, default: '' },
+        moderationStatus: {
+            type: String,
+            enum: ['approved', 'blocked'],
+            default: 'approved',
+            index: true,
+        },
+        moderationReason: { type: String, default: '' },
+        moderationSignals: [{ type: String }],
+        moderationReviewedAt: { type: Date, default: null },
         tags: [String],
         colors: [{ type: String }], // Legacy: kept for backward compatibility
         // Flexible seller-defined option groups (Size, Color, Material, etc.)
@@ -57,6 +69,8 @@ const productSchema = mongoose.Schema(
         timestamps: true
     }
 );
+
+productSchema.index({ moderationStatus: 1, isBlocked: 1 });
 
 // Method to calculate rating based on reviews
 productSchema.methods.calculateRating = function () {

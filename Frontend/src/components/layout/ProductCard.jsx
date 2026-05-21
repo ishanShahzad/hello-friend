@@ -1,19 +1,21 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Star, Package, TrendingDown } from "lucide-react";
+import { Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "lucide-react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
     const { formatPrice } = useCurrency();
     const hasDiscount = product.discountedPrice > 0;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
+    const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
+    const blockedReason = product.blockedReason || product.moderationReason || "This looks like test or placeholder product details.";
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.05 }}
-            className="glass-card water-shimmer overflow-hidden flex flex-col group"
+            className={`glass-card water-shimmer overflow-hidden flex flex-col group ${isBlocked ? "opacity-90" : ""}`}
         >
             {/* Image */}
             <div className="relative h-[220px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -33,6 +35,15 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                         <span className="px-3 py-1.5 rounded-full text-xs font-bold text-white"
                             style={{ background: 'hsl(0, 72%, 55%)' }}>
                             Out of Stock
+                        </span>
+                    </div>
+                )}
+                {isBlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(15,23,42,0.62)' }}>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+                            style={{ background: 'hsl(0, 72%, 55%)' }}>
+                            <ShieldAlert size={14} />
+                            Blocked
                         </span>
                     </div>
                 )}
@@ -60,15 +71,30 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
             {/* Content */}
             <div className="p-4 flex flex-col flex-grow gap-2">
                 <div>
-                    <h3 className="text-base font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
-                        {product.name}
-                    </h3>
+                    <div className="flex items-start gap-2">
+                        <h3 className="text-base font-semibold truncate flex-1" style={{ color: 'hsl(var(--foreground))' }}>
+                            {product.name}
+                        </h3>
+                        {isBlocked && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
+                                style={{ background: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 55%)' }}>
+                                <ShieldAlert size={10} />
+                                Blocked
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{product.brand}</span>
                         <span className="w-1 h-1 rounded-full" style={{ background: 'hsl(var(--muted-foreground))' }} />
                         <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{product.category}</span>
                     </div>
                 </div>
+                {isBlocked && (
+                    <div className="rounded-lg px-3 py-2 text-xs leading-snug"
+                        style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'hsl(0, 72%, 45%)', border: '1px solid rgba(239, 68, 68, 0.22)' }}>
+                        {blockedReason}
+                    </div>
+                )}
 
                 {/* Price */}
                 <div className="flex items-baseline gap-2">

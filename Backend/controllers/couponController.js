@@ -2,6 +2,7 @@ const Coupon = require('../models/Coupon');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const mongoose = require('mongoose');
+const { publicProductFilter } = require('../services/productModerationService');
 
 const isObjectId = (value) => (
     typeof value === 'string' &&
@@ -540,7 +541,7 @@ exports.getProductCoupons = async (req, res) => {
             return res.status(400).json({ coupons: [], msg: 'Invalid product id.' });
         }
 
-        const product = await Product.findById(productId).select('seller');
+        const product = await Product.findOne(publicProductFilter({ _id: productId })).select('seller');
         if (!product) return res.status(404).json({ msg: 'Product not found.' });
 
         const now = new Date();

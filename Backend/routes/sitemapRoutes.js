@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const Store = require('../models/Store');
+const { publicProductFilter } = require('../services/productModerationService');
 
 const BASE_URL = process.env.FRONTEND_URL?.replace(/\/$/, '') || 'https://rozare.com';
 
@@ -15,7 +16,7 @@ const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>\n';
 // Dynamic products sitemap
 router.get('/sitemap-products.xml', async (req, res) => {
   try {
-    const products = await Product.find({ stock: { $gt: 0 } })
+    const products = await Product.find(publicProductFilter({ stock: { $gt: 0 } }))
       .select('_id updatedAt image name')
       .lean()
       .limit(50000);
