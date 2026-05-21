@@ -2,7 +2,7 @@
 // send attempt used the broken "viewOnceMessage" path (status='sent' but
 // no delivery to the buyer). Also reset pairs that were never completed.
 //
-// Run with:  heroku run --app tortrose-backend node Backend/scripts/requeueStuckWhatsApp.js
+// Run from Railway shell:  node Backend/scripts/requeueStuckWhatsApp.js
 
 const mongoose = require('mongoose');
 require('dotenv').config();
