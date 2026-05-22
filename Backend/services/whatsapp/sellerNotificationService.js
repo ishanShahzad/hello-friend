@@ -18,6 +18,7 @@ const NOTIFICATION_CATEGORIES = {
     account_blocked:        { prefKey: null,                  critical: true  }, // CRITICAL
     product_blocked:        { prefKey: null,                  critical: true  }, // CRITICAL
     seller_welcome:         { prefKey: null,                  critical: true  }, // CRITICAL
+    withdrawal_update:      { prefKey: null,                  critical: false },
     bonus_expiring:         { prefKey: 'bonusAlerts',         critical: false },
     bonus_expired:          { prefKey: 'bonusAlerts',         critical: false },
     store_verified:         { prefKey: 'storeAlerts',         critical: false },

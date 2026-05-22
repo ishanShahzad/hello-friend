@@ -48,6 +48,7 @@ const UserWhatsAppSettings = lazy(() => import('../components/layout/UserWhatsAp
 // ── Admin dashboard
 const AdminDashboard = lazy(() => import('../components/layout/AdminDashboard'))
 const AdminAnalytics = lazy(() => import('../components/layout/AdminAnalytics'))
+const AdminPayments = lazy(() => import('../components/layout/AdminPayments'))
 const StoreOverview = lazy(() => import('../components/layout/StoreOverview'))
 const ProductManagement = lazy(() => import('../components/layout/ProductManagement'))
 const OrderManagement = lazy(() => import('../components/layout/orders'))
@@ -64,6 +65,7 @@ const AdminBroadcastPanel = lazy(() => import('../components/layout/admin/AdminB
 const SellerDashboard = lazy(() => import('../components/layout/SellerDashboard'))
 const SellerHome = lazy(() => import('../components/layout/SellerHome'))
 const SellerAnalytics = lazy(() => import('../components/layout/SellerAnalytics'))
+const SellerPayments = lazy(() => import('../components/layout/SellerPayments'))
 const SellerProfile = lazy(() => import('../components/layout/SellerProfile'))
 const StoreSettings = lazy(() => import('../components/layout/StoreSettings'))
 const ShippingConfiguration = lazy(() => import('../components/layout/ShippingConfiguration'))
@@ -182,6 +184,7 @@ function AppRoutes({ subdomainSlug = null }) {
                     <Route path='/admin-dashboard/tax-configuration' element={<ProtectedRoute role={'admin'}><TaxConfiguration /></ProtectedRoute>} />
                     <Route path='/admin-dashboard/store-verifications' element={<ProtectedRoute role={'admin'}><StoreVerifications /></ProtectedRoute>} />
                     <Route path='/admin-dashboard/analytics' element={<ProtectedRoute role={'admin'}><AdminAnalytics /></ProtectedRoute>} />
+                    <Route path='/admin-dashboard/payments' element={<ProtectedRoute role={'admin'}><AdminPayments /></ProtectedRoute>} />
                     <Route path='/admin-dashboard/notifications' element={<ProtectedRoute role={'admin'}><NotificationsPage /></ProtectedRoute>} />
                     <Route path='/admin-dashboard/notification-settings' element={<ProtectedRoute role={'admin'}><NotificationSettings /></ProtectedRoute>} />
                     <Route path='/admin-dashboard/subdomains' element={<ProtectedRoute role={'admin'}><AdminSubdomainManagement /></ProtectedRoute>} />
@@ -204,6 +207,7 @@ function AppRoutes({ subdomainSlug = null }) {
                     <Route path='/seller-dashboard/store-settings' element={<ProtectedRoute role={'seller'}><StoreSettings /></ProtectedRoute>} />
                     <Route path='/seller-dashboard/shipping-configuration' element={<ProtectedRoute role={'seller'}><ShippingConfiguration /></ProtectedRoute>} />
                     <Route path='/seller-dashboard/analytics' element={<ProtectedRoute role={'seller'}><SellerAnalytics /></ProtectedRoute>} />
+                    <Route path='/seller-dashboard/payments' element={<ProtectedRoute role={'seller'}><SellerPayments /></ProtectedRoute>} />
                     <Route path='/seller-dashboard/notifications' element={<ProtectedRoute role={'seller'}><NotificationsPage /></ProtectedRoute>} />
                     <Route path='/seller-dashboard/notification-settings' element={<ProtectedRoute role={'seller'}><NotificationSettings /></ProtectedRoute>} />
                     <Route path='/seller-dashboard/subdomain' element={<ProtectedRoute role={'seller'}><SellerSubdomainManagement /></ProtectedRoute>} />

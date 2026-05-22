@@ -108,7 +108,6 @@ sellerSubscriptionSchema.virtual('isInFreePeriod').get(function () {
 sellerSubscriptionSchema.set('toJSON', { virtuals: true });
 sellerSubscriptionSchema.set('toObject', { virtuals: true });
 
-sellerSubscriptionSchema.index({ seller: 1 }, { unique: true });
 sellerSubscriptionSchema.index({ status: 1 });
 sellerSubscriptionSchema.index({ trialEndDate: 1 });
 

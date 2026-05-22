@@ -32,7 +32,4 @@ const shippingMethodSchema = mongoose.Schema({
   ]
 }, { timestamps: true });
 
-// Index for efficient seller lookups
-shippingMethodSchema.index({ seller: 1 });
-
 module.exports = mongoose.model('ShippingMethod', shippingMethodSchema);

@@ -30,6 +30,7 @@ const StoreTrust = require('../models/StoreTrust');
 const Cart = require('../models/Cart');
 const StoreReview = require('../models/StoreReview');
 const WhatsAppConfig = require('../models/WhatsAppConfig');
+const { buildSellerPaymentSummary } = require('../controllers/PaymentController');
 const { sendEmail } = require('../controllers/mailController');
 const { buyerOrderConfirmationRequestEmail, newOrderSellerEmail } = require('../utils/emailTemplates');
 const { generateConfirmationToken } = require('../controllers/orderConfirmationController');
@@ -2551,6 +2552,30 @@ async function executeToolCall(toolName, args = {}, user) {
             lowStockAlerts: lowStock.map(p => ({ name: p.name, stock: p.stock })),
           },
           message: `📊 Store "${store?.storeName}": ${myProducts.length} products, ${orders.length} orders, $${Math.round(totalRevenue)} revenue, ${store?.views || 0} views.`,
+        };
+      }
+
+      case 'get_seller_payments': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const targetSellerId = role === 'admin' && args.sellerId ? toId(args.sellerId) : userId;
+        if (!targetSellerId) return { success: false, error: 'Seller not found.' };
+
+        const paymentSummary = await buildSellerPaymentSummary(targetSellerId);
+        const revenue = paymentSummary.revenue || {};
+        return {
+          success: true,
+          data: {
+            revenue,
+            paymentAccountLinked: !!paymentSummary.paymentAccount,
+            paymentAccount: paymentSummary.paymentAccount,
+            recentWithdrawals: (paymentSummary.withdrawals || []).slice(0, 5).map(w => ({
+              amount: w.amount,
+              status: w.status,
+              requestedAt: w.createdAt,
+              adminNote: w.adminNote || '',
+            })),
+          },
+          message: `Payments summary: withdrawable Stripe balance ${await formatMoney(revenue.withdrawableBalance || 0, preferredCurrency)}, delivered COD revenue ${await formatMoney(revenue.codDeliveredRevenue || 0, preferredCurrency)}, total delivered revenue ${await formatMoney(revenue.totalDeliveredRevenue || 0, preferredCurrency)}, estimated revenue ${await formatMoney(revenue.estimatedRevenue || 0, preferredCurrency)}.`,
         };
       }
 

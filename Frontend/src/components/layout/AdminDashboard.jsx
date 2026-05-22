@@ -25,6 +25,7 @@ import { getAuthToken } from "../../utils/cookieHelper";
 const getAdminMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) => ([
     { id: 'overview', label: 'Store Overview', icon: <BarChart3 size={18} />, link: '/admin-dashboard/store-overview' },
     { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} />, link: '/admin-dashboard/analytics' },
+    { id: 'payments', label: 'Payments', icon: <DollarSign size={18} />, link: '/admin-dashboard/payments' },
     { id: 'users', label: 'User Management', icon: <Users size={18} />, link: '/admin-dashboard/user-management' },
     { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/admin-dashboard/product-management', badge: lowStockProducts },
     { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },
@@ -522,6 +523,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
     const menuItems = [
         { id: 'overview', label: 'Store Overview', icon: <BarChart3 size={18} />, link: '/admin-dashboard/store-overview' },
         { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} />, link: '/admin-dashboard/analytics' },
+        { id: 'payments', label: 'Payments', icon: <DollarSign size={18} />, link: '/admin-dashboard/payments' },
         { id: 'users', label: 'User Management', icon: <Users size={18} />, link: '/admin-dashboard/user-management' },
         { id: 'products', label: 'Products', icon: <Package size={18} />, link: '/admin-dashboard/product-management', badge: lowStockProducts },
         { id: 'orders', label: 'Orders', icon: <ShoppingBag size={18} />, link: '/admin-dashboard/order-management', badge: pendingOrders },

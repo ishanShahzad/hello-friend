@@ -90,7 +90,7 @@ function DocsPage() {
     '@type': 'TechArticle',
     headline: 'Rozare Documentation - AI Shopping, Seller Dashboard & WhatsApp Store Management',
     name: 'Rozare Documentation',
-    description: 'Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, subscriptions, coupons, shipping, orders, and trust tools.',
+    description: 'Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, seller payments, withdrawals, subscriptions, coupons, shipping, orders, and trust tools.',
     inLanguage: 'en',
     url: DOCS_URL,
     image: 'https://rozare.com/og-image.png?v=4',
@@ -103,8 +103,8 @@ function DocsPage() {
       url: 'https://rozare.com',
       logo: { '@type': 'ImageObject', url: 'https://rozare.com/rozare-logo.svg' },
     },
-    about: ['AI-powered marketplace', 'Conversational commerce', 'WhatsApp store management', 'Online selling', 'Online shopping'],
-    keywords: 'Rozare, AI marketplace, AI shopping, AI commerce, sell online, WhatsApp store management, chat to sell, conversational commerce, Rozare Starter, Rozare Elite, become a seller',
+    about: ['AI-powered marketplace', 'Conversational commerce', 'WhatsApp store management', 'Seller payments', 'Online selling', 'Online shopping'],
+    keywords: 'Rozare, AI marketplace, AI shopping, AI commerce, sell online, seller payments, Stripe payouts, WhatsApp store management, chat to sell, conversational commerce, Rozare Starter, Rozare Elite, become a seller',
     mainEntity: {
       '@type': 'FAQPage',
       mainEntity: [
@@ -130,14 +130,14 @@ function DocsPage() {
     <>
       <Helmet>
         <title>Rozare Docs - AI Shopping, Seller Dashboard & WhatsApp Store Management</title>
-        <meta name="description" content="Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, subscriptions, coupons, shipping, orders, and trust tools." />
-        <meta name="keywords" content="Rozare, Rozare docs, Rozare documentation, AI marketplace, AI shopping, AI commerce, conversational commerce, sell online, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller, Rozare guide, Rozare help" />
+        <meta name="description" content="Complete buyer and seller guide for Rozare: shopping, AI chat, seller dashboard, WhatsApp store management, seller payments, withdrawals, subscriptions, coupons, shipping, orders, and trust tools." />
+        <meta name="keywords" content="Rozare, Rozare docs, Rozare documentation, AI marketplace, AI shopping, AI commerce, conversational commerce, sell online, seller payments, Stripe payouts, WhatsApp store management, chat to sell, online marketplace, AI store assistant, Rozare Starter, Rozare Elite, become a seller, Rozare guide, Rozare help" />
         <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
         <link rel="canonical" href={DOCS_URL} />
         <meta property="og:site_name" content="Rozare" />
         <meta property="og:type" content="article" />
         <meta property="og:title" content="Rozare Documentation - AI Shopping & Selling" />
-        <meta property="og:description" content="Learn how Rozare shopping, seller dashboards, AI chat, WhatsApp store management, subscriptions, coupons, shipping, and trust tools work." />
+        <meta property="og:description" content="Learn how Rozare shopping, seller dashboards, AI chat, WhatsApp store management, seller payments, withdrawals, subscriptions, coupons, shipping, and trust tools work." />
         <meta property="og:url" content={DOCS_URL} />
         <meta property="og:image" content="https://rozare.com/og-image.png?v=4" />
         <meta property="og:image:width" content="1200" />
@@ -145,7 +145,7 @@ function DocsPage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@RozareHQ" />
         <meta name="twitter:title" content="Rozare Docs - AI Shopping & Selling" />
-        <meta name="twitter:description" content="Complete guide to Rozare shopping, seller dashboard tools, AI chat, WhatsApp store management, subscriptions, and trust tools." />
+        <meta name="twitter:description" content="Complete guide to Rozare shopping, seller dashboard tools, AI chat, WhatsApp store management, seller payments, subscriptions, and trust tools." />
         <meta name="twitter:image" content="https://rozare.com/og-image.png?v=4" />
         <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
         <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
@@ -395,6 +395,7 @@ function DocsPage() {
                 <FeatureGrid features={[
                   { icon: Store, title: 'Online Storefront', desc: 'A fully customizable storefront with your own slug, optional custom subdomain, logo, banner, description, and social links.' },
                   { icon: Bot, title: 'AI Business Partner', desc: 'A built-in AI assistant that adds products, updates stock, runs analytics, manages orders, creates coupons, and gives growth advice.' },
+                  { icon: CreditCard, title: 'Seller Payments', desc: 'A Payments tab for Stripe balance, COD revenue, total revenue, estimated revenue, bank details, and withdrawal requests.' },
                   { icon: BarChart3, title: 'Real-Time Analytics', desc: 'Revenue, top products, order trends, customer insights, low-stock alerts and period comparisons.' },
                   { icon: Smartphone, title: 'WhatsApp Management', desc: 'Manage key store tasks from WhatsApp by chatting with AI. Get instant alerts on every new order.' },
                   { icon: Ticket, title: 'Coupons & Discounts', desc: 'Percent or fixed-amount coupons with min order amount, max uses, expiry, and per-user limits.' },
@@ -419,6 +420,7 @@ function DocsPage() {
                   <li><strong>Overview</strong> — Live revenue, orders, products, store views, trust count, low-stock alerts and pending order badges.</li>
                   <li><strong>Products</strong> — Add, edit, delete, and bulk-update products. Includes bulk discount and bulk price tools.</li>
                   <li><strong>Orders</strong> — Every order containing your products. Update status, view full order detail, contact the customer.</li>
+                  <li><strong>Payments</strong> — Link your bank account, track Stripe withdrawable balance, COD delivered revenue, total revenue, estimated revenue, and withdrawal requests.</li>
                   <li><strong>Coupons</strong> — Create, toggle, edit, and delete discount coupons.</li>
                   <li><strong>Analytics</strong> — Revenue charts, order trends, top products, status pie chart, growth metrics with period comparison.</li>
                   <li><strong>Store Settings</strong> — Update store name, description, logo, banner, return &amp; warranty policy, social links.</li>
@@ -483,6 +485,7 @@ function DocsPage() {
                   <li><strong>On-demand analytics</strong> — "What was my revenue this month?", "Top 5 selling products", "How am I doing vs last month?".</li>
                   <li><strong>Order management</strong> — "Show pending orders", "Mark ORD-1234 as shipped", "Cancel ORD-1235".</li>
                   <li><strong>Coupon creation</strong> — "Create SAVE15 — 15% off, expires in 30 days, max 100 uses".</li>
+                  <li><strong>Payments knowledge</strong> — Explains Stripe payouts, COD handling, withdrawable balance, and where to request withdrawals.</li>
                   <li><strong>Growth strategies</strong> — Personalized recommendations based on your real sales data.</li>
                   <li><strong>Stock alerts</strong> — Proactively warns you about low or out-of-stock products.</li>
                   <li><strong>Store updates</strong> — "Update my store description" or "Change my return policy".</li>
@@ -614,7 +617,13 @@ function DocsPage() {
                 <p>Tax is calculated at checkout based on platform settings. Shipping costs come from the seller's chosen shipping method. Both are clearly displayed before you confirm.</p>
 
                 <h3>For sellers: receiving payments</h3>
-                <p>Stripe payments are processed directly to your connected payment account. Your earned balance and revenue history are visible in the Analytics tab of the dashboard.</p>
+                <p>Sellers do not need to configure card payments for their stores. Rozare already provides buyer card checkout through Stripe. When a buyer pays by card, the payment is processed by Rozare and the seller can track the earned Stripe revenue in Seller Dashboard - Payments.</p>
+                <ul>
+                  <li><strong>Stripe balance</strong> - Delivered, Stripe-paid order revenue becomes withdrawable after existing withdrawal requests are reserved.</li>
+                  <li><strong>COD revenue</strong> - Cash on Delivery payments and shipping are handled by the seller directly. Rozare shows delivered COD revenue for reporting, but it is not withdrawn through Rozare.</li>
+                  <li><strong>Estimated revenue</strong> - Delivered revenue plus pending Stripe and COD order revenue, so sellers can see what may be coming next.</li>
+                  <li><strong>Withdrawals</strong> - Sellers add a bank account in the Payments tab, enter an amount, and send a withdrawal request. Admins review and mark requests approved, processing, paid, rejected, or cancelled.</li>
+                </ul>
               </DocSection>
 
               {/* SHIPPING */}
@@ -763,8 +772,8 @@ function DocsPage() {
               <DocSection id="currency-multilingual" title="Currency & Languages" icon={Globe}>
                 <ul>
                   <li><strong>Multi-currency</strong> — Pick your display currency from the navbar (USD, EUR, GBP, PKR and more). Prices convert automatically across the site.</li>
-                  <li><strong>Conversational AI in your language</strong> — The AI understands English, Urdu, Hindi, and common product slang in those languages.</li>
-                  <li><strong>Local checkout</strong> — Prices shown in your currency, payment processed in the seller's settlement currency by Stripe.</li>
+                  <li><strong>Conversational AI in your language</strong> — The AI understands English, modern Roman Urdu, and common product slang.</li>
+                  <li><strong>Local checkout</strong> — Prices are shown in your selected currency, while secure card payments are processed through Rozare's Stripe checkout.</li>
                 </ul>
               </DocSection>
 
@@ -793,6 +802,7 @@ function DocsPage() {
                 <FAQItem q="How does the AI know about my store?" a="The AI calls secure server-side tools that read and write only your store's data. Other sellers cannot see your data, and you cannot see theirs." />
                 <FAQItem q="Is my data safe?" a="Yes. All traffic is encrypted (HTTPS). Authentication uses JWT tokens. Personal data is never sold or shared with third parties outside what's required to fulfil your order." />
                 <FAQItem q="What payment methods are available?" a="Currently Cash on Delivery and Stripe (Visa, Mastercard, Amex and more). Additional methods are added over time." />
+                <FAQItem q="How do sellers receive Stripe payments?" a="Sellers add their bank details in Seller Dashboard - Payments. Delivered Stripe-paid order revenue becomes withdrawable, then the seller sends a withdrawal request for admin review. COD payments are handled by the seller directly." />
                 <FAQItem q="What's the difference between Starter and Elite?" a="Both plans include unlimited listings, a custom subdomain, WhatsApp store management, new-order WhatsApp notifications, and the core marketplace features. Elite adds 250 AI messages/day (vs 100), the smart description generator with AI, advanced analytics, smart tag AI, coupon and bulk tools permanently, priority support, and 12 featured products (vs 6)." />
                 <FAQItem q="What happens after my 15-day free trial ends?" a="If you don't subscribe, your store and products are temporarily hidden until you subscribe — your data is preserved. Subscribe to Starter or Elite to instantly reactivate everything, with the plan's free intro period applied when eligible." />
                 <FAQItem q="Can I cancel anytime?" a="Yes. Cancel from Seller Dashboard → Subscription. Your store stays active until the end of your current billing period." />
