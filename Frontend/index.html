@@ -188,6 +188,14 @@
   <!-- Discovery: link to docs subdomain for crawlers and AI search -->
   <link rel="alternate" type="text/html" href="https://docs.rozare.com/" title="Rozare Documentation" />
 
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => registrations.forEach(registration => registration.unregister()))
+        .catch(() => {});
+    }
+  </script>
+
   <!-- TikTok Pixel Code Start -->
   <script>
   !function (w, d, t) {
