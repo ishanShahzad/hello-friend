@@ -32,8 +32,27 @@ export const CurrencyProvider = ({ children }) => {
 
   const detectAndSetCurrency = async () => {
     try {
-      // Check if user has saved preference in localStorage
       const savedCurrency = localStorage.getItem('userCurrency');
+      const token = getAuthToken();
+      if (token) {
+        try {
+          const userRes = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const accountCurrency = userRes.data?.user?.currency;
+          if (accountCurrency && CURRENCIES[accountCurrency] && (accountCurrency !== 'USD' || savedCurrency)) {
+            console.log('Using account currency:', accountCurrency);
+            setCurrency(accountCurrency);
+            localStorage.setItem('userCurrency', accountCurrency);
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.warn('Could not load account currency, falling back to local preference/detection');
+        }
+      }
+
+      // Check if user has saved preference in localStorage
       if (savedCurrency && CURRENCIES[savedCurrency]) {
         console.log('💰 Using saved currency:', savedCurrency);
         setCurrency(savedCurrency);
@@ -47,6 +66,14 @@ export const CurrencyProvider = ({ children }) => {
         console.log('🌍 Auto-detected currency:', res.data.currency, 'from', res.data.countryName);
         setCurrency(res.data.currency);
         localStorage.setItem('userCurrency', res.data.currency);
+        const token = getAuthToken();
+        if (token && CURRENCIES[res.data.currency]) {
+          axios.patch(
+            `${import.meta.env.VITE_API_URL}api/currency/update`,
+            { currency: res.data.currency },
+            { headers: { Authorization: `Bearer ${token}` } }
+          ).catch(() => {});
+        }
       }
     } catch (error) {
       console.error('Currency detection error:', error);

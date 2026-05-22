@@ -43,6 +43,7 @@ const {
   notifyProductBlocked,
   publicProductFilter,
 } = require('./productModerationService');
+const { normalizeCurrency, convertToUSD, formatMoney } = require('./currencyService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -859,6 +860,13 @@ async function executeToolCall(toolName, args = {}, user) {
   const role = user?.role || 'guest';
 
   try {
+    let preferredCurrency = normalizeCurrency(user?.currency || 'USD');
+    if (userId && !user?.currency) {
+      const account = await User.findById(userId).select('currency').lean();
+      preferredCurrency = normalizeCurrency(account?.currency || preferredCurrency);
+    }
+    const userMoney = (amountInUSD) => formatMoney(amountInUSD, preferredCurrency);
+
     switch (toolName) {
 
       // ─────────────────────────────────────────────
@@ -898,8 +906,8 @@ async function executeToolCall(toolName, args = {}, user) {
         if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) filter.stock = { $gt: 0 };
         if (minPrice || maxPrice) {
           filter.price = {};
-          if (minPrice) filter.price.$gte = Number(minPrice);
-          if (maxPrice) filter.price.$lte = Number(maxPrice);
+          if (minPrice) filter.price.$gte = await convertToUSD(Number(minPrice), normalizeCurrency(args.currency || preferredCurrency));
+          if (maxPrice) filter.price.$lte = await convertToUSD(Number(maxPrice), normalizeCurrency(args.currency || preferredCurrency));
         }
 
         let sort = { createdAt: -1 };
@@ -1398,7 +1406,7 @@ async function executeToolCall(toolName, args = {}, user) {
             isVerifiedStore: store?.verification?.isVerified || false,
             returnPolicy: product.returnPolicy,
           },
-          message: `${product.name} — $${product.discountedPrice || product.price} | ${product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'} | ⭐ ${product.rating?.toFixed(1) || 'N/A'} (${product.numReviews} reviews)`,
+          message: `${product.name} — ${await userMoney(product.discountedPrice || product.price)} | ${product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'} | ⭐ ${product.rating?.toFixed(1) || 'N/A'} (${product.numReviews} reviews)`,
         };
       }
 
@@ -1517,7 +1525,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice, productId: product._id, name: product.name, quantity },
-          message: `"${product.name}" added to cart! 🛒 Cart total: $${cart.totalCartPrice?.toFixed(2)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
+          message: `"${product.name}" added to cart! 🛒 Cart total: ${await userMoney(cart.totalCartPrice || 0)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
         };
       }
 
@@ -1546,11 +1554,15 @@ async function executeToolCall(toolName, args = {}, user) {
         });
 
         const visibleCartTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+        const itemSummary = [];
+        for (const item of items.slice(0, 8)) {
+          itemSummary.push(`${item.name} (${await userMoney(item.price)})`);
+        }
 
         return {
           success: true,
           data: { items, total: visibleCartTotal, itemCount: items.length },
-          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: $${visibleCartTotal.toFixed(2)}. Items: ${items.map(i => `${i.name} ($${i.price})`).join(', ')}`,
+          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: ${await userMoney(visibleCartTotal)}. Items: ${itemSummary.join(', ')}`,
         };
       }
 
@@ -1573,7 +1585,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice },
-          message: `Item removed from cart. ${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''} remaining — $${cart.totalCartPrice?.toFixed(2)}`,
+          message: `Item removed from cart. ${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''} remaining — ${await userMoney(cart.totalCartPrice || 0)}`,
         };
       }
 
@@ -1765,6 +1777,7 @@ async function executeToolCall(toolName, args = {}, user) {
 
         const newOrder = new Order({
           user: userId,
+          currency: preferredCurrency,
           orderId: `ORD-${Date.now()}`,
           orderItems: orderItems.map(i => ({
             productId: i.productId || i.id,
@@ -1836,11 +1849,12 @@ async function executeToolCall(toolName, args = {}, user) {
           data: {
             orderId: newOrder.orderId,
             total: totalAmount,
+            currency: preferredCurrency,
             items: orderItems.length,
             paymentMethod: newOrder.paymentMethod,
             estimatedDelivery: `${shippingMethod.estimatedDays} days`,
           },
-          message: `🎉 Order placed successfully! Order #${newOrder.orderId} — $${totalAmount.toFixed(2)} — ${orderItems.length} item${orderItems.length !== 1 ? 's' : ''} — ${newOrder.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Stripe'} — Est. delivery: ${shippingMethod.estimatedDays} days`,
+          message: `🎉 Order placed successfully! Order #${newOrder.orderId} — ${await userMoney(totalAmount)} — ${orderItems.length} item${orderItems.length !== 1 ? 's' : ''} — ${newOrder.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Stripe'} — Est. delivery: ${shippingMethod.estimatedDays} days`,
         };
       }
 
@@ -1883,12 +1897,13 @@ async function executeToolCall(toolName, args = {}, user) {
         if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
           return { success: false, error: 'This coupon has reached its usage limit.' };
         }
-        if (cartTotal && coupon.minOrderAmount > Number(cartTotal)) {
-          return { success: false, error: `Minimum order amount is $${coupon.minOrderAmount}.` };
+        const cartTotalUSD = cartTotal ? await convertToUSD(Number(cartTotal), preferredCurrency) : 0;
+        if (cartTotal && coupon.minOrderAmount > cartTotalUSD) {
+          return { success: false, error: `Minimum order amount is ${await userMoney(coupon.minOrderAmount)}.` };
         }
 
         let discount = coupon.discountType === 'percentage'
-          ? (cartTotal ? Number(cartTotal) * coupon.discountValue / 100 : coupon.discountValue)
+          ? (cartTotal ? cartTotalUSD * coupon.discountValue / 100 : coupon.discountValue)
           : coupon.discountValue;
         if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) {
           discount = coupon.maxDiscountAmount;
@@ -1897,7 +1912,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { code: coupon.code, discount, type: coupon.discountType, value: coupon.discountValue },
-          message: `Coupon "${coupon.code}" is valid! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `$${coupon.discountValue} off`}`,
+          message: `Coupon "${coupon.code}" is valid! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${await userMoney(coupon.discountValue)} off`}`,
         };
       }
 
@@ -1923,13 +1938,16 @@ async function executeToolCall(toolName, args = {}, user) {
         if (missing.length) {
           return { success: false, error: `Missing required fields: ${missing.join(', ')}`, missingFields: missing };
         }
-        const price = Number(p.price);
+        const inputCurrency = normalizeCurrency(p.currency || args.currency || preferredCurrency);
+        const rawPrice = Number(p.price);
         const stock = p.stock != null ? Number(p.stock) : 0;
-        const discountedPrice = p.discountedPrice ? Number(p.discountedPrice) : 0;
-        if (!Number.isFinite(price) || price < 0) return { success: false, error: 'Product price must be a non-negative number.' };
+        const rawDiscountedPrice = p.discountedPrice ? Number(p.discountedPrice) : 0;
+        if (!Number.isFinite(rawPrice) || rawPrice < 0) return { success: false, error: 'Product price must be a non-negative number.' };
         if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Product stock must be a non-negative number.' };
-        if (!Number.isFinite(discountedPrice) || discountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
-        if (discountedPrice > 0 && discountedPrice >= price) return { success: false, error: 'Discounted price must be lower than the product price.' };
+        if (!Number.isFinite(rawDiscountedPrice) || rawDiscountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
+        if (rawDiscountedPrice > 0 && rawDiscountedPrice >= rawPrice) return { success: false, error: 'Discounted price must be lower than the product price.' };
+        const price = await convertToUSD(rawPrice, inputCurrency);
+        const discountedPrice = rawDiscountedPrice > 0 ? await convertToUSD(rawDiscountedPrice, inputCurrency) : 0;
 
         const confirmDuplicate = args.confirmDuplicate === true || p.confirmDuplicate === true;
         const duplicate = await Product.findOne({
@@ -2016,6 +2034,9 @@ async function executeToolCall(toolName, args = {}, user) {
             productId: product._id,
             name: product.name,
             price: product.price,
+            currency: inputCurrency,
+            inputPrice: rawPrice,
+            displayPrice: await formatMoney(product.price, inputCurrency),
             stock: product.stock,
             category: product.category,
             brand: product.brand,
@@ -2031,7 +2052,7 @@ async function executeToolCall(toolName, args = {}, user) {
           },
           message: isProductBlocked(product)
             ? `Product "${product.name}" was saved to your Products tab, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until you edit it with real product details.`
-            : `Product "${product.name}" added to your store "${store.storeName}" at $${product.price}! 🎉`,
+            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, inputCurrency)}! 🎉`,
         };
       }
 
@@ -2046,13 +2067,16 @@ async function executeToolCall(toolName, args = {}, user) {
         }
         if (!productId && !productName) return { success: false, error: 'Please specify which product to edit (productId or productName).' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid product fields were provided to update.' };
+        const inputCurrency = normalizeCurrency(args.currency || incomingUpdates.currency || preferredCurrency);
         for (const numericField of ['price', 'discountedPrice', 'stock']) {
           if (updates[numericField] !== undefined) {
             const numericValue = Number(updates[numericField]);
             if (!Number.isFinite(numericValue) || numericValue < 0) {
               return { success: false, error: `${numericField} must be a non-negative number.` };
             }
-            updates[numericField] = numericValue;
+            updates[numericField] = ['price', 'discountedPrice'].includes(numericField)
+              ? await convertToUSD(numericValue, inputCurrency)
+              : numericValue;
           }
         }
 
@@ -2294,6 +2318,9 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!Number.isFinite(discountValue) || discountValue <= 0) return { success: false, error: 'Please specify a positive discount value.' };
         if (!['percentage', 'fixed'].includes(discountType)) return { success: false, error: 'Discount type must be percentage or fixed.' };
         if (discountType === 'percentage' && discountValue > 100) return { success: false, error: 'Percentage discounts cannot exceed 100%.' };
+        const fixedDiscountUSD = discountType === 'fixed'
+          ? await convertToUSD(discountValue, normalizeCurrency(args.currency || preferredCurrency))
+          : discountValue;
 
         const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
@@ -2309,7 +2336,7 @@ async function executeToolCall(toolName, args = {}, user) {
               $set: {
                 discountedPrice: discountType === 'percentage'
                   ? Math.round(p.price * (1 - discountValue / 100) * 100) / 100
-                  : Math.max(0, Math.round((p.price - discountValue) * 100) / 100),
+                  : Math.max(0, Math.round((p.price - fixedDiscountUSD) * 100) / 100),
               },
             },
           },
@@ -2318,7 +2345,7 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
-          message: `Applied ${discountType === 'percentage' ? `${discountValue}%` : `$${discountValue}`} discount to ${products.length} product${products.length !== 1 ? 's' : ''}!`,
+          message: `Applied ${discountType === 'percentage' ? `${discountValue}%` : await formatMoney(fixedDiscountUSD, normalizeCurrency(args.currency || preferredCurrency))} discount to ${products.length} product${products.length !== 1 ? 's' : ''}!`,
         };
       }
 
@@ -2329,6 +2356,9 @@ async function executeToolCall(toolName, args = {}, user) {
         const value = args.value != null ? Number(args.value) : Number(args.priceChange);
         if (!Number.isFinite(value)) return { success: false, error: 'Please specify a valid price update value.' };
         if (!['percentage', 'fixed', 'set'].includes(updateType)) return { success: false, error: 'Price update type must be percentage, fixed, or set.' };
+        const valueUSD = updateType === 'percentage'
+          ? value
+          : await convertToUSD(value, normalizeCurrency(args.currency || preferredCurrency));
 
         const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
@@ -2339,9 +2369,9 @@ async function executeToolCall(toolName, args = {}, user) {
 
         const bulkOps = products.map(p => {
           let newPrice;
-          if (updateType === 'set') newPrice = value;
+          if (updateType === 'set') newPrice = valueUSD;
           else if (updateType === 'percentage') newPrice = p.price + (p.price * value / 100);
-          else newPrice = p.price + value;
+          else newPrice = p.price + valueUSD;
           newPrice = Math.max(0, Math.round(newPrice * 100) / 100);
           return {
             updateOne: {
@@ -2726,13 +2756,13 @@ async function executeToolCall(toolName, args = {}, user) {
 
         const existing = shipping.methods.find(m => m.type === method);
         if (existing) {
-          if (cost != null) existing.cost = Number(cost);
+          if (cost != null) existing.cost = await convertToUSD(Number(cost), normalizeCurrency(args.currency || preferredCurrency));
           if (deliveryDays != null) existing.deliveryDays = Number(deliveryDays);
           if (isActive != null) existing.isActive = isActive;
         } else {
           shipping.methods.push({
             type: method,
-            cost: Number(cost) || 0,
+            cost: cost != null ? await convertToUSD(Number(cost), normalizeCurrency(args.currency || preferredCurrency)) : 0,
             deliveryDays: Number(deliveryDays) || 3,
             isActive: isActive !== false,
           });
@@ -2753,25 +2783,33 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!['percentage', 'fixed'].includes(inferredDiscountType)) {
           return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
         }
-        const discountValue = Number(rawDiscountValue);
-        if (!Number.isFinite(discountValue) || discountValue <= 0) {
+        const inputCurrency = normalizeCurrency(c.currency || args.currency || preferredCurrency);
+        const rawNumericDiscountValue = Number(rawDiscountValue);
+        if (!Number.isFinite(rawNumericDiscountValue) || rawNumericDiscountValue <= 0) {
           return { success: false, error: 'Coupon discountValue must be a positive number.' };
         }
-        if (inferredDiscountType === 'percentage' && discountValue > 100) {
+        if (inferredDiscountType === 'percentage' && rawNumericDiscountValue > 100) {
           return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
         }
+        const discountValue = inferredDiscountType === 'fixed'
+          ? await convertToUSD(rawNumericDiscountValue, inputCurrency)
+          : rawNumericDiscountValue;
         const expiryDate = c.expiryDate ? new Date(c.expiryDate) : addDays(new Date(), 30);
         if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
         if (expiryDate <= new Date()) return { success: false, error: 'Coupon expiryDate must be in the future.' };
         const maxUses = c.maxUses == null || c.maxUses === '' ? null : Number(c.maxUses);
         const maxUsesPerUser = c.maxUsesPerUser == null || c.maxUsesPerUser === '' ? 1 : Number(c.maxUsesPerUser);
-        const minOrderAmount = c.minOrderAmount == null || c.minOrderAmount === '' ? 0 : Number(c.minOrderAmount);
+        const rawMinOrderAmount = c.minOrderAmount == null || c.minOrderAmount === '' ? 0 : Number(c.minOrderAmount);
         const rawMaxDiscountAmount = c.maxDiscountAmount ?? c.maxDiscount;
-        const maxDiscountAmount = rawMaxDiscountAmount == null || rawMaxDiscountAmount === '' ? null : Number(rawMaxDiscountAmount);
+        const rawMaxDiscountAmountNumber = rawMaxDiscountAmount == null || rawMaxDiscountAmount === '' ? null : Number(rawMaxDiscountAmount);
         if (maxUses !== null && (!Number.isFinite(maxUses) || maxUses <= 0)) return { success: false, error: 'maxUses must be a positive number.' };
         if (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser <= 0) return { success: false, error: 'maxUsesPerUser must be a positive number.' };
-        if (!Number.isFinite(minOrderAmount) || minOrderAmount < 0) return { success: false, error: 'minOrderAmount must be zero or higher.' };
-        if (maxDiscountAmount !== null && (!Number.isFinite(maxDiscountAmount) || maxDiscountAmount <= 0)) return { success: false, error: 'maxDiscountAmount must be a positive number.' };
+        if (!Number.isFinite(rawMinOrderAmount) || rawMinOrderAmount < 0) return { success: false, error: 'minOrderAmount must be zero or higher.' };
+        if (rawMaxDiscountAmountNumber !== null && (!Number.isFinite(rawMaxDiscountAmountNumber) || rawMaxDiscountAmountNumber <= 0)) return { success: false, error: 'maxDiscountAmount must be a positive number.' };
+        const minOrderAmount = await convertToUSD(rawMinOrderAmount, inputCurrency);
+        const maxDiscountAmount = rawMaxDiscountAmountNumber == null
+          ? null
+          : await convertToUSD(rawMaxDiscountAmountNumber, inputCurrency);
         const applicableTo = c.applicableTo === 'selected' ? 'selected' : 'all';
         const applicableProducts = Array.isArray(c.applicableProducts)
           ? c.applicableProducts.map(toId).filter(Boolean)
@@ -2801,7 +2839,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { couponId: coupon._id, code: coupon.code, expiryDate: coupon.expiryDate },
-          message: `Coupon "${coupon.code}" created - ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : '$' + coupon.discountValue} off, expiring ${coupon.expiryDate.toISOString().slice(0, 10)}.`,
+          message: `Coupon "${coupon.code}" created - ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : await formatMoney(coupon.discountValue, inputCurrency)} off, expiring ${coupon.expiryDate.toISOString().slice(0, 10)}.`,
         };
       }
 

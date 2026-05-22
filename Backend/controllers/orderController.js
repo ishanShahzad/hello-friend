@@ -17,6 +17,7 @@ const { notifySeller } = require('../services/whatsapp/sellerNotificationService
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
 const { publicProductFilter } = require('../services/productModerationService');
+const { normalizeCurrency } = require('../services/currencyService');
 
 const toId = (value) => value?.toString?.() || String(value || '');
 
@@ -214,9 +215,13 @@ exports.placeOrder = async (req, res) => {
         // console.log("cartItems::::", cartItems);
 
 
+        const orderUser = userId ? await User.findById(userId).select('currency').lean() : null;
+        const orderCurrency = normalizeCurrency(order.currency || orderUser?.currency || 'USD');
+
         const newOrder = new Order({
             ...(userId ? { user: userId } : {}),
             guestEmail: !userId ? order.shippingInfo.email : null,
+            currency: orderCurrency,
             orderId: `ORD-${Date.now()}`,
 
             orderItems: order.orderItems.map((item) => ({
@@ -372,6 +377,7 @@ exports.placeOrder = async (req, res) => {
                 order: {
                     orderId: newOrder.orderId,
                     totalAmount: newOrder.orderSummary.totalAmount,
+                    currency: newOrder.currency,
                     email: newOrder.shippingInfo.email
                 }
             });
@@ -469,6 +475,7 @@ exports.placeOrder = async (req, res) => {
             order: {
                 orderId: newOrder.orderId,
                 totalAmount: newOrder.orderSummary.totalAmount,
+                currency: newOrder.currency,
             },
         });
     } catch (error) {

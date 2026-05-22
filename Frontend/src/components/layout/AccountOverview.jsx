@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
+import CurrencySelector from '../common/CurrencySelector';
 import { Link } from 'react-router-dom';
 import { getAuthToken } from "../../utils/cookieHelper";
 
@@ -14,7 +15,7 @@ const cardVariants = { hidden: { scale: 0.95, opacity: 0 }, visible: { scale: 1,
 
 const AccountOverview = () => {
     const { currentUser } = useAuth();
-    const { formatPrice } = useCurrency();
+    const { currency, formatPrice } = useCurrency();
     const [orders, setOrders] = useState([]);
     const [userData, setUserData] = useState(currentUser);
     const [recentOrders, setRecentOrders] = useState([]);
@@ -93,14 +94,20 @@ const AccountOverview = () => {
                             <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Here's what's happening with your account</p>
                         </div>
                         <motion.div whileHover={{ scale: 1.05 }} className="relative shrink-0">
-                            {userData.avatar ? (
-                                <img src={userData.avatar} alt="Profile" className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover" style={{ border: '2px solid var(--glass-border-strong)' }} />
-                            ) : (
-                                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl glass-inner flex items-center justify-center font-bold text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
-                                    {userData.username?.[0]?.toUpperCase() || 'U'}
+                            <div className="flex flex-col items-end gap-2">
+                                {userData.avatar ? (
+                                    <img src={userData.avatar} alt="Profile" className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover" style={{ border: '2px solid var(--glass-border-strong)' }} />
+                                ) : (
+                                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl glass-inner flex items-center justify-center font-bold text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
+                                        {userData.username?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] hidden sm:inline" style={{ color: 'hsl(var(--muted-foreground))' }}>Currency: {currency}</span>
+                                    <CurrencySelector />
                                 </div>
-                            )}
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2" style={{ background: 'hsl(150, 60%, 45%)', borderColor: 'var(--glass-border-strong)' }} />
+                            </div>
+                            <div className="absolute top-11 right-0 w-4 h-4 rounded-full border-2" style={{ background: 'hsl(150, 60%, 45%)', borderColor: 'var(--glass-border-strong)' }} />
                         </motion.div>
                     </div>
                     <div className="relative flex flex-wrap gap-2 mt-6">

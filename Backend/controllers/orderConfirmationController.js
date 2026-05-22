@@ -21,6 +21,7 @@ const sanitizeOrderForPublic = (order) => ({
         name: i.name, image: i.image, price: i.price, quantity: i.quantity,
         selectedColor: i.selectedColor || null,
     })),
+    currency: order.currency || 'USD',
     shippingInfo: {
         fullName: order.shippingInfo.fullName,
         address: order.shippingInfo.address,

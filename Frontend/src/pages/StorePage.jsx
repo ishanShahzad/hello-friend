@@ -18,6 +18,16 @@ const getEntityId = (value) => {
     return value._id || value.id || '';
 };
 
+const getStoreVisitorId = () => {
+    const key = 'rozareStoreVisitorId';
+    let visitorId = localStorage.getItem(key);
+    if (!visitorId) {
+        visitorId = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        localStorage.setItem(key, visitorId);
+    }
+    return visitorId;
+};
+
 const StorePage = ({ slugOverride = null }) => {
     const { slug: slugFromParams } = useParams();
     const slug = slugOverride || slugFromParams;
@@ -161,7 +171,11 @@ const StorePage = ({ slugOverride = null }) => {
 
     const incrementViewCount = async () => {
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}api/stores/${slug}/view`);
+            await axios.post(
+                `${import.meta.env.VITE_API_URL}api/stores/${slug}/view`,
+                {},
+                { headers: { 'x-rozare-visitor-id': getStoreVisitorId() } }
+            );
         } catch (error) {
             console.error('Error incrementing view count:', error);
         }

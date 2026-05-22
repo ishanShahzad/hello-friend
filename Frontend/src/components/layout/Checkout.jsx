@@ -55,7 +55,7 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState({});
 
 
-  const { formatPrice } = useCurrency();
+  const { currency, formatPrice } = useCurrency();
   
   const { cartItems, handleQtyInc, handleQtyDec, handleRemoveCartItem, isCartLoading,
     qtyUpdateId, fetchCart
@@ -507,6 +507,7 @@ export default function Checkout() {
         couponDiscount: totalCouponDiscount,
         totalAmount,
       },
+      currency,
 
       appliedCoupons: Object.values(appliedCoupons).map(c => ({
         couponId: c._id,

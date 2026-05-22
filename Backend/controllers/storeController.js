@@ -1,8 +1,10 @@
 const Store = require('../models/Store');
 const User = require('../models/User');
+const crypto = require('crypto');
 const { sendEmail } = require('./mailController');
 const { initializeSubscription } = require('./subscriptionController');
 const { publicProductFilter } = require('../services/productModerationService');
+const StoreView = require('../models/StoreView');
 
 // Email template helper
 const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
@@ -750,18 +752,35 @@ exports.incrementStoreView = async (req, res) => {
     try {
         const { slug } = req.params;
 
-        const store = await Store.findOneAndUpdate(
-            { storeSlug: slug, isActive: true },
-            { $inc: { views: 1 } },
-            { new: true }
-        );
+        const store = await Store.findOne({ storeSlug: slug, isActive: true }).select('_id views');
 
         if (!store) {
             return res.status(404).json({ msg: 'Store not found' });
         }
 
+        const forwarded = req.headers['x-forwarded-for']?.split(',')[0]?.trim();
+        const ip = forwarded || req.headers['x-real-ip'] || req.ip || req.socket?.remoteAddress || '';
+        const userAgent = req.headers['user-agent'] || '';
+        const visitorId = String(req.headers['x-rozare-visitor-id'] || '').trim().slice(0, 120);
+        const rawVisitor = visitorId || `${ip}|${userAgent}`;
+        const visitorKey = crypto.createHash('sha256').update(rawVisitor).digest('hex');
+        const ipHash = crypto.createHash('sha256').update(String(ip)).digest('hex');
+        const userAgentHash = crypto.createHash('sha256').update(String(userAgent)).digest('hex');
+        const bucket = new Date().toISOString().slice(0, 10);
+
+        let counted = false;
+        try {
+            await StoreView.create({ store: store._id, visitorKey, bucket, ipHash, userAgentHash });
+            await Store.updateOne({ _id: store._id }, { $inc: { views: 1 } });
+            store.views = Number(store.views || 0) + 1;
+            counted = true;
+        } catch (err) {
+            if (err?.code !== 11000) throw err;
+        }
+
         res.status(200).json({
-            msg: 'View count updated',
+            msg: counted ? 'View count updated' : 'View already counted for this visitor',
+            counted,
             views: store.views
         });
     } catch (error) {

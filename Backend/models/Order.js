@@ -4,6 +4,7 @@ const orderSchema = mongoose.Schema(
     {
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
         guestEmail: { type: String, default: null },
+        currency: { type: String, enum: ["USD", "PKR", "EUR", "GBP"], default: "USD" },
         orderId: { type: String, required: true },
         
 

@@ -14,6 +14,7 @@ import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatBotComponent from '../common/ChatBot';
+import CurrencySelector from '../common/CurrencySelector';
 import { PRESET_CATEGORIES } from '../../utils/categories';
 import { getAuthToken } from "../../utils/cookieHelper";
 
@@ -454,6 +455,7 @@ const SellerDashboard = () => {
                         </div>
 
                         <div className="flex items-center gap-2 sm:gap-3">
+                            <CurrencySelector />
                             {/* Home Button */}
                             <Link to="/" title="Back to Home">
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}

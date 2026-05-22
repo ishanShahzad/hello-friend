@@ -4,6 +4,8 @@
  * Keep messages concise — WhatsApp has a ~65K char limit but shorter is better.
  */
 
+const { formatMoneySync, normalizeCurrency } = require('../currencyService');
+
 const templates = {
     // ── Orders ──
     new_order: (order) => {
@@ -15,14 +17,15 @@ const templates = {
             order.total ??
             0
         );
-        const totalStr = Number.isFinite(total) ? total.toFixed(2) : '0.00';
+        const currency = normalizeCurrency(order.currency || order.displayCurrency || 'USD');
+        const totalStr = Number.isFinite(total) ? formatMoneySync(total, currency) : formatMoneySync(0, currency);
         // paymentMethod enum is ['cash_on_delivery', 'stripe'] — NOT 'cod'.
         const paymentLabel = order.paymentMethod === 'cash_on_delivery'
             ? 'Cash on Delivery'
             : order.paymentMethod === 'stripe'
                 ? 'Card (Stripe)'
                 : (order.paymentMethod || 'Unknown');
-        return `🛒 *New Order Received!*\n\nOrder: *#${order.orderId || order._id}*\nItems: ${itemCount} item${itemCount !== 1 ? 's' : ''}\nTotal: *$${totalStr}*\nPayment: ${paymentLabel}\n\nCheck your dashboard to process this order.`;
+        return `🛒 *New Order Received!*\n\nOrder: *#${order.orderId || order._id}*\nItems: ${itemCount} item${itemCount !== 1 ? 's' : ''}\nTotal: *${totalStr}*\nPayment: ${paymentLabel}\n\nCheck your dashboard to process this order.`;
     },
 
     order_confirmed: (order) => {

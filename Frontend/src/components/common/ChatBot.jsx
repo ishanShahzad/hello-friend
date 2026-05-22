@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 import { getAuthToken } from "../../utils/cookieHelper";
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { resilientFetch } from '../../utils/httpResilience';
+import { normalizeAIRoute } from '../../utils/aiRouteGuard';
 
 // ─── Endpoint (our own backend — no Supabase) ───
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
@@ -295,6 +297,7 @@ const DataListCard = ({ title, items, renderItem, icon: Icon = Package, color = 
 
 // ─── Product Card (compact, for chat context) ───
 const ProductCardInChat = ({ product, onView, onAddToCart }) => {
+  const { formatPrice } = useCurrency();
   const hasDiscount = product.discountedPrice && product.discountedPrice > 0 && product.discountedPrice < product.price;
   const displayPrice = hasDiscount ? product.discountedPrice : product.price;
   const stars = product.rating ? Math.round(product.rating) : 0;
@@ -317,9 +320,9 @@ const ProductCardInChat = ({ product, onView, onAddToCart }) => {
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{product.name}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[11px] font-bold" style={{ color: 'hsl(220, 70%, 55%)' }}>${displayPrice}</span>
+          <span className="text-[11px] font-bold" style={{ color: 'hsl(220, 70%, 55%)' }}>{formatPrice(displayPrice)}</span>
           {hasDiscount && (
-            <span className="text-[9px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>${product.price}</span>
+            <span className="text-[9px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price)}</span>
           )}
         </div>
         <div className="flex items-center gap-1 mt-0.5">
@@ -517,8 +520,9 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     switch (action) {
       case 'navigate':
         if (args.route) {
-          setTimeout(() => navigate(args.route), 400);
-          return { type: 'navigation', label: args.label || args.route };
+          const route = normalizeAIRoute(args.route);
+          setTimeout(() => navigate(route), 400);
+          return { type: 'navigation', label: args.label || route };
         }
         break;
       case 'show_style_advice':

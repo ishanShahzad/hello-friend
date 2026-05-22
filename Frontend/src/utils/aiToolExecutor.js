@@ -9,6 +9,7 @@
  */
 import axios from 'axios';
 import { getAuthToken } from "../utils/cookieHelper";
+import { normalizeAIRoute } from './aiRouteGuard';
 
 const apiUrl = () => import.meta.env.VITE_API_URL;
 const authHeaders = () => {
@@ -62,8 +63,9 @@ export async function executeAIToolCall(name, args, ctx = {}) {
       }
     }
     case 'navigate': {
-      if (navigate && args.route) setTimeout(() => navigate(args.route), 400);
-      return { ok: true, navigated: true, label: args.label, route: args.route };
+      const route = normalizeAIRoute(args.route);
+      if (navigate) setTimeout(() => navigate(route), 400);
+      return { ok: true, navigated: true, label: args.label || route, route };
     }
     case 'show_style_advice':
       return { ok: true, styleAdvice: args };

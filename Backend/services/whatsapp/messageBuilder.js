@@ -22,10 +22,10 @@
 //      still human-readable — "Please tap a button OR reply YES / NO" — so
 //      no buyer is ever stuck.
 
-const formatMoney = (n) => {
-    const v = Number(n || 0);
-    return `USD ${v.toFixed(2)}`;
-};
+const { formatMoneySync, normalizeCurrency } = require('../currencyService');
+
+const orderCurrency = (order) => normalizeCurrency(order?.currency || order?.displayCurrency || 'USD');
+const formatMoney = (n, currency) => formatMoneySync(n, currency || 'USD');
 
 // ──────────────────────────────────────────────────────────────────────────
 // Button ids — MUST start with these prefixes. Webhook handler uses the
@@ -55,13 +55,14 @@ exports.KEEPCANCEL_BTN_PREFIX = KEEPCANCEL_BTN_PREFIX;
 exports.buildOrderButtonsPayload = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const total = formatMoney(order.orderSummary?.totalAmount);
+    const currency = orderCurrency(order);
+    const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
     // Build product list
     const productLines = (order.orderItems || []).map(it => {
         const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty);
+        const price = formatMoney(it.price * qty, currency);
         return `• ${it.name} x${qty} — ${price}`;
     }).slice(0, 5); // Max 5 items to keep message short
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more item${itemCount - 5 > 1 ? 's' : ''}_`);
@@ -104,12 +105,13 @@ exports.buildOrderButtonsPayload = (order) => {
 exports.buildOrderListPayload = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const total = formatMoney(order.orderSummary?.totalAmount);
+    const currency = orderCurrency(order);
+    const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
     const productLines = (order.orderItems || []).map(it => {
         const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty);
+        const price = formatMoney(it.price * qty, currency);
         return `• ${it.name} x${qty} — ${price}`;
     }).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
@@ -153,12 +155,13 @@ exports.buildOrderListPayload = (order) => {
 exports.buildOrderConfirmationMessage = (order) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
     const itemCount = order.orderItems?.length || 0;
-    const total = formatMoney(order.orderSummary?.totalAmount);
+    const currency = orderCurrency(order);
+    const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
     const productLines = (order.orderItems || []).map(it => {
         const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty);
+        const price = formatMoney(it.price * qty, currency);
         return `• ${it.name} x${qty} — ${price}`;
     }).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
@@ -305,12 +308,13 @@ exports.buildPollPayload = (order) => ({
 // ──────────────────────────────────────────────────────────────────────────
 exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
     const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-    const total = formatMoney(order.orderSummary?.totalAmount);
+    const currency = orderCurrency(order);
+    const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const itemCount = order.orderItems?.length || 0;
 
     const productLines = (order.orderItems || []).map(it => {
         const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty);
+        const price = formatMoney(it.price * qty, currency);
         return `• ${it.name} x${qty} — ${price}`;
     }).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
