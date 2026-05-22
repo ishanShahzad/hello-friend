@@ -256,13 +256,13 @@ exports.createStore = async (req, res) => {
                     <p>Congratulations! Your store <strong>"${newStore.storeName}"</strong> has been successfully created on Rozare.</p>
                     <div class="highlight">
                         <strong>Store URL:</strong> ${process.env.FRONTEND_URL}/store/${newStore.storeSlug}<br/>
-                        <strong>Subdomain:</strong> ${newStore.storeSlug}.rozare.com <em>(activates after verification)</em>
+                        <strong>Subdomain:</strong> ${newStore.storeSlug}.rozare.com <em>(live while your store is active)</em>
                     </div>
                     <p>Next steps:</p>
                     <ul>
                         <li>Add products to your store</li>
                         <li>Customize your store settings & branding</li>
-                        <li>Apply for verification to activate your subdomain</li>
+                        <li>Apply for verification when you want a verified badge and extra customer trust</li>
                     </ul>`,
                     `${process.env.FRONTEND_URL}/seller-dashboard/store-settings`,
                     'Manage Your Store'
@@ -995,14 +995,14 @@ exports.approveVerification = async (req, res) => {
             const seller = await User.findById(store.seller);
             if (seller?.email) {
                 const html = storeEmailTemplate(
-                    '✅ Store Verified — Subdomain Activated!',
+                    '✅ Store Verified!',
                     `<p>Hello ${seller.username || 'Seller'},</p>
                     <p>Great news! Your store <strong>"${store.storeName}"</strong> has been verified by the Rozare team.</p>
                     <div class="highlight">
-                        <strong>🌐 Your subdomain is now live:</strong><br/>
+                        <strong>🌐 Your store link:</strong><br/>
                         <a href="https://${store.storeSlug}.rozare.com" style="color:#4F46E5;font-weight:600">${store.storeSlug}.rozare.com</a>
                     </div>
-                    <p>Your store now displays a verified badge and customers can access it via your custom subdomain. Share your link to start getting traffic!</p>`,
+                    <p>Your store now displays a verified badge. Your custom subdomain remains live as long as your store is active, so keep sharing your link to bring in customers!</p>`,
                     `${process.env.FRONTEND_URL}/seller-dashboard/subdomain`,
                     'View Subdomain Dashboard'
                 );
@@ -1148,9 +1148,9 @@ exports.removeVerification = async (req, res) => {
                     <p>We're writing to inform you that the verification for your store <strong>"${store.storeName}"</strong> has been removed by an administrator.</p>
                     <div class="highlight">
                         <strong>What this means:</strong><br/>
-                        • Your subdomain <strong>${store.storeSlug}.rozare.com</strong> is no longer active<br/>
                         • The verified badge has been removed from your store<br/>
-                        • Your store is still accessible at its regular URL
+                        • Your subdomain <strong>${store.storeSlug}.rozare.com</strong> remains available while your store is active<br/>
+                        • Customers can still access your store unless your account or subscription is blocked
                     </div>
                     <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
                     <p>If you believe this was a mistake or would like to reapply, please visit your Store Settings or contact our support team.</p>`,

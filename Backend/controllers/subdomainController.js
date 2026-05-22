@@ -149,7 +149,7 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
             subdomain: {
                 slug: store.storeSlug,
                 url: `${store.storeSlug}.rozare.com`,
-                isActive: !blocked && (store.verification?.isVerified || false),
+                isActive: !blocked,
                 blocked,
                 blockedAt: store.blockedAt || null,
                 daysUntilRemoval,
@@ -187,11 +187,11 @@ exports.getAllSubdomains = async (req, res) => {
 
         let query = {};
 
-        // Filter by verification status
+        // Filter by subdomain/store availability. Verification is separate from routing.
         if (status === 'active') {
-            query['verification.isVerified'] = true;
+            query.isActive = { $ne: false };
         } else if (status === 'inactive') {
-            query['verification.isVerified'] = { $ne: true };
+            query.isActive = false;
         } else if (status === 'pending') {
             query['verification.status'] = 'pending';
         }
@@ -238,7 +238,7 @@ exports.getAllSubdomains = async (req, res) => {
                 verification: store.verification,
                 createdAt: store.createdAt,
                 subdomainUrl: `${store.storeSlug}.rozare.com`,
-                isSubdomainActive: store.verification?.isVerified || false,
+                isSubdomainActive: store.isActive !== false,
                 productCount: products.length,
                 totalOrders: orders.length,
                 totalRevenue: Math.round(totalRevenue * 100) / 100,
@@ -248,7 +248,7 @@ exports.getAllSubdomains = async (req, res) => {
         // Summary stats
         const allStores = await Store.find({});
         const totalStores = allStores.length;
-        const activeSubdomains = allStores.filter(s => s.verification?.isVerified).length;
+        const activeSubdomains = allStores.filter(s => s.isActive !== false).length;
         const inactiveSubdomains = totalStores - activeSubdomains;
         const pendingVerifications = allStores.filter(s => s.verification?.status === 'pending').length;
         const totalViewsAll = allStores.reduce((sum, s) => sum + (s.views || 0), 0);

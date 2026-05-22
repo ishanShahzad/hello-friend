@@ -7,6 +7,13 @@
 const { formatMoneySync, normalizeCurrency } = require('../currencyService');
 
 const templates = {
+    seller_welcome: (storeName) => {
+        const liveLine = storeName
+            ? `"${storeName}" is live. You can manage it from your seller dashboard, or just chat with me here.`
+            : 'You can manage your seller account from the dashboard, or just chat with me here.';
+        return `*Congratulations! Your Rozare seller account is ready.*\n\n${liveLine}\n\nI'm your AI business assistant. Tell me what you want anytime: add products, update prices or stock, create coupons, check orders, improve descriptions, and manage store details.\n\nYou can chat with me on WhatsApp or on the Rozare website. I'm here whenever you need help growing your store.`;
+    },
+
     // ── Orders ──
     new_order: (order) => {
         const itemCount = order.orderItems?.length || 0;

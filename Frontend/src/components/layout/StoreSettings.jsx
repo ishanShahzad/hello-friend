@@ -432,18 +432,18 @@ const StoreSettings = () => {
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(0, 72%, 50%)', border: '1px solid rgba(239,68,68,0.3)' }}>
                                     <Lock size={10} /> Blocked{blockedInfo.daysUntilRemoval !== null ? ` — releases in ${blockedInfo.daysUntilRemoval}d` : ''}
                                 </span>
-                            ) : verification.isVerified ? (
+                            ) : !blockedInfo.blocked ? (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(150, 60%, 40%)', border: '1px solid rgba(34,197,94,0.25)' }}>
-                                    ✓ Active
+                                    ✓ Live
                                 </span>
                             ) : (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(234,179,8,0.12)', color: 'hsl(45, 80%, 40%)', border: '1px solid rgba(234,179,8,0.25)' }}>
-                                    <Lock size={10} /> Not Active — Verification Required
+                                    <Lock size={10} /> Unavailable
                                 </span>
                             )}
                         </div>
                         <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Choose a unique subdomain for your branded store link. Only verified stores get an active subdomain.
+                            Choose a unique subdomain for your branded store link. It stays live while your store is active; verification adds a badge and extra trust.
                         </p>
 
                         {/* Subdomain Input */}
@@ -494,16 +494,16 @@ const StoreSettings = () => {
                                     <span className="text-sm font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                                         {customSubdomain}.rozare.com
                                     </span>
-                                    {verification.isVerified ? (
+                                    {!blockedInfo.blocked ? (
                                         <span className="text-xs" style={{ color: 'hsl(150, 60%, 45%)' }}>← Will route to your store</span>
                                     ) : (
-                                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>← Will be active once verified</span>
+                                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>← Unavailable while your store is blocked</span>
                                     )}
                                 </div>
                             </motion.div>
                         )}
 
-                        {/* Status banner based on verification */}
+                        {/* Verification guidance */}
                         {!verification.isVerified && (
                             <motion.div
                                 initial={{ opacity: 0, y: 4 }}
@@ -515,11 +515,11 @@ const StoreSettings = () => {
                                     <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 45%)' }} />
                                     <div>
                                         <p className="text-sm font-semibold" style={{ color: 'hsl(45, 70%, 38%)' }}>
-                                            Subdomain not active — Verification required
+                                            Verification adds trust
                                         </p>
                                         {customSubdomain.length >= 3 && (
                                             <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                                <strong className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{customSubdomain}.rozare.com</strong> is your chosen address. It won't go live until your store is verified.
+                                                <strong className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{customSubdomain}.rozare.com</strong> is your store address. Verification is optional for subdomain routing, but useful for a verified badge and stronger customer confidence.
                                             </p>
                                         )}
                                     </div>
@@ -530,7 +530,7 @@ const StoreSettings = () => {
                                     <div className="flex items-start gap-2 rounded-lg px-3 py-2" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                                         <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: 'hsl(0, 72%, 55%)' }} />
                                         <p className="text-xs" style={{ color: 'hsl(0, 72%, 50%)' }}>
-                                            <strong>This subdomain is currently available</strong> but is not assigned to your brand yet. Other sellers can claim it before you. Apply for verification to secure it.
+                                            <strong>This subdomain is currently available</strong> but is not assigned to your brand yet. Save your store settings to claim it before another seller does.
                                         </p>
                                     </div>
                                 )}
@@ -557,14 +557,14 @@ const StoreSettings = () => {
                             </motion.div>
                         )}
 
-                        {/* Verified: subdomain is active */}
+                        {/* Verified store badge */}
                         {verification.isVerified && customSubdomain.length >= 3 && (
                             <div className="rounded-xl p-4" style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)' }}>
                                 <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'hsl(150, 60%, 40%)' }}>
-                                    <CheckCircle size={15} /> Your subdomain is live!
+                                    <CheckCircle size={15} /> Your store is verified
                                 </p>
                                 <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    Customers can reach your store at <strong className="font-mono">{customSubdomain}.rozare.com</strong>
+                                    Customers can reach your active store at <strong className="font-mono">{customSubdomain}.rozare.com</strong> and see your verified badge.
                                 </p>
                             </div>
                         )}

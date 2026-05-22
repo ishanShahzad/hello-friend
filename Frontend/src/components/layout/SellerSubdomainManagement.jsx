@@ -234,12 +234,10 @@ const SellerSubdomainManagement = () => {
                             <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(45, 80%, 45%)' }} />
                             <div>
                                 <p className="text-sm font-semibold" style={{ color: 'hsl(45, 70%, 38%)' }}>
-                                    Your subdomain is not active yet
+                                    Your subdomain is currently unavailable
                                 </p>
                                 <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    {subdomain.verificationStatus === 'pending'
-                                        ? 'Your verification application is under review. Once approved, your subdomain will go live.'
-                                        : 'You need to get verified to activate your subdomain. Apply for verification in Store Settings.'}
+                                    Your store is not publicly available right now. Subdomains are live for active stores; verification only adds a verified badge and trust signal.
                                 </p>
                                 <Link to="/seller-dashboard/store-settings"
                                     className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-xs font-semibold text-white"
@@ -474,7 +472,7 @@ const SellerSubdomainManagement = () => {
                 <div className="space-y-3">
                     {[
                         { q: 'What is a subdomain?', a: 'A custom URL like yourstore.rozare.com that customers can use to access your store directly.' },
-                        { q: 'When does it become active?', a: 'Your subdomain becomes active once your store is verified. Apply for verification in Store Settings.' },
+                        { q: 'When does it become active?', a: 'Your subdomain is live while your store is active. Verification is separate and adds a verified badge, not subdomain activation.' },
                         { q: 'Can I change it later?', a: 'Yes! You can change your subdomain at any time. The old URL will stop working immediately.' },
                         { q: 'What happens if my account is blocked?', a: isOwned
                             ? 'Your subdomain is protected for 3 years from purchase. No one else can claim it even if your account is blocked.'

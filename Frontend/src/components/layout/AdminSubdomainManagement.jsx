@@ -72,12 +72,12 @@ const AdminSubdomainManagement = () => {
                 await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${store._id}/remove`, { reason: 'Admin action' }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                toast.success('Verification removed — subdomain deactivated');
+                toast.success('Verification removed');
             } else {
                 await axios.put(`${import.meta.env.VITE_API_URL}api/stores/verification/${store._id}/approve`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                toast.success('Store verified — subdomain activated');
+                toast.success('Store verified');
             }
             fetchData();
         } catch (error) {
@@ -87,7 +87,7 @@ const AdminSubdomainManagement = () => {
 
     const summaryCards = [
         { label: 'Total Stores', value: summary.totalStores || 0, icon: <Globe size={18} />, color: 'hsl(220, 70%, 55%)' },
-        { label: 'Active Subdomains', value: summary.activeSubdomains || 0, icon: <CheckCircle size={18} />, color: 'hsl(150, 60%, 45%)' },
+        { label: 'Live Subdomains', value: summary.activeSubdomains || 0, icon: <CheckCircle size={18} />, color: 'hsl(150, 60%, 45%)' },
         { label: 'Inactive', value: summary.inactiveSubdomains || 0, icon: <Lock size={18} />, color: 'hsl(45, 80%, 45%)' },
         { label: 'Pending Verification', value: summary.pendingVerifications || 0, icon: <Clock size={18} />, color: 'hsl(30, 90%, 50%)' },
         { label: 'Total Views', value: summary.totalViews || 0, icon: <Eye size={18} />, color: 'hsl(280, 60%, 55%)' },
@@ -119,7 +119,7 @@ const AdminSubdomainManagement = () => {
                     Subdomain Management
                 </h1>
                 <p className="text-sm mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    View and manage all store subdomains, traffic, and verification status
+                    View and manage store subdomains, traffic, and verification status
                 </p>
             </div>
 
@@ -245,8 +245,8 @@ const AdminSubdomainManagement = () => {
                                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                                         onClick={() => handleToggleVerification(store)}
                                         className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-                                        style={{ background: store.isSubdomainActive ? 'hsl(0, 72%, 55%)' : 'hsl(150, 60%, 45%)' }}>
-                                        {store.isSubdomainActive ? 'Deactivate' : 'Activate'}
+                                        style={{ background: store.verification?.isVerified ? 'hsl(0, 72%, 55%)' : 'hsl(150, 60%, 45%)' }}>
+                                        {store.verification?.isVerified ? 'Remove Verification' : 'Verify Store'}
                                     </motion.button>
                                     <a href={getStoreSubdomainUrl(store.storeSlug)} target="_blank" rel="noreferrer"
                                         className="p-1.5 rounded-lg glass-inner" style={{ color: 'hsl(var(--muted-foreground))' }}>

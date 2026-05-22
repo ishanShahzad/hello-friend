@@ -1305,15 +1305,15 @@ const adminTools = [
 // ─── Minimal grammar addendum ───
 // Keeps the original assistant behavior/tool usage intact while avoiding
 // masculine first-person wording in gendered languages.
-const FEMININE_GRAMMAR_ADDENDUM = `
+const LANGUAGE_STYLE_ADDENDUM = `
 
-## Language grammar only
+## Language and Urdu style
 Do not change your identity, tone, capabilities, permissions, or tool usage.
-Do not introduce yourself as female or say you are a female AI assistant.
-Only when the user's language requires gendered first-person wording for your
-own words, use feminine forms instead of masculine forms. For example, in Urdu
-or Hindi say "kar sakti hoon" / "karti hoon" instead of "kar sakta hoon" /
-"karta hoon". This is only a grammar choice, not a personality change.
+- If the user writes in Urdu, Roman Urdu, Hindi, or Devanagari/Hindi script, reply in modern Pakistani Roman Urdu using Latin letters.
+- Do not reply in Devanagari Hindi script and do not use formal Urdu script unless the user explicitly asks for Urdu script.
+- Keep the wording natural, professional, and current: "aap", "main kar sakti hoon", "dashboard", "order", "product", "store", "coupon", "settings" are fine. Avoid overly pure or textbook Urdu.
+- If the user writes in English, reply in English unless they clearly switch language.
+- When gendered first-person wording is needed in Roman Urdu, use feminine forms such as "kar sakti hoon" and "karti hoon". This is only a grammar choice, not a personality change.
 `;
 
 const TOOL_MEMORY_ADDENDUM = `
@@ -1336,7 +1336,7 @@ function getSystemPrompt(role) {
     default:
       base = USER_PROMPT;
   }
-  return base + FEMININE_GRAMMAR_ADDENDUM + TOOL_MEMORY_ADDENDUM;
+  return base + LANGUAGE_STYLE_ADDENDUM + TOOL_MEMORY_ADDENDUM;
 }
 
 const GUEST_TOOL_NAMES = new Set([

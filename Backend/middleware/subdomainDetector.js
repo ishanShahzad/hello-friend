@@ -36,11 +36,11 @@ const subdomainDetector = async (req, res, next) => {
             return next();
         }
 
-        // First try to find an active, verified store
+        // Subdomains are live for active stores. Verification is a trust badge,
+        // not a routing requirement.
         const store = await Store.findOne({ 
             storeSlug: subdomain,
-            isActive: true,
-            'verification.isVerified': true
+            isActive: true
         });
         
         if (store) {

@@ -6,6 +6,8 @@ const { sendEmail } = require('./mailController')
 const { welcomeEmail, sellerAccountCreatedEmail } = require('../utils/emailTemplates');
 const { trackCompleteRegistration } = require('../services/tiktokEventsApi');
 const { normalizeSocialLinks } = require('../services/socialLinksService');
+const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
+const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 
 
 // Step 1: Send OTP to email
@@ -438,6 +440,8 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
         await newUser.save();
         await OTP.deleteOne({ _id: otpDoc._id });
 
+        let createdStoreName = '';
+
         // Auto-create store if storeName is provided
         if (storeName && storeName.trim().length >= 3) {
             try {
@@ -469,11 +473,16 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
                 });
                 await newStore.save();
                 await initializeSubscription(newUser._id);
+                createdStoreName = newStore.storeName;
             } catch (storeErr) {
                 console.error('Auto-create store error:', storeErr.message);
                 // Don't fail registration if store creation fails
             }
         }
+
+        notifySeller(newUser._id, 'seller_welcome', sellerTemplates.seller_welcome(createdStoreName)).catch(e =>
+            console.error('Seller WhatsApp welcome failed:', e.message)
+        );
 
         const payload = { id: newUser._id, username: newUser.username, email: newUser.email, role: newUser.role, avatar: newUser.avatar };
         const token = jwt.sign(payload, process.env.JWT_SECRET);

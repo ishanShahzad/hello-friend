@@ -4,6 +4,8 @@ const { sendEmail } = require('./mailController')
 const { sellerAccountCreatedEmail } = require('../utils/emailTemplates')
 const { trackCompleteRegistration } = require('../services/tiktokEventsApi')
 const { normalizeSocialLinks } = require('../services/socialLinksService')
+const { notifySeller } = require('../services/whatsapp/sellerNotificationService')
+const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates')
 
 exports.getUsers = async (req, res) => {
     const { role: userRole, id: _id } = req.user
@@ -221,6 +223,8 @@ exports.becomeSeller = async (req, res) => {
         
         await user.save()
 
+        let createdStoreName = ''
+
         // Auto-create store (storeName is now required)
         try {
             const Store = require('../models/Store')
@@ -241,6 +245,7 @@ exports.becomeSeller = async (req, res) => {
             })
             await newStore.save()
             await initializeSubscription(user._id)
+            createdStoreName = newStore.storeName
         } catch (storeErr) {
             console.error('Auto-create store error:', storeErr.message)
             // If store creation fails due to duplicate (race condition), return error
@@ -248,6 +253,10 @@ exports.becomeSeller = async (req, res) => {
                 return res.status(409).json({ message: 'This store name is already taken. Please choose a different name.' })
             }
         }
+
+        notifySeller(user._id, 'seller_welcome', sellerTemplates.seller_welcome(createdStoreName)).catch(e =>
+            console.error('Seller WhatsApp welcome failed:', e.message)
+        )
 
         // Generate new JWT token with updated role
         const jwt = require('jsonwebtoken')
