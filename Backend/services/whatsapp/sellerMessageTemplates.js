@@ -1,6 +1,6 @@
 /**
  * WhatsApp message templates for seller notifications.
- * Uses WhatsApp formatting: *bold*, _italic_, ~strikethrough~
+ * Uses plain text for seller-facing notifications.
  * Keep messages concise — WhatsApp has a ~65K char limit but shorter is better.
  */
 
@@ -11,7 +11,7 @@ const templates = {
         const liveLine = storeName
             ? `Your seller account is created and "${storeName}" is live.`
             : 'Your seller account is created.';
-        return `*Congratulations!*\n\n${liveLine}\n\nYou can manage your store directly from the seller dashboard, or you can chat with me here. I'm your AI business assistant, and I can help with anything you need for your store.\n\nWhenever you need help, just send me a message and tell me what to do. I can add products, update prices and stock, improve descriptions, create coupons, check orders, manage store details, and more.\n\nYou can chat with me here on WhatsApp or on the Rozare website. I'm here for you anytime, ready to help you manage and grow your store quickly.`;
+        return `Congratulations!\n\n${liveLine}\n\nYou can manage your store directly from the seller dashboard, or you can chat with me here. I'm your AI business assistant, and I can help with anything you need for your store.\n\nWhenever you need help, just send me a message and tell me what to do. I can add products, update prices and stock, improve descriptions, create coupons, check orders, manage store details, and more.\n\nYou can chat with me here on WhatsApp or on the Rozare website. I'm here for you anytime, ready to help you manage and grow your store quickly.`;
     },
 
     // ── Orders ──

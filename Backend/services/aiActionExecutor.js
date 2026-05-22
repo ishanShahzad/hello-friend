@@ -160,6 +160,68 @@ function cleanString(value) {
   return String(value ?? '').trim();
 }
 
+function cleanAIText(value, options = {}) {
+  const { singleLine = false, maxLength = 5000 } = options;
+  let text = cleanString(value);
+  if (!text) return '';
+
+  text = text
+    .replace(/\r\n/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/[*_`]+/g, '')
+    .replace(/^[\s#>~.-]+/, '')
+    .trim();
+
+  const leadingLabel = /^(?:product\s*name|product\s*title|name|title|brand|category|store\s*name|store\s*description|description|about\s*us|price|stock)\s*[:\-\u2013\u2014]\s*/i;
+  for (let i = 0; i < 3 && leadingLabel.test(text); i += 1) {
+    text = text.replace(leadingLabel, '').trim();
+  }
+
+  // Drop generated heading fragments such as "Adi Beauty Store - About Us" before the real copy.
+  text = text.replace(/^[A-Za-z0-9][A-Za-z0-9 '&.,]{1,80}\s[-\u2013\u2014]\sAbout Us\s+/i, '').trim();
+
+  if (singleLine) {
+    text = text.replace(/\s+/g, ' ');
+  } else {
+    text = text
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ');
+  }
+
+  text = text.replace(/^[:\-\u2013\u2014\s]+/, '').trim();
+  return maxLength ? text.slice(0, maxLength).trim() : text;
+}
+
+function cleanAIField(value, options = {}) {
+  return cleanAIText(value, { ...options, singleLine: true, maxLength: options.maxLength || 160 });
+}
+
+function cleanAIParagraph(value, options = {}) {
+  return cleanAIText(value, { ...options, singleLine: false, maxLength: options.maxLength || 5000 });
+}
+
+function inferCurrencyFromText(value, fallbackCurrency = 'USD') {
+  const raw = String(value ?? '').trim();
+  const upper = raw.toUpperCase();
+  if (/\b(PKR|PKR\.|RS|RS\.|RUPEES?|PAKISTANI\s+RUPEES?)\b/.test(upper)) return 'PKR';
+  if (/\b(USD|US\$|DOLLARS?|US\s+DOLLARS?)\b/.test(upper) || /\$/.test(raw)) return 'USD';
+  if (/\b(EUR|EUROS?)\b/.test(upper) || /€/.test(raw)) return 'EUR';
+  if (/\b(GBP|POUNDS?|BRITISH\s+POUNDS?)\b/.test(upper) || /£/.test(raw)) return 'GBP';
+  return normalizeCurrency(fallbackCurrency);
+}
+
+function parseMoneyInput(value, fallbackCurrency = 'USD') {
+  const currency = inferCurrencyFromText(value, fallbackCurrency);
+  if (typeof value === 'number') return { amount: value, currency };
+  const raw = String(value ?? '').replace(/,/g, '');
+  const match = raw.match(/-?\d+(?:\.\d+)?/);
+  return {
+    amount: match ? Number(match[0]) : Number(value),
+    currency,
+  };
+}
+
 const COMMON_COLOR_WORDS = new Set([
   'black', 'white', 'red', 'yellow', 'blue', 'green', 'orange', 'purple',
   'pink', 'brown', 'gray', 'grey', 'silver', 'gold', 'golden', 'navy',
@@ -188,7 +250,7 @@ function normalizeStringArray(value, options = {}) {
   const values = Array.isArray(value) ? value.flatMap(v => splitDelimitedString(v, options)) : splitDelimitedString(value, options);
   const seen = new Set();
   return values
-    .map(v => cleanString(v).replace(/^#/, ''))
+    .map(v => cleanAIField(v, { maxLength: 50 }).replace(/^#/, ''))
     .filter(v => v && v.length <= 50)
     .filter(v => {
       const key = v.toLowerCase();
@@ -264,7 +326,7 @@ function normalizeOptionGroups(value) {
 
   const seen = new Set();
   return rawGroups.map(group => {
-    const name = cleanString(group?.name);
+    const name = cleanAIField(group?.name, { maxLength: 80 });
     const values = normalizeStringArray(group?.values);
     if (!name || values.length === 0) return null;
     const key = name.toLowerCase();
@@ -374,7 +436,7 @@ async function resolveProductCandidates({ role, userId, args = {}, productId, pr
     ...(Array.isArray(productNames) ? productNames : []),
     ...(productName ? [productName] : []),
     ...(args.name ? [args.name] : []),
-  ].map(cleanString).filter(Boolean);
+  ].map(name => cleanAIField(name, { maxLength: 140 })).filter(Boolean);
 
   if (!names.length) return [];
 
@@ -624,19 +686,13 @@ function plainOptions(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function normalizeOptionGroups(product) {
+function normalizeProductOptionGroups(product) {
   return (product?.optionGroups || [])
     .map(group => ({
-      name: String(group?.name || '').trim(),
+      name: cleanAIField(group?.name, { maxLength: 80 }),
       values: normalizeStringArray(group?.values),
     }))
     .filter(group => group.name && group.values.length > 0);
-}
-
-function normalizeStringArray(value) {
-  return Array.isArray(value)
-    ? [...new Set(value.map(v => String(v || '').trim()).filter(Boolean))]
-    : [];
 }
 
 function findCaseInsensitive(value, choices = []) {
@@ -653,7 +709,7 @@ function resolveSelectedOption(selectedOptions, groupName) {
 }
 
 function validateProductSelection(product, selections = {}) {
-  const groups = normalizeOptionGroups(product);
+  const groups = normalizeProductOptionGroups(product);
   const legacyColors = normalizeStringArray(product?.colors);
   const selectedOptions = plainOptions(selections.selectedOptions);
   let selectedColor = String(selections.selectedColor || '').trim();
@@ -876,6 +932,21 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'search_products': {
         const { query, category, minPrice, maxPrice, sortBy, brand, limit } = args;
+        const hasMinPrice = minPrice !== undefined && minPrice !== null && minPrice !== '';
+        const hasMaxPrice = maxPrice !== undefined && maxPrice !== null && maxPrice !== '';
+        const applyPriceBounds = async (targetFilter) => {
+          if (!hasMinPrice && !hasMaxPrice) return;
+          targetFilter.price = {};
+          if (hasMinPrice) {
+            const parsed = parseMoneyInput(minPrice, args.currency || preferredCurrency);
+            if (Number.isFinite(parsed.amount)) targetFilter.price.$gte = await convertToUSD(parsed.amount, parsed.currency);
+          }
+          if (hasMaxPrice) {
+            const parsed = parseMoneyInput(maxPrice, args.currency || preferredCurrency);
+            if (Number.isFinite(parsed.amount)) targetFilter.price.$lte = await convertToUSD(parsed.amount, parsed.currency);
+          }
+          if (Object.keys(targetFilter.price).length === 0) delete targetFilter.price;
+        };
         
         // Use smart search with synonym expansion
         const filter = publicProductFilter(buildSmartSearchFilter(query, category));
@@ -905,11 +976,7 @@ async function executeToolCall(toolName, args = {}, user) {
         Object.assign(filter, storeScope.filter || {});
         if (brand) filter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
         if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) filter.stock = { $gt: 0 };
-        if (minPrice || maxPrice) {
-          filter.price = {};
-          if (minPrice) filter.price.$gte = await convertToUSD(Number(minPrice), normalizeCurrency(args.currency || preferredCurrency));
-          if (maxPrice) filter.price.$lte = await convertToUSD(Number(maxPrice), normalizeCurrency(args.currency || preferredCurrency));
-        }
+        await applyPriceBounds(filter);
 
         let sort = { createdAt: -1 };
         if (sortBy === 'price_low') sort = { price: 1 };
@@ -931,11 +998,7 @@ async function executeToolCall(toolName, args = {}, user) {
           if (category) fuzzyFilter.category = { $regex: escapeRegExp(category), $options: 'i' };
           if (brand) fuzzyFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fuzzyFilter.stock = { $gt: 0 };
-          if (minPrice || maxPrice) {
-            fuzzyFilter.price = {};
-            if (minPrice) fuzzyFilter.price.$gte = Number(minPrice);
-            if (maxPrice) fuzzyFilter.price.$lte = Number(maxPrice);
-          }
+          await applyPriceBounds(fuzzyFilter);
 
           const fuzzyPool = await Product.find(fuzzyFilter)
             .sort({ rating: -1, numReviews: -1, createdAt: -1 })
@@ -953,6 +1016,7 @@ async function executeToolCall(toolName, args = {}, user) {
           if (category) fallbackFilter.category = { $regex: category, $options: 'i' };
           if (brand) fallbackFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fallbackFilter.stock = { $gt: 0 };
+          await applyPriceBounds(fallbackFilter);
           products = await Product.find(fallbackFilter)
             .sort({ rating: -1, numReviews: -1, createdAt: -1 })
             .limit(12)
@@ -1931,30 +1995,38 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!store) return { success: false, error: 'You need to create a store first.' };
 
         const p = args.product || args;
+        const name = cleanAIField(p.name, { maxLength: 140 });
+        const category = cleanAIField(p.category, { maxLength: 80 });
+        const brand = cleanAIField(p.brand, { maxLength: 80 });
+        const description = cleanAIParagraph(p.description) || name;
         const missing = [];
-        if (!p.name) missing.push('name');
+        if (!name) missing.push('name');
         if (!p.price && p.price !== 0) missing.push('price');
-        if (!p.category) missing.push('category');
-        if (!p.brand) missing.push('brand');
+        if (!category) missing.push('category');
+        if (!brand) missing.push('brand');
         if (missing.length) {
           return { success: false, error: `Missing required fields: ${missing.join(', ')}`, missingFields: missing };
         }
-        const inputCurrency = normalizeCurrency(p.currency || args.currency || preferredCurrency);
-        const rawPrice = Number(p.price);
+        const priceInput = parseMoneyInput(p.price, p.currency || args.currency || preferredCurrency);
+        const inputCurrency = priceInput.currency;
+        const rawPrice = priceInput.amount;
         const stock = p.stock != null ? Number(p.stock) : 0;
-        const rawDiscountedPrice = p.discountedPrice ? Number(p.discountedPrice) : 0;
+        const discountInput = p.discountedPrice
+          ? parseMoneyInput(p.discountedPrice, p.discountedCurrency || p.currency || args.currency || inputCurrency)
+          : { amount: 0, currency: inputCurrency };
+        const rawDiscountedPrice = discountInput.amount;
         if (!Number.isFinite(rawPrice) || rawPrice < 0) return { success: false, error: 'Product price must be a non-negative number.' };
         if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Product stock must be a non-negative number.' };
         if (!Number.isFinite(rawDiscountedPrice) || rawDiscountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
         if (rawDiscountedPrice > 0 && rawDiscountedPrice >= rawPrice) return { success: false, error: 'Discounted price must be lower than the product price.' };
         const price = await convertToUSD(rawPrice, inputCurrency);
-        const discountedPrice = rawDiscountedPrice > 0 ? await convertToUSD(rawDiscountedPrice, inputCurrency) : 0;
+        const discountedPrice = rawDiscountedPrice > 0 ? await convertToUSD(rawDiscountedPrice, discountInput.currency) : 0;
 
         const confirmDuplicate = args.confirmDuplicate === true || p.confirmDuplicate === true;
         const duplicate = await Product.findOne({
           seller: targetSellerId,
-          name: { $regex: `^${escapeRegExp(p.name)}$`, $options: 'i' },
-          brand: { $regex: `^${escapeRegExp(p.brand)}$`, $options: 'i' },
+          name: { $regex: `^${escapeRegExp(name)}$`, $options: 'i' },
+          brand: { $regex: `^${escapeRegExp(brand)}$`, $options: 'i' },
         }).select('_id name brand price stock category createdAt').lean();
 
         if (duplicate && !confirmDuplicate) {
@@ -1982,10 +2054,10 @@ async function executeToolCall(toolName, args = {}, user) {
         const optionGroups = addColorOptionGroup(normalizeOptionGroups(p.optionGroups || p.options), colors);
         const { image, images } = buildProductImageFields(p);
         const tags = normalizeTags(p.tags, {
-          name: p.name,
-          brand: p.brand,
-          category: p.category,
-          description: p.description,
+          name,
+          brand,
+          category,
+          description,
           colors,
         });
         let isFeatured = p.isFeatured === true;
@@ -2004,12 +2076,12 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         const productData = {
-          name: cleanString(p.name),
-          description: cleanString(p.description) || cleanString(p.name),
+          name,
+          description,
           price,
           discountedPrice,
-          category: cleanString(p.category),
-          brand: cleanString(p.brand),
+          category,
+          brand,
           stock,
           image,
           images,
@@ -2061,7 +2133,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'edit_product': {
         if (!userId) return { success: false, error: 'Authentication required.' };
-        const { productId, productName } = args;
+        const productId = args.productId;
+        const productName = cleanAIField(args.productName, { maxLength: 140 });
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
         const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy', 'isFeatured'];
         const updates = {};
@@ -2071,14 +2144,27 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!productId && !productName) return { success: false, error: 'Please specify which product to edit (productId or productName).' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid product fields were provided to update.' };
         const inputCurrency = normalizeCurrency(args.currency || incomingUpdates.currency || preferredCurrency);
+        for (const textField of ['name', 'category', 'brand']) {
+          if (updates[textField] !== undefined) {
+            updates[textField] = cleanAIField(updates[textField], { maxLength: textField === 'name' ? 140 : 80 });
+            if (!updates[textField]) return { success: false, error: `${textField} cannot be empty.` };
+          }
+        }
+        if (updates.description !== undefined) {
+          updates.description = cleanAIParagraph(updates.description);
+          if (!updates.description) return { success: false, error: 'description cannot be empty.' };
+        }
         for (const numericField of ['price', 'discountedPrice', 'stock']) {
           if (updates[numericField] !== undefined) {
-            const numericValue = Number(updates[numericField]);
+            const parsedMoney = ['price', 'discountedPrice'].includes(numericField)
+              ? parseMoneyInput(updates[numericField], inputCurrency)
+              : null;
+            const numericValue = parsedMoney ? parsedMoney.amount : Number(updates[numericField]);
             if (!Number.isFinite(numericValue) || numericValue < 0) {
               return { success: false, error: `${numericField} must be a non-negative number.` };
             }
             updates[numericField] = ['price', 'discountedPrice'].includes(numericField)
-              ? await convertToUSD(numericValue, inputCurrency)
+              ? await convertToUSD(numericValue, parsedMoney.currency)
               : numericValue;
           }
         }
@@ -2552,11 +2638,13 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!store) return { success: false, error: 'You don\'t have a store yet.' };
 
         const productCount = await Product.countDocuments({ seller: userId });
+        const storeUrl = store.storeSlug ? `https://${store.storeSlug}.rozare.com/` : null;
         return {
           success: true,
           data: {
             storeName: store.storeName,
             slug: store.storeSlug,
+            storeUrl,
             description: store.description,
             sellerType: store.sellerType,
             logo: store.logo,
@@ -2571,7 +2659,7 @@ async function executeToolCall(toolName, args = {}, user) {
             changeLimits: storeChangeLimits(store),
             createdAt: store.createdAt,
           },
-          message: `Your store "${store.storeName}" — ${store.verification?.isVerified ? 'verified ✓' : 'not verified'} — ${productCount} products, ${store.views} views.`,
+          message: `Your store "${store.storeName}" - ${store.verification?.isVerified ? 'verified' : 'not verified'} - ${productCount} products, ${store.views} views${storeUrl ? ` - ${storeUrl}` : ''}.`,
         };
       }
 
@@ -2592,7 +2680,7 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         if (normalizedUpdates.storeName !== undefined) {
-          const name = String(normalizedUpdates.storeName).trim();
+          const name = cleanAIField(normalizedUpdates.storeName, { maxLength: 50 });
           if (isPlaceholderValue(name)) {
             return { success: false, error: 'No store name was provided. Ask the seller what new store name they want before updating.' };
           }
@@ -2615,6 +2703,18 @@ async function executeToolCall(toolName, args = {}, user) {
             normalizedUpdates.storeName = name;
             normalizedUpdates.lastNameChangeAt = new Date();
           }
+        }
+
+        if (normalizedUpdates.description !== undefined) {
+          normalizedUpdates.description = cleanAIParagraph(normalizedUpdates.description, { maxLength: 3000 });
+        }
+
+        if (normalizedUpdates.returnPolicy !== undefined && typeof normalizedUpdates.returnPolicy === 'string') {
+          normalizedUpdates.returnPolicy = cleanAIParagraph(normalizedUpdates.returnPolicy, { maxLength: 3000 });
+        }
+
+        if (normalizedUpdates.address !== undefined && typeof normalizedUpdates.address === 'string') {
+          normalizedUpdates.address = cleanAIField(normalizedUpdates.address, { maxLength: 300 });
         }
 
         if (normalizedUpdates.storeSlug !== undefined) {
@@ -3501,6 +3601,7 @@ async function executeToolCall(toolName, args = {}, user) {
               _id: s._id,
               storeName: s.storeName,
               slug: s.storeSlug,
+              storeUrl: s.storeSlug ? `https://${s.storeSlug}.rozare.com/` : null,
               description: s.description,
               seller: s.seller?.username || 'Unknown',
               views: s.views,
@@ -3543,6 +3644,7 @@ async function executeToolCall(toolName, args = {}, user) {
           data: {
             storeName: store.storeName,
             slug: store.storeSlug,
+            storeUrl: store.storeSlug ? `https://${store.storeSlug}.rozare.com/` : null,
             description: store.description,
             seller: store.seller?.username,
             isVerified: store.verification?.isVerified || false,
@@ -3635,6 +3737,7 @@ async function executeToolCall(toolName, args = {}, user) {
               storeName: s.storeName,
               storeSlug: s.storeSlug,
               slug: s.storeSlug,
+              storeUrl: s.storeSlug ? `https://${s.storeSlug}.rozare.com/` : null,
               description: s.description,
               views: s.views,
               trustCount: s.trustCount,

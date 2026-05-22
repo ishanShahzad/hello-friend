@@ -29,6 +29,31 @@ const AI_MODEL = process.env.AI_MODEL || 'google/gemini-2.5-flash';
 const AI_FALLBACK_MODEL = process.env.AI_FALLBACK_MODEL || 'google/gemini-flash-1.5';
 const SITE_URL = process.env.FRONTEND_URL || 'https://www.rozare.com';
 const SITE_NAME = 'Rozare';
+const PRODUCT_IMAGE_ATTACHMENT_RE = /\n?\[Attached product image: (https?:\/\/[^\]\s]+)\]/gi;
+
+function extractImageAttachments(content = '', explicit = []) {
+  const seen = new Set();
+  const attachments = [];
+  const add = (attachment) => {
+    const url = attachment?.url || attachment?.imageUrl || attachment?.src;
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    const key = String(url).toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    attachments.push({ type: 'image', url, name: attachment?.name || 'Product image' });
+  };
+
+  if (Array.isArray(explicit)) explicit.forEach(add);
+  const text = String(content || '');
+  for (const match of text.matchAll(PRODUCT_IMAGE_ATTACHMENT_RE)) {
+    add({ url: match[1], name: 'Product image' });
+  }
+  return attachments;
+}
+
+function stripAttachmentMetadata(content = '') {
+  return String(content || '').replace(PRODUCT_IMAGE_ATTACHMENT_RE, '').trim();
+}
 
 // ─── SYSTEM PROMPTS ──────────────────────────────────────────────────
 // These are crafted for warmth, expertise, and personal connection.
@@ -72,6 +97,7 @@ If the user asks for something only a seller or admin can do, politely explain: 
 - Give specific, actionable suggestions — never vague
 - Reference their past orders and preferences naturally when relevant
 - Keep replies conversational length (under ~150 words) unless they ask for a detailed breakdown
+- Use plain text in visible replies. Do not use markdown stars for bold or italic text.
 
 ## Styling Expertise
 - Color theory: complementary, analogous, triadic — use real color names
@@ -198,10 +224,16 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 
 ## Interaction Style
 - When the seller says "add a product": collect name, price, category, brand, stock. The add_product tool also supports description, image URL(s), tags, colors, optionGroups (for Size, Color, Material, etc.), and product return policy.
+- Visible replies must be plain text. Do not use markdown stars for bold or italic text.
+- Tool arguments must be clean business values only. For product name, category, brand, store name, and store description, never include labels like "Product Name:", "Brand:", "Category:", markdown stars, headings, copied form labels, or placeholder text. Example: name must be "Car", not "**Product Name:** Car".
+- For product category and brand, use the seller's exact brand when provided and choose a sensible clean category when obvious. Do not invent a fake brand; ask once if the brand is required and unclear.
+- When the seller asks for their own store name, description, link, subdomain, views, verification, or settings, use get_my_store directly. You already have current seller context, so do not ask for the store name first.
+- Seller store links use the live subdomain format: https://{storeSlug}.rozare.com/. Never use rozare.ai or /store/{slug} when answering "what is my store link?"
+- For product prices, treat plain amounts as the seller's preferred currency from context. If the seller explicitly says USD, PKR, EUR, GBP, dollars, rupees, or a currency symbol, pass that currency to the tool for that price.
 - If the seller asks you to improve the description, write a polished description before calling add_product.
 - If the seller says "choose tags yourself", create sensible searchable tags and pass them to add_product or edit_product. Never say tags are unsupported.
 - If the seller provides colors, sizes, variants, image URLs, or tags in the same product request, include them in the original add_product call. If they provide those details after a successful add, use edit_product on the most recently added productId from tool results; do not add the product again.
-- Web chat image uploads arrive as hidden text like [Attached product image: https://...]. Treat that URL as a provided product image. Use it in add_product or edit_product only when the seller's intent connects it to a product; if the seller only sends an image with no context, ask which product it belongs to. Never echo the raw URL back to the seller.
+- Web chat image uploads arrive as hidden text like [Attached product image: https://...]. Treat one or more attached URLs as provided product images. If seller text connects the image to a product, use the URL(s) in add_product or edit_product; never say you cannot view or receive the image. If the seller only sends image(s) with no context, ask which product they belong to. Never echo raw image URLs back to the seller.
 - Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add an image, colors, sizes, or other options. On web they can attach an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
 - If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
 - If add_product or edit_product says a product is blocked, be direct: the item is saved in Products but customers cannot see it because it looks like test/placeholder content. Ask the seller to edit the real product name and description; do not claim it is live.
@@ -226,6 +258,7 @@ You're a growth partner. Regularly suggest:
 - Tables and bullet points for data — easy to scan
 - Never fabricate numbers — always use tools to fetch fresh data
 - Reference past conversation and seller's business details naturally
+- Keep saved tool values clean and professional. Product names, store descriptions, category names, and brand names must never contain markdown formatting, field labels, or placeholders.
 
 ## CRITICAL: NEVER CLAIM AN ACTION YOU DID NOT EXECUTE
 - You can ONLY say "I updated/changed/added/deleted X" if you actually invoked the matching tool AND received a success: true result in this turn.
@@ -272,6 +305,8 @@ You have FULL platform access through tools:
 - Present data in clean, scannable tables with counts and totals
 - Flag anomalies: unusual traffic, spam complaints, suspicious sellers, fraud signals
 - Suggest platform improvements based on data patterns you notice
+- Visible replies must be plain text. Do not use markdown stars for bold or italic text.
+- Tool arguments for product/store fields must be clean values only; never include field labels, markdown stars, headings, or placeholders in saved names, descriptions, brands, or categories.
 
 ## Security Mindset
 - Warn before irreversible actions (delete user — "This will permanently remove all their data")
@@ -721,11 +756,12 @@ const sellerTools = [
       parameters: {
         type: 'object',
         properties: {
-          name: { type: 'string' },
-          price: { type: 'number' },
-          description: { type: 'string' },
-          category: { type: 'string' },
-          brand: { type: 'string' },
+          name: { type: 'string', description: 'Clean product name only. No labels, markdown, or headings.' },
+          price: { type: 'number', description: 'Numeric product price in the provided currency or seller preferred currency.' },
+          currency: { type: 'string', description: 'ISO currency for price when explicit or from context, e.g. PKR, USD, EUR, GBP.' },
+          description: { type: 'string', description: 'Plain product description only. No markdown heading, stars, or field labels.' },
+          category: { type: 'string', description: 'Clean category name only.' },
+          brand: { type: 'string', description: 'Clean brand name only.' },
           stock: { type: 'number' },
           image: { type: 'string', description: 'Primary product image URL. On WhatsApp, user must paste a public URL. On web, use the hidden [Attached product image: URL] metadata when present.' },
           images: {
@@ -733,7 +769,8 @@ const sellerTools = [
             description: 'Additional product image URLs.',
             items: { type: 'string' },
           },
-          discountedPrice: { type: 'number' },
+          discountedPrice: { type: 'number', description: 'Optional numeric discounted price in the same currency unless discountedCurrency is provided.' },
+          discountedCurrency: { type: 'string', description: 'Optional ISO currency for discountedPrice.' },
           tags: { type: 'array', items: { type: 'string' } },
           colors: { type: 'array', items: { type: 'string' }, description: 'Color choices such as red, yellow, black.' },
           optionGroups: {
@@ -928,7 +965,7 @@ const sellerTools = [
         properties: {
           updates: {
             type: 'object',
-            description: 'Fields: storeName, storeSlug, description, logo, banner, socialLinks, returnPolicy, address, sellerType, confirmSubdomainChange. Do not use placeholders.',
+            description: 'Fields: storeName, storeSlug, description, logo, banner, socialLinks, returnPolicy, address, sellerType, confirmSubdomainChange. Store text fields must be clean plain values only: no markdown stars, headings, labels, copied form labels, or placeholders.',
           },
         },
         required: ['updates'],
@@ -1531,6 +1568,7 @@ async function buildUserContext(userId, role) {
           ctx.store = {
             name: store.storeName,
             slug: store.storeSlug,
+            url: store.storeSlug ? `https://${store.storeSlug}.rozare.com/` : null,
             isVerified: store.verification?.isVerified || false,
             trustCount: store.trustCount || 0,
             isActive: store.isActive,
@@ -1577,7 +1615,8 @@ function formatContextBlock(ctx, role) {
     });
   }
   if (role === 'seller' && ctx.store) {
-    s += `- Store: "${ctx.store.name}" (${ctx.store.slug}) — ${ctx.store.isVerified ? 'verified ✓' : 'not verified'} — ${ctx.productCount ?? 0} products — ${ctx.store.trustCount} trust\n`;
+    s += `- Store: "${ctx.store.name}" (${ctx.store.slug}) - ${ctx.store.isVerified ? 'verified' : 'not verified'} - ${ctx.productCount ?? 0} products - ${ctx.store.trustCount} trust\n`;
+    if (ctx.store.url) s += `- Store URL: ${ctx.store.url}\n`;
   }
   if (role === 'seller' && ctx.store?.changeLimits) {
     const limits = ctx.store.changeLimits;
@@ -1696,7 +1735,7 @@ const WHATSAPP_SYSTEM_PROMPT_ADDENDUM = `
 
 ## IMPORTANT: You are chatting via WhatsApp
 - Keep responses concise — under 500 words unless the user asks for detailed info
-- Use WhatsApp formatting: *bold*, _italic_, ~strikethrough~
+- Use plain text only. Do not use WhatsApp markdown stars, underscores, or strikethrough formatting.
 - Do NOT use markdown headers (#), code blocks (\`\`\`), or tables
 - Share links as full URLs (e.g. https://www.rozare.com/marketplace)
 - When listing products, use bullet points with emoji and NUMBER them (1, 2, 3...)
@@ -2385,7 +2424,7 @@ async function saveToConversation(userId, conversationId, messages, source = 'we
       const title = source === 'whatsapp'
         ? '[WhatsApp] Chat'
         : (firstUserMsg
-          ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? '...' : '')
+          ? stripAttachmentMetadata(firstUserMsg.content).slice(0, 60) + (stripAttachmentMetadata(firstUserMsg.content).length > 60 ? '...' : '')
           : 'New Chat');
       history.conversations.push({ title, messages: [], isActive: source !== 'whatsapp', source });
       convo = history.conversations[history.conversations.length - 1];
@@ -2398,6 +2437,10 @@ async function saveToConversation(userId, conversationId, messages, source = 'we
   // APPEND new messages (don't replace existing ones)
   for (const m of messages) {
     const entry = { role: m.role, content: m.content };
+    const attachments = extractImageAttachments(m.content, m.attachments);
+    if (attachments.length > 0) {
+      entry.attachments = attachments;
+    }
     if (Array.isArray(m.toolEvents) && m.toolEvents.length > 0) {
       entry.toolEvents = m.toolEvents;
     }
@@ -2435,7 +2478,7 @@ exports.getConversations = async (req, res) => {
         messageCount: c.messages?.length || 0,
         lastActive: c.lastActive || c.updatedAt,
         isActive: c.isActive,
-        preview: c.messages?.filter(m => m.role === 'user').pop()?.content?.slice(0, 80) || '',
+        preview: stripAttachmentMetadata(c.messages?.filter(m => m.role === 'user').pop()?.content || '').slice(0, 80),
       }));
 
     return res.json({
@@ -2488,6 +2531,7 @@ exports.getConversation = async (req, res) => {
       messages: (convo.messages || []).map(m => ({
         role: m.role,
         content: m.content,
+        attachments: m.attachments || [],
         toolEvents: m.toolEvents || [],
         createdAt: m.createdAt,
       })),

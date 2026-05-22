@@ -24,10 +24,20 @@ const AI_CHAT_URL = `${API_BASE}api/ai-chat/stream`;
 const PRODUCT_IMAGE_ATTACHMENT_RE = /\n?\[Attached product image: (https?:\/\/[^\]\s]+)\]/gi;
 
 const extractImageAttachments = (content = '', explicit = []) => {
-  const attachments = Array.isArray(explicit) ? [...explicit] : [];
+  const seen = new Set();
+  const attachments = [];
+  const addAttachment = (attachment) => {
+    const url = attachment?.url || attachment?.imageUrl || attachment?.src;
+    if (!url) return;
+    const key = String(url).toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    attachments.push({ type: 'image', url, name: attachment?.name || 'Product image' });
+  };
+  if (Array.isArray(explicit)) explicit.forEach(addAttachment);
   const text = String(content || '');
   for (const match of text.matchAll(PRODUCT_IMAGE_ATTACHMENT_RE)) {
-    attachments.push({ type: 'image', url: match[1], name: 'Product image' });
+    addAttachment({ type: 'image', url: match[1], name: 'Product image' });
   }
   return attachments;
 };
@@ -405,13 +415,14 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
-  const [pendingProductImage, setPendingProductImage] = useState(null);
+  const [pendingProductImages, setPendingProductImages] = useState([]);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const abortRef = useRef(null);
   const hasLoadedHistory = useRef(false);
+  const pendingProductImagesRef = useRef([]);
 
   // Derived
   const role = ['user', 'seller', 'admin'].includes(dashboardRole) ? dashboardRole : (currentUser?.role || 'user');
@@ -511,9 +522,15 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
 
+  useEffect(() => {
+    pendingProductImagesRef.current = pendingProductImages;
+  }, [pendingProductImages]);
+
   useEffect(() => () => {
-    if (pendingProductImage?.previewUrl) URL.revokeObjectURL(pendingProductImage.previewUrl);
-  }, [pendingProductImage?.previewUrl]);
+    pendingProductImagesRef.current.forEach(image => {
+      if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+    });
+  }, []);
 
   // ─── Handle client-side actions from the server ───
   const handleClientAction = useCallback((action, args) => {
@@ -536,16 +553,27 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   }, [navigate]);
 
   const handleProductImageUpload = useCallback(async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []).filter(file => file?.type?.startsWith('image/'));
+    if (!files.length) return;
 
     try {
-      const previewUrl = URL.createObjectURL(file);
-      setPendingProductImage(prev => {
-        if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return { file, previewUrl, name: file.name, size: file.size, type: file.type };
+      const nextImages = files.map(file => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      }));
+      setPendingProductImages(prev => {
+        const combined = [...prev, ...nextImages];
+        const kept = combined.slice(0, 8);
+        combined.slice(8).forEach(image => {
+          if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+        });
+        return kept;
       });
-      toast.success('Image attached. Add product details or send when ready.');
+      toast.success(`${nextImages.length} image${nextImages.length > 1 ? 's' : ''} attached. Add product details or send when ready.`);
       setTimeout(() => inputRef.current?.focus(), 0);
     } catch (error) {
       toast.error(error.message || 'Failed to attach image');
@@ -555,20 +583,26 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   }, []);
 
   // ─── Send message (SSE streaming with server-side tool execution) ───
-  const sendMessage = useCallback(async (text, attachment = null) => {
+  const sendMessage = useCallback(async (text, attachments = []) => {
     const trimmedText = String(text || '').trim();
-    if ((!trimmedText && !attachment) || isLoading) return;
+    const pendingAttachments = Array.isArray(attachments) ? attachments : (attachments ? [attachments] : []);
+    if ((!trimmedText && pendingAttachments.length === 0) || isLoading) return;
 
-    let uploadedAttachment = null;
-    if (attachment?.file) {
+    let uploadedAttachments = [];
+    if (pendingAttachments.some(attachment => attachment?.file)) {
       setIsUploadingProductImage(true);
       try {
-        const imageUrl = await uploadImageToCloudinary(attachment.file);
-        uploadedAttachment = {
-          type: 'image',
-          url: imageUrl,
-          name: attachment.name || 'Product image',
-        };
+        uploadedAttachments = await Promise.all(
+          pendingAttachments.map(async (attachment) => {
+            if (attachment?.url && !attachment.file) return attachment;
+            const imageUrl = await uploadImageToCloudinary(attachment.file);
+            return {
+              type: 'image',
+              url: imageUrl,
+              name: attachment.name || 'Product image',
+            };
+          })
+        );
       } catch (error) {
         toast.error(error.message || 'Failed to upload image');
         setIsUploadingProductImage(false);
@@ -577,22 +611,29 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       setIsUploadingProductImage(false);
     }
 
-    const visibleContent = trimmedText || 'Image attached';
-    const attachmentMetadata = uploadedAttachment?.url
-      ? `\n\n[Attached product image: ${uploadedAttachment.url}]`
-      : '';
-    const apiUserMsg = { role: 'user', content: `${visibleContent}${attachmentMetadata}` };
+    const visibleContent = trimmedText || (uploadedAttachments.length > 1 ? `${uploadedAttachments.length} images attached` : 'Image attached');
+    const attachmentMetadata = uploadedAttachments
+      .filter(attachment => attachment?.url)
+      .map(attachment => `[Attached product image: ${attachment.url}]`)
+      .join('\n');
+    const apiUserMsg = {
+      role: 'user',
+      content: attachmentMetadata ? `${visibleContent}\n\n${attachmentMetadata}` : visibleContent,
+      ...(uploadedAttachments.length ? { attachments: uploadedAttachments } : {}),
+    };
     const userMsg = {
       role: 'user',
       content: visibleContent,
-      ...(uploadedAttachment ? { attachments: [uploadedAttachment] } : {}),
+      ...(uploadedAttachments.length ? { attachments: uploadedAttachments } : {}),
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setPendingProductImage(prev => {
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return null;
+    setPendingProductImages(prev => {
+      prev.forEach(image => {
+        if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+      });
+      return [];
     });
     setShowChips(false);
     setIsLoading(true);
@@ -1202,40 +1243,57 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           paddingBottom: embedded ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
         }}
       >
-        {pendingProductImage && (
+        {pendingProductImages.length > 0 && (
           <div
-            className="mb-2 flex items-center gap-3 rounded-2xl p-2"
+            className="mb-2 rounded-2xl p-2"
             style={{ background: 'hsl(var(--muted) / 0.45)', border: '1px solid hsl(var(--border))' }}
           >
-            <img
-              src={pendingProductImage.previewUrl}
-              alt={pendingProductImage.name || 'Selected product image'}
-              className="h-14 w-14 rounded-xl object-cover"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
-                {pendingProductImage.name || 'Product image'}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                {pendingProductImages.length} image{pendingProductImages.length > 1 ? 's' : ''} ready
               </p>
-              <p className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Ready to send with your message
-              </p>
+              <button
+                type="button"
+                onClick={() => setPendingProductImages(prev => {
+                  prev.forEach(image => {
+                    if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+                  });
+                  return [];
+                })}
+                className="h-7 px-2 rounded-lg text-[11px] transition-all hover:scale-[1.02] active:scale-95"
+                style={{ background: 'hsl(var(--background) / 0.7)', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+              >
+                Remove all
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setPendingProductImage(prev => {
-                if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-                return null;
-              })}
-              className="h-8 w-8 rounded-xl flex items-center justify-center transition-all hover:scale-[1.04] active:scale-95"
-              style={{ background: 'hsl(var(--background) / 0.7)', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
-              aria-label="Remove attached image"
-            >
-              <X size={14} />
-            </button>
+            <div className="grid grid-cols-4 gap-2">
+              {pendingProductImages.map(image => (
+                <div key={image.id || image.previewUrl} className="relative">
+                  <img
+                    src={image.previewUrl}
+                    alt={image.name || 'Selected product image'}
+                    className="h-16 w-full rounded-xl object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPendingProductImages(prev => prev.filter(item => {
+                      const keep = (item.id || item.previewUrl) !== (image.id || image.previewUrl);
+                      if (!keep && item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+                      return keep;
+                    }))}
+                    className="absolute -right-1 -top-1 h-6 w-6 rounded-full flex items-center justify-center shadow-sm"
+                    style={{ background: 'hsl(var(--background))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+                    aria-label="Remove attached image"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <form
-          onSubmit={(e) => { e.preventDefault(); sendMessage(input, pendingProductImage); }}
+          onSubmit={(e) => { e.preventDefault(); sendMessage(input, pendingProductImages); }}
           className="flex gap-2 items-end"
         >
           <div
@@ -1252,6 +1310,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
                   onChange={handleProductImageUpload}
                 />
@@ -1284,7 +1343,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           </div>
           <button
             type="submit"
-            disabled={isLoading || isUploadingProductImage || (!input.trim() && !pendingProductImage)}
+            disabled={isLoading || isUploadingProductImage || (!input.trim() && pendingProductImages.length === 0)}
             className="h-11 w-11 shrink-0 rounded-2xl flex items-center justify-center transition-all disabled:opacity-40 hover:scale-[1.04] active:scale-95"
             style={{
               background: BRAND_GRADIENT,

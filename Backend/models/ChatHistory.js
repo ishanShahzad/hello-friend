@@ -4,6 +4,14 @@ const mongoose = require('mongoose');
 const messageSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
   content: { type: String, default: '' },
+  attachments: {
+    type: [{
+      type: { type: String, default: 'image' },
+      url: { type: String, required: true },
+      name: { type: String, default: 'Product image' },
+    }],
+    default: undefined,
+  },
   toolEvents: { type: [mongoose.Schema.Types.Mixed], default: undefined }, // tool results, client actions, etc.
 }, { timestamps: true });
 
