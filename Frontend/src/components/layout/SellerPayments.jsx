@@ -96,8 +96,8 @@ const SellerPayments = () => {
     const [requesting, setRequesting] = useState(false);
     const [summary, setSummary] = useState(null);
     const [accountForm, setAccountForm] = useState(defaultAccountForm);
+    const [showAccountForm, setShowAccountForm] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('');
-    const [sellerNote, setSellerNote] = useState('');
 
     const fetchSummary = async () => {
         setLoading(true);
@@ -150,6 +150,7 @@ const SellerPayments = () => {
             });
             toast.success(res.data.msg || 'Payment account saved');
             await fetchSummary();
+            setShowAccountForm(false);
         } catch (error) {
             toast.error(error.response?.data?.msg || 'Failed to save payment account');
         } finally {
@@ -159,6 +160,14 @@ const SellerPayments = () => {
 
     const requestWithdrawal = async (event) => {
         event.preventDefault();
+        if (!paymentAccount) {
+            toast.error('Link your payment account before requesting a withdrawal');
+            return;
+        }
+        if ((revenue.withdrawableBalance || 0) <= 0) {
+            toast.error('You have zero balance and cannot withdraw right now');
+            return;
+        }
         const amount = Number(withdrawAmount);
         if (!Number.isFinite(amount) || amount <= 0) {
             toast.error('Enter a valid withdrawal amount');
@@ -179,13 +188,11 @@ const SellerPayments = () => {
                     amountUSD,
                     requestedAmount: amount,
                     requestedCurrency: currency,
-                    sellerNote,
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             toast.success('Withdrawal request submitted');
             setWithdrawAmount('');
-            setSellerNote('');
             await fetchSummary();
         } catch (error) {
             toast.error(error.response?.data?.msg || 'Failed to request withdrawal');
@@ -266,11 +273,10 @@ const SellerPayments = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <motion.form
+                <motion.section
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="glass-panel water-shimmer p-5 sm:p-6 space-y-4"
-                    onSubmit={saveAccount}
                 >
                     <div className="flex items-start justify-between gap-3">
                         <div>
@@ -279,68 +285,79 @@ const SellerPayments = () => {
                                 Used for manual payouts of Stripe-paid delivered orders.
                             </p>
                         </div>
-                        <div className="p-3 rounded-2xl" style={{ background: 'rgba(14,165,233,0.12)', color: 'hsl(200,80%,50%)' }}>
-                            <Landmark size={22} />
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowAccountForm((value) => !value)}
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center gap-2"
+                            style={{ color: 'hsl(var(--foreground))' }}
+                        >
+                            <Landmark size={16} />
+                            {paymentAccount ? (showAccountForm ? 'Hide account form' : 'Update payment account') : (showAccountForm ? 'Hide account form' : 'Add payment account')}
+                        </button>
                     </div>
 
                     {paymentAccount && (
-                        <div className="rounded-2xl p-4 glass-inner">
-                            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                                <ShieldCheck size={16} style={{ color: 'hsl(150,60%,45%)' }} />
-                                Saved payout account
+                        <div className="rounded-2xl p-4 glass-inner flex items-start justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                    <ShieldCheck size={16} style={{ color: 'hsl(150,60%,45%)' }} />
+                                    Linked payment account
+                                </div>
+                                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    {paymentAccount.bankName} - {paymentAccount.accountHolderName}
+                                    {paymentAccount.maskedAccountNumber ? ` - ${paymentAccount.maskedAccountNumber}` : ''}
+                                    {paymentAccount.maskedIban ? ` - IBAN ${paymentAccount.maskedIban}` : ''}
+                                </p>
                             </div>
-                            <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {paymentAccount.bankName} - {paymentAccount.accountHolderName}
-                                {paymentAccount.maskedAccountNumber ? ` - ${paymentAccount.maskedAccountNumber}` : ''}
-                                {paymentAccount.maskedIban ? ` - IBAN ${paymentAccount.maskedIban}` : ''}
-                            </p>
+                            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ color: 'hsl(150,60%,45%)', background: 'rgba(16,185,129,0.12)', border: '1px solid var(--glass-border)' }}>
+                                Linked
+                            </span>
                         </div>
                     )}
 
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account holder name</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountHolderName} onChange={(e) => handleAccountChange('accountHolderName', e.target.value)} required />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Bank name</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.bankName} onChange={(e) => handleAccountChange('bankName', e.target.value)} required />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account number</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountNumber} onChange={(e) => handleAccountChange('accountNumber', e.target.value)} placeholder={paymentAccount?.maskedAccountNumber || 'Enter account number'} />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>IBAN</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.iban} onChange={(e) => handleAccountChange('iban', e.target.value)} placeholder={paymentAccount?.maskedIban || 'Optional IBAN'} />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>SWIFT / routing code</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.swiftCode} onChange={(e) => handleAccountChange('swiftCode', e.target.value)} />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</span>
-                            <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.country} onChange={(e) => handleAccountChange('country', e.target.value)} />
-                        </label>
-                        <label className="space-y-1.5">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Payout currency</span>
-                            <select className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.currency} onChange={(e) => handleAccountChange('currency', e.target.value)}>
-                                {Object.keys(currencies).map((code) => <option key={code} value={code}>{code} - {currencies[code].name}</option>)}
-                            </select>
-                        </label>
-                    </div>
+                    {showAccountForm && (
+                        <form className="space-y-4" onSubmit={saveAccount}>
+                            <div className="grid sm:grid-cols-2 gap-4">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account holder name</span>
+                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountHolderName} onChange={(e) => handleAccountChange('accountHolderName', e.target.value)} required />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Bank name</span>
+                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.bankName} onChange={(e) => handleAccountChange('bankName', e.target.value)} required />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account number</span>
+                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountNumber} onChange={(e) => handleAccountChange('accountNumber', e.target.value)} placeholder={paymentAccount?.maskedAccountNumber || 'Enter account number'} />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>IBAN</span>
+                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.iban} onChange={(e) => handleAccountChange('iban', e.target.value)} placeholder={paymentAccount?.maskedIban || 'Optional IBAN'} />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</span>
+                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.country} onChange={(e) => handleAccountChange('country', e.target.value)} />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Payout currency</span>
+                                    <select className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.currency} onChange={(e) => handleAccountChange('currency', e.target.value)}>
+                                        {Object.keys(currencies).map((code) => <option key={code} value={code}>{code} - {currencies[code].name}</option>)}
+                                    </select>
+                                </label>
+                            </div>
 
-                    <label className="space-y-1.5 block">
-                        <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Payout instructions</span>
-                        <textarea className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none min-h-[86px]" value={accountForm.payoutInstructions} onChange={(e) => handleAccountChange('payoutInstructions', e.target.value)} placeholder="Optional transfer notes for the Rozare admin team" />
-                    </label>
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Payout instructions</span>
+                                <textarea className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none min-h-[86px]" value={accountForm.payoutInstructions} onChange={(e) => handleAccountChange('payoutInstructions', e.target.value)} placeholder="Optional transfer details" />
+                            </label>
 
-                    <button disabled={savingAccount} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(200,80%,50%))' }}>
-                        {savingAccount ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                        Save payment account
-                    </button>
-                </motion.form>
+                            <button disabled={savingAccount} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(200,80%,50%))' }}>
+                                {savingAccount ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                                Link payment account
+                            </button>
+                        </form>
+                    )}
+                </motion.section>
 
                 <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     <form className="glass-panel water-shimmer p-5 sm:p-6 space-y-4" onSubmit={requestWithdrawal}>
@@ -375,12 +392,7 @@ const SellerPayments = () => {
                             </button>
                         </div>
 
-                        <label className="space-y-1.5 block">
-                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Note</span>
-                            <textarea className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none min-h-[86px]" value={sellerNote} onChange={(e) => setSellerNote(e.target.value)} placeholder="Optional note for admin" />
-                        </label>
-
-                        <button disabled={requesting || !paymentAccount || (revenue.withdrawableBalance || 0) <= 0} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(200,80%,45%))' }}>
+                        <button disabled={requesting} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(200,80%,45%))' }}>
                             {requesting ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
                             Send withdrawal request
                         </button>
