@@ -713,16 +713,16 @@ const StoreSettings = () => {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[
-                                { key: 'website', label: 'Website', placeholder: 'https://yourwebsite.com' },
-                                { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/yourpage' },
-                                { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/yourprofile' },
-                                { key: 'twitter', label: 'Twitter/X', placeholder: 'https://twitter.com/yourhandle' },
-                                { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@yourchannel' },
-                                { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@yourusername' },
+                                { key: 'website', label: 'Website', placeholder: 'yourwebsite.com or full link' },
+                                { key: 'facebook', label: 'Facebook', placeholder: 'page name or full link' },
+                                { key: 'instagram', label: 'Instagram', placeholder: '@handle or full link' },
+                                { key: 'twitter', label: 'Twitter/X', placeholder: '@handle or full link' },
+                                { key: 'youtube', label: 'YouTube', placeholder: '@channel or full link' },
+                                { key: 'tiktok', label: 'TikTok', placeholder: '@handle or full link' },
                             ].map(social => (
                                 <div key={social.key}>
                                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>{social.label}</label>
-                                    <input type="url" value={storeData.socialLinks[social.key]} onChange={(e) => handleSocialLinkChange(social.key, e.target.value)} className="glass-input" placeholder={social.placeholder} />
+                                    <input type="text" value={storeData.socialLinks[social.key]} onChange={(e) => handleSocialLinkChange(social.key, e.target.value)} className="glass-input" placeholder={social.placeholder} />
                                 </div>
                             ))}
                         </div>

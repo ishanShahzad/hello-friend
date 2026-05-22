@@ -86,6 +86,10 @@ function ProductDetailPage() {
         if (!commentRef.current.value.trim()) return toast.error('Please write a review comment');
         try {
             const token = getAuthToken();
+            if (!token) {
+                toast.error('Please log in before adding a product review.');
+                return;
+            }
             const res = await axios.post(
                 `${import.meta.env.VITE_API_URL}api/products/add-review/${product._id}`,
                 { rating, comment: commentRef.current.value },

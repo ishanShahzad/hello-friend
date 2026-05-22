@@ -44,6 +44,7 @@ const {
   publicProductFilter,
 } = require('./productModerationService');
 const { normalizeCurrency, convertToUSD, formatMoney } = require('./currencyService');
+const { normalizeSocialLinks } = require('./socialLinksService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -2016,6 +2017,7 @@ async function executeToolCall(toolName, args = {}, user) {
           colors,
           optionGroups,
           isFeatured,
+          createdVia: 'ai',
           ...(Object.keys(pickObject(p.returnPolicy)).length ? { returnPolicy: p.returnPolicy } : {}),
           seller: targetSellerId,
         };
@@ -2046,6 +2048,7 @@ async function executeToolCall(toolName, args = {}, user) {
             colors: product.colors,
             optionGroups: product.optionGroups,
             isFeatured: product.isFeatured,
+            createdVia: product.createdVia,
             returnPolicy: product.returnPolicy,
             blocked: isProductBlocked(product),
             moderationReason: product.moderationReason || product.blockedReason || '',
@@ -2679,6 +2682,10 @@ async function executeToolCall(toolName, args = {}, user) {
             }
             normalizedUpdates.lastTypeChangeAt = new Date();
           }
+        }
+
+        if (normalizedUpdates.socialLinks !== undefined) {
+          normalizedUpdates.socialLinks = normalizeSocialLinks(normalizedUpdates.socialLinks);
         }
 
         if (Object.keys(normalizedUpdates).length === 0) {

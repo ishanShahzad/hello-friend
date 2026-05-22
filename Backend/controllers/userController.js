@@ -3,6 +3,7 @@ const User = require('../models/User')
 const { sendEmail } = require('./mailController')
 const { sellerAccountCreatedEmail } = require('../utils/emailTemplates')
 const { trackCompleteRegistration } = require('../services/tiktokEventsApi')
+const { normalizeSocialLinks } = require('../services/socialLinksService')
 
 exports.getUsers = async (req, res) => {
     const { role: userRole, id: _id } = req.user
@@ -231,7 +232,7 @@ exports.becomeSeller = async (req, res) => {
                 storeName: storeName.trim(),
                 storeSlug: desiredSlug,
                 description: storeDescription.trim(),
-                socialLinks: socialLinks || {},
+                socialLinks: normalizeSocialLinks(socialLinks),
                 address: {
                     street: address?.trim() || '',
                     city: city?.trim() || '',

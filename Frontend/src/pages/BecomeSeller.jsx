@@ -788,26 +788,30 @@ export default function BecomeSeller() {
                 <label className="flex text-xs font-semibold uppercase tracking-wider mb-2 items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <Globe size={14} style={{ color: 'hsl(var(--primary))' }} /> Website <span className="normal-case font-normal">(optional)</span>
                 </label>
-                <input type="url" name="website" value={storeData.website} onChange={handleStoreChange} placeholder="https://yourwebsite.com" className="glass-input" />
+                <input type="text" name="website" value={storeData.website} onChange={handleStoreChange} placeholder="yourwebsite.com or full link" className="glass-input" />
               </div>
 
               {/* Social Links - Optional */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}><Instagram size={13} /> Instagram</label>
-                  <input type="text" name="instagram" value={storeData.instagram} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle" />
+                  <input type="text" name="instagram" value={storeData.instagram} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" />
                 </div>
                 <div>
                   <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}><Facebook size={13} /> Facebook</label>
-                  <input type="text" name="facebook" value={storeData.facebook} onChange={handleStoreChange} className="glass-input text-sm" placeholder="Page URL" />
+                  <input type="text" name="facebook" value={storeData.facebook} onChange={handleStoreChange} className="glass-input text-sm" placeholder="page name or full link" />
                 </div>
                 <div>
                   <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}><Twitter size={13} /> Twitter / X</label>
-                  <input type="text" name="twitter" value={storeData.twitter} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle" />
+                  <input type="text" name="twitter" value={storeData.twitter} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" />
                 </div>
                 <div>
                   <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}><Youtube size={13} /> YouTube</label>
-                  <input type="text" name="youtube" value={storeData.youtube} onChange={handleStoreChange} className="glass-input text-sm" placeholder="Channel URL" />
+                  <input type="text" name="youtube" value={storeData.youtube} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@channel or full link" />
+                </div>
+                <div>
+                  <label className="flex text-xs font-medium mb-1.5 items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>TikTok</label>
+                  <input type="text" name="tiktok" value={storeData.tiktok} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" />
                 </div>
               </div>
             </div>

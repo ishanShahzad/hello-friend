@@ -1,5 +1,6 @@
 // const { default: Fuse } = require("fuse.js")
 const Product = require("../models/Product")
+const Order = require("../models/Order")
 const Fuse = require('fuse.js')
 const {
     buildModerationFields,
@@ -7,6 +8,44 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService')
+
+const OTHER_BRANDS_FILTER = '__other_brands__';
+const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
+
+const cleanList = (items) => [...new Set(
+    (items || []).map(item => String(item || '').trim()).filter(Boolean)
+)].sort((a, b) => a.localeCompare(b));
+
+const toArray = (value) => Array.isArray(value) ? value : [value];
+
+async function getBrandStats(productScope) {
+    const rows = await Product.aggregate([
+        { $match: productScope },
+        { $group: { _id: '$brand', count: { $sum: 1 } } },
+    ]);
+
+    const byName = new Map();
+    for (const row of rows) {
+        const name = String(row._id || '').trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        const existing = byName.get(key);
+        if (existing) {
+            existing.count += row.count;
+        } else {
+            byName.set(key, { name, count: row.count });
+        }
+    }
+
+    return [...byName.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+async function getPopularBrandNames(productScope) {
+    const stats = await getBrandStats(productScope);
+    return stats
+        .filter(brand => brand.count >= POPULAR_BRAND_MIN_PRODUCTS)
+        .map(brand => brand.name);
+}
 
 /**
  * Calculate relevance score for product ranking
@@ -219,7 +258,6 @@ exports.getProducts = async (req, res) => {
     try {
         let query = publicProductFilter()
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
-        if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
         if (priceRange) {
             const [min, max] = priceRange.split(',')
             query.price = { $gte: Number(min), $lte: Number(max) }
@@ -237,10 +275,29 @@ exports.getProducts = async (req, res) => {
         const totalSellers = activeSellerIds.length;
         
         // Include products with no seller (admin products) + products from active sellers
-        query.$or = [
+        const visibilityFilter = {
+            $or: [
             { seller: null },
             { seller: { $in: activeSellerIds } },
-        ];
+            ],
+        };
+        query.$and = [...(query.$and || []), visibilityFilter];
+
+        if (brands) {
+            const brandValues = toArray(brands).map(brand => String(brand || '').trim()).filter(Boolean);
+            const includeOtherBrands = brandValues.includes(OTHER_BRANDS_FILTER);
+            const selectedBrands = brandValues.filter(brand => brand !== OTHER_BRANDS_FILTER);
+
+            if (includeOtherBrands) {
+                const popularBrandNames = await getPopularBrandNames(publicProductFilter(visibilityFilter));
+                const brandFilters = [];
+                if (selectedBrands.length) brandFilters.push({ brand: { $in: selectedBrands } });
+                brandFilters.push({ brand: { $nin: popularBrandNames } });
+                query.$and.push({ $or: brandFilters });
+            } else if (selectedBrands.length) {
+                query.brand = selectedBrands.length === 1 ? selectedBrands[0] : { $in: selectedBrands };
+            }
+        }
 
         let products = await Product.find(query)
             .populate({
@@ -341,16 +398,28 @@ exports.getFilters = async (req, res) => {
             ],
         });
 
-        const [categories, brands] = await Promise.all([
+        const [categories, brandStats] = await Promise.all([
             Product.distinct('category', productScope),
-            Product.distinct('brand', productScope),
+            getBrandStats(productScope),
         ]);
 
-        const cleanList = (items) => [...new Set(
-            (items || []).map(item => String(item || '').trim()).filter(Boolean)
-        )].sort((a, b) => a.localeCompare(b));
+        const popularBrands = brandStats
+            .filter(brand => brand.count >= POPULAR_BRAND_MIN_PRODUCTS)
+            .map(brand => brand.name)
+            .sort((a, b) => a.localeCompare(b));
+        const otherBrandsCount = brandStats
+            .filter(brand => brand.count < POPULAR_BRAND_MIN_PRODUCTS)
+            .reduce((sum, brand) => sum + brand.count, 0);
 
-        res.status(200).json({ categories: cleanList(categories), brands: cleanList(brands) })
+        res.status(200).json({
+            categories: cleanList(categories),
+            brands: popularBrands,
+            otherBrandsCount,
+            brandFilter: {
+                otherValue: OTHER_BRANDS_FILTER,
+                minProducts: POPULAR_BRAND_MIN_PRODUCTS,
+            },
+        })
     } catch (err) {
         console.error(err)
         res.status(500).json({ error: err })
@@ -360,22 +429,63 @@ exports.getFilters = async (req, res) => {
 // Add Review to Product (Authenticated Users) 
 exports.addReview = async (req, res) => {
     const { rating, comment } = req.body
-    const { id: prodId } = req.params 
-    
+    const { id: prodId } = req.params
+
 
     const userId = req.user.id
 
     try {
+        const numericRating = Number(rating);
+        const cleanComment = String(comment || '').trim();
+        if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+            return res.status(400).json({ msg: 'Rating must be between 1 and 5.' });
+        }
+        if (!cleanComment) {
+            return res.status(400).json({ msg: 'Please write a review comment.' });
+        }
+
         const product = await Product.findById(prodId)
         if (!product || isProductBlocked(product)) {
             return res.status(404).json({ msg: 'Product not available' })
         }
 
-        product.reviews.push({
+        const baseOrderQuery = {
             user: userId,
-            rating: rating,
-            comment: comment
-        })
+            awaitingPayment: { $ne: true },
+            'orderItems.productId': prodId,
+            orderStatus: { $ne: 'cancelled' },
+        };
+        const deliveredOrder = await Order.exists({
+            ...baseOrderQuery,
+            orderStatus: 'delivered',
+        });
+
+        if (!deliveredOrder) {
+            const anyOrder = await Order.exists(baseOrderQuery);
+            if (anyOrder) {
+                return res.status(403).json({
+                    msg: 'You will be able to add a review for this product once the order is delivered and you have checked it.',
+                    reason: 'order_not_delivered',
+                });
+            }
+
+            return res.status(403).json({
+                msg: "You haven't ordered this product yet, so you can't rate or review it.",
+                reason: 'not_ordered',
+            });
+        }
+
+        const existingReview = product.reviews.find(review => review.user?.toString() === userId);
+        if (existingReview) {
+            existingReview.rating = numericRating;
+            existingReview.comment = cleanComment;
+        } else {
+            product.reviews.push({
+                user: userId,
+                rating: numericRating,
+                comment: cleanComment
+            })
+        }
 
         await product.populate({
             path: 'reviews.user',
@@ -385,7 +495,7 @@ exports.addReview = async (req, res) => {
 
         product.calculateRating()
         await product.save()
-        res.status(200).json({ msg: 'Review added', product: product })
+        res.status(200).json({ msg: existingReview ? 'Review updated' : 'Review added', product: product })
     } catch (error) {
         console.error('Error while adding review:::', error.message);
         res.status(500).json({ msg: 'Server error while adding review.' })

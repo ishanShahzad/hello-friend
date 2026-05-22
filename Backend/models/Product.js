@@ -42,6 +42,12 @@ const productSchema = mongoose.Schema(
         moderationReason: { type: String, default: '' },
         moderationSignals: [{ type: String }],
         moderationReviewedAt: { type: Date, default: null },
+        createdVia: {
+            type: String,
+            enum: ['manual', 'ai', 'admin', 'import'],
+            default: 'manual',
+            index: true,
+        },
         tags: [String],
         colors: [{ type: String }], // Legacy: kept for backward compatibility
         // Flexible seller-defined option groups (Size, Color, Material, etc.)

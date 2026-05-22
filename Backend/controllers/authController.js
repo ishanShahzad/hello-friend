@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken')
 const { sendEmail } = require('./mailController')
 const { welcomeEmail, sellerAccountCreatedEmail } = require('../utils/emailTemplates');
 const { trackCompleteRegistration } = require('../services/tiktokEventsApi');
+const { normalizeSocialLinks } = require('../services/socialLinksService');
 
 
 // Step 1: Send OTP to email
@@ -459,7 +460,7 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
                     storeSlug: slug,
                     sellerType: sellerType === 'brand' ? 'brand' : 'store',
                     description: storeDescription?.trim() || '',
-                    socialLinks: socialLinks || {},
+                    socialLinks: normalizeSocialLinks(socialLinks),
                     address: {
                         street: address?.trim() || '',
                         city: city?.trim() || '',

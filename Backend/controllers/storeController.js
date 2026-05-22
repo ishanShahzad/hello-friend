@@ -5,6 +5,7 @@ const { sendEmail } = require('./mailController');
 const { initializeSubscription } = require('./subscriptionController');
 const { publicProductFilter } = require('../services/productModerationService');
 const StoreView = require('../models/StoreView');
+const { normalizeSocialLinks } = require('../services/socialLinksService');
 
 // Email template helper
 const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
@@ -217,7 +218,7 @@ exports.createStore = async (req, res) => {
             description: description || '',
             logo: logo || '',
             banner: banner || '',
-            socialLinks: socialLinks || {},
+            socialLinks: normalizeSocialLinks(socialLinks),
             address: address || {
                 street: '',
                 city: '',
@@ -449,14 +450,7 @@ exports.updateStore = async (req, res) => {
         }
         if (socialLinks !== undefined) {
             console.log('Updating socialLinks:', socialLinks);
-            store.socialLinks = {
-                website: socialLinks.website || '',
-                facebook: socialLinks.facebook || '',
-                instagram: socialLinks.instagram || '',
-                twitter: socialLinks.twitter || '',
-                youtube: socialLinks.youtube || '',
-                tiktok: socialLinks.tiktok || ''
-            };
+            store.socialLinks = normalizeSocialLinks(socialLinks);
             store.markModified('socialLinks'); // Mark nested object as modified
         }
 
@@ -686,7 +680,9 @@ exports.getStoreProducts = async (req, res) => {
 // Get all stores (paginated) — supports ?type=store|brand|all
 exports.getAllStores = async (req, res) => {
     try {
-        const { page = 1, limit = 12, sort = 'newest', type } = req.query;
+        const { page = 1, limit = 12, sort = 'newest', type, search } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(48, Math.max(1, parseInt(limit, 10) || 12));
 
         let sortOption = {};
         switch (sort) {
@@ -704,18 +700,35 @@ exports.getAllStores = async (req, res) => {
         }
 
         const filter = { isActive: true };
+        const searchText = String(search || '').trim();
+        if (searchText) {
+            const safeSearch = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.$or = [
+                { storeName: { $regex: safeSearch, $options: 'i' } },
+                { storeSlug: { $regex: safeSearch, $options: 'i' } },
+                { description: { $regex: safeSearch, $options: 'i' } },
+            ];
+        }
         if (type === 'store' || type === 'brand') filter.sellerType = type;
 
-        const skip = (page - 1) * limit;
+        const skip = (pageNum - 1) * limitNum;
 
         const stores = await Store.find(filter)
             .populate('seller', 'username email')
             .select('+verification')
             .sort(sortOption)
-            .limit(parseInt(limit))
+            .limit(limitNum)
             .skip(skip);
 
-        const total = await Store.countDocuments(filter);
+        const countBaseFilter = { isActive: true };
+        if (searchText && filter.$or) countBaseFilter.$or = filter.$or;
+
+        const [total, allCount, brandCount, storeCount] = await Promise.all([
+            Store.countDocuments(filter),
+            Store.countDocuments(countBaseFilter),
+            Store.countDocuments({ ...countBaseFilter, sellerType: 'brand' }),
+            Store.countDocuments({ ...countBaseFilter, sellerType: 'store' }),
+        ]);
 
         // Get product count for each store
         const Product = require('../models/Product');
@@ -735,10 +748,17 @@ exports.getAllStores = async (req, res) => {
         res.status(200).json({
             msg: 'Stores fetched successfully',
             stores: storesWithProductCount,
+            counts: {
+                all: allCount,
+                brand: brandCount,
+                store: storeCount,
+            },
             pagination: {
                 total,
-                page: parseInt(page),
-                pages: Math.ceil(total / limit)
+                page: pageNum,
+                limit: limitNum,
+                pages: Math.ceil(total / limitNum),
+                hasMore: pageNum < Math.ceil(total / limitNum),
             }
         });
     } catch (error) {

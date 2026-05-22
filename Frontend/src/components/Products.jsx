@@ -17,6 +17,7 @@ import { trackSearch } from '../utils/tiktokPixel'
 
 const PRODUCTS_PER_PAGE = 24
 const PRODUCTS_CACHE_KEY = 'rozare:last-products-response'
+const DEFAULT_OTHER_BRANDS_FILTER = '__other_brands__'
 
 const readProductsCache = () => {
   try {
@@ -59,6 +60,8 @@ function Products() {
   const [categories, setCategories] = useState([])
   const [search, setSearch] = useState("")
   const [brands, setBrands] = useState([])
+  const [otherBrandsCount, setOtherBrandsCount] = useState(0)
+  const [otherBrandsValue, setOtherBrandsValue] = useState(DEFAULT_OTHER_BRANDS_FILTER)
   const filtersRef = useRef(filters)
   const searchRef = useRef(search)
   const currentPageRef = useRef(currentPage)
@@ -149,8 +152,11 @@ function Products() {
     const fetchFilters = async () => {
       try {
         const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-filters`)
-        setCategories(res.data.categories); setBrands(res.data.brands)
-      } catch (error) { setCategories([]); setBrands([]) }
+        setCategories(res.data.categories || [])
+        setBrands(res.data.brands || [])
+        setOtherBrandsCount(res.data.otherBrandsCount || 0)
+        setOtherBrandsValue(res.data.brandFilter?.otherValue || DEFAULT_OTHER_BRANDS_FILTER)
+      } catch (error) { setCategories([]); setBrands([]); setOtherBrandsCount(0) }
     }
     fetchFilters()
     const parsedFilters = parseQueryParams(location.search)
@@ -323,7 +329,7 @@ function Products() {
       {/* Brands */}
       <div>
         <label className='block text-xs font-semibold uppercase tracking-wider mb-3' style={{ color: 'hsl(var(--muted-foreground))' }}>Brands</label>
-        {!brands || brands.length === 0
+        {(!brands || brands.length === 0) && !otherBrandsCount
           ? <p className='text-sm italic' style={{ color: 'hsl(var(--muted-foreground))' }}>No brands available</p>
           : <div className='flex flex-col gap-1'>
             {brands.map(brand => (
@@ -338,6 +344,19 @@ function Products() {
                 <span className='text-sm font-medium'>{brand}</span>
               </label>
             ))}
+            {otherBrandsCount > 0 && (
+              <label className='glass-checkbox-label flex items-center gap-3 cursor-pointer py-2 px-3 rounded-xl transition-all hover:bg-white/10'>
+                <span className='glass-checkbox-box relative w-5 h-5 rounded-lg border border-white/25 bg-white/8 backdrop-blur-sm flex items-center justify-center shrink-0 transition-all'>
+                  <input type='checkbox' value={otherBrandsValue} {...register('brands')}
+                    className='absolute inset-0 opacity-0 cursor-pointer peer' />
+                  <svg className='w-3 h-3 hidden peer-checked:block' style={{ color: 'hsl(200, 80%, 55%)' }} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="2 6 5 9 10 3" />
+                  </svg>
+                </span>
+                <span className='text-sm font-medium'>Other brands</span>
+                <span className='text-[10px] ml-auto opacity-70'>{otherBrandsCount}</span>
+              </label>
+            )}
           </div>
         }
       </div>
@@ -364,7 +383,7 @@ function Products() {
             <span key={c} className='tag-pill text-xs font-medium'>{c}</span>
           ))}
           {filterBrands.map(b => (
-            <span key={b} className='tag-pill text-xs font-medium' style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'hsl(200, 80%, 50%)' }}>{b}</span>
+            <span key={b} className='tag-pill text-xs font-medium' style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'hsl(200, 80%, 50%)' }}>{b === otherBrandsValue ? 'Other brands' : b}</span>
           ))}
         </div>
       )}

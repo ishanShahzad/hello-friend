@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Search, Home, ChevronRight, Sparkles, Heart, ChevronDown, Check, ShoppingBag, Layers } from 'lucide-react';
+import { Store, Search, Home, ChevronRight, ChevronLeft, Sparkles, Heart, ChevronDown, Check, ShoppingBag, Layers } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import StoreCard from '../components/common/StoreCard';
 import Loader from '../components/common/Loader';
 import SEOHead from '../components/common/SEOHead';
+
+const STORES_PER_PAGE = 12;
 
 const StoresListing = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -14,9 +16,14 @@ const StoresListing = () => {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('newest');
     const [typeFilter, setTypeFilter] = useState(initialType); // all | brand | store
     const [sortOpen, setSortOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalStores, setTotalStores] = useState(0);
+    const [storeCounts, setStoreCounts] = useState({ all: 0, brand: 0, store: 0 });
     const sortRef = useRef(null);
 
     // Sync typeFilter -> URL
@@ -27,6 +34,14 @@ const StoresListing = () => {
         setSearchParams(params, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [typeFilter]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery.trim());
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // SEO meta varies per type
     const seoMeta = typeFilter === 'brand'
@@ -84,28 +99,56 @@ const StoresListing = () => {
     }, []);
 
     useEffect(() => {
+        setCurrentPage(1);
+    }, [sortBy, typeFilter]);
+
+    useEffect(() => {
         fetchStores();
-    }, [sortBy]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortBy, typeFilter, currentPage, debouncedSearch]);
 
     const fetchStores = async () => {
         try {
             setLoading(true);
+            const params = new URLSearchParams({
+                sort: sortBy,
+                page: String(currentPage),
+                limit: String(STORES_PER_PAGE),
+            });
+            if (typeFilter !== 'all') params.set('type', typeFilter);
+            if (debouncedSearch) params.set('search', debouncedSearch);
             const res = await axios.get(
-                `${import.meta.env.VITE_API_URL}api/stores/all?sort=${sortBy}`
+                `${import.meta.env.VITE_API_URL}api/stores/all?${params.toString()}`
             );
-            setStores(res.data.stores);
+            setStores(res.data.stores || []);
+            setStoreCounts(res.data.counts || { all: 0, brand: 0, store: 0 });
+            setTotalStores(res.data.pagination?.total || 0);
+            setTotalPages(Math.max(1, res.data.pagination?.pages || 1));
         } catch (error) {
             console.error('Error fetching stores:', error);
+            setStores([]);
+            setTotalStores(0);
+            setTotalPages(1);
         } finally {
             setLoading(false);
         }
     };
 
-    const filteredStores = stores.filter(store => {
-        const matchesQuery = store.storeName.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = typeFilter === 'all' || (store.sellerType || 'store') === typeFilter;
-        return matchesQuery && matchesType;
-    });
+    const goToPage = (page) => {
+        const nextPage = Math.min(totalPages, Math.max(1, page));
+        setCurrentPage(nextPage);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const pageNumbers = (() => {
+        const pages = [];
+        const maxVisible = 5;
+        let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        return pages;
+    })();
 
     const tabs = [
         { key: 'all', label: 'All', icon: Layers },
@@ -203,7 +246,7 @@ const StoresListing = () => {
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const active = typeFilter === tab.key;
-                        const count = tab.key === 'all' ? stores.length : stores.filter(s => (s.sellerType || 'store') === tab.key).length;
+                        const count = storeCounts[tab.key] || 0;
                         return (
                             <button
                                 key={tab.key}
@@ -304,7 +347,7 @@ const StoresListing = () => {
                     <div className="flex justify-center items-center h-64">
                         <Loader text="Loading stores..." />
                     </div>
-                ) : filteredStores.length === 0 ? (
+                ) : stores.length === 0 ? (
                     <motion.div
                         className="flex flex-col items-center justify-center h-64 glass-panel"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -315,10 +358,10 @@ const StoresListing = () => {
                             <Store size={40} style={{ color: 'hsl(var(--muted-foreground))' }} />
                         </div>
                         <p className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                            {searchQuery ? 'No stores found' : 'No stores available yet'}
+                            {debouncedSearch ? 'No stores found' : 'No stores available yet'}
                         </p>
                         <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            {searchQuery ? 'Try a different search term' : 'Check back later for new stores'}
+                            {debouncedSearch ? 'Try a different search term' : 'Check back later for new stores'}
                         </p>
                     </motion.div>
                 ) : (
@@ -329,7 +372,7 @@ const StoresListing = () => {
                     >
                         <div className="flex items-center justify-between mb-5">
                             <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Showing <span className="font-bold" style={{ color: 'hsl(var(--foreground))' }}>{filteredStores.length}</span> {filteredStores.length === 1 ? 'store' : 'stores'}
+                                Showing <span className="font-bold" style={{ color: 'hsl(var(--foreground))' }}>{stores.length}</span> of <span className="font-bold" style={{ color: 'hsl(var(--foreground))' }}>{totalStores}</span> {totalStores === 1 ? 'store' : 'stores'}
                             </p>
                             <div className="flex items-center gap-1.5 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 <Sparkles size={15} style={{ color: 'hsl(var(--primary))' }} />
@@ -337,10 +380,62 @@ const StoresListing = () => {
                             </div>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                            {filteredStores.map((store, idx) => (
+                            {stores.map((store, idx) => (
                                 <StoreCard key={store._id} store={store} idx={idx} />
                             ))}
                         </div>
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-2 mt-10 mb-6 flex-wrap">
+                                <button
+                                    onClick={() => goToPage(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-xl glass-button disabled:opacity-30 disabled:cursor-not-allowed transition-transform active:scale-90 hover:scale-105"
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+
+                                {pageNumbers[0] > 1 && (
+                                    <>
+                                        <button onClick={() => goToPage(1)} className="w-10 h-10 rounded-xl glass-button text-sm font-semibold transition-transform active:scale-90 hover:scale-105">1</button>
+                                        {pageNumbers[0] > 2 && <span className="px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>...</span>}
+                                    </>
+                                )}
+
+                                {pageNumbers.map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => goToPage(page)}
+                                        className={`w-10 h-10 rounded-xl text-sm font-semibold transition-transform active:scale-90 hover:scale-105 ${
+                                            page === currentPage ? 'glow-soft text-white' : 'glass-button'
+                                        }`}
+                                        style={page === currentPage ? {
+                                            background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))',
+                                        } : {}}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
+                                {pageNumbers[pageNumbers.length - 1] < totalPages && (
+                                    <>
+                                        {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && <span className="px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>...</span>}
+                                        <button onClick={() => goToPage(totalPages)} className="w-10 h-10 rounded-xl glass-button text-sm font-semibold transition-transform active:scale-90 hover:scale-105">{totalPages}</button>
+                                    </>
+                                )}
+
+                                <button
+                                    onClick={() => goToPage(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="p-2 rounded-xl glass-button disabled:opacity-30 disabled:cursor-not-allowed transition-transform active:scale-90 hover:scale-105"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+
+                                <span className="ml-3 text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </div>

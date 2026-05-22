@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "lucide-react";
+import { Bot, Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "lucide-react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
@@ -8,6 +8,7 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
     const hasDiscount = product.discountedPrice > 0;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
     const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
+    const addedByAi = product.createdVia === "ai";
     const blockedReason = product.blockedReason || product.moderationReason || "This looks like test or placeholder product details.";
 
     return (
@@ -75,6 +76,14 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                         <h3 className="text-base font-semibold truncate flex-1" style={{ color: 'hsl(var(--foreground))' }}>
                             {product.name}
                         </h3>
+                        {addedByAi && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
+                                title="This product was added through Rozare AI"
+                                style={{ background: 'rgba(59, 130, 246, 0.12)', color: 'hsl(220, 70%, 50%)' }}>
+                                <Bot size={10} />
+                                AI
+                            </span>
+                        )}
                         {isBlocked && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
                                 style={{ background: 'rgba(239, 68, 68, 0.12)', color: 'hsl(0, 72%, 55%)' }}>

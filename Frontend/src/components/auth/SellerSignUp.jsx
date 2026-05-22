@@ -382,24 +382,28 @@ const SellerSignUp = () => {
                 </div>
                 <div>
                   <label className="flex text-sm font-medium mb-1 items-center gap-2"><Globe size={14} style={{ color: 'hsl(var(--primary))' }} /> Website <span className="text-xs font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>(optional)</span></label>
-                  <input type="url" name="website" value={storeForm.website} onChange={handleStoreChange} className="glass-input" placeholder="https://yourwebsite.com" disabled={loading} />
+                  <input type="text" name="website" value={storeForm.website} onChange={handleStoreChange} className="glass-input" placeholder="yourwebsite.com or full link" disabled={loading} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="flex text-xs font-medium mb-1 items-center gap-1"><Instagram size={12} /> Instagram</label>
-                    <input type="text" name="instagram" value={storeForm.instagram} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle" disabled={loading} />
+                    <input type="text" name="instagram" value={storeForm.instagram} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" disabled={loading} />
                   </div>
                   <div>
                     <label className="flex text-xs font-medium mb-1 items-center gap-1"><Facebook size={12} /> Facebook</label>
-                    <input type="text" name="facebook" value={storeForm.facebook} onChange={handleStoreChange} className="glass-input text-sm" placeholder="Page URL" disabled={loading} />
+                    <input type="text" name="facebook" value={storeForm.facebook} onChange={handleStoreChange} className="glass-input text-sm" placeholder="page name or full link" disabled={loading} />
                   </div>
                   <div>
                     <label className="flex text-xs font-medium mb-1 items-center gap-1"><Twitter size={12} /> Twitter / X</label>
-                    <input type="text" name="twitter" value={storeForm.twitter} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle" disabled={loading} />
+                    <input type="text" name="twitter" value={storeForm.twitter} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" disabled={loading} />
                   </div>
                   <div>
                     <label className="flex text-xs font-medium mb-1 items-center gap-1"><Youtube size={12} /> YouTube</label>
-                    <input type="text" name="youtube" value={storeForm.youtube} onChange={handleStoreChange} className="glass-input text-sm" placeholder="Channel URL" disabled={loading} />
+                    <input type="text" name="youtube" value={storeForm.youtube} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@channel or full link" disabled={loading} />
+                  </div>
+                  <div>
+                    <label className="flex text-xs font-medium mb-1 items-center gap-1">TikTok</label>
+                    <input type="text" name="tiktok" value={storeForm.tiktok} onChange={handleStoreChange} className="glass-input text-sm" placeholder="@handle or full link" disabled={loading} />
                   </div>
                 </div>
               </div>
