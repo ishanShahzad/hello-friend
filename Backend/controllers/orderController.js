@@ -397,11 +397,25 @@ exports.placeOrder = async (req, res) => {
         const buyerCurrency = normalizeCurrency(newOrder.currency || 'USD');
         const chargeCurrency = STRIPE_SUPPORTED.includes(buyerCurrency) ? buyerCurrency : 'USD';
         const stripeCurrency = chargeCurrency.toLowerCase();
+        const productMap = new Map(orderItems.map(p => [toId(p._id), p]));
 
         const getUnitAmount = (item) => {
-            // item.price is stored in USD. Convert to buyer's local currency.
             const usd = Number(item.price) || 0;
             if (chargeCurrency === 'USD') return usd;
+            // If buyer's currency matches the product's original currency, use
+            // the seller's verbatim priceOriginal — no FX drift (exact ₨1,000).
+            const p = productMap.get(toId(item.productId));
+            const pCurrency = normalizeCurrency(p?.priceCurrency || 'USD');
+            if (p && pCurrency === chargeCurrency) {
+                const discOrig = p.discountedPriceOriginal;
+                if (discOrig != null && discOrig !== '' && Number(discOrig) > 0) {
+                    return Number(discOrig);
+                }
+                if (p.priceOriginal != null && p.priceOriginal !== '') {
+                    return Number(p.priceOriginal);
+                }
+            }
+            // Otherwise convert stored USD to the buyer's currency via live FX.
             return convertFromUSDSync(usd, chargeCurrency);
         };
 
