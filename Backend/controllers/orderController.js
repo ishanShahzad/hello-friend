@@ -407,12 +407,11 @@ exports.placeOrder = async (req, res) => {
         // Stripe's Adaptive Pricing will still present the buyer's local-country
         // currency on the payment page if they're in a different country.
         // Mixed-currency carts fall back to USD.
-        const STRIPE_SUPPORTED = new Set(['USD', 'PKR', 'EUR', 'GBP']);
-        const uniqueCurrencies = [...new Set(itemCurrencies)];
-        const allSameSupported =
-            uniqueCurrencies.length === 1 && STRIPE_SUPPORTED.has(uniqueCurrencies[0]);
-        const chargeCurrency = allSameSupported ? uniqueCurrencies[0] : 'USD';
-        const stripeCurrency = chargeCurrency.toLowerCase();
+        // ALWAYS charge in USD so Stripe's Adaptive Pricing displays USD plus
+        // the buyer's local-country currency on the Checkout page. If we charge
+        // in the buyer's own currency, Stripe shows only that one currency.
+        const chargeCurrency = 'USD';
+        const stripeCurrency = 'usd';
 
 
         const getUnitAmount = (item) => {
