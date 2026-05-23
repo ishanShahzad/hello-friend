@@ -152,7 +152,7 @@ const ProductCard = memo(({
           style={{ color: 'hsl(var(--muted-foreground))' }}>{category}</span>
 
         <Link to={`/single-product/${_id}`} onClick={handleProductClick}>
-          <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1 sm:mb-1.5 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] transition-colors"
+          <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1 sm:mb-1.5 line-clamp-2 leading-snug min-h-[2.5rem] sm:min-h-[2.75rem] md:min-h-[3rem] transition-colors"
             style={{ color: 'hsl(var(--foreground))' }}>
             {name}
           </h3>
@@ -161,12 +161,21 @@ const ProductCard = memo(({
         {/* Rating */}
         <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-2.5">
           <div className="flex">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={10} className={`sm:w-3 sm:h-3 ${i < Math.floor(rating || 0) ? "text-amber-400 fill-amber-400" : "text-white/30"}`} />
-            ))}
+            {[...Array(5)].map((_, i) => {
+              const filled = i < Math.floor(rating || 0);
+              return (
+                <Star
+                  key={i}
+                  size={10}
+                  className={`sm:w-3 sm:h-3 ${filled ? 'text-amber-400 fill-amber-400' : ''}`}
+                  style={filled ? undefined : { color: 'hsl(var(--muted-foreground) / 0.55)', fill: 'hsl(var(--muted-foreground) / 0.18)' }}
+                />
+              );
+            })}
           </div>
           <span className="text-[10px] sm:text-xs ml-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>({rating?.toFixed(1) || 0})</span>
         </div>
+
 
         {/* Price */}
         <div className="mt-auto flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">

@@ -1081,7 +1081,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 {catOpen && (
                                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
                                         className="absolute z-50 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl p-2 shadow-2xl border"
-                                        style={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', borderColor: 'var(--glass-border)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                                        style={{ background: 'hsl(var(--background))', color: 'hsl(var(--foreground))', borderColor: 'hsl(var(--border))', boxShadow: '0 20px 50px -10px rgba(0,0,0,0.35)' }}>
+
                                         {filteredCategories.length === 0 && !showOtherInput && (
                                             <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
                                         )}
@@ -1094,7 +1095,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                                 {product.category?.toLowerCase() === c.toLowerCase() && <CheckCircle size={14} style={{ color: 'hsl(150,60%,45%)' }} />}
                                             </button>
                                         ))}
-                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid hsl(var(--border))' }}>
                                             {!showOtherInput ? (
                                                 <button type="button" onClick={() => { setShowOtherInput(true); setProduct({ ...product, category: exactMatch ? '' : product.category }); }}
                                                     className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors flex items-center gap-2"
@@ -1118,6 +1119,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Stock *</label>
@@ -1130,11 +1132,11 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 Price ({getCurrencySymbol()}) * <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={product.price ? convertPrice(product.price).toFixed(2) : ''}
+                                    value={product.price === '' || product.price === undefined || product.price === null ? '' : convertPrice(product.price)}
                                     onChange={(e) => setProduct({ ...product, price: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
-                                    className={`${inputClass} pl-9`} placeholder={`0.00`} />
+                                    className={`${inputClass} pl-14`} placeholder={`0.00`} />
                             </div>
                         </div>
                         <div>
@@ -1142,13 +1144,14 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 Discounted Price ({getCurrencySymbol()}) <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
-                                    value={product.discountedPrice ? convertPrice(product.discountedPrice).toFixed(2) : ''}
-                                    onChange={(e) => setProduct({ ...product, discountedPrice: convertToUSD(parseFloat(e.target.value) || 0) })}
-                                    className={`${inputClass} pl-9`} placeholder={`Discounted price (optional)`} />
+                                    value={product.discountedPrice === '' || product.discountedPrice === undefined || product.discountedPrice === null || product.discountedPrice === 0 ? '' : convertPrice(product.discountedPrice)}
+                                    onChange={(e) => setProduct({ ...product, discountedPrice: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    className={`${inputClass} pl-14`} placeholder="Optional" />
                             </div>
                         </div>
+
                     </div>
 
                     {/* Description */}

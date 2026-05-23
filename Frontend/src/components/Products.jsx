@@ -470,18 +470,25 @@ function Products() {
         {isFilterOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] lg:hidden"
+              className="fixed inset-0 bg-black/55 backdrop-blur-md z-[120] lg:hidden"
               onClick={() => setIsFilterOpen(false)} />
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-              transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-              className='fixed top-0 left-0 h-[100dvh] w-80 max-w-[85vw] sidebar-mobile-solid z-[90] overflow-y-auto lg:hidden flex flex-col'
-              style={{ borderRadius: '0 28px 28px 0', paddingTop: 'env(safe-area-inset-top)' }}>
+              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+              className='fixed top-0 left-0 h-[100dvh] w-[88vw] max-w-[360px] sidebar-mobile-solid z-[130] overflow-y-auto lg:hidden flex flex-col shadow-2xl'
+              style={{
+                borderRadius: '0 28px 28px 0',
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                borderRight: '1px solid hsl(var(--border))',
+                boxShadow: '12px 0 48px -12px rgba(0,0,0,0.35)',
+              }}>
               <FilterSidebarContent onClose={() => setIsFilterOpen(false)} />
             </motion.aside>
           </>
         )}
       </AnimatePresence>
+
 
       {/* Desktop Filter Sidebar */}
       <aside className='hidden lg:block m-5 glass-panel w-72 shrink-0 self-start sticky top-24 overflow-y-auto max-h-[calc(100vh-7rem)] filter-sb'>
