@@ -1144,28 +1144,37 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Price ({getCurrencySymbol()}) * <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
+                                Price ({entrySymbol}) * <span className="text-[10px] normal-case font-normal ml-1">in {entryCurrency}{isEditing ? ' (locked)' : ''}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{entrySymbol}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={product.price === '' || product.price === undefined || product.price === null ? '' : convertPrice(product.price)}
-                                    onChange={(e) => setProduct({ ...product, price: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    value={priceValue}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        const num = v === '' ? '' : (parseFloat(v) || 0);
+                                        setProduct({ ...product, price: num, priceOriginal: num, priceCurrency: entryCurrency });
+                                    }}
                                     className={`${inputClass} pl-14`} placeholder={`0.00`} />
                             </div>
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Discounted Price ({getCurrencySymbol()}) <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
+                                Discounted Price ({entrySymbol}) <span className="text-[10px] normal-case font-normal ml-1">in {entryCurrency}{isEditing ? ' (locked)' : ''}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{entrySymbol}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
-                                    value={product.discountedPrice === '' || product.discountedPrice === undefined || product.discountedPrice === null || product.discountedPrice === 0 ? '' : convertPrice(product.discountedPrice)}
-                                    onChange={(e) => setProduct({ ...product, discountedPrice: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    value={discValue}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        const num = v === '' ? '' : (parseFloat(v) || 0);
+                                        setProduct({ ...product, discountedPrice: num, discountedPriceOriginal: num, priceCurrency: entryCurrency });
+                                    }}
                                     className={`${inputClass} pl-14`} placeholder="Optional" />
                             </div>
                         </div>
+
 
                     </div>
 
