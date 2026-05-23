@@ -937,7 +937,22 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 const MAX_TAGS = 15;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, featuredStats = { current: 0, max: 3, allowed: true } }) => {
-    const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
+    const { currency, currencies, getCurrencySymbol } = useCurrency();
+    // When editing an existing product, the entry currency is locked to whatever
+    // the seller originally saved it in. For new products, it follows the live
+    // display currency selector. This prevents accidental currency mixups.
+    const isEditing = Boolean(product?._id);
+    const entryCurrency = isEditing ? (product.priceCurrency || 'USD') : currency;
+    const entryCurrencyInfo = currencies?.[entryCurrency] || { symbol: entryCurrency };
+    const entrySymbol = entryCurrencyInfo.symbol;
+    // Show the seller's original entered value when editing legacy products that
+    // don't yet have `priceOriginal`, fall back to `price` (which was stored as USD).
+    const priceValue = product.price === '' || product.price === undefined || product.price === null
+        ? ''
+        : (product.priceOriginal ?? product.price);
+    const discValue = product.discountedPrice === '' || product.discountedPrice === undefined || product.discountedPrice === null || product.discountedPrice === 0
+        ? ''
+        : (product.discountedPriceOriginal ?? product.discountedPrice);
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
     const tagsAtLimit = (product.tags?.length || 0) >= MAX_TAGS;
