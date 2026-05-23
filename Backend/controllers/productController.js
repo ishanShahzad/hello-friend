@@ -993,12 +993,24 @@ exports.getSellerProducts = async (req, res) => {
         
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
         if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
+        // priceRange (USD from frontend) applied in-memory after live conversion below
+        let priceRangeFilter = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',')
-            query.price = { $gte: Number(min), $lte: Number(max) }
+            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
         }
 
-        let products = await Product.find(query)
+        let products = await Product.find(query).lean()
+
+        // Live USD conversion so seller sees the same currency-coherent prices as buyers
+        products = applyLivePricesUSD(products);
+
+        if (priceRangeFilter) {
+            products = products.filter((p) => {
+                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
+            });
+        }
 
         if (search) {
             const fuse = new Fuse(products, {
@@ -1011,6 +1023,7 @@ exports.getSellerProducts = async (req, res) => {
         }
 
         res.status(200).json({ msg: 'Fetched seller products successfully.', products: products })
+
     } catch (error) {
         console.error('Server error while fetching seller products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching seller products.' })
