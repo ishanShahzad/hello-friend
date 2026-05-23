@@ -159,6 +159,18 @@ export const CurrencyProvider = ({ children }) => {
     return priceInCurrentCurrency / rate;
   };
 
+  // Convert an amount from any source currency into the active display currency.
+  // Used when a value is already known to be in a specific currency
+  // (e.g. a product's `priceOriginal` in its `priceCurrency`).
+  const convertFromCurrency = (amount, fromCurrency = 'USD') => {
+    if (!amount) return 0;
+    const from = CURRENCIES[fromCurrency] ? fromCurrency : 'USD';
+    const fromRate = exchangeRates[from] || 1;
+    const toRate = exchangeRates[currency] || 1;
+    const inUSD = amount / fromRate;
+    return inUSD * toRate;
+  };
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     currency,
@@ -169,6 +181,7 @@ export const CurrencyProvider = ({ children }) => {
     convertPrice,
     formatPrice,
     convertToUSD,
+    convertFromCurrency,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,
     getCurrencyName: () => CURRENCIES[currency].name
   }), [currency, exchangeRates, isLoading]);
