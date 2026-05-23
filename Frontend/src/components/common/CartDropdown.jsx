@@ -92,8 +92,8 @@ const CartDropdown = () => {
                     const { product, qty, _id: id } = item
                     if (!product) return null
                     const { _id, name, price, discountedPrice, image } = product
-                    const displayPrice = discountedPrice || price
                     const hasDiscount = discountedPrice && discountedPrice < price
+                    const unitDisplay = getProductPriceNumber(product, hasDiscount ? 'discountedPrice' : 'price')
 
                     return (
                       <div key={index} className="relative p-4">
