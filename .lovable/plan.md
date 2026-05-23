@@ -1,105 +1,63 @@
 ## Goal
 
-Make subdomains the only public URL for a store/brand, auto-create a subdomain on store creation, enforce per-field change cooldowns with a confirmation modal, and surface a clear blocked-state countdown everywhere.
+Stop the silent FX drift. Save exactly the number the seller types, in the currency they typed it in. Convert only when a viewer wants to see it in a different currency. Sellers will never again see their price change after saving.
 
----
+## Strategy (minimal-blast-radius)
 
-## 1. Remove path-based store URLs
+Rather than rewrite the ~45 files that currently display `product.price` as USD, the backend will keep returning a USD-normalized `price` for backward compatibility, AND new fields `priceOriginal` + `priceCurrency` for callers that want the seller's true value.
 
-**Frontend**
-- `StoreSettings.jsx`: delete the "Store URL: /store/..." block (lines 340–351) and change the "Preview Store" button (line 666) to open `https://{slug}.rozare.com`.
-- `SellerSubdomainManagement.jsx`: keep, already uses subdomain URL.
-- Replace navigation in `StoreCard`, `StoreSearch`, `StoreInfo`, `TrustedStoresPage`, `AdminSubdomainManagement` to use `getStoreSubdomainUrl(slug)` (subdomain URL in prod, `/store/:slug` only in localhost).
-- `StorePage.jsx`: in production, redirect to `https://{slug}.rozare.com` on mount; otherwise render normally (so localhost dev still works).
-- Keep the `/store/:slug` route as a localhost-only fallback (zero impact in production thanks to the redirect).
-- Update SEO `canonical` and JSON-LD `url` to the subdomain form.
+This means: every existing list, card, cart, order, analytics chart keeps working with no changes. Only the seller-side add/edit form needs to switch to using the original-currency fields.
 
----
+## Changes
 
-## 2. Auto-generate subdomain at store creation
+### 1. Backend — Product model (`Backend/models/Product.js`)
+Add two fields (both optional, with sensible defaults so legacy rows still work):
+- `priceOriginal: Number` — the exact number the seller typed
+- `priceCurrency: String, default 'USD'` — the currency the seller typed it in
+- Same pair for discount: `discountedPriceOriginal`
 
-Already implemented (`generateUniqueSlug`) but the create form lets the seller specify one — keep both paths. Verified no further change needed beyond UI clarification: subdomain field on first creation seeds the value from the typed store name and is editable.
+`price` and `discountedPrice` remain USD-normalized (backward compat for all readers).
 
----
+### 2. Backend — `addProduct` / `editProduct` (`productController.js`)
+- If `priceCurrency` is provided in the payload and is non-USD:
+  - Take `req.body.product.price` as the value in `priceCurrency`
+  - Set `priceOriginal = price`, `priceCurrency = priceCurrency`
+  - Compute `price` (USD) via `convertToUSD(price, priceCurrency)` from `services/currencyService.js`
+  - Same for `discountedPrice`
+- If `priceCurrency` is USD or missing → treat input as USD (current behavior, sets `priceOriginal = price`, `priceCurrency = 'USD'`).
+- This guarantees readers always get a consistent USD `price` AND the seller's exact original.
 
-## 3. Cooldown rules + warning modal
+### 3. Backend — backfill (no migration needed)
+Existing products have no `priceOriginal`. The product controller's response will populate it on the fly: `priceOriginal ?? price`, `priceCurrency ?? 'USD'`. No DB write — purely a response shim, so old rows are reinterpreted as USD (which is what they actually are today).
 
-**Backend — `Store` model (new fields, all default `null`)**
-
-```text
-lastSlugChangeAt   Date
-lastNameChangeAt   Date
-lastTypeChangeAt   Date
-blockedAt          Date     // mirrored from subscription so middleware knows
+### 4. Frontend — `CurrencyContext.jsx`
+Add a new helper:
+```js
+convertFromCurrency(amount, fromCurrency) → amount in current display currency
 ```
+Used by callers that already know the source currency (the seller's original).
 
-**Backend — `storeController.updateStore`**
+### 5. Frontend — Seller add/edit form (`SellerDashboard.jsx`)
+- **Add mode**: stop calling `convertToUSD` on every keystroke. Just store the raw number. On submit, send `{ price, discountedPrice, priceCurrency: currency }` — the backend handles the rest. Cursor jumping is also fixed as a side effect.
+- **Edit mode**: prefill the input from `product.priceOriginal` (in `product.priceCurrency`), not from converted USD. Seller sees the exact number they originally saved.
+- Lock the currency label to the price's `priceCurrency` while editing (with a "Change currency" note) to prevent accidental currency mixups.
 
-Enforce:
-- `storeSlug` change: must be ≥ 30 days since `lastSlugChangeAt`
-- `storeName` change: must be ≥ 7 days since `lastNameChangeAt`
-- `sellerType` change: must be ≥ 30 days since `lastTypeChangeAt`
+### 6. Out of scope (intentionally unchanged)
+- All other display surfaces (ProductCard, cart, orders, analytics, mobile app) continue to use the USD `price` field and the existing `convertPrice`. They keep working unchanged. Down the line you may want to show buyers "Listed in PKR" — that's a future polish, not required for correctness.
+- Price-range filter on the products list still operates on USD `price`, which is fine since all products are normalized to USD.
 
-If blocked by cooldown, respond `423` with `{ field, daysRemaining, nextAllowedAt }`.
-On a successful change, stamp the corresponding `lastXChangeAt = now`.
+## Net result
 
-Same rules in `subdomainController.adminUpdateSubdomain` are skipped (admin override).
-
-**Frontend — confirmation modal**
-
-In `StoreSettings.jsx` and `SellerSubdomainManagement.jsx`, before saving a name/type/slug change, show a modal:
-
-> "After this change you won't be able to change your **{field}** again for **{X days}**. Continue?"
-
-After save, on `423` response, show inline error with remaining days.
-
----
-
-## 4. Blocked-state surfacing
-
-When a seller's subscription is `blocked`:
-- `subscriptionController` already sets `store.isActive = false` and (per phantom-order fixes) marks `subdomainPurchase.removalScheduledAt = blockedAt + 7 days` when not purchased. Verify and add `store.blockedAt = blockedAt`. On reactivate (paid), clear `blockedAt` and `removalScheduledAt`, set `isActive = true`.
-- `subdomainController.getSellerSubdomainAnalytics` returns extra fields:
-  ```text
-  blocked: boolean
-  blockedAt: Date | null
-  daysUntilRemoval: number | null     // computed from removalScheduledAt
-  isPurchased: boolean
-  ```
-- After `removalScheduledAt` passes (cron in subscription check or lazy on read), if not purchased: clear `storeSlug` and free the subdomain so anyone can claim it.
-
-**Frontend**
-- `StoreSettings.jsx`: replace the green "Active" pill with a red "Blocked — subdomain releases in N day(s)" pill when `blocked`. Disable subdomain/name/type edits while blocked.
-- `SellerSubdomainManagement.jsx`: same status pill + countdown banner in the Status Card and Edit Subdomain card. Show "Resolve by subscribing" CTA → `/seller-dashboard/subscription`.
-
----
-
-## 5. Reclaim verification
-
-Confirm via existing logic:
-- After `removalScheduledAt` and not purchased → release slug.
-- Released slug becomes `available: true` in `checkSubdomainAvailability`, so any new seller can claim it.
-- Add a small lazy cleanup at the top of `checkSubdomainAvailability` and the subdomain detector to release expired blocked, non-purchased slugs on read.
-
----
+- **Seller**: types `1000` in PKR, saves, reopens form → still sees `1000`. Forever.
+- **Backend**: stores `priceOriginal=1000, priceCurrency='PKR', price=3.51` (USD at write-time).
+- **Buyer in EUR**: sees `price` (USD) × today's USD→EUR rate, same as today.
+- **Existing products**: `priceOriginal` is auto-derived as their current USD `price`, treated as USD-entered. No data corruption, no migration needed.
 
 ## Files touched
 
-**Backend**
-- `Backend/models/Store.js` (new fields)
-- `Backend/controllers/storeController.js` (cooldown enforcement, slug release)
-- `Backend/controllers/subdomainController.js` (analytics payload, slug release)
-- `Backend/controllers/subscriptionController.js` (set/clear `blockedAt`, `removalScheduledAt`)
-- `Backend/middleware/subdomainDetector.js` (lazy slug release)
+- `Backend/models/Product.js` (+4 fields)
+- `Backend/controllers/productController.js` (`addProduct`, `editProduct`, response shim in `getProducts`/`getSingleProduct`/`getSellerProducts`)
+- `Frontend/src/contexts/CurrencyContext.jsx` (+1 helper)
+- `Frontend/src/components/layout/SellerDashboard.jsx` (input handlers + edit prefill)
 
-**Frontend**
-- `Frontend/src/components/layout/StoreSettings.jsx`
-- `Frontend/src/components/layout/SellerSubdomainManagement.jsx`
-- `Frontend/src/components/layout/AdminSubdomainManagement.jsx`
-- `Frontend/src/components/common/StoreCard.jsx`
-- `Frontend/src/components/common/StoreSearch.jsx`
-- `Frontend/src/components/common/StoreInfo.jsx`
-- `Frontend/src/pages/TrustedStoresPage.jsx`
-- `Frontend/src/pages/StorePage.jsx` (production redirect + canonical)
-
-No DB migration needed (MongoDB; new fields default to `null`).
+Approve and I'll ship it.
