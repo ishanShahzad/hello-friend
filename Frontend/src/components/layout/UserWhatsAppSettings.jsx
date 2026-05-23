@@ -5,12 +5,15 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Info,
   Loader2,
+  Lock,
   MessageCircle,
   Phone,
   RefreshCw,
   Send,
   ShieldCheck,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import axios from 'axios';
@@ -249,24 +252,52 @@ const UserWhatsAppSettings = () => {
           <ShieldCheck size={18} style={{ color: 'hsl(200, 70%, 48%)' }} />
           <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Buyer AI Line</h2>
         </div>
+
+        <div className="p-4 rounded-2xl glass-inner mb-4 flex gap-3">
+          <Sparkles size={18} className="shrink-0 mt-0.5" style={{ color: 'hsl(150, 70%, 42%)' }} />
+          <div className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            <p className="font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>Chat with Rozare AI on WhatsApp</p>
+            <p>Once you link your WhatsApp number, tap <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Open WhatsApp</span> and send a message. The AI will help you <span className="font-medium">discover products, place orders, track deliveries</span> and answer questions — right from your chat.</p>
+            <p className="mt-2 text-xs inline-flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ background: 'rgba(59, 130, 246, 0.12)', color: 'hsl(210, 80%, 50%)' }}>
+              <Info size={12} /> Available for buyers only — not for sellers.
+            </p>
+          </div>
+        </div>
+
         <div className="p-4 rounded-2xl glass-inner flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex-1">
             <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Rozare AI WhatsApp</p>
-            <p className="font-mono font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{status?.aiWhatsAppNumber || 'Temporarily unavailable'}</p>
+            <p className="font-mono font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+              <Lock size={14} style={{ color: 'hsl(var(--muted-foreground))' }} />
+              ••• ••• ••••
+            </p>
             <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              {status?.instanceConnected ? 'Connected and ready for verified buyers.' : 'The AI WhatsApp line is currently offline. Web chat still works.'}
+              {!verified
+                ? 'Link & verify your WhatsApp to unlock the AI number.'
+                : status?.instanceConnected
+                  ? 'Connected and ready. Tap Open WhatsApp to start chatting.'
+                  : 'The AI WhatsApp line is currently offline. Web chat still works.'}
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={copyAiNumber} disabled={!status?.aiWhatsAppNumber} className="p-2.5 rounded-xl border disabled:opacity-50"
-              style={{ borderColor: 'var(--glass-border)', color: 'hsl(var(--foreground))' }} title="Copy number">
+            <button onClick={copyAiNumber} disabled={!verified || !status?.aiWhatsAppNumber}
+              className="p-2.5 rounded-xl border disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ borderColor: 'var(--glass-border)', color: 'hsl(var(--foreground))' }}
+              title={verified ? 'Copy number' : 'Link your WhatsApp first'}>
               <Copy size={16} />
             </button>
-            {aiLink && (
+            {verified && aiLink ? (
               <a href={aiLink} target="_blank" rel="noreferrer" className="px-4 py-2.5 rounded-xl text-sm font-medium text-white flex items-center gap-2"
                 style={{ background: 'linear-gradient(135deg, hsl(150, 70%, 42%), hsl(200, 70%, 48%))' }}>
                 Open WhatsApp <ExternalLink size={14} />
               </a>
+            ) : (
+              <button disabled
+                title="Link your WhatsApp first"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 opacity-40 cursor-not-allowed border"
+                style={{ borderColor: 'var(--glass-border)', color: 'hsl(var(--muted-foreground))' }}>
+                <Lock size={14} /> Open WhatsApp
+              </button>
             )}
           </div>
         </div>
