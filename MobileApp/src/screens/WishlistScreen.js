@@ -81,9 +81,9 @@ export default function WishlistScreen({ navigation }) {
             {item.category && <Text style={styles.itemCategory}>{item.category}</Text>}
             <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
             <View style={styles.priceRow}>
-              <Text style={styles.itemPrice}>{formatPrice(item.discountedPrice || item.price)}</Text>
+              <Text style={styles.itemPrice}>{formatProductPrice(item, { field: item.discountedPrice ? 'discountedPrice' : 'price' })}</Text>
               {item.discountedPrice && item.discountedPrice < item.price && (
-                <Text style={styles.originalPrice}>{formatPrice(item.price)}</Text>
+                <Text style={styles.originalPrice}>{formatProductPrice(item, { field: 'price' })}</Text>
               )}
             </View>
           </View>
