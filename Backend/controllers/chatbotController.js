@@ -138,7 +138,7 @@ exports.chat = async (req, res) => {
 
             if (filtered.length === 0) {
                 // Try broader search
-                const allProducts = await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5);
+                const allProducts = applyLivePricesUSD(await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5));
                 return res.json({
                     reply: `I couldn't find exact matches for "${searchTerms}", but here are some popular products you might like:`,
                     products: allProducts.map(p => ({
