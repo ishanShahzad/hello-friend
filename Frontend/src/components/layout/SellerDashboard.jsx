@@ -1132,11 +1132,11 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 Price ({getCurrencySymbol()}) * <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={product.price ? convertPrice(product.price).toFixed(2) : ''}
+                                    value={product.price === '' || product.price === undefined || product.price === null ? '' : convertPrice(product.price)}
                                     onChange={(e) => setProduct({ ...product, price: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
-                                    className={`${inputClass} pl-9`} placeholder={`0.00`} />
+                                    className={`${inputClass} pl-14`} placeholder={`0.00`} />
                             </div>
                         </div>
                         <div>
@@ -1144,13 +1144,14 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 Discounted Price ({getCurrencySymbol()}) <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
-                                    value={product.discountedPrice ? convertPrice(product.discountedPrice).toFixed(2) : ''}
-                                    onChange={(e) => setProduct({ ...product, discountedPrice: convertToUSD(parseFloat(e.target.value) || 0) })}
-                                    className={`${inputClass} pl-9`} placeholder={`Discounted price (optional)`} />
+                                    value={product.discountedPrice === '' || product.discountedPrice === undefined || product.discountedPrice === null || product.discountedPrice === 0 ? '' : convertPrice(product.discountedPrice)}
+                                    onChange={(e) => setProduct({ ...product, discountedPrice: e.target.value === '' ? '' : convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    className={`${inputClass} pl-14`} placeholder="Optional" />
                             </div>
                         </div>
+
                     </div>
 
                     {/* Description */}
