@@ -854,8 +854,11 @@ exports.bulkDiscount = async (req, res) => {
                 newDiscountedPrice = Math.max(0, product.price - discountValue)
             }
 
-            product.discountedPrice = Math.round(newDiscountedPrice * 100) / 100
+            const rounded = Math.round(newDiscountedPrice * 100) / 100
+            product.discountedPrice = rounded
+            product.discountedPriceOriginal = rounded // keep mirror in sync
             return product.save()
+
         })
 
         await Promise.all(updatePromises)
@@ -922,14 +925,18 @@ exports.bulkPriceUpdate = async (req, res) => {
                 newPrice = Math.max(0, value)
             }
 
-            product.price = Math.round(newPrice * 100) / 100
+            const rounded = Math.round(newPrice * 100) / 100
+            product.price = rounded
+            product.priceOriginal = rounded // mirror stays in sync; both stored in product.priceCurrency
             
             // Reset discounted price if it's higher than new price
             if (product.discountedPrice > 0 && product.discountedPrice >= product.price) {
                 product.discountedPrice = 0
+                product.discountedPriceOriginal = 0
             }
 
             return product.save()
+
         })
 
         await Promise.all(updatePromises)
@@ -968,8 +975,9 @@ exports.removeDiscount = async (req, res) => {
         // Update all products to remove discount
         const result = await Product.updateMany(
             query,
-            { $set: { discountedPrice: 0 } }
+            { $set: { discountedPrice: 0, discountedPriceOriginal: 0 } }
         )
+
 
         res.status(200).json({ 
             msg: `Discounts removed successfully from ${result.modifiedCount} product(s)`,
