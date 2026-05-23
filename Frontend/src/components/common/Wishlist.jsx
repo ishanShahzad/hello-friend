@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Trash2 } from 'lucide-react';
 import { useGlobal } from '../../contexts/GlobalContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 export default function WishlistDropdown() {
     const { wishlistItems, handleDeleteFromWishlist } = useGlobal();
+    const { formatProductPrice } = useCurrency();
     const [isOpen, setIsOpen] = useState(false);
     const triggerRef = useRef(null);
     const menuRef = useRef(null);
