@@ -144,7 +144,7 @@ const CartDropdown = () => {
               <div className="border-t border-white/15 p-4 glass-inner m-3 rounded-2xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span>
-                  <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal)}</span>
+                  <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(subtotal)}</span>
                 </div>
                 <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>Taxes & shipping calculated at checkout</p>
                 <Link to={mainDomainPath('/checkout')} onClick={handleGoToCheckout}>
