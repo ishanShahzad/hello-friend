@@ -1360,8 +1360,8 @@ export default function Checkout() {
 
               <div className="max-h-80 overflow-y-auto mb-4">
                 {cartItems.cart.map((item) => {
-                  const itemPrice = item.product.discountedPrice || item.product.price; // SPIN WHEEL DISABLED - was getDiscountedPrice(item.product)
-                  // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
+                  const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+                  const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
 
                   return (
                     <div key={item._id} className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
@@ -1374,14 +1374,10 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium text-xs sm:text-sm" style={{ color: 'hsl(var(--foreground))' }}>{item.product.name}</p>
                           <p className="text-xs sm:text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {item.qty}</p>
-                          {/* SPIN WHEEL DISABLED - spin discount badge removed */}
-                          {/* {hasSpinDiscount && (<p className="text-xs text-green-600 font-semibold">🎉 Spin Discount Applied!</p>)} */}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="font-semibold">{formatPrice(itemPrice * item.qty)}</span>
-                        {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
-                        {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
+                        <span className="font-semibold">{formatAmount(unitDisplay * item.qty)}</span>
                       </div>
                     </div>
                   );
@@ -1391,7 +1387,7 @@ export default function Checkout() {
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <span>Subtotal</span>
-                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal)}</span>
+                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(displaySubtotal)}</span>
                 </div>
                 
                 {Object.keys(selectedShippingPerSeller).length > 0 && (
