@@ -641,9 +641,13 @@ exports.getStoreProducts = async (req, res) => {
             query.brand = { $in: brandArray };
         }
 
+        // priceRange is in display USD; defer to in-memory filter after live conversion
+        let priceMinUSD = null;
+        let priceMaxUSD = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',').map(Number);
-            query.price = { $gte: min, $lte: max };
+            priceMinUSD = Number.isFinite(min) ? min : null;
+            priceMaxUSD = Number.isFinite(max) ? max : null;
         }
 
         if (search) {
@@ -656,12 +660,22 @@ exports.getStoreProducts = async (req, res) => {
         // Pagination
         const skip = (page - 1) * limit;
 
-        const products = await Product.find(query)
-            .limit(parseInt(limit))
-            .skip(skip)
+        let products = await Product.find(query)
             .sort({ createdAt: -1 });
 
-        const total = await Product.countDocuments(query);
+        // Convert to live USD before price-range filter
+        products = applyLivePricesUSD(products);
+        if (priceMinUSD !== null || priceMaxUSD !== null) {
+            products = products.filter((p) => {
+                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                if (priceMinUSD !== null && v < priceMinUSD) return false;
+                if (priceMaxUSD !== null && v > priceMaxUSD) return false;
+                return true;
+            });
+        }
+
+        const total = products.length;
+        products = products.slice(skip, skip + parseInt(limit));
 
         res.status(200).json({
             msg: 'Products fetched successfully',
