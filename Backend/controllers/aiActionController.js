@@ -944,16 +944,17 @@ exports.getWishlist = async (req, res) => {
         const user = await User.findById(req.user.id).populate({
             path: 'wishlist',
             match: publicProductFilter(),
-            select: 'name price discountedPrice image category brand stock',
+            select: 'name price discountedPrice priceOriginal discountedPriceOriginal priceCurrency image category brand stock',
         });
         if (!user) return res.status(404).json({ msg: 'User not found' });
-        res.json({ 
-            wishlist: (user.wishlist || []).filter(Boolean).map(p => ({
-                _id: p._id, name: p.name, price: p.price, 
+        const items = applyLivePricesUSD((user.wishlist || []).filter(Boolean));
+        res.json({
+            wishlist: items.map(p => ({
+                _id: p._id, name: p.name, price: p.price,
                 discountedPrice: p.discountedPrice, image: p.image,
                 category: p.category, brand: p.brand, inStock: p.stock > 0
             })),
-            count: (user.wishlist || []).filter(Boolean).length
+            count: items.length
         });
     } catch (error) {
         console.error('AI get wishlist error:', error);
