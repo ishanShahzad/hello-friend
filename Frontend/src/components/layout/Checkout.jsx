@@ -787,7 +787,7 @@ export default function Checkout() {
                                           <div>
                                             <h4 className="font-medium text-sm sm:text-base" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                                             <p>
-                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(itemPrice)}</span>
+                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductPrice(product, { field: discountedPrice ? 'discountedPrice' : 'price' })}</span>
                                               {productCouponDiscount > 0 && (
                                                 <span className="ml-2 text-xs font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>
                                                   -{formatPrice(productCouponDiscount)} coupon
