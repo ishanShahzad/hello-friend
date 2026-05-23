@@ -118,9 +118,18 @@ export const CurrencyProvider = ({ children }) => {
     return `${symbol}${formattedNumber}${code}`;
   };
 
-  // Same-currency shortcut: when the buyer's preferred currency matches the
-  // seller's saved priceCurrency, display priceOriginal verbatim — no
-  // conversion, no rounding drift. Falls back to USD→display conversion.
+  // Convert an amount from any source currency directly into the active display currency.
+  const convertFromCurrency = (amount, fromCurrency = 'USD') => {
+    if (!amount || isNaN(amount)) return 0;
+    const from = CURRENCIES[fromCurrency] ? fromCurrency : 'USD';
+    const fromRate = exchangeRates[from] || 1;
+    const toRate = exchangeRates[currency] || 1;
+    const inUSD = amount / fromRate;
+    return inUSD * toRate;
+  };
+
+  // Direct seller-currency → buyer-currency conversion using priceOriginal
+  // (avoids USD double-conversion drift). Same currency = verbatim display.
   const formatProductPrice = (product, options = {}) => {
     const {
       field = 'price',
@@ -136,10 +145,13 @@ export const CurrencyProvider = ({ children }) => {
       : null;
     const originalValue = product[originalField];
 
-    if (productCurrency && productCurrency === currency && originalValue != null && originalValue !== '') {
+    if (productCurrency && originalValue != null && originalValue !== '') {
       const num = Number(originalValue);
       if (Number.isFinite(num)) {
-        const formattedNumber = num.toLocaleString('en-US', {
+        const displayValue = productCurrency === currency
+          ? num
+          : convertFromCurrency(num, productCurrency);
+        const formattedNumber = displayValue.toLocaleString('en-US', {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         });
