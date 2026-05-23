@@ -171,6 +171,44 @@ export const CurrencyProvider = ({ children }) => {
     return inUSD * toRate;
   };
 
+  // Format a product's price using the seller's original currency when it
+  // matches the buyer's preferred currency (no conversion → no rounding drift).
+  // Falls back to the standard USD→display conversion otherwise.
+  // Pass the product object plus { field: 'price' | 'discountedPrice' }.
+  const formatProductPrice = (product, options = {}) => {
+    const {
+      field = 'price',
+      showSymbol = true,
+      decimals = 2,
+      showCode = false,
+    } = options;
+    if (!product) return formatPrice(0, { showSymbol, decimals, showCode });
+
+    const originalField = field === 'discountedPrice' ? 'discountedPriceOriginal' : 'priceOriginal';
+    const productCurrency = product.priceCurrency && CURRENCIES[product.priceCurrency]
+      ? product.priceCurrency
+      : null;
+    const originalValue = product[originalField];
+
+    // Same-currency shortcut: display seller's exact saved value, no conversion
+    if (productCurrency && productCurrency === currency && originalValue != null && originalValue !== '') {
+      const num = Number(originalValue);
+      if (Number.isFinite(num)) {
+        const formattedNumber = num.toLocaleString('en-US', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+        if (!showSymbol) return formattedNumber;
+        const symbol = CURRENCIES[currency].symbol;
+        const code = showCode ? ` ${currency}` : '';
+        return `${symbol}${formattedNumber}${code}`;
+      }
+    }
+
+    // Fallback: backend already converted to USD → standard conversion
+    return formatPrice(product[field], { showSymbol, decimals, showCode });
+  };
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     currency,
@@ -180,6 +218,7 @@ export const CurrencyProvider = ({ children }) => {
     changeCurrency,
     convertPrice,
     formatPrice,
+    formatProductPrice,
     convertToUSD,
     convertFromCurrency,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,
