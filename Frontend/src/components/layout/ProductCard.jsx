@@ -4,7 +4,7 @@ import { Bot, Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "luc
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
-    const { formatPrice } = useCurrency();
+    const { formatProductPrice } = useCurrency();
     const hasDiscount = product.discountedPrice > 0;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
     const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
