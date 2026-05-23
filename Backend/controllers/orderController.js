@@ -17,7 +17,11 @@ const { notifySeller } = require('../services/whatsapp/sellerNotificationService
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
 const { publicProductFilter } = require('../services/productModerationService');
-const { normalizeCurrency } = require('../services/currencyService');
+const { normalizeCurrency, convertFromUSDSync, warmRatesCache } = require('../services/currencyService');
+
+// Stripe-supported currencies in this project. Keep aligned with CURRENCIES in
+// services/currencyService.js. Anything outside falls back to USD.
+const STRIPE_SUPPORTED_CURRENCIES = new Set(['USD', 'PKR', 'EUR', 'GBP']);
 
 const toId = (value) => value?.toString?.() || String(value || '');
 
@@ -383,42 +387,86 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
+        // Determine the charge currency for Stripe.
+        // If every product in this order was priced in the same currency by the
+        // seller AND that currency is supported by Stripe in our project,
+        // charge in that currency using the seller's verbatim `priceOriginal`.
+        // This makes Stripe show e.g. exactly ₨1,000 for a PKR product, instead
+        // of round-tripping through USD and triggering Stripe's adaptive FX.
+        // Mixed-currency carts fall back to USD.
+        warmRatesCache();
+        const productMap = new Map(orderItems.map(p => [toId(p._id), p]));
+        const itemCurrencies = newOrder.orderItems.map(it => {
+            const p = productMap.get(toId(it.productId));
+            return normalizeCurrency(p?.priceCurrency || 'USD');
+        });
+        const allSameCurrency = itemCurrencies.length > 0 &&
+            itemCurrencies.every(c => c === itemCurrencies[0]) &&
+            STRIPE_SUPPORTED_CURRENCIES.has(itemCurrencies[0]);
+        const chargeCurrency = allSameCurrency ? itemCurrencies[0] : 'USD';
+        const stripeCurrency = chargeCurrency.toLowerCase();
+
+        const getUnitAmount = (item) => {
+            // USD path: item.price is already in USD (frontend sent USD).
+            if (chargeCurrency === 'USD') return Number(item.price) || 0;
+            // Non-USD: use seller's original price in their currency to avoid drift.
+            const p = productMap.get(toId(item.productId));
+            const discOrig = p?.discountedPriceOriginal;
+            if (discOrig != null && discOrig !== '' && Number(discOrig) > 0) {
+                return Number(discOrig);
+            }
+            if (p?.priceOriginal != null && p.priceOriginal !== '') {
+                return Number(p.priceOriginal);
+            }
+            // Fallback: convert the stored USD price to the charge currency.
+            return convertFromUSDSync(Number(item.price) || 0, chargeCurrency);
+        };
+
         const line_items = [
-            ...newOrder.orderItems.map(item => ({ 
+            ...newOrder.orderItems.map(item => ({
                 price_data: {
-                    currency: 'usd',
+                    currency: stripeCurrency,
                     product_data: {
                         name: item.name,
                         images: item.image ? [item.image] : undefined
                     },
-                    unit_amount: Math.round(item.price * 100)
+                    unit_amount: Math.round(getUnitAmount(item) * 100)
                 },
                 quantity: item.quantity
             })),
 
-
-            // SHIPPING
+            // SHIPPING — shippingMethod.price is in USD; convert into charge currency.
             {
                 price_data: {
-                    currency: 'usd',
+                    currency: stripeCurrency,
                     product_data: {
                         name: `${newOrder.shippingMethod.name} Shipping`,
                     },
-                    unit_amount: Math.round(newOrder.shippingMethod.price * 100)
+                    unit_amount: Math.round(
+                        (chargeCurrency === 'USD'
+                            ? Number(newOrder.shippingMethod.price) || 0
+                            : convertFromUSDSync(Number(newOrder.shippingMethod.price) || 0, chargeCurrency)
+                        ) * 100
+                    )
                 },
                 quantity: 1
             },
 
-            // TAX (only if tax > 0)
+            // TAX (only if tax > 0) — same USD → charge currency conversion.
             ...(newOrder.orderSummary.tax > 0 ? [{
                 price_data: {
-                    currency: 'usd',
+                    currency: stripeCurrency,
                     product_data: {
-                        name: taxConfig && taxConfig.type === 'percentage' 
-                            ? `Tax (${taxConfig.value}%)` 
+                        name: taxConfig && taxConfig.type === 'percentage'
+                            ? `Tax (${taxConfig.value}%)`
                             : 'Tax',
                     },
-                    unit_amount: Math.round(newOrder.orderSummary.tax * 100)
+                    unit_amount: Math.round(
+                        (chargeCurrency === 'USD'
+                            ? Number(newOrder.orderSummary.tax) || 0
+                            : convertFromUSDSync(Number(newOrder.orderSummary.tax) || 0, chargeCurrency)
+                        ) * 100
+                    )
                 },
                 quantity: 1
             }] : [])
