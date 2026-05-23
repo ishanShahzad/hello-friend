@@ -689,7 +689,7 @@ exports.editProduct = async (req, res) => {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
-        const safeProduct = await normalizeProductPricing({ ...product });
+        const safeProduct = normalizeProductPricing({ ...product });
 
         // Gate: enforce featured product limits based on subscription tier.
         if (role === 'seller' && safeProduct && safeProduct.isFeatured === true) {
@@ -769,7 +769,7 @@ exports.addProduct = async (req, res) => {
         }
         
         // Gate: enforce featured product limits based on subscription tier.
-        let safeProduct = await normalizeProductPricing(product);
+        let safeProduct = normalizeProductPricing(product);
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);
             if (!featCheck.allowed) {
