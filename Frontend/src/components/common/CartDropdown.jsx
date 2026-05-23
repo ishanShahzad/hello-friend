@@ -12,13 +12,15 @@ import { getMainDomainUrl, isSubdomain } from "../../utils/subdomainHelper";
 const CartDropdown = () => {
   const { cartItems, handleQtyInc, handleQtyDec, isOpen, dropdownRef, toggleCart, handleRemoveCartItem, isCartLoading, qtyUpdateId } = useGlobal()
   const { currentUser } = useAuth()
-  const { formatPrice } = useCurrency()
+  const { formatProductPrice, getProductPriceNumber, formatAmount } = useCurrency()
 
   const isEmpty = !cartItems?.cart || cartItems.cart.length === 0
 
   const subtotal = isEmpty ? 0 : cartItems.cart.reduce((total, item) => {
     if (!item.product) return total
-    return total + ((item.product.discountedPrice || item.product.price) * item.qty)
+    const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price
+    const unit = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price')
+    return total + (unit * item.qty)
   }, 0)
 
   const handleGoToCheckout = () => {
