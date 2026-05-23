@@ -8,6 +8,34 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService')
+const { convertToUSD, normalizeCurrency } = require('../services/currencyService')
+
+/**
+ * Normalize price fields on an incoming product payload.
+ * - Takes the seller's entered `price` / `discountedPrice` as values in `priceCurrency`.
+ * - Stores them verbatim in `priceOriginal` / `discountedPriceOriginal`.
+ * - Overwrites `price` / `discountedPrice` with the USD-converted amount so all
+ *   existing readers (cards, cart, orders, analytics) keep working unchanged.
+ * Safe to call with partial payloads (edit flow) — only touches provided fields.
+ */
+async function normalizeProductPricing(payload) {
+    if (!payload || typeof payload !== 'object') return payload
+    const out = { ...payload }
+    const currency = normalizeCurrency(out.priceCurrency || 'USD')
+    out.priceCurrency = currency
+
+    if (out.price !== undefined && out.price !== null && out.price !== '') {
+        const entered = Number(out.price) || 0
+        out.priceOriginal = entered
+        out.price = currency === 'USD' ? entered : await convertToUSD(entered, currency)
+    }
+    if (out.discountedPrice !== undefined && out.discountedPrice !== null && out.discountedPrice !== '') {
+        const entered = Number(out.discountedPrice) || 0
+        out.discountedPriceOriginal = entered
+        out.discountedPrice = currency === 'USD' ? entered : await convertToUSD(entered, currency)
+    }
+    return out
+}
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
