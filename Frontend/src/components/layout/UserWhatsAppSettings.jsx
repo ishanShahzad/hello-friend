@@ -5,12 +5,15 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Info,
   Loader2,
+  Lock,
   MessageCircle,
   Phone,
   RefreshCw,
   Send,
   ShieldCheck,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import axios from 'axios';
