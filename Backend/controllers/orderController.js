@@ -387,47 +387,22 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
-        // Determine the charge currency for Stripe.
-        // If every product in this order was priced in the same currency by the
-        // seller AND that currency is supported by Stripe in our project,
-        // charge in that currency using the seller's verbatim `priceOriginal`.
-        // This makes Stripe show e.g. exactly ₨1,000 for a PKR product, instead
-        // of round-tripping through USD and triggering Stripe's adaptive FX.
-        // Mixed-currency carts fall back to USD.
+        // Charge Stripe in the BUYER'S local currency (when Stripe-supported).
+        // Flow: product USD price → convert to buyer's currency using our live FX,
+        // then charge that amount. Stripe's Adaptive Pricing will also display
+        // USD alongside on the Checkout page for buyers whose card country
+        // differs from the presentment currency.
         warmRatesCache();
-        const productMap = new Map(orderItems.map(p => [toId(p._id), p]));
-        const itemCurrencies = newOrder.orderItems.map(it => {
-            const p = productMap.get(toId(it.productId));
-            return normalizeCurrency(p?.priceCurrency || 'USD');
-        });
-        // Charge Stripe in the seller's original currency when every item in the
-        // cart shares the same Stripe-supported currency. This makes Stripe show
-        // the exact verbatim price (e.g. ₨1,000) instead of round-tripping through
-        // USD and triggering Stripe's adaptive FX (which produced ₨1,047.39).
-        // Stripe's Adaptive Pricing will still present the buyer's local-country
-        // currency on the payment page if they're in a different country.
-        // Mixed-currency carts fall back to USD.
-        // ALWAYS charge in USD so Stripe's Adaptive Pricing displays USD plus
-        // the buyer's local-country currency on the Checkout page. If we charge
-        // in the buyer's own currency, Stripe shows only that one currency.
-        const chargeCurrency = 'USD';
-        const stripeCurrency = 'usd';
-
+        const STRIPE_SUPPORTED = ['USD', 'PKR', 'EUR', 'GBP'];
+        const buyerCurrency = normalizeCurrency(newOrder.currency || 'USD');
+        const chargeCurrency = STRIPE_SUPPORTED.includes(buyerCurrency) ? buyerCurrency : 'USD';
+        const stripeCurrency = chargeCurrency.toLowerCase();
 
         const getUnitAmount = (item) => {
-            // USD path: item.price is already in USD (frontend sent USD).
-            if (chargeCurrency === 'USD') return Number(item.price) || 0;
-            // Non-USD: use seller's original price in their currency to avoid drift.
-            const p = productMap.get(toId(item.productId));
-            const discOrig = p?.discountedPriceOriginal;
-            if (discOrig != null && discOrig !== '' && Number(discOrig) > 0) {
-                return Number(discOrig);
-            }
-            if (p?.priceOriginal != null && p.priceOriginal !== '') {
-                return Number(p.priceOriginal);
-            }
-            // Fallback: convert the stored USD price to the charge currency.
-            return convertFromUSDSync(Number(item.price) || 0, chargeCurrency);
+            // item.price is stored in USD. Convert to buyer's local currency.
+            const usd = Number(item.price) || 0;
+            if (chargeCurrency === 'USD') return usd;
+            return convertFromUSDSync(usd, chargeCurrency);
         };
 
         const line_items = [
