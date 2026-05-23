@@ -12,6 +12,7 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // Helper: get today's date string
 const getToday = () => new Date().toISOString().split('T')[0];
