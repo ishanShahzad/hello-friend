@@ -190,6 +190,7 @@ export const CurrencyProvider = ({ children }) => {
     formatPrice,
     formatProductPrice,
     convertToUSD,
+    convertFromCurrency,
     getCurrencySymbol,
     getCurrencyName,
   };
