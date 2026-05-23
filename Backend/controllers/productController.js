@@ -425,12 +425,15 @@ exports.getSingleProduct = async (req, res) => {
             path: 'reviews.user',
             select: 'avatar username email'
         })
-        res.status(200).json({ msg: 'fetched single product', product: singleProduct })
+        // Live USD conversion before sending to client
+        const productOut = applyLivePricesUSD(singleProduct);
+        res.status(200).json({ msg: 'fetched single product', product: productOut })
     } catch (err) {
         console.error(err)
         res.status(500).json({ msg: 'Server error' })
     }
 }
+
 
 
 exports.getFilters = async (req, res) => {
