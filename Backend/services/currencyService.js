@@ -54,6 +54,12 @@ async function getExchangeRates() {
   return exchangeRatesCache;
 }
 
+// Warm the cache so sync helpers have real rates after first ~1s of server life.
+// Safe to call repeatedly — getExchangeRates short-circuits when fresh.
+function warmRatesCache() {
+  getExchangeRates().catch(() => {});
+}
+
 async function convertToUSD(amount, fromCurrency = 'USD') {
   const value = Number(amount || 0);
   const currency = normalizeCurrency(fromCurrency);
@@ -84,6 +90,74 @@ function convertFromUSDSync(amount, toCurrency = 'USD') {
   return Math.round((value * rate) * 100) / 100;
 }
 
+// Sync inverse: convert an arbitrary currency value into USD using cached rates.
+// Used on every product read so buyers see CURRENT USD, never a stale snapshot.
+function convertToUSDSync(amount, fromCurrency = 'USD') {
+  const value = Number(amount || 0);
+  const currency = normalizeCurrency(fromCurrency);
+  if (!Number.isFinite(value)) return 0;
+  if (currency === 'USD') return Math.round(value * 100) / 100;
+  const rates = exchangeRatesCache || FALLBACK_RATES;
+  const rate = Number(rates[currency]) || 1;
+  return Math.round((value / rate) * 100) / 100;
+}
+
+/**
+ * Mutate (or copy) a product so that `price` and `discountedPrice` are LIVE USD
+ * recomputed from the seller's saved `priceOriginal`/`discountedPriceOriginal`
+ * in `priceCurrency`. This is Option 1: no stored USD ever goes stale.
+ *
+ * Legacy products (no priceCurrency / no priceOriginal) are treated as USD
+ * already — they pass through unchanged.
+ *
+ * Handles both Mongoose documents and lean POJOs. Triggers a non-blocking
+ * rate refresh if the cache is empty so future calls get accurate rates.
+ */
+function applyLivePricesUSD(input) {
+  if (!input) return input;
+  if (!exchangeRatesCache) warmRatesCache();
+
+  const convertOne = (raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    // Convert Mongoose doc → plain object for safe mutation/serialization.
+    const obj = typeof raw.toObject === 'function' ? raw.toObject() : raw;
+    const currency = normalizeCurrency(obj.priceCurrency || 'USD');
+    if (currency === 'USD') return obj; // already USD, nothing to do
+    // priceOriginal is the seller's verbatim entered value (set at write time).
+    // Fall back to `price` for legacy/edge rows.
+    const original = obj.priceOriginal != null && obj.priceOriginal !== ''
+      ? Number(obj.priceOriginal)
+      : Number(obj.price);
+    const discOriginal = obj.discountedPriceOriginal != null && obj.discountedPriceOriginal !== ''
+      ? Number(obj.discountedPriceOriginal)
+      : Number(obj.discountedPrice);
+    if (Number.isFinite(original)) obj.price = convertToUSDSync(original, currency);
+    if (Number.isFinite(discOriginal) && discOriginal > 0) {
+      obj.discountedPrice = convertToUSDSync(discOriginal, currency);
+    }
+    return obj;
+  };
+
+  if (Array.isArray(input)) return input.map(convertOne);
+  return convertOne(input);
+}
+
+/**
+ * Apply live prices to populated product references inside a parent object,
+ * e.g. cart.cartItems[].product or order.orderItems[].productId.
+ */
+function applyLivePricesToPopulated(items, key = 'product') {
+  if (!Array.isArray(items)) return items;
+  return items.map((item) => {
+    if (!item) return item;
+    const plain = typeof item.toObject === 'function' ? item.toObject() : item;
+    if (plain[key] && typeof plain[key] === 'object') {
+      plain[key] = applyLivePricesUSD(plain[key]);
+    }
+    return plain;
+  });
+}
+
 async function formatMoney(amountInUSD, currency = 'USD', { decimals = 2 } = {}) {
   const code = normalizeCurrency(currency);
   const amount = await convertFromUSD(amountInUSD, code);
@@ -109,9 +183,13 @@ module.exports = {
   FALLBACK_RATES,
   normalizeCurrency,
   getExchangeRates,
+  warmRatesCache,
   convertToUSD,
   convertFromUSD,
+  convertToUSDSync,
   convertFromUSDSync,
+  applyLivePricesUSD,
+  applyLivePricesToPopulated,
   formatMoney,
   formatMoneySync,
 };
