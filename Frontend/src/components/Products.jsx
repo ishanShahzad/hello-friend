@@ -25,7 +25,7 @@ const readProductsCache = () => {
     return cached ? JSON.parse(cached) : null
   } catch (_) {
     return null
-  }
+  } 
 }
 
 const writeProductsCache = (data) => {
