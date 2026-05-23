@@ -21,6 +21,7 @@ const Store = require('../models/Store');
 const ChatHistory = require('../models/ChatHistory');
 const { executeToolCall, isClientSideTool, storeChangeLimits } = require('../services/aiActionExecutor');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
