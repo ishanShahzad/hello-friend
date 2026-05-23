@@ -34,7 +34,7 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
   const navigation = useNavigation();
   const { currentUser } = useAuth();
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
   const { palette } = useTheme();
   const c = palette.colors;
   const g = palette.glass;
