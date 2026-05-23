@@ -360,6 +360,19 @@ export default function Checkout() {
   }, [selectedShippingPerSeller]);
   
   const totalAmount = subtotal + tax + shippingCost - totalCouponDiscount;
+
+  // Drift-free display amounts (in buyer's currency) — used ONLY for showing
+  // prices to the user. Backend still receives USD-based subtotal/total above.
+  const displaySubtotal = useMemo(() => {
+    if (!cartItems?.cart) return 0;
+    return cartItems.cart.reduce((total, item) => {
+      if (!item.product) return total;
+      const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+      const unit = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
+      return total + (unit * item.qty);
+    }, 0);
+  }, [cartItems, currency, getProductPriceNumber]);
+  const displayTotal = displaySubtotal + convertPrice(tax + shippingCost - totalCouponDiscount);
   
   // Group cart items by seller
   const cartItemsBySeller = useMemo(() => {
