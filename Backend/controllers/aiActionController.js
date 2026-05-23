@@ -904,10 +904,20 @@ exports.searchProducts = async (req, res) => {
     try {
         let query = {};
         if (category) query.category = category;
-        if (maxPrice) query.price = { ...query.price, $lte: parseFloat(maxPrice) };
-        if (minPrice) query.price = { ...query.price, $gte: parseFloat(minPrice) };
+        // maxPrice/minPrice are in USD; we filter in-memory after live conversion
+        const maxPriceUSD = maxPrice ? parseFloat(maxPrice) : null;
+        const minPriceUSD = minPrice ? parseFloat(minPrice) : null;
 
-        let products = await Product.find(query).limit(parseInt(limit));
+        let products = await Product.find(query);
+        products = applyLivePricesUSD(products);
+        if (maxPriceUSD !== null || minPriceUSD !== null) {
+            products = products.filter((p) => {
+                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                if (minPriceUSD !== null && v < minPriceUSD) return false;
+                if (maxPriceUSD !== null && v > maxPriceUSD) return false;
+                return true;
+            });
+        }
 
         if (searchQuery) {
             const Fuse = require('fuse.js');
