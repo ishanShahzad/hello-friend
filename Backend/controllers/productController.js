@@ -751,7 +751,7 @@ exports.addProduct = async (req, res) => {
                 if (featCheck.reason === 'limit_reached') {
                     return res.status(403).json({ msg: `You've reached your featured product limit (${featCheck.max}). Upgrade your plan to feature more products.`, featuredStats: featCheck });
                 }
-                safeProduct = { ...product, isFeatured: false };
+                safeProduct = { ...safeProduct, isFeatured: false };
             }
         }
 
