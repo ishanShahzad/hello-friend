@@ -1035,8 +1035,8 @@ export default function Checkout() {
                                                   className="space-y-2"
                                                 >
                                                   {sellerProducts.map((item) => {
-                                                    const itemPrice = item.product.discountedPrice || item.product.price; // SPIN WHEEL DISABLED - was getDiscountedPrice(item.product)
-                                                    // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
+                                                    const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+                                                    const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
 
                                                     return (
                                                       <div key={item._id} className="flex items-center gap-3 p-2 bg-white rounded-lg relative">
@@ -1050,7 +1050,7 @@ export default function Checkout() {
                                                           <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                          <span className="font-semibold text-sm">{formatPrice(itemPrice * item.qty)}</span>
+                                                          <span className="font-semibold text-sm">{formatAmount(unitDisplay * item.qty)}</span>
                                                           {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
                                                           {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
                                                         </div>
