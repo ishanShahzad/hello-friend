@@ -17,7 +17,7 @@ const { notifySeller } = require('../services/whatsapp/sellerNotificationService
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
 const { publicProductFilter } = require('../services/productModerationService');
-const { normalizeCurrency, convertFromUSDSync, warmRatesCache } = require('../services/currencyService');
+const { normalizeCurrency, convertFromUSDSync, convertToUSDSync, warmRatesCache } = require('../services/currencyService');
 
 // Stripe-supported currencies in this project. Keep aligned with CURRENCIES in
 // services/currencyService.js. Anything outside falls back to USD.
