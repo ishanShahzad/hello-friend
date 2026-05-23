@@ -153,10 +153,10 @@ function ProductCard({ product, index = 0, onPress, compact = false }) {
 }
 
 export function CompactProductCard({ product, onPress }) {
-  const { formatPrice } = useCurrency();
+  const { formatProductPrice } = useCurrency();
   const [imageLoading, setImageLoading] = useState(true);
   if (!product) return null;
-  const { name, image, images, price, discountedPrice, rating } = product;
+  const { name, image, images, discountedPrice, rating } = product;
   const imageSource = images?.[0]?.url || image;
   return (
     <TouchableOpacity style={styles.compactContainer} onPress={onPress} activeOpacity={0.9}>
@@ -166,7 +166,7 @@ export function CompactProductCard({ product, onPress }) {
       </View>
       <Text style={styles.compactName} numberOfLines={2}>{name}</Text>
       <View style={styles.compactRating}><Ionicons name="star" size={10} color={colors.star} /><Text style={{ fontSize: fontSize.xs, color: colors.textSecondary }}>{rating?.toFixed(1) || '0.0'}</Text></View>
-      <Text style={styles.compactPrice}>{formatPrice(discountedPrice || price)}</Text>
+      <Text style={styles.compactPrice}>{formatProductPrice(product, { field: discountedPrice ? 'discountedPrice' : 'price' })}</Text>
     </TouchableOpacity>
   );
 }
