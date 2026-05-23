@@ -171,46 +171,48 @@ export const CurrencyProvider = ({ children }) => {
     return inUSD * toRate;
   };
 
-  // Format a product's price using the seller's original currency when it
-  // matches the buyer's preferred currency (no conversion → no rounding drift).
-  // Falls back to the standard USD→display conversion otherwise.
-  // Pass the product object plus { field: 'price' | 'discountedPrice' }.
-  const formatProductPrice = (product, options = {}) => {
-    const {
-      field = 'price',
-      showSymbol = true,
-      decimals = 2,
-      showCode = false,
-    } = options;
-    if (!product) return formatPrice(0, { showSymbol, decimals, showCode });
-
+  // Returns the buyer-currency NUMBER for a product (no rounding drift).
+  // Uses seller's `priceOriginal` + `priceCurrency` when available:
+  //   - same currency  → verbatim
+  //   - other currency → direct conversion (avoids USD double-conversion drift)
+  // Falls back to USD-stored field converted to display currency.
+  const getProductPriceNumber = (product, field = 'price') => {
+    if (!product) return 0;
     const originalField = field === 'discountedPrice' ? 'discountedPriceOriginal' : 'priceOriginal';
     const productCurrency = product.priceCurrency && CURRENCIES[product.priceCurrency]
       ? product.priceCurrency
       : null;
     const originalValue = product[originalField];
 
-    // Direct conversion from seller's original currency to buyer's currency
-    // (avoids USD double-conversion drift). Same currency = verbatim display.
     if (productCurrency && originalValue != null && originalValue !== '') {
       const num = Number(originalValue);
       if (Number.isFinite(num)) {
-        const displayValue = productCurrency === currency
-          ? num
-          : convertFromCurrency(num, productCurrency);
-        const formattedNumber = displayValue.toLocaleString('en-US', {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        });
-        if (!showSymbol) return formattedNumber;
-        const symbol = CURRENCIES[currency].symbol;
-        const code = showCode ? ` ${currency}` : '';
-        return `${symbol}${formattedNumber}${code}`;
+        return productCurrency === currency ? num : convertFromCurrency(num, productCurrency);
       }
     }
+    const fallback = Number(product[field]);
+    return Number.isFinite(fallback) ? convertPrice(fallback) : 0;
+  };
 
-    // Fallback: no priceCurrency/priceOriginal → use USD-stored price field
-    return formatPrice(product[field], { showSymbol, decimals, showCode });
+  // Format an arbitrary amount that is ALREADY in the buyer's display currency
+  // (no conversion). Use with values returned by getProductPriceNumber.
+  const formatAmount = (amount, options = {}) => {
+    const { showSymbol = true, decimals = 2, showCode = false } = options;
+    const value = Number(amount) || 0;
+    const formattedNumber = value.toLocaleString('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    if (!showSymbol) return formattedNumber;
+    const symbol = CURRENCIES[currency].symbol;
+    const code = showCode ? ` ${currency}` : '';
+    return `${symbol}${formattedNumber}${code}`;
+  };
+
+  // Format a product's price (drift-free) using getProductPriceNumber.
+  const formatProductPrice = (product, options = {}) => {
+    const { field = 'price', ...rest } = options;
+    return formatAmount(getProductPriceNumber(product, field), rest);
   };
 
   // Memoize context value to prevent unnecessary re-renders
@@ -223,6 +225,8 @@ export const CurrencyProvider = ({ children }) => {
     convertPrice,
     formatPrice,
     formatProductPrice,
+    getProductPriceNumber,
+    formatAmount,
     convertToUSD,
     convertFromCurrency,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,

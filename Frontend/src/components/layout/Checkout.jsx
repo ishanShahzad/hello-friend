@@ -55,7 +55,7 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState({});
 
 
-  const { currency, formatPrice } = useCurrency();
+  const { currency, formatPrice, formatProductPrice, getProductPriceNumber, formatAmount, convertPrice } = useCurrency();
   
   const { cartItems, handleQtyInc, handleQtyDec, handleRemoveCartItem, isCartLoading,
     qtyUpdateId, fetchCart
@@ -360,6 +360,19 @@ export default function Checkout() {
   }, [selectedShippingPerSeller]);
   
   const totalAmount = subtotal + tax + shippingCost - totalCouponDiscount;
+
+  // Drift-free display amounts (in buyer's currency) — used ONLY for showing
+  // prices to the user. Backend still receives USD-based subtotal/total above.
+  const displaySubtotal = useMemo(() => {
+    if (!cartItems?.cart) return 0;
+    return cartItems.cart.reduce((total, item) => {
+      if (!item.product) return total;
+      const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+      const unit = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
+      return total + (unit * item.qty);
+    }, 0);
+  }, [cartItems, currency, getProductPriceNumber]);
+  const displayTotal = displaySubtotal + convertPrice(tax + shippingCost - totalCouponDiscount);
   
   // Group cart items by seller
   const cartItemsBySeller = useMemo(() => {
@@ -774,7 +787,7 @@ export default function Checkout() {
                                           <div>
                                             <h4 className="font-medium text-sm sm:text-base" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                                             <p>
-                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(itemPrice)}</span>
+                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductPrice(product, { field: discountedPrice ? 'discountedPrice' : 'price' })}</span>
                                               {productCouponDiscount > 0 && (
                                                 <span className="ml-2 text-xs font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>
                                                   -{formatPrice(productCouponDiscount)} coupon
@@ -1022,8 +1035,8 @@ export default function Checkout() {
                                                   className="space-y-2"
                                                 >
                                                   {sellerProducts.map((item) => {
-                                                    const itemPrice = item.product.discountedPrice || item.product.price; // SPIN WHEEL DISABLED - was getDiscountedPrice(item.product)
-                                                    // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
+                                                    const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+                                                    const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
 
                                                     return (
                                                       <div key={item._id} className="flex items-center gap-3 p-2 bg-white rounded-lg relative">
@@ -1037,7 +1050,7 @@ export default function Checkout() {
                                                           <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                          <span className="font-semibold text-sm">{formatPrice(itemPrice * item.qty)}</span>
+                                                          <span className="font-semibold text-sm">{formatAmount(unitDisplay * item.qty)}</span>
                                                           {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
                                                           {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
                                                         </div>
@@ -1347,8 +1360,8 @@ export default function Checkout() {
 
               <div className="max-h-80 overflow-y-auto mb-4">
                 {cartItems.cart.map((item) => {
-                  const itemPrice = item.product.discountedPrice || item.product.price; // SPIN WHEEL DISABLED - was getDiscountedPrice(item.product)
-                  // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
+                  const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
+                  const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
 
                   return (
                     <div key={item._id} className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
@@ -1361,14 +1374,10 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium text-xs sm:text-sm" style={{ color: 'hsl(var(--foreground))' }}>{item.product.name}</p>
                           <p className="text-xs sm:text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {item.qty}</p>
-                          {/* SPIN WHEEL DISABLED - spin discount badge removed */}
-                          {/* {hasSpinDiscount && (<p className="text-xs text-green-600 font-semibold">🎉 Spin Discount Applied!</p>)} */}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="font-semibold">{formatPrice(itemPrice * item.qty)}</span>
-                        {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
-                        {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
+                        <span className="font-semibold">{formatAmount(unitDisplay * item.qty)}</span>
                       </div>
                     </div>
                   );
@@ -1378,7 +1387,7 @@ export default function Checkout() {
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <span>Subtotal</span>
-                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal)}</span>
+                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(displaySubtotal)}</span>
                 </div>
                 
                 {Object.keys(selectedShippingPerSeller).length > 0 && (
@@ -1415,7 +1424,7 @@ export default function Checkout() {
                 
                 <div className="flex justify-between text-base sm:text-lg font-semibold pt-3" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
                   <span>Total</span>
-                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{formatPrice(totalAmount)}</span>
+                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{formatAmount(displayTotal)}</span>
                 </div>
               </div>
             </div>

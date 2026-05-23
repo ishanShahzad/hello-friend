@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Trash2 } from 'lucide-react';
 import { useGlobal } from '../../contexts/GlobalContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 export default function WishlistDropdown() {
     const { wishlistItems, handleDeleteFromWishlist } = useGlobal();
+    const { formatProductPrice } = useCurrency();
     const [isOpen, setIsOpen] = useState(false);
     const triggerRef = useRef(null);
     const menuRef = useRef(null);
@@ -68,7 +70,7 @@ export default function WishlistDropdown() {
                                 <div className="flex-1">
                                     <p className="text-xs sm:text-sm font-medium mr-3">{item.name}</p>
                                     <p className="font-semibold text-base" style={{ color: 'hsl(var(--primary))' }}>
-                                        ${item.discountedPrice !== 0 ? item.discountedPrice : item.price}
+                                        {formatProductPrice(item, { field: item.discountedPrice ? 'discountedPrice' : 'price' })}
                                     </p>
                                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                                         className='absolute cursor-pointer top-2 right-2 p-1 rounded-lg glass-button'
