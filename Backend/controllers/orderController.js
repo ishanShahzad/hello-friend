@@ -400,10 +400,19 @@ exports.placeOrder = async (req, res) => {
             const p = productMap.get(toId(it.productId));
             return normalizeCurrency(p?.priceCurrency || 'USD');
         });
-        // Always charge Stripe in USD so Stripe's Adaptive Pricing shows the buyer
-        // both USD and their local-country currency on the payment page.
-        const chargeCurrency = 'USD';
-        const stripeCurrency = 'usd';
+        // Charge Stripe in the seller's original currency when every item in the
+        // cart shares the same Stripe-supported currency. This makes Stripe show
+        // the exact verbatim price (e.g. ₨1,000) instead of round-tripping through
+        // USD and triggering Stripe's adaptive FX (which produced ₨1,047.39).
+        // Stripe's Adaptive Pricing will still present the buyer's local-country
+        // currency on the payment page if they're in a different country.
+        // Mixed-currency carts fall back to USD.
+        const STRIPE_SUPPORTED = new Set(['USD', 'PKR', 'EUR', 'GBP']);
+        const uniqueCurrencies = [...new Set(itemCurrencies)];
+        const allSameSupported =
+            uniqueCurrencies.length === 1 && STRIPE_SUPPORTED.has(uniqueCurrencies[0]);
+        const chargeCurrency = allSameSupported ? uniqueCurrencies[0] : 'USD';
+        const stripeCurrency = chargeCurrency.toLowerCase();
 
 
         const getUnitAmount = (item) => {
