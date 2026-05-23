@@ -291,9 +291,13 @@ exports.getProducts = async (req, res) => {
     try {
         let query = publicProductFilter()
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
+        // NOTE: priceRange filter is applied IN MEMORY AFTER live-USD conversion
+        // (DB-level filter on `price` is meaningless now that prices are stored
+        // in mixed currencies). Range values from frontend are in USD.
+        let priceRangeFilter = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',')
-            query.price = { $gte: Number(min), $lte: Number(max) }
+            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
         }
 
         // Only show products from active stores (hides blocked/expired seller products)
@@ -343,6 +347,18 @@ exports.getProducts = async (req, res) => {
             })
             .lean()
 
+        // CRITICAL: convert every product's stored (mixed-currency) price into
+        // LIVE USD using current FX rates — buyers never see a stale snapshot.
+        products = applyLivePricesUSD(products);
+
+        // Now that `price` is comparable USD, apply the price-range filter.
+        if (priceRangeFilter) {
+            products = products.filter((p) => {
+                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
+            });
+        }
+
         // Apply tolerant fuzzy search so buyers can find products with partial names and typos.
         if (search) {
             products = fuzzyRankProducts(products, search)
@@ -355,7 +371,7 @@ exports.getProducts = async (req, res) => {
             sellerProductCounts[sellerId] = (sellerProductCounts[sellerId] || 0) + 1;
         });
         
-        // Apply intelligent sorting
+        // Apply intelligent sorting (price sort now uses live USD — accurate cross-currency)
         products = applySorting(products, sortBy, sortOrder, sellerProductCounts, totalSellers);
 
         const totalProducts = products.length;
@@ -378,6 +394,7 @@ exports.getProducts = async (req, res) => {
                 availableSorts: ['relevance', 'price', 'rating', 'newest', 'popular', 'sales']
             }
         })
+
     } catch (error) {
         console.error('Server error while fetching products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching products.' })
