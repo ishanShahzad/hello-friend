@@ -4,6 +4,7 @@ const Complaint = require('../models/Complaint');
 const ChatHistory = require('../models/ChatHistory');
 const Fuse = require('fuse.js');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // ─── Chat History CRUD ───
 exports.getChatHistory = async (req, res) => {
@@ -119,7 +120,7 @@ exports.chat = async (req, res) => {
 
         // Intent: Product search
         if (lowerMsg.includes('find') || lowerMsg.includes('search') || lowerMsg.includes('looking for') || lowerMsg.includes('show me') || lowerMsg.includes('recommend')) {
-            const products = await Product.find(publicProductFilter()).limit(100);
+            const products = applyLivePricesUSD(await Product.find(publicProductFilter()).limit(100));
             const fuse = new Fuse(products, {
                 threshold: 0.4,
                 keys: ['name', 'description', 'brand', 'tags', 'category']
@@ -137,7 +138,7 @@ exports.chat = async (req, res) => {
 
             if (filtered.length === 0) {
                 // Try broader search
-                const allProducts = await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5);
+                const allProducts = applyLivePricesUSD(await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5));
                 return res.json({
                     reply: `I couldn't find exact matches for "${searchTerms}", but here are some popular products you might like:`,
                     products: allProducts.map(p => ({

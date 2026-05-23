@@ -21,6 +21,7 @@ const Store = require('../models/Store');
 const ChatHistory = require('../models/ChatHistory');
 const { executeToolCall, isClientSideTool, storeChangeLimits } = require('../services/aiActionExecutor');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -1874,7 +1875,8 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       // Special handling for send_product_image in WhatsApp mode
       if (toolName === 'send_product_image' && isWhatsApp) {
         try {
-          const product = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice stock').lean();
+          const productRaw = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice priceOriginal discountedPriceOriginal priceCurrency stock').lean();
+          const product = applyLivePricesUSD(productRaw);
           const imageUrl = product?.image || product?.images?.[0]?.url || product?.images?.[0];
           if (!product || !imageUrl) {
             conversationMessages.push({

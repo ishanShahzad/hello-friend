@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // Get store data for subdomain
 exports.getSubdomainStore = async (req, res) => {
@@ -56,9 +57,12 @@ exports.getSubdomainProducts = async (req, res) => {
             query.brand = { $in: brandArray };
         }
 
+        let priceMinUSD = null;
+        let priceMaxUSD = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',').map(Number);
-            query.price = { $gte: min, $lte: max };
+            priceMinUSD = Number.isFinite(min) ? min : null;
+            priceMaxUSD = Number.isFinite(max) ? max : null;
         }
 
         if (search) {
@@ -71,12 +75,21 @@ exports.getSubdomainProducts = async (req, res) => {
         // Pagination
         const skip = (page - 1) * limit;
 
-        const products = await Product.find(query)
-            .limit(parseInt(limit))
-            .skip(skip)
-            .sort({ createdAt: -1 });
+        let products = await Product.find(query).sort({ createdAt: -1 });
 
-        const total = await Product.countDocuments(query);
+        // Live USD conversion + in-memory price filter
+        products = applyLivePricesUSD(products);
+        if (priceMinUSD !== null || priceMaxUSD !== null) {
+            products = products.filter((p) => {
+                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                if (priceMinUSD !== null && v < priceMinUSD) return false;
+                if (priceMaxUSD !== null && v > priceMaxUSD) return false;
+                return true;
+            });
+        }
+
+        const total = products.length;
+        products = products.slice(skip, skip + parseInt(limit));
 
         res.status(200).json({
             msg: 'Products fetched successfully',

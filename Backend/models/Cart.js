@@ -39,25 +39,34 @@ const cartSchema = mongoose.Schema({
 
 
 
-// To Recalculate totalCartPrice
+// To Recalculate totalCartPrice (always in USD, using live FX on seller's original currency)
+const { convertToUSDSync, normalizeCurrency } = require('../services/currencyService')
+
 cartSchema.pre('save', async function (next) {
     try {
 
         await this.populate('cartItems.product')
 
-
         const subtotal = this.cartItems.reduce((acc, item) => {
             const product = item.product
             if (!product) return acc
 
-            const price = product.discountedPrice && product.discountedPrice !== 0
-                ? product.discountedPrice * item.qty
-                : product.price * item.qty
+            const currency = normalizeCurrency(product.priceCurrency || 'USD')
+            const baseOriginal = (product.priceOriginal != null && product.priceOriginal !== '')
+                ? Number(product.priceOriginal)
+                : Number(product.price)
+            const discOriginal = (product.discountedPriceOriginal != null && product.discountedPriceOriginal !== '')
+                ? Number(product.discountedPriceOriginal)
+                : Number(product.discountedPrice)
 
-            return acc + price
+            const baseUSD = Number.isFinite(baseOriginal) ? convertToUSDSync(baseOriginal, currency) : 0
+            const discUSD = Number.isFinite(discOriginal) && discOriginal > 0 ? convertToUSDSync(discOriginal, currency) : 0
+
+            const lineUnit = discUSD > 0 ? discUSD : baseUSD
+            return acc + lineUnit * item.qty
         }, 0)
 
-        this.totalCartPrice = subtotal
+        this.totalCartPrice = Number(subtotal.toFixed(2))
 
         next()
     } catch (err) {

@@ -3,6 +3,19 @@ const users = require('../models/User')
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { isProductBlocked, publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
+
+// Apply live USD pricing to populated products on cart items (for response payload).
+const liveCart = (cart) => {
+    if (!cart || !Array.isArray(cart.cartItems)) return cart?.cartItems || [];
+    return cart.cartItems.map((item) => {
+        const plain = typeof item.toObject === 'function' ? item.toObject() : item;
+        if (plain.product && typeof plain.product === 'object') {
+            plain.product = applyLivePricesUSD(plain.product);
+        }
+        return plain;
+    });
+};
 
 // Stable string key for an option set, used to dedupe cart lines per variant combo
 const optionsKey = (opts) => {
@@ -36,7 +49,7 @@ exports.addToCart = async (req, res) => {
                 await existingCart.populate('cartItems.product')
                 return res.status(200).json({
                     msg: "Item already in cart",
-                    cart: existingCart.cartItems,
+                    cart: liveCart(existingCart),
                     totalCartPrice: existingCart.totalCartPrice
                 })
             }
@@ -48,7 +61,7 @@ exports.addToCart = async (req, res) => {
             })
             await existingCart.populate('cartItems.product')
             await existingCart.save()
-            return res.status(200).json({ msg: 'Item added to cart' , cart: existingCart.cartItems, totalCartPrice: existingCart.totalCartPrice})
+            return res.status(200).json({ msg: 'Item added to cart' , cart: liveCart(existingCart), totalCartPrice: existingCart.totalCartPrice})
 
         }
 
@@ -64,7 +77,7 @@ exports.addToCart = async (req, res) => {
         })
         await newCart.populate('cartItems.product')
         await newCart.save()
-        res.status(200).json({ msg: 'Item added to cart', cart: newCart.cartItems, totalCartPrice: newCart.totalCartPrice })
+        res.status(200).json({ msg: 'Item added to cart', cart: liveCart(newCart), totalCartPrice: newCart.totalCartPrice })
     } catch (error) {
         console.error('Error adding to cart:', error.message);
         res.status(500).json({ msg: 'Server error while adding to cart' });
@@ -90,9 +103,15 @@ exports.getCart = async (req, res) => {
             await userCart.save();
         }
         
-        console.log('usercart:::', userCart);
+        // Build live-USD response and recompute total from current FX rates
+        const items = liveCart(userCart);
+        const liveTotal = items.reduce((acc, it) => {
+            const p = it.product || {};
+            const unit = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+            return acc + (Number(unit) || 0) * (it.qty || 1);
+        }, 0);
 
-        res.status(200).json({ msg: 'cart fetched successfully', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'cart fetched successfully', cart: items, totalCartPrice: Number(liveTotal.toFixed(2)) })
     } catch (error) {
         console.error('error while fetching cart:::', error);
         res.status(500).json({ msg: 'Failed to fetch user cart' })
@@ -119,7 +138,7 @@ exports.qtyIncrement = async (req, res) => {
         // console.log(userCart);
 
         await userCart.save()
-        res.status(200).json({ msg: 'quantity increased', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'quantity increased', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
     } catch (error) {
         console.error('Error increasing quantity:', error.message);
         res.status(500).json({ msg: 'Failed to increase quantity' });
@@ -145,7 +164,7 @@ exports.qtyDecrement = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'quantity decreased', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'quantity decreased', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
     } catch (error) {
         console.error('Error decreasing quantity:', error.message);
         res.status(500).json({ msg: 'Failed to decrease quantity' });
@@ -165,7 +184,7 @@ exports.removeCartItem = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'Item removed from cart', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'Item removed from cart', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
     } catch (error) {
         console.error('Error removing cart item:', error.message);
         res.status(500).json({ msg: 'Failed remove cart item' });
@@ -184,7 +203,7 @@ exports.clearCart = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'cart cleared', cart: userCart.cartItems, totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'cart cleared', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
     } catch (error) {
         console.error('Error clearing cart:', error.message);
         res.status(500).json({ msg: ' Failed to clear cart' });

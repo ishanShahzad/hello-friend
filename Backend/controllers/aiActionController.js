@@ -12,6 +12,7 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // Helper: get today's date string
 const getToday = () => new Date().toISOString().split('T')[0];
@@ -903,10 +904,20 @@ exports.searchProducts = async (req, res) => {
     try {
         let query = {};
         if (category) query.category = category;
-        if (maxPrice) query.price = { ...query.price, $lte: parseFloat(maxPrice) };
-        if (minPrice) query.price = { ...query.price, $gte: parseFloat(minPrice) };
+        // maxPrice/minPrice are in USD; we filter in-memory after live conversion
+        const maxPriceUSD = maxPrice ? parseFloat(maxPrice) : null;
+        const minPriceUSD = minPrice ? parseFloat(minPrice) : null;
 
-        let products = await Product.find(query).limit(parseInt(limit));
+        let products = await Product.find(query);
+        products = applyLivePricesUSD(products);
+        if (maxPriceUSD !== null || minPriceUSD !== null) {
+            products = products.filter((p) => {
+                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                if (minPriceUSD !== null && v < minPriceUSD) return false;
+                if (maxPriceUSD !== null && v > maxPriceUSD) return false;
+                return true;
+            });
+        }
 
         if (searchQuery) {
             const Fuse = require('fuse.js');
@@ -933,16 +944,17 @@ exports.getWishlist = async (req, res) => {
         const user = await User.findById(req.user.id).populate({
             path: 'wishlist',
             match: publicProductFilter(),
-            select: 'name price discountedPrice image category brand stock',
+            select: 'name price discountedPrice priceOriginal discountedPriceOriginal priceCurrency image category brand stock',
         });
         if (!user) return res.status(404).json({ msg: 'User not found' });
-        res.json({ 
-            wishlist: (user.wishlist || []).filter(Boolean).map(p => ({
-                _id: p._id, name: p.name, price: p.price, 
+        const items = applyLivePricesUSD((user.wishlist || []).filter(Boolean));
+        res.json({
+            wishlist: items.map(p => ({
+                _id: p._id, name: p.name, price: p.price,
                 discountedPrice: p.discountedPrice, image: p.image,
                 category: p.category, brand: p.brand, inStock: p.stock > 0
             })),
-            count: (user.wishlist || []).filter(Boolean).length
+            count: items.length
         });
     } catch (error) {
         console.error('AI get wishlist error:', error);
