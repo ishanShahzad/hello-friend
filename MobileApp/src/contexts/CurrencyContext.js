@@ -176,6 +176,7 @@ export const CurrencyProvider = ({ children }) => {
     setCurrency,
     convertPrice,
     formatPrice,
+    formatProductPrice,
     convertToUSD,
     getCurrencySymbol,
     getCurrencyName,
