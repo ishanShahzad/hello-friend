@@ -4,6 +4,7 @@ const Complaint = require('../models/Complaint');
 const ChatHistory = require('../models/ChatHistory');
 const Fuse = require('fuse.js');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
 
 // ─── Chat History CRUD ───
 exports.getChatHistory = async (req, res) => {
