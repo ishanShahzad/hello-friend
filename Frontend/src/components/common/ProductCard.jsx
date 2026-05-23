@@ -10,10 +10,11 @@ import { getStoreSubdomainUrl } from "../../utils/subdomainHelper";
 const ProductCard = memo(({
   _id, name, image, images, category, price, discountedPrice,
   stock, rating, numReviews, isFeatured, idx, store, seller,
+  priceCurrency, priceOriginal, discountedPriceOriginal,
 }) => {
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, handleQtyInc, handleQtyDec, isCartLoading, loadingProductId, qtyUpdateId } = useGlobal();
   const { currentUser } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
   const navigate = useNavigate();
 
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -26,6 +27,11 @@ const ProductCard = memo(({
   const originalDisplayPrice = discountedPrice ? price : null;
   const discountPercentage = originalDisplayPrice && displayPrice < originalDisplayPrice
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100) : 0;
+
+  // Use formatProductPrice so same-currency products display the seller's exact saved value (no rounding drift)
+  const productForPrice = { price, discountedPrice, priceCurrency, priceOriginal, discountedPriceOriginal };
+  const formattedDisplayPrice = formatProductPrice(productForPrice, { field: discountedPrice ? 'discountedPrice' : 'price' });
+  const formattedOriginalPrice = originalDisplayPrice ? formatProductPrice(productForPrice, { field: 'price' }) : null;
 
   const handleWishlistToggle = () => {
     if (!currentUser) { navigate('/login'); return; }
