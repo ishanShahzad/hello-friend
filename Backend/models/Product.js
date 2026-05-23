@@ -15,8 +15,12 @@ const productSchema = mongoose.Schema(
     {
         name: { type: String, required: true },
         description: { type: String, required: true },
-        price: { type: Number, required: true },
-        discountedPrice: { type: Number, default: 0 }, 
+        price: { type: Number, required: true }, // USD-normalized (canonical for all readers)
+        discountedPrice: { type: Number, default: 0 }, // USD-normalized
+        // The exact value the seller entered + the currency they entered it in.
+        priceOriginal: { type: Number, default: null },
+        discountedPriceOriginal: { type: Number, default: null },
+        priceCurrency: { type: String, default: 'USD' },
         category: { type: String, required: true }, 
         brand: { type: String, required: true }, 
         stock: { type: Number, required: true, default: 0 }, 
