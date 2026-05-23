@@ -32,7 +32,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const { productId } = route.params;
   const { currentUser } = useAuth();
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
 
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
