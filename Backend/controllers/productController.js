@@ -744,7 +744,7 @@ exports.addProduct = async (req, res) => {
         }
         
         // Gate: enforce featured product limits based on subscription tier.
-        let safeProduct = product;
+        let safeProduct = await normalizeProductPricing(product);
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);
             if (!featCheck.allowed) {
