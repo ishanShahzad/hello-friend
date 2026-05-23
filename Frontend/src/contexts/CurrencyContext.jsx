@@ -225,6 +225,8 @@ export const CurrencyProvider = ({ children }) => {
     convertPrice,
     formatPrice,
     formatProductPrice,
+    getProductPriceNumber,
+    formatAmount,
     convertToUSD,
     convertFromCurrency,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,
