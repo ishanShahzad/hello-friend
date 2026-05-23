@@ -400,11 +400,11 @@ exports.placeOrder = async (req, res) => {
             const p = productMap.get(toId(it.productId));
             return normalizeCurrency(p?.priceCurrency || 'USD');
         });
-        const allSameCurrency = itemCurrencies.length > 0 &&
-            itemCurrencies.every(c => c === itemCurrencies[0]) &&
-            STRIPE_SUPPORTED_CURRENCIES.has(itemCurrencies[0]);
-        const chargeCurrency = allSameCurrency ? itemCurrencies[0] : 'USD';
-        const stripeCurrency = chargeCurrency.toLowerCase();
+        // Always charge Stripe in USD so Stripe's Adaptive Pricing shows the buyer
+        // both USD and their local-country currency on the payment page.
+        const chargeCurrency = 'USD';
+        const stripeCurrency = 'usd';
+
 
         const getUnitAmount = (item) => {
             // USD path: item.price is already in USD (frontend sent USD).
