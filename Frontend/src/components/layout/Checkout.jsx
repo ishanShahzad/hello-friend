@@ -55,7 +55,7 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState({});
 
 
-  const { currency, formatPrice } = useCurrency();
+  const { currency, formatPrice, formatProductPrice, getProductPriceNumber, formatAmount, convertPrice } = useCurrency();
   
   const { cartItems, handleQtyInc, handleQtyDec, handleRemoveCartItem, isCartLoading,
     qtyUpdateId, fetchCart
