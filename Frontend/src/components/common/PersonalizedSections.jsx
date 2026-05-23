@@ -8,7 +8,7 @@ import { useCurrency } from '../../contexts/CurrencyContext'
 import { getStoreSubdomainUrl } from '../../utils/subdomainHelper'
 
 const SliderProductCard = ({ product, formatPrice }) => {
-  const displayPrice = product.discountedPrice || product.price
+  const { formatProductPrice } = useCurrency()
   const hasDiscount = product.discountedPrice > 0 && product.discountedPrice < product.price
   const discountPercentage = hasDiscount
     ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
