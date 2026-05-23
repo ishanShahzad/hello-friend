@@ -28,8 +28,8 @@ const SectionHeader = ({ icon, title, subtitle, color, palette }) => {
 };
 
 const SliderCard = ({ product, onPress, formatPrice, palette }) => {
+  const { formatProductPrice } = useCurrency();
   const styles = makeStyles(palette);
-  const displayPrice = product.discountedPrice || product.price;
   const hasDiscount = product.discountedPrice > 0 && product.discountedPrice < product.price;
   const discountPct = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
   const imageSource = product.images?.[0]?.url || product.image;
@@ -47,8 +47,8 @@ const SliderCard = ({ product, onPress, formatPrice, palette }) => {
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>{product.name}</Text>
         <View style={styles.cardPriceRow}>
-          <Text style={styles.cardPrice}>{formatPrice(displayPrice)}</Text>
-          {hasDiscount && <Text style={styles.cardOriginalPrice}>{formatPrice(product.price)}</Text>}
+          <Text style={styles.cardPrice}>{formatProductPrice(product, { field: hasDiscount ? 'discountedPrice' : 'price' })}</Text>
+          {hasDiscount && <Text style={styles.cardOriginalPrice}>{formatProductPrice(product, { field: 'price' })}</Text>}
         </View>
       </View>
     </TouchableOpacity>
