@@ -197,11 +197,11 @@ const ProductCard = memo(({
         <div className="mt-auto flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
           {originalDisplayPrice ? (
             <>
-              <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice)}</span>
-              <span className="text-xs sm:text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(originalDisplayPrice)}</span>
+              <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formattedDisplayPrice}</span>
+              <span className="text-xs sm:text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formattedOriginalPrice}</span>
             </>
           ) : (
-            <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice)}</span>
+            <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formattedDisplayPrice}</span>
           )}
         </div>
 
