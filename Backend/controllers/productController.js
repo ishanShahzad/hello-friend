@@ -8,17 +8,21 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService')
-const { convertToUSD, normalizeCurrency } = require('../services/currencyService')
+const { normalizeCurrency, applyLivePricesUSD, convertToUSDSync, warmRatesCache } = require('../services/currencyService')
+
+// Warm exchange-rate cache at module load so the first request gets real rates.
+warmRatesCache();
 
 /**
  * Normalize price fields on an incoming product payload.
- * - Takes the seller's entered `price` / `discountedPrice` as values in `priceCurrency`.
- * - Stores them verbatim in `priceOriginal` / `discountedPriceOriginal`.
- * - Overwrites `price` / `discountedPrice` with the USD-converted amount so all
- *   existing readers (cards, cart, orders, analytics) keep working unchanged.
- * Safe to call with partial payloads (edit flow) — only touches provided fields.
+ * Option 1 architecture: the DB stores ONLY the seller's exact entered value
+ * (`price`/`discountedPrice`) in the currency they typed (`priceCurrency`).
+ * `priceOriginal`/`discountedPriceOriginal` are kept as alias mirrors for
+ * transparency and for the seller edit form prefill. No USD conversion happens
+ * at write time — every READ recomputes USD live so buyers always see the
+ * current exchange rate. Stale-USD drift is impossible by construction.
  */
-async function normalizeProductPricing(payload) {
+function normalizeProductPricing(payload) {
     if (!payload || typeof payload !== 'object') return payload
     const out = { ...payload }
     const currency = normalizeCurrency(out.priceCurrency || 'USD')
@@ -26,16 +30,17 @@ async function normalizeProductPricing(payload) {
 
     if (out.price !== undefined && out.price !== null && out.price !== '') {
         const entered = Number(out.price) || 0
-        out.priceOriginal = entered
-        out.price = currency === 'USD' ? entered : await convertToUSD(entered, currency)
+        out.price = entered                  // stored in `currency`, NOT USD
+        out.priceOriginal = entered          // mirror for the seller edit form
     }
     if (out.discountedPrice !== undefined && out.discountedPrice !== null && out.discountedPrice !== '') {
         const entered = Number(out.discountedPrice) || 0
+        out.discountedPrice = entered        // stored in `currency`, NOT USD
         out.discountedPriceOriginal = entered
-        out.discountedPrice = currency === 'USD' ? entered : await convertToUSD(entered, currency)
     }
     return out
 }
+
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
