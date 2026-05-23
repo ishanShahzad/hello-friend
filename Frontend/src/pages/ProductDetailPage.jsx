@@ -445,10 +445,10 @@ function ProductDetailPage() {
                                 {discountPercentage > 0 ? (
                                     <div className="flex items-center gap-3 flex-wrap">
                                         <span className="text-3xl font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
-                                            {getCurrencySymbol()}{convertPrice(displayPrice).toFixed(2)}
+                                            {formatProductPrice(product, { field: 'discountedPrice' })}
                                         </span>
                                         <span className="text-xl line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                            {getCurrencySymbol()}{convertPrice(originalPrice).toFixed(2)}
+                                            {formatProductPrice(product, { field: 'price' })}
                                         </span>
                                         <span className="tag-pill text-xs font-semibold"
                                             style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'hsl(0, 72%, 55%)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
@@ -457,7 +457,7 @@ function ProductDetailPage() {
                                     </div>
                                 ) : (
                                     <span className="text-3xl font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
-                                        {getCurrencySymbol()}{convertPrice(displayPrice).toFixed(2)}
+                                        {formatProductPrice(product, { field: 'price' })}
                                     </span>
                                 )}
                             </motion.div>
