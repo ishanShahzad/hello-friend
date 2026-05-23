@@ -1081,7 +1081,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 {catOpen && (
                                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
                                         className="absolute z-50 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl p-2 shadow-2xl border"
-                                        style={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', borderColor: 'var(--glass-border)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                                        style={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', borderColor: 'hsl(var(--border))', boxShadow: '0 20px 50px -10px rgba(0,0,0,0.35)' }}>
                                         {filteredCategories.length === 0 && !showOtherInput && (
                                             <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
                                         )}
@@ -1094,7 +1094,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                                 {product.category?.toLowerCase() === c.toLowerCase() && <CheckCircle size={14} style={{ color: 'hsl(150,60%,45%)' }} />}
                                             </button>
                                         ))}
-                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid hsl(var(--border))' }}>
                                             {!showOtherInput ? (
                                                 <button type="button" onClick={() => { setShowOtherInput(true); setProduct({ ...product, category: exactMatch ? '' : product.category }); }}
                                                     className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors flex items-center gap-2"
@@ -1118,6 +1118,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Stock *</label>
