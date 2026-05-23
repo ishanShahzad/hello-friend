@@ -24,7 +24,7 @@ export default function WishlistScreen({ navigation }) {
 
   const { currentUser } = useAuth();
   const { wishlistItems, fetchWishlist, handleDeleteFromWishlist, handleAddToCart, cartItems, isCartLoading, loadingProductId } = useGlobal();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [removingId, setRemovingId] = useState(null);
