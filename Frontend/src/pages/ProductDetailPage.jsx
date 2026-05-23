@@ -15,7 +15,7 @@ import { trackProductView } from '../utils/tiktokPixel';
 
 function ProductDetailPage() {
     const { id } = useParams();
-    const { getCurrencySymbol, convertPrice } = useCurrency();
+    const { getCurrencySymbol, convertPrice, formatProductPrice } = useCurrency();
     const {
         wishlistItems,
         handleAddToWishlist,
