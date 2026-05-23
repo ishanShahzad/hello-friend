@@ -1424,7 +1424,7 @@ export default function Checkout() {
                 
                 <div className="flex justify-between text-base sm:text-lg font-semibold pt-3" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
                   <span>Total</span>
-                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{formatPrice(totalAmount)}</span>
+                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{formatAmount(displayTotal)}</span>
                 </div>
               </div>
             </div>
