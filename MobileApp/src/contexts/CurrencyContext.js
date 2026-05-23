@@ -118,6 +118,42 @@ export const CurrencyProvider = ({ children }) => {
     return `${symbol}${formattedNumber}${code}`;
   };
 
+  // Same-currency shortcut: when the buyer's preferred currency matches the
+  // seller's saved priceCurrency, display priceOriginal verbatim — no
+  // conversion, no rounding drift. Falls back to USD→display conversion.
+  const formatProductPrice = (product, options = {}) => {
+    const {
+      field = 'price',
+      showSymbol = true,
+      decimals = 2,
+      showCode = false,
+    } = options;
+    if (!product) return formatPrice(0, { showSymbol, decimals, showCode });
+
+    const originalField = field === 'discountedPrice' ? 'discountedPriceOriginal' : 'priceOriginal';
+    const productCurrency = product.priceCurrency && CURRENCIES[product.priceCurrency]
+      ? product.priceCurrency
+      : null;
+    const originalValue = product[originalField];
+
+    if (productCurrency && productCurrency === currency && originalValue != null && originalValue !== '') {
+      const num = Number(originalValue);
+      if (Number.isFinite(num)) {
+        const formattedNumber = num.toLocaleString('en-US', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+        if (!showSymbol) return formattedNumber;
+        const symbol = (CURRENCIES[currency] || CURRENCIES.USD).symbol;
+        const code = showCode ? ` ${currency}` : '';
+        return `${symbol}${formattedNumber}${code}`;
+      }
+    }
+
+    return formatPrice(product[field], { showSymbol, decimals, showCode });
+  };
+
+
   const convertToUSD = (priceInCurrentCurrency) => {
     if (!priceInCurrentCurrency || isNaN(priceInCurrentCurrency)) return 0;
     const rate = exchangeRates[currency] || 1;
