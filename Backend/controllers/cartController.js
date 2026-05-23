@@ -3,6 +3,19 @@ const users = require('../models/User')
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { isProductBlocked, publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD } = require('../services/currencyService');
+
+// Apply live USD pricing to populated products on cart items (for response payload).
+const liveCart = (cart) => {
+    if (!cart || !Array.isArray(cart.cartItems)) return cart?.cartItems || [];
+    return cart.cartItems.map((item) => {
+        const plain = typeof item.toObject === 'function' ? item.toObject() : item;
+        if (plain.product && typeof plain.product === 'object') {
+            plain.product = applyLivePricesUSD(plain.product);
+        }
+        return plain;
+    });
+};
 
 // Stable string key for an option set, used to dedupe cart lines per variant combo
 const optionsKey = (opts) => {
