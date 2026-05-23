@@ -190,11 +190,15 @@ export const CurrencyProvider = ({ children }) => {
       : null;
     const originalValue = product[originalField];
 
-    // Same-currency shortcut: display seller's exact saved value, no conversion
-    if (productCurrency && productCurrency === currency && originalValue != null && originalValue !== '') {
+    // Direct conversion from seller's original currency to buyer's currency
+    // (avoids USD double-conversion drift). Same currency = verbatim display.
+    if (productCurrency && originalValue != null && originalValue !== '') {
       const num = Number(originalValue);
       if (Number.isFinite(num)) {
-        const formattedNumber = num.toLocaleString('en-US', {
+        const displayValue = productCurrency === currency
+          ? num
+          : convertFromCurrency(num, productCurrency);
+        const formattedNumber = displayValue.toLocaleString('en-US', {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         });
@@ -205,7 +209,7 @@ export const CurrencyProvider = ({ children }) => {
       }
     }
 
-    // Fallback: backend already converted to USD → standard conversion
+    // Fallback: no priceCurrency/priceOriginal → use USD-stored price field
     return formatPrice(product[field], { showSymbol, decimals, showCode });
   };
 
