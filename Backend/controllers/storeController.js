@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { sendEmail } = require('./mailController');
 const { initializeSubscription } = require('./subscriptionController');
 const { publicProductFilter } = require('../services/productModerationService');
+const { applyLivePricesUSD, convertToUSDSync, normalizeCurrency } = require('../services/currencyService');
 const StoreView = require('../models/StoreView');
 const { normalizeSocialLinks } = require('../services/socialLinksService');
 
