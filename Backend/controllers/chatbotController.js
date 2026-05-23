@@ -120,7 +120,7 @@ exports.chat = async (req, res) => {
 
         // Intent: Product search
         if (lowerMsg.includes('find') || lowerMsg.includes('search') || lowerMsg.includes('looking for') || lowerMsg.includes('show me') || lowerMsg.includes('recommend')) {
-            const products = await Product.find(publicProductFilter()).limit(100);
+            const products = applyLivePricesUSD(await Product.find(publicProductFilter()).limit(100));
             const fuse = new Fuse(products, {
                 threshold: 0.4,
                 keys: ['name', 'description', 'brand', 'tags', 'category']
