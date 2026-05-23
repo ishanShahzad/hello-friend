@@ -110,15 +110,15 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     {hasDiscount ? (
                         <>
                             <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                                {formatPrice(product.discountedPrice)}
+                                {formatProductPrice(product, { field: 'discountedPrice' })}
                             </span>
                             <span className="text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {formatPrice(product.price)}
+                                {formatProductPrice(product, { field: 'price' })}
                             </span>
                         </>
                     ) : (
                         <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                            {formatPrice(product.price)}
+                            {formatProductPrice(product, { field: 'price' })}
                         </span>
                     )}
                 </div>
