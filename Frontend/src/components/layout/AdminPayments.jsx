@@ -39,13 +39,13 @@ const statusBackgrounds = {
 };
 
 const StatCard = ({ label, value, icon, color, bg }) => (
-    <div className="glass-card water-shimmer p-5">
-        <div className="flex items-start justify-between gap-3">
-            <div>
+    <div className="glass-card water-shimmer p-4 sm:p-5 min-w-0">
+        <div className="flex items-start justify-between gap-3 min-w-0">
+            <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {label}
                 </p>
-                <p className="text-2xl font-extrabold mt-2" style={{ color: 'hsl(var(--foreground))' }}>
+                <p className="text-xl sm:text-2xl font-extrabold mt-2 break-words" style={{ color: 'hsl(var(--foreground))' }}>
                     {value}
                 </p>
             </div>
@@ -142,9 +142,9 @@ const AdminPayments = () => {
     const withdrawals = data?.withdrawals || [];
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-6 overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                     <div className="tag-pill mb-2"><Wallet size={12} /> Admin Payments</div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
                         Seller Payments & Withdrawals
@@ -153,7 +153,7 @@ const AdminPayments = () => {
                         Review seller payout accounts, Stripe withdrawable balances, COD revenue, and withdrawal requests.
                     </p>
                 </div>
-                <button onClick={fetchOverview} className="px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                <button onClick={fetchOverview} className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center justify-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
                     <RefreshCw size={16} /> Refresh
                 </button>
             </div>
@@ -166,9 +166,9 @@ const AdminPayments = () => {
                 <StatCard label="Open Requests" value={pendingRequests} icon={<AlertTriangle size={22} />} color="hsl(0,72%,55%)" bg="rgba(239,68,68,0.12)" />
             </div>
 
-            <section className="glass-panel water-shimmer p-5 sm:p-6">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                    <div>
+            <section className="glass-panel water-shimmer p-4 sm:p-6 min-w-0">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0">
                         <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Seller Payment Accounts</h2>
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                             Stripe revenue is withdrawable here. COD revenue is shown for reporting only.
@@ -177,8 +177,8 @@ const AdminPayments = () => {
                     <Users size={20} style={{ color: 'hsl(var(--muted-foreground))' }} />
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                    <table className="w-full min-w-[920px] text-sm">
                         <thead>
                             <tr style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 <th className="text-left font-semibold py-3 pr-4">Seller</th>
@@ -205,7 +205,7 @@ const AdminPayments = () => {
                                                 <p className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                                                     {row.paymentAccount.bankName}
                                                 </p>
-                                                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                <p className="text-xs break-words" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                     {row.paymentAccount.accountHolderName}
                                                     {row.paymentAccount.accountNumber ? ` - ${row.paymentAccount.accountNumber}` : row.paymentAccount.maskedAccountNumber ? ` - ${row.paymentAccount.maskedAccountNumber}` : ''}
                                                     {row.paymentAccount.iban ? ` - IBAN ${row.paymentAccount.iban}` : ''}
@@ -225,9 +225,9 @@ const AdminPayments = () => {
                 </div>
             </section>
 
-            <section className="glass-panel water-shimmer p-5 sm:p-6">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                    <div>
+            <section className="glass-panel water-shimmer p-4 sm:p-6 min-w-0">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0">
                         <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Withdrawal Requests</h2>
                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                             Mark requests approved, processing, paid, rejected, or cancelled after admin review.
@@ -246,23 +246,23 @@ const AdminPayments = () => {
                         {withdrawals.map((request) => {
                             const edit = edits[request._id] || { status: request.status, adminNote: request.adminNote || '' };
                             return (
-                                <div key={request._id} className="glass-inner rounded-2xl p-4">
+                                <div key={request._id} className="glass-inner rounded-2xl p-4 min-w-0">
                                     <div className="grid lg:grid-cols-[1.2fr_1fr_1.5fr_auto] gap-4 items-start">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-2">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2 mb-2">
                                                 <StatusPill status={request.status} />
                                                 <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                     {new Date(request.createdAt).toLocaleString()}
                                                 </span>
                                             </div>
-                                            <p className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                            <p className="font-semibold break-words" style={{ color: 'hsl(var(--foreground))' }}>
                                                 {request.seller?.username || 'Seller'} requested {formatPrice(request.amount || 0)}
                                             </p>
-                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            <p className="text-xs mt-1 break-words" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                 {request.seller?.email || ''}{request.sellerNote ? ` - Seller note: ${request.sellerNote}` : ''}
                                             </p>
                                         </div>
-                                        <div className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        <div className="text-xs leading-relaxed min-w-0" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                             <p className="font-semibold text-sm mb-1" style={{ color: 'hsl(var(--foreground))' }}>
                                                 {request.paymentAccountSnapshot?.bankName || 'Bank account'}
                                             </p>
@@ -272,14 +272,14 @@ const AdminPayments = () => {
                                         </div>
                                         <div className="grid sm:grid-cols-2 gap-3">
                                             <select
-                                                className="glass-inner rounded-xl px-3 py-2.5 text-sm outline-none"
+                                                className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none"
                                                 value={edit.status}
                                                 onChange={(e) => updateEdit(request._id, 'status', e.target.value)}
                                             >
                                                 {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
                                             </select>
                                             <input
-                                                className="glass-inner rounded-xl px-3 py-2.5 text-sm outline-none"
+                                                className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none"
                                                 value={edit.adminNote}
                                                 onChange={(e) => updateEdit(request._id, 'adminNote', e.target.value)}
                                                 placeholder="Admin note"
@@ -288,7 +288,7 @@ const AdminPayments = () => {
                                         <button
                                             disabled={savingId === request._id}
                                             onClick={() => updateWithdrawal(request._id)}
-                                            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                                            className="w-full lg:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white inline-flex items-center justify-center gap-2 disabled:opacity-60"
                                             style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(200,80%,50%))' }}
                                         >
                                             {savingId === request._id ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}

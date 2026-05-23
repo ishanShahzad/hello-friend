@@ -55,14 +55,14 @@ const PaymentStat = ({ label, value, description, icon, color, bg, delay = 0 }) 
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay }}
-        className="glass-card water-shimmer p-5"
+        className="glass-card water-shimmer p-4 sm:p-5 min-w-0"
     >
-        <div className="flex items-start justify-between gap-3">
-            <div>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+            <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {label}
                 </p>
-                <p className="text-2xl font-extrabold mt-2" style={{ color: 'hsl(var(--foreground))' }}>
+                <p className="text-xl sm:text-2xl font-extrabold mt-2 break-words" style={{ color: 'hsl(var(--foreground))' }}>
                     {value}
                 </p>
                 <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -213,9 +213,9 @@ const SellerPayments = () => {
     const withdrawals = summary?.withdrawals || [];
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-6 overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                     <div className="tag-pill mb-2"><Wallet size={12} /> Seller Payments</div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
                         Payments & Revenue
@@ -227,7 +227,7 @@ const SellerPayments = () => {
                 <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={fetchSummary}
-                    className="px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center gap-2"
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center justify-center gap-2"
                     style={{ color: 'hsl(var(--foreground))' }}
                 >
                     <RefreshCw size={16} /> Refresh
@@ -276,10 +276,10 @@ const SellerPayments = () => {
                 <motion.section
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-panel water-shimmer p-5 sm:p-6 space-y-4"
+                    className="glass-panel water-shimmer p-4 sm:p-6 space-y-4 min-w-0"
                 >
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="min-w-0">
                             <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Bank Account</h2>
                             <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                 Used for manual payouts of Stripe-paid delivered orders.
@@ -288,7 +288,7 @@ const SellerPayments = () => {
                         <button
                             type="button"
                             onClick={() => setShowAccountForm((value) => !value)}
-                            className="px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center gap-2"
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner inline-flex items-center justify-center gap-2"
                             style={{ color: 'hsl(var(--foreground))' }}
                         >
                             <Landmark size={16} />
@@ -297,13 +297,13 @@ const SellerPayments = () => {
                     </div>
 
                     {paymentAccount && (
-                        <div className="rounded-2xl p-4 glass-inner flex items-start justify-between gap-3">
-                            <div>
+                        <div className="rounded-2xl p-4 glass-inner flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 min-w-0">
+                            <div className="min-w-0">
                                 <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                                     <ShieldCheck size={16} style={{ color: 'hsl(150,60%,45%)' }} />
                                     Linked payment account
                                 </div>
-                                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                <p className="text-xs mt-2 break-words" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                     {paymentAccount.bankName} - {paymentAccount.accountHolderName}
                                     {paymentAccount.maskedAccountNumber ? ` - ${paymentAccount.maskedAccountNumber}` : ''}
                                     {paymentAccount.maskedIban ? ` - IBAN ${paymentAccount.maskedIban}` : ''}
@@ -320,27 +320,27 @@ const SellerPayments = () => {
                             <div className="grid sm:grid-cols-2 gap-4">
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account holder name</span>
-                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountHolderName} onChange={(e) => handleAccountChange('accountHolderName', e.target.value)} required />
+                                    <input className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountHolderName} onChange={(e) => handleAccountChange('accountHolderName', e.target.value)} required />
                                 </label>
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Bank name</span>
-                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.bankName} onChange={(e) => handleAccountChange('bankName', e.target.value)} required />
+                                    <input className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.bankName} onChange={(e) => handleAccountChange('bankName', e.target.value)} required />
                                 </label>
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Account number</span>
-                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountNumber} onChange={(e) => handleAccountChange('accountNumber', e.target.value)} placeholder={paymentAccount?.maskedAccountNumber || 'Enter account number'} />
+                                    <input className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.accountNumber} onChange={(e) => handleAccountChange('accountNumber', e.target.value)} placeholder={paymentAccount?.maskedAccountNumber || 'Enter account number'} />
                                 </label>
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>IBAN</span>
-                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.iban} onChange={(e) => handleAccountChange('iban', e.target.value)} placeholder={paymentAccount?.maskedIban || 'Optional IBAN'} />
+                                    <input className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.iban} onChange={(e) => handleAccountChange('iban', e.target.value)} placeholder={paymentAccount?.maskedIban || 'Optional IBAN'} />
                                 </label>
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</span>
-                                    <input className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.country} onChange={(e) => handleAccountChange('country', e.target.value)} />
+                                    <input className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.country} onChange={(e) => handleAccountChange('country', e.target.value)} />
                                 </label>
                                 <label className="space-y-1.5">
                                     <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Payout currency</span>
-                                    <select className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.currency} onChange={(e) => handleAccountChange('currency', e.target.value)}>
+                                    <select className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={accountForm.currency} onChange={(e) => handleAccountChange('currency', e.target.value)}>
                                         {Object.keys(currencies).map((code) => <option key={code} value={code}>{code} - {currencies[code].name}</option>)}
                                     </select>
                                 </label>
@@ -351,7 +351,7 @@ const SellerPayments = () => {
                                 <textarea className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none min-h-[86px]" value={accountForm.payoutInstructions} onChange={(e) => handleAccountChange('payoutInstructions', e.target.value)} placeholder="Optional transfer details" />
                             </label>
 
-                            <button disabled={savingAccount} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(200,80%,50%))' }}>
+                            <button disabled={savingAccount} className="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(220,70%,55%), hsl(200,80%,50%))' }}>
                                 {savingAccount ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
                                 Link payment account
                             </button>
@@ -360,9 +360,9 @@ const SellerPayments = () => {
                 </motion.section>
 
                 <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <form className="glass-panel water-shimmer p-5 sm:p-6 space-y-4" onSubmit={requestWithdrawal}>
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
+                    <form className="glass-panel water-shimmer p-4 sm:p-6 space-y-4 min-w-0" onSubmit={requestWithdrawal}>
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div className="min-w-0">
                                 <h2 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Request Withdrawal</h2>
                                 <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                     Available now: {formatPrice(revenue.withdrawableBalance || 0)}
@@ -385,20 +385,20 @@ const SellerPayments = () => {
                         <div className="grid sm:grid-cols-[1fr_auto] gap-3">
                             <label className="space-y-1.5">
                                 <span className="text-xs font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>Amount in {currency}</span>
-                                <input type="number" min="0" step="0.01" className="w-full glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="0.00" />
+                                <input type="number" min="0" step="0.01" className="w-full min-w-0 glass-inner rounded-xl px-3 py-2.5 text-sm outline-none" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="0.00" />
                             </label>
-                            <button type="button" className="self-end px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner" style={{ color: 'hsl(var(--foreground))' }} onClick={() => setWithdrawAmount(availableInCurrentCurrency.toFixed(2))}>
+                            <button type="button" className="w-full sm:w-auto sm:self-end px-4 py-2.5 rounded-xl text-sm font-semibold glass-inner" style={{ color: 'hsl(var(--foreground))' }} onClick={() => setWithdrawAmount(availableInCurrentCurrency.toFixed(2))}>
                                 Full balance
                             </button>
                         </div>
 
-                        <button disabled={requesting} className="px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(200,80%,45%))' }}>
+                        <button disabled={requesting} className="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-semibold text-white inline-flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg, hsl(150,60%,45%), hsl(200,80%,45%))' }}>
                             {requesting ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
                             Send withdrawal request
                         </button>
                     </form>
 
-                    <div className="glass-panel water-shimmer p-5 sm:p-6">
+                    <div className="glass-panel water-shimmer p-4 sm:p-6 min-w-0">
                         <h2 className="text-lg font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>Balance Details</h2>
                         <div className="space-y-3">
                             {[
@@ -409,7 +409,7 @@ const SellerPayments = () => {
                                 ['Already paid out', revenue.totalWithdrawn || 0],
                                 ['Pending COD estimate', revenue.codPendingRevenue || 0],
                             ].map(([label, amount]) => (
-                                <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                                <div key={label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 text-sm">
                                     <span style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</span>
                                     <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(amount)}</span>
                                 </div>
@@ -419,7 +419,7 @@ const SellerPayments = () => {
                 </motion.div>
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="glass-panel water-shimmer p-5 sm:p-6">
+            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="glass-panel water-shimmer p-4 sm:p-6 min-w-0">
                 <h2 className="text-lg font-bold mb-4" style={{ color: 'hsl(var(--foreground))' }}>Withdrawal History</h2>
                 {withdrawals.length === 0 ? (
                     <div className="text-center py-10">
@@ -427,8 +427,8 @@ const SellerPayments = () => {
                         <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No withdrawal requests yet.</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                        <table className="w-full min-w-[680px] text-sm">
                             <thead>
                                 <tr style={{ color: 'hsl(var(--muted-foreground))' }}>
                                     <th className="text-left font-semibold py-3 pr-4">Requested</th>
