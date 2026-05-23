@@ -49,7 +49,7 @@ exports.getWishlist = async (req, res) => {
     const user = await User.findById(userId).populate({
         path: 'wishlist',
         match: publicProductFilter(),
-        select: 'name price image discountedPrice'
+        select: 'name price image discountedPrice priceOriginal discountedPriceOriginal priceCurrency'
     })
     // console.log(user.wishlist);
 
