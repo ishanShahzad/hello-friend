@@ -103,9 +103,15 @@ exports.getCart = async (req, res) => {
             await userCart.save();
         }
         
-        console.log('usercart:::', userCart);
+        // Build live-USD response and recompute total from current FX rates
+        const items = liveCart(userCart);
+        const liveTotal = items.reduce((acc, it) => {
+            const p = it.product || {};
+            const unit = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+            return acc + (Number(unit) || 0) * (it.qty || 1);
+        }, 0);
 
-        res.status(200).json({ msg: 'cart fetched successfully', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json({ msg: 'cart fetched successfully', cart: items, totalCartPrice: Number(liveTotal.toFixed(2)) })
     } catch (error) {
         console.error('error while fetching cart:::', error);
         res.status(500).json({ msg: 'Failed to fetch user cart' })
