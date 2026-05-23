@@ -118,8 +118,8 @@ const CartDropdown = () => {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm leading-snug truncate pr-6" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                             <div className="flex items-baseline gap-1.5 mt-1">
-                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatPrice(displayPrice)}</span>
-                              {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(price)}</span>}
+                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatProductPrice(product, { field: hasDiscount ? 'discountedPrice' : 'price' })}</span>
+                              {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductPrice(product, { field: 'price' })}</span>}
                             </div>
                             <QuantitySelector qty={qty} onIncrement={() => handleQtyInc(item._id)} onDecrement={() => handleQtyDec(item._id)} />
                           </div>
