@@ -4,7 +4,7 @@ import { Bot, Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "luc
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
-    const { formatPrice } = useCurrency();
+    const { formatProductPrice } = useCurrency();
     const hasDiscount = product.discountedPrice > 0;
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
     const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
@@ -110,15 +110,15 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     {hasDiscount ? (
                         <>
                             <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                                {formatPrice(product.discountedPrice)}
+                                {formatProductPrice(product, { field: 'discountedPrice' })}
                             </span>
                             <span className="text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {formatPrice(product.price)}
+                                {formatProductPrice(product, { field: 'price' })}
                             </span>
                         </>
                     ) : (
                         <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                            {formatPrice(product.price)}
+                            {formatProductPrice(product, { field: 'price' })}
                         </span>
                     )}
                 </div>

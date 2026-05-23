@@ -32,7 +32,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const { productId } = route.params;
   const { currentUser } = useAuth();
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, isCartLoading, loadingProductId } = useGlobal();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
 
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,10 +174,10 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
 
             <View style={styles.priceRow}>
-              <Text style={styles.price}>{formatPrice(displayPrice)}</Text>
+              <Text style={styles.price}>{formatProductPrice(product, { field: product.discountedPrice ? 'discountedPrice' : 'price' })}</Text>
               {discountPercentage > 0 && (
                 <>
-                  <Text style={styles.originalPrice}>{formatPrice(originalPrice)}</Text>
+                  <Text style={styles.originalPrice}>{formatProductPrice(product, { field: 'price' })}</Text>
                   <View style={styles.saveBadge}><Text style={styles.saveText}>Save {discountPercentage}%</Text></View>
                 </>
               )}

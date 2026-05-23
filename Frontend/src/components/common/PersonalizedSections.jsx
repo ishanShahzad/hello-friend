@@ -8,7 +8,7 @@ import { useCurrency } from '../../contexts/CurrencyContext'
 import { getStoreSubdomainUrl } from '../../utils/subdomainHelper'
 
 const SliderProductCard = ({ product, formatPrice }) => {
-  const displayPrice = product.discountedPrice || product.price
+  const { formatProductPrice } = useCurrency()
   const hasDiscount = product.discountedPrice > 0 && product.discountedPrice < product.price
   const discountPercentage = hasDiscount
     ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
@@ -86,11 +86,11 @@ const SliderProductCard = ({ product, formatPrice }) => {
             <div className="flex items-end justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                  {formatPrice(displayPrice)}
+                  {formatProductPrice(product, { field: hasDiscount ? 'discountedPrice' : 'price' })}
                 </p>
                 {hasDiscount && (
                   <p className="truncate text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    {formatPrice(product.price)}
+                    {formatProductPrice(product, { field: 'price' })}
                   </p>
                 )}
               </div>

@@ -24,7 +24,7 @@ export default function WishlistScreen({ navigation }) {
 
   const { currentUser } = useAuth();
   const { wishlistItems, fetchWishlist, handleDeleteFromWishlist, handleAddToCart, cartItems, isCartLoading, loadingProductId } = useGlobal();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, formatProductPrice } = useCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [removingId, setRemovingId] = useState(null);
@@ -81,9 +81,9 @@ export default function WishlistScreen({ navigation }) {
             {item.category && <Text style={styles.itemCategory}>{item.category}</Text>}
             <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
             <View style={styles.priceRow}>
-              <Text style={styles.itemPrice}>{formatPrice(item.discountedPrice || item.price)}</Text>
+              <Text style={styles.itemPrice}>{formatProductPrice(item, { field: item.discountedPrice ? 'discountedPrice' : 'price' })}</Text>
               {item.discountedPrice && item.discountedPrice < item.price && (
-                <Text style={styles.originalPrice}>{formatPrice(item.price)}</Text>
+                <Text style={styles.originalPrice}>{formatProductPrice(item, { field: 'price' })}</Text>
               )}
             </View>
           </View>
