@@ -129,7 +129,7 @@ const CartDropdown = () => {
                               className="p-1.5 rounded-lg glass-button hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 size={15} />
                             </motion.button>
-                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice * qty)}</span>
+                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(unitDisplay * qty)}</span>
                           </div>
                         </div>
                       </div>
