@@ -8,17 +8,21 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService')
-const { convertToUSD, normalizeCurrency } = require('../services/currencyService')
+const { normalizeCurrency, applyLivePricesUSD, convertToUSDSync, warmRatesCache } = require('../services/currencyService')
+
+// Warm exchange-rate cache at module load so the first request gets real rates.
+warmRatesCache();
 
 /**
  * Normalize price fields on an incoming product payload.
- * - Takes the seller's entered `price` / `discountedPrice` as values in `priceCurrency`.
- * - Stores them verbatim in `priceOriginal` / `discountedPriceOriginal`.
- * - Overwrites `price` / `discountedPrice` with the USD-converted amount so all
- *   existing readers (cards, cart, orders, analytics) keep working unchanged.
- * Safe to call with partial payloads (edit flow) — only touches provided fields.
+ * Option 1 architecture: the DB stores ONLY the seller's exact entered value
+ * (`price`/`discountedPrice`) in the currency they typed (`priceCurrency`).
+ * `priceOriginal`/`discountedPriceOriginal` are kept as alias mirrors for
+ * transparency and for the seller edit form prefill. No USD conversion happens
+ * at write time — every READ recomputes USD live so buyers always see the
+ * current exchange rate. Stale-USD drift is impossible by construction.
  */
-async function normalizeProductPricing(payload) {
+function normalizeProductPricing(payload) {
     if (!payload || typeof payload !== 'object') return payload
     const out = { ...payload }
     const currency = normalizeCurrency(out.priceCurrency || 'USD')
@@ -26,16 +30,17 @@ async function normalizeProductPricing(payload) {
 
     if (out.price !== undefined && out.price !== null && out.price !== '') {
         const entered = Number(out.price) || 0
-        out.priceOriginal = entered
-        out.price = currency === 'USD' ? entered : await convertToUSD(entered, currency)
+        out.price = entered                  // stored in `currency`, NOT USD
+        out.priceOriginal = entered          // mirror for the seller edit form
     }
     if (out.discountedPrice !== undefined && out.discountedPrice !== null && out.discountedPrice !== '') {
         const entered = Number(out.discountedPrice) || 0
+        out.discountedPrice = entered        // stored in `currency`, NOT USD
         out.discountedPriceOriginal = entered
-        out.discountedPrice = currency === 'USD' ? entered : await convertToUSD(entered, currency)
     }
     return out
 }
+
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
@@ -286,9 +291,13 @@ exports.getProducts = async (req, res) => {
     try {
         let query = publicProductFilter()
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
+        // NOTE: priceRange filter is applied IN MEMORY AFTER live-USD conversion
+        // (DB-level filter on `price` is meaningless now that prices are stored
+        // in mixed currencies). Range values from frontend are in USD.
+        let priceRangeFilter = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',')
-            query.price = { $gte: Number(min), $lte: Number(max) }
+            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
         }
 
         // Only show products from active stores (hides blocked/expired seller products)
@@ -338,6 +347,18 @@ exports.getProducts = async (req, res) => {
             })
             .lean()
 
+        // CRITICAL: convert every product's stored (mixed-currency) price into
+        // LIVE USD using current FX rates — buyers never see a stale snapshot.
+        products = applyLivePricesUSD(products);
+
+        // Now that `price` is comparable USD, apply the price-range filter.
+        if (priceRangeFilter) {
+            products = products.filter((p) => {
+                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
+            });
+        }
+
         // Apply tolerant fuzzy search so buyers can find products with partial names and typos.
         if (search) {
             products = fuzzyRankProducts(products, search)
@@ -350,7 +371,7 @@ exports.getProducts = async (req, res) => {
             sellerProductCounts[sellerId] = (sellerProductCounts[sellerId] || 0) + 1;
         });
         
-        // Apply intelligent sorting
+        // Apply intelligent sorting (price sort now uses live USD — accurate cross-currency)
         products = applySorting(products, sortBy, sortOrder, sellerProductCounts, totalSellers);
 
         const totalProducts = products.length;
@@ -373,6 +394,7 @@ exports.getProducts = async (req, res) => {
                 availableSorts: ['relevance', 'price', 'rating', 'newest', 'popular', 'sales']
             }
         })
+
     } catch (error) {
         console.error('Server error while fetching products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching products.' })
@@ -403,12 +425,15 @@ exports.getSingleProduct = async (req, res) => {
             path: 'reviews.user',
             select: 'avatar username email'
         })
-        res.status(200).json({ msg: 'fetched single product', product: singleProduct })
+        // Live USD conversion before sending to client
+        const productOut = applyLivePricesUSD(singleProduct);
+        res.status(200).json({ msg: 'fetched single product', product: productOut })
     } catch (err) {
         console.error(err)
         res.status(500).json({ msg: 'Server error' })
     }
 }
+
 
 
 exports.getFilters = async (req, res) => {
@@ -664,7 +689,7 @@ exports.editProduct = async (req, res) => {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
-        const safeProduct = await normalizeProductPricing({ ...product });
+        const safeProduct = normalizeProductPricing({ ...product });
 
         // Gate: enforce featured product limits based on subscription tier.
         if (role === 'seller' && safeProduct && safeProduct.isFeatured === true) {
@@ -744,7 +769,7 @@ exports.addProduct = async (req, res) => {
         }
         
         // Gate: enforce featured product limits based on subscription tier.
-        let safeProduct = await normalizeProductPricing(product);
+        let safeProduct = normalizeProductPricing(product);
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);
             if (!featCheck.allowed) {
@@ -829,8 +854,11 @@ exports.bulkDiscount = async (req, res) => {
                 newDiscountedPrice = Math.max(0, product.price - discountValue)
             }
 
-            product.discountedPrice = Math.round(newDiscountedPrice * 100) / 100
+            const rounded = Math.round(newDiscountedPrice * 100) / 100
+            product.discountedPrice = rounded
+            product.discountedPriceOriginal = rounded // keep mirror in sync
             return product.save()
+
         })
 
         await Promise.all(updatePromises)
@@ -897,14 +925,18 @@ exports.bulkPriceUpdate = async (req, res) => {
                 newPrice = Math.max(0, value)
             }
 
-            product.price = Math.round(newPrice * 100) / 100
+            const rounded = Math.round(newPrice * 100) / 100
+            product.price = rounded
+            product.priceOriginal = rounded // mirror stays in sync; both stored in product.priceCurrency
             
             // Reset discounted price if it's higher than new price
             if (product.discountedPrice > 0 && product.discountedPrice >= product.price) {
                 product.discountedPrice = 0
+                product.discountedPriceOriginal = 0
             }
 
             return product.save()
+
         })
 
         await Promise.all(updatePromises)
@@ -943,8 +975,9 @@ exports.removeDiscount = async (req, res) => {
         // Update all products to remove discount
         const result = await Product.updateMany(
             query,
-            { $set: { discountedPrice: 0 } }
+            { $set: { discountedPrice: 0, discountedPriceOriginal: 0 } }
         )
+
 
         res.status(200).json({ 
             msg: `Discounts removed successfully from ${result.modifiedCount} product(s)`,
@@ -971,12 +1004,24 @@ exports.getSellerProducts = async (req, res) => {
         
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
         if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
+        // priceRange (USD from frontend) applied in-memory after live conversion below
+        let priceRangeFilter = null;
         if (priceRange) {
             const [min, max] = priceRange.split(',')
-            query.price = { $gte: Number(min), $lte: Number(max) }
+            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
         }
 
-        let products = await Product.find(query)
+        let products = await Product.find(query).lean()
+
+        // Live USD conversion so seller sees the same currency-coherent prices as buyers
+        products = applyLivePricesUSD(products);
+
+        if (priceRangeFilter) {
+            products = products.filter((p) => {
+                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
+            });
+        }
 
         if (search) {
             const fuse = new Fuse(products, {
@@ -989,6 +1034,7 @@ exports.getSellerProducts = async (req, res) => {
         }
 
         res.status(200).json({ msg: 'Fetched seller products successfully.', products: products })
+
     } catch (error) {
         console.error('Server error while fetching seller products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching seller products.' })

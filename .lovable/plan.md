@@ -1,63 +1,129 @@
-## Goal
+# Option 1: Live Currency Conversion (No Stored USD)
 
-Stop the silent FX drift. Save exactly the number the seller types, in the currency they typed it in. Convert only when a viewer wants to see it in a different currency. Sellers will never again see their price change after saving.
+## Core principle
+A product stores ONLY what the seller typed: `price` (number in their currency) + `priceCurrency` (e.g. `"PKR"`). Every read, display, sort, filter, cart total, and Stripe charge converts live using the current FX rate. No frozen USD snapshot anywhere.
 
-## Strategy (minimal-blast-radius)
+## Schema change (Backend/models/Product.js)
+- Keep `price` and `discountedPrice` as numbers, but their meaning changes: they are now in `priceCurrency`, NOT USD.
+- Keep `priceCurrency` (default `"USD"` for legacy docs — safe because legacy `price` WAS in USD).
+- Remove `priceOriginal` / `discountedPriceOriginal` (no longer needed — `price` IS the original).
+- No data migration script needed: legacy rows have `priceCurrency` defaulting to USD, which matches what they were stored as.
 
-Rather than rewrite the ~45 files that currently display `product.price` as USD, the backend will keep returning a USD-normalized `price` for backward compatibility, AND new fields `priceOriginal` + `priceCurrency` for callers that want the seller's true value.
+## Backend write path (productController.js)
+- `addProduct` / `editProduct`: store `price`, `discountedPrice`, `priceCurrency` verbatim from payload. Remove `normalizeProductPricing` USD conversion. Validate currency is one of the supported codes.
 
-This means: every existing list, card, cart, order, analytics chart keeps working with no changes. Only the seller-side add/edit form needs to switch to using the original-currency fields.
+## Backend read path — the hard part
 
-## Changes
-
-### 1. Backend — Product model (`Backend/models/Product.js`)
-Add two fields (both optional, with sensible defaults so legacy rows still work):
-- `priceOriginal: Number` — the exact number the seller typed
-- `priceCurrency: String, default 'USD'` — the currency the seller typed it in
-- Same pair for discount: `discountedPriceOriginal`
-
-`price` and `discountedPrice` remain USD-normalized (backward compat for all readers).
-
-### 2. Backend — `addProduct` / `editProduct` (`productController.js`)
-- If `priceCurrency` is provided in the payload and is non-USD:
-  - Take `req.body.product.price` as the value in `priceCurrency`
-  - Set `priceOriginal = price`, `priceCurrency = priceCurrency`
-  - Compute `price` (USD) via `convertToUSD(price, priceCurrency)` from `services/currencyService.js`
-  - Same for `discountedPrice`
-- If `priceCurrency` is USD or missing → treat input as USD (current behavior, sets `priceOriginal = price`, `priceCurrency = 'USD'`).
-- This guarantees readers always get a consistent USD `price` AND the seller's exact original.
-
-### 3. Backend — backfill (no migration needed)
-Existing products have no `priceOriginal`. The product controller's response will populate it on the fly: `priceOriginal ?? price`, `priceCurrency ?? 'USD'`. No DB write — purely a response shim, so old rows are reinterpreted as USD (which is what they actually are today).
-
-### 4. Frontend — `CurrencyContext.jsx`
-Add a new helper:
-```js
-convertFromCurrency(amount, fromCurrency) → amount in current display currency
+All product list endpoints accept a `?currency=XXX` query param (defaults to USD). The controller, after fetching docs, runs a single in-memory pass converting each product:
 ```
-Used by callers that already know the source currency (the seller's original).
+displayPrice = convertFromUSD(convertToUSD(price, priceCurrency), displayCurrency)
+displayDiscountedPrice = same
+```
+and overwrites `price` / `discountedPrice` on the returned JSON (keeps `priceCurrency` + a new `priceOriginal` echo for transparency). This keeps every frontend reader unchanged — they keep reading `product.price`.
 
-### 5. Frontend — Seller add/edit form (`SellerDashboard.jsx`)
-- **Add mode**: stop calling `convertToUSD` on every keystroke. Just store the raw number. On submit, send `{ price, discountedPrice, priceCurrency: currency }` — the backend handles the rest. Cursor jumping is also fixed as a side effect.
-- **Edit mode**: prefill the input from `product.priceOriginal` (in `product.priceCurrency`), not from converted USD. Seller sees the exact number they originally saved.
-- Lock the currency label to the price's `priceCurrency` while editing (with a "Change currency" note) to prevent accidental currency mixups.
+Endpoints to update:
+- `getProducts`, `getSingleProduct`, `getSellerProducts`, `getFeaturedStats` (productController)
+- `getFilters` — min/max price range must also convert
+- `getWishlist` (wishlistController) — populates products
+- `storeController` product lists
+- `subdomainController` product lists
+- `smartTagController` (if it returns products)
+- `personalized` feeds (PersonalizedSections / Sliders endpoints)
+- `cartController` — returns populated products
+- `orderController` getOrders / getOrderById — orders store snapshotted prices (already historical, leave as-is)
+- `aiActionController` / `aiChatController` / `chatbotController` — anywhere products are sent to the LLM
 
-### 6. Out of scope (intentionally unchanged)
-- All other display surfaces (ProductCard, cart, orders, analytics, mobile app) continue to use the USD `price` field and the existing `convertPrice`. They keep working unchanged. Down the line you may want to show buyers "Listed in PKR" — that's a future polish, not required for correctness.
-- Price-range filter on the products list still operates on USD `price`, which is fine since all products are normalized to USD.
+A shared helper `attachDisplayPrices(products, displayCurrency)` will live in `currencyService.js`.
 
-## Net result
+## Sorting & filtering by price
+This is the hardest piece. `?sortBy=price&minPrice=10&maxPrice=100` currently sorts/filters on the raw `price` field which would now be in mixed currencies → meaningless.
 
-- **Seller**: types `1000` in PKR, saves, reopens form → still sees `1000`. Forever.
-- **Backend**: stores `priceOriginal=1000, priceCurrency='PKR', price=3.51` (USD at write-time).
-- **Buyer in EUR**: sees `price` (USD) × today's USD→EUR rate, same as today.
-- **Existing products**: `priceOriginal` is auto-derived as their current USD `price`, treated as USD-entered. No data corruption, no migration needed.
+Solution: MongoDB aggregation pipeline with `$switch` that computes a `_priceUSD` field on the fly using current FX rates pulled into the pipeline as `$let` constants:
+```
+{ $addFields: { _priceUSD: { $switch: { branches: [
+  { case: { $eq: ['$priceCurrency', 'PKR'] }, then: { $divide: ['$price', PKR_RATE] } },
+  { case: { $eq: ['$priceCurrency', 'EUR'] }, then: { $divide: ['$price', EUR_RATE] } },
+  { case: { $eq: ['$priceCurrency', 'GBP'] }, then: { $divide: ['$price', GBP_RATE] } },
+], default: '$price' } } } }
+```
+Then sort/filter on `_priceUSD`. Apply in `getProducts` whenever `sortBy=price` OR `minPrice`/`maxPrice` is set. Convert incoming `minPrice/maxPrice` (which are in display currency) → USD first.
 
-## Files touched
+## Cart totals
+- `cartController` — cart stores `productId` + qty. When computing totals, fetch product, convert `price` in `priceCurrency` → user's display currency, return.
+- Frontend `CartContext` / `Checkout.jsx`: no change to consumers, controller returns converted numbers.
 
-- `Backend/models/Product.js` (+4 fields)
-- `Backend/controllers/productController.js` (`addProduct`, `editProduct`, response shim in `getProducts`/`getSingleProduct`/`getSellerProducts`)
-- `Frontend/src/contexts/CurrencyContext.jsx` (+1 helper)
-- `Frontend/src/components/layout/SellerDashboard.jsx` (input handlers + edit prefill)
+## Checkout / Stripe (PaymentController.js)
+This is the critical correctness fix. At checkout time:
+1. For each line item, take product's CURRENT `price` in `priceCurrency`.
+2. Convert to buyer's chosen payment currency (Stripe charge currency) using CURRENT FX rate — not a stored value.
+3. Pass `unit_amount` to Stripe in that currency's smallest unit.
+4. Persist the snapshot onto the `Order` document (`priceAtPurchase`, `currencyAtPurchase`, `fxRateAtPurchase`) so historical orders never drift. Orders ARE allowed to store snapshots — that's correct accounting.
 
-Approve and I'll ship it.
+## Order model
+- Add `currencyAtPurchase` and `fxRateAtPurchase` to order line items.
+- Order display: use stored snapshot (don't re-convert historical orders).
+
+## Frontend changes
+- `SellerDashboard.jsx`: simplify — send `{ price, discountedPrice, priceCurrency }` raw. Remove all `convertToUSD` / `convertPrice` plumbing for the form. On edit, prefill from `product.priceOriginal` (echo field returned by API) in `product.priceCurrency`, lock the currency selector to the original currency (changing currency mid-edit would be a different product).
+- `CurrencyContext.jsx`: every product fetch now appends `?currency=${activeCurrency}`. Add a global axios interceptor OR a `useApi()` wrapper that injects the param. When the user switches currency, invalidate product caches and refetch.
+- `ProductCard.jsx`, `ProductDetailPage.jsx`, `CartDropdown.jsx`, `Checkout.jsx`, etc.: REMOVE all client-side `convertPrice(product.price)` calls — backend now returns already-converted numbers. Just render `product.price` with the active currency symbol.
+- `convertPrice` / `convertToUSD` helpers in `CurrencyContext` stay (used by form input UX) but are no longer applied to display.
+
+## Mobile app (MobileApp/)
+Same pattern as frontend:
+- API calls append `?currency=${activeCurrency}`.
+- All product cards/screens stop calling client-side conversion on `product.price`.
+- `ProductFormScreen.js` (seller): same edit-lock-currency behavior.
+- `CartContext.js`, `CheckoutScreen.js`: trust backend-returned numbers.
+
+## AI / WhatsApp / chatbot
+Anywhere a product is serialized into an LLM prompt (`aiChatController`, `chatbotController`, `whatsappAIChatService`, `messageBuilder`), convert to a single human-readable currency (user's preferred, or USD fallback) before injecting. Don't send raw `price` in mixed currencies — the LLM will hallucinate.
+
+## Analytics (analyticsController.js, SellerAnalytics, AdminDashboard)
+Revenue charts already aggregate from orders, which now carry `currencyAtPurchase` + `fxRateAtPurchase`. Convert each order line to USD using the SNAPSHOT rate (not current) for historical accuracy, then aggregate. This is correct accounting and matches what Stripe actually charged.
+
+## Email templates (emailTemplates.js)
+Order emails: use snapshotted prices from the order doc directly. No conversion needed.
+
+## Coupons (couponController.js)
+Discount amounts on coupons: add a `discountCurrency` field; convert at apply time using current FX.
+
+## Test surface
+- Seller in PKR creates product at 1000 → DB stores `{ price: 1000, priceCurrency: 'PKR' }`.
+- Buyer in USD views → sees `~$3.51` (today's rate).
+- Two weeks later, PKR drops → same buyer sees `~$3.20`. Seller still receives 1000 PKR equivalent.
+- Buyer adds to cart, checks out → Stripe charges current USD equivalent. Order saves snapshot.
+- Buyer opens order history → sees the historical charged amount, never drifts.
+- Sort by price across mixed-currency products → correct USD-based ordering using current rates.
+
+## File-by-file impact summary
+**Backend (write):** Product.js, productController.js
+**Backend (read+convert):** currencyService.js (add helper), productController.js, wishlistController.js, storeController.js, subdomainController.js, cartController.js, smartTagController.js, aiActionController.js, aiChatController.js, chatbotController.js, analyticsController.js
+**Backend (checkout):** PaymentController.js, Order.js, orderController.js, orderConfirmationController.js, couponController.js, Coupon.js, emailTemplates.js
+**Backend (AI/WA):** whatsappAIChatService.js, messageBuilder.js
+**Frontend:** SellerDashboard.jsx, CurrencyContext.jsx, ProductCard.jsx, ProductDetailPage.jsx, CartDropdown.jsx, Checkout.jsx, orders.jsx, UserOrderDetail.jsx, UserOrdersManagement.jsx, OrderConfirmationPage.jsx, Success.jsx, TrackOrderPage.jsx, AccountOverview.jsx, AdminDashboard.jsx, SellerAnalytics.jsx, StoreOverview.jsx, Wishlist.jsx, BulkDiscountModal.jsx, CouponManagement.jsx, ChatBot.jsx, PersonalizedSections.jsx, GlobalContext.jsx
+**Mobile:** CartContext.js, CurrencyContext.js, ProductCard.js, ProductDetailScreen.js, CartScreen.js, CheckoutScreen.js, WishlistScreen.js, UserDashboardScreen.js, OrderDetailScreen.js, TrackOrderScreen.js, ProductFormScreen.js, ProductManagementScreen.js, SellerAnalyticsScreen.js, StoreOverviewScreen.js, ChatBot.js, PersonalizedSliders.js, OrderDetailManagementScreen.js
+
+## Rollout order (one PR, but applied in this order to avoid mid-state breakage)
+1. Schema + write path (Product.js, productController add/edit)
+2. `attachDisplayPrices` helper in currencyService
+3. Aggregation pipeline for sort/filter
+4. All backend read endpoints attach converted prices + accept `?currency=`
+5. Order model snapshot fields + checkout conversion + Stripe charge
+6. Frontend: pass `?currency=` everywhere, remove client-side `convertPrice(product.price)` calls
+7. Mobile: same as frontend
+8. AI/email/whatsapp serializers
+9. Analytics aggregations
+
+## What I CAN'T fully verify
+- I can edit Backend + Mobile code, but per project memory I cannot run Node/Express or the RN app. You'll need to test locally:
+  - Seller adds product in PKR → check DB row
+  - Buyer switches currency → check displayed price changes
+  - Stripe test checkout → confirm charged amount matches displayed amount
+  - Sort by price across mixed currencies → correct order
+  - Old orders still display original snapshot
+
+## Estimate
+~30 files touched, ~600-900 lines changed/added. I'll work through it sequentially in the order above, one logical chunk per batch.
+
+Approve and I'll execute end-to-end.
