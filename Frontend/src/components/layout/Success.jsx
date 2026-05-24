@@ -17,6 +17,9 @@ export default function Success() {
 
     // Clear cart after successful order
     clearCart();
+
+    // Clear any saved in-progress checkout state
+    try { sessionStorage.removeItem('checkoutProgress_v1'); } catch (_) {}
   }, []);
 
   const clearCart = async () => {
