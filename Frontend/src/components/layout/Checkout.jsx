@@ -349,6 +349,45 @@ export default function Checkout() {
   const paymentMethod = watch("paymentMethod");
   const selectedShipping = watch("shippingMethod");
   const billingSameAsShipping = watch("billingSameAsShipping");
+  const allFormValues = watch();
+
+  // Restore saved form values + selected shipping/coupons on mount (e.g. user
+  // came back from Stripe without paying — keep their progress intact).
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed.formValues) {
+        Object.entries(parsed.formValues).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) setValue(k, v);
+        });
+      }
+      if (parsed.selectedShippingPerSeller) {
+        setSelectedShippingPerSeller(parsed.selectedShippingPerSeller);
+      }
+      if (parsed.appliedCoupons) {
+        setAppliedCoupons(parsed.appliedCoupons);
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist progress whenever step / form / shipping / coupons change.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        CHECKOUT_STORAGE_KEY,
+        JSON.stringify({
+          currentStep,
+          formValues: allFormValues,
+          selectedShippingPerSeller,
+          appliedCoupons,
+        })
+      );
+    } catch (_) {}
+  }, [currentStep, allFormValues, selectedShippingPerSeller, appliedCoupons]);
+
 
   // Subtotal
   const subtotal = useMemo(() => {
