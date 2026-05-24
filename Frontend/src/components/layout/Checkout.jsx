@@ -31,7 +31,17 @@ export default function Checkout() {
   const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
   const steps = ["Cart", "Shipping", "Payment"];
-  const [currentStep, setCurrentStep] = useState(0);
+  const CHECKOUT_STORAGE_KEY = 'checkoutProgress_v1';
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.currentStep === 'number') return parsed.currentStep;
+      }
+    } catch (_) {}
+    return 0;
+  });
 
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
@@ -339,6 +349,45 @@ export default function Checkout() {
   const paymentMethod = watch("paymentMethod");
   const selectedShipping = watch("shippingMethod");
   const billingSameAsShipping = watch("billingSameAsShipping");
+  const allFormValues = watch();
+
+  // Restore saved form values + selected shipping/coupons on mount (e.g. user
+  // came back from Stripe without paying — keep their progress intact).
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed.formValues) {
+        Object.entries(parsed.formValues).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) setValue(k, v);
+        });
+      }
+      if (parsed.selectedShippingPerSeller) {
+        setSelectedShippingPerSeller(parsed.selectedShippingPerSeller);
+      }
+      if (parsed.appliedCoupons) {
+        setAppliedCoupons(parsed.appliedCoupons);
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist progress whenever step / form / shipping / coupons change.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        CHECKOUT_STORAGE_KEY,
+        JSON.stringify({
+          currentStep,
+          formValues: allFormValues,
+          selectedShippingPerSeller,
+          appliedCoupons,
+        })
+      );
+    } catch (_) {}
+  }, [currentStep, allFormValues, selectedShippingPerSeller, appliedCoupons]);
+
 
   // Subtotal
   const subtotal = useMemo(() => {
@@ -601,6 +650,7 @@ export default function Checkout() {
             localStorage.removeItem('guestCart');
             fetchCart();
           }
+          try { sessionStorage.removeItem(CHECKOUT_STORAGE_KEY); } catch (_) {}
           navigate('/success');
         }, 1500);
         return;
