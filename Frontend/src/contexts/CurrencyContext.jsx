@@ -247,6 +247,8 @@ export const CurrencyProvider = ({ children }) => {
     formatPrice,
     formatProductPrice,
     getProductPriceNumber,
+    getOrderItemPriceNumber,
+    formatOrderItemPrice,
     formatAmount,
     convertToUSD,
     convertFromCurrency,
