@@ -9,7 +9,7 @@ import Loader from "../common/Loader";
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const OrderDetail = () => {
-    const { formatPrice } = useCurrency();
+    const { formatPrice, formatAmount, formatOrderItemPrice, getOrderItemPriceNumber } = useCurrency();
     const [order, setOrder] = useState(null);
     const { id } = useParams();
     const [isUpdating, setIsUpdating] = useState(false);
