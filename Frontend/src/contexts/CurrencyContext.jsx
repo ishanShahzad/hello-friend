@@ -215,6 +215,27 @@ export const CurrencyProvider = ({ children }) => {
     return formatAmount(getProductPriceNumber(product, field), rest);
   };
 
+  // Drift-free price NUMBER for an order item. Uses verbatim seller-entered
+  // `priceOriginal` + `priceCurrency` when available (set at order time) so
+  // viewing in the same currency shows the exact original (no USD round-trip).
+  const getOrderItemPriceNumber = (item) => {
+    if (!item) return 0;
+    const itemCurrency = item.priceCurrency && CURRENCIES[item.priceCurrency]
+      ? item.priceCurrency : null;
+    const orig = item.priceOriginal;
+    if (itemCurrency && orig != null && orig !== '') {
+      const num = Number(orig);
+      if (Number.isFinite(num)) {
+        return itemCurrency === currency ? num : convertFromCurrency(num, itemCurrency);
+      }
+    }
+    const fallback = Number(item.price);
+    return Number.isFinite(fallback) ? convertPrice(fallback) : 0;
+  };
+
+  const formatOrderItemPrice = (item, options = {}) =>
+    formatAmount(getOrderItemPriceNumber(item), options);
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     currency,
