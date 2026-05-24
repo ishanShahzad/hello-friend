@@ -25,7 +25,7 @@ const timeAgo = (dateStr) => {
 
 const OrderDetail = () => {
     const { currentUser } = useAuth();
-    const { formatPrice, formatOrderItemPrice, getOrderItemPriceNumber } = useCurrency();
+    const { formatPrice, formatAmount, formatOrderItemPrice, getOrderItemPriceNumber } = useCurrency();
     const [order, setOrder] = useState(null);
     const [isUpdating, setIsUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState(null);
