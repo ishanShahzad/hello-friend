@@ -387,42 +387,38 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
-        // Stripe is ALWAYS charged in USD. The USD amount per line item is
-        // computed via an explicit chain:
-        //   seller's stored price (in product.priceCurrency)
-        //     → buyer's local currency (newOrder.currency)
-        //     → USD (what Stripe is charged in)
-        // This guarantees the buyer sees an amount equivalent to what they were
-        // shown in their local currency, and Stripe's Adaptive Pricing will
-        // also display the buyer's local currency alongside USD on Checkout.
+        // Stripe is charged in the BUYER'S LOCAL CURRENCY directly so the
+        // amount shown on Checkout matches exactly what the buyer saw on the
+        // site (no Stripe FX markup applied to a USD round-trip). The USD
+        // equivalent is appended to each line item's description so the buyer
+        // still sees a USD reference alongside their local currency.
         warmRatesCache();
         const buyerCurrency = normalizeCurrency(newOrder.currency || 'USD');
-        const stripeCurrency = 'usd';
+        const stripeCurrency = buyerCurrency.toLowerCase();
         const productMap = new Map(orderItems.map(p => [toId(p._id), p]));
 
-        // Convert any amount through: from → buyerCurrency → USD
-        const toUsdViaBuyer = (amount, fromCurrency) => {
+        // Convert any amount from a source currency into the buyer's currency.
+        const toBuyer = (amount, fromCurrency) => {
             const value = Number(amount) || 0;
             if (!value) return 0;
             const from = normalizeCurrency(fromCurrency);
-            // Step 1: convert from product/source currency into buyer's currency
-            let inBuyer;
-            if (from === buyerCurrency) {
-                inBuyer = value;
-            } else if (from === 'USD') {
-                inBuyer = convertFromUSDSync(value, buyerCurrency);
-            } else {
-                // from -> USD -> buyerCurrency (math equivalent, no direct pair)
-                const inUsd = convertToUSDSync(value, from);
-                inBuyer = convertFromUSDSync(inUsd, buyerCurrency);
-            }
-            // Step 2: convert buyer's currency amount into USD for Stripe
-            if (buyerCurrency === 'USD') return Math.round(inBuyer * 100) / 100;
-            return convertToUSDSync(inBuyer, buyerCurrency);
+            if (from === buyerCurrency) return value;
+            if (from === 'USD') return convertFromUSDSync(value, buyerCurrency);
+            const inUsd = convertToUSDSync(value, from);
+            return convertFromUSDSync(inUsd, buyerCurrency);
         };
 
-        const getUnitAmountUSD = (item) => {
-            // Prefer the seller's verbatim original price in product.priceCurrency
+        // Convert any amount from a source currency into USD (for description).
+        const toUsd = (amount, fromCurrency) => {
+            const value = Number(amount) || 0;
+            if (!value) return 0;
+            const from = normalizeCurrency(fromCurrency);
+            if (from === 'USD') return value;
+            return convertToUSDSync(value, from);
+        };
+
+        // Returns { buyerAmount, usdAmount, sourceCurrency } for an item.
+        const getUnitAmounts = (item) => {
             const p = productMap.get(toId(item.productId));
             if (p) {
                 const pCurrency = normalizeCurrency(p.priceCurrency || 'USD');
@@ -434,40 +430,54 @@ exports.placeOrder = async (req, res) => {
                         : (baseOrig != null && baseOrig !== '')
                             ? Number(baseOrig)
                             : Number(p.price) || 0;
-                return toUsdViaBuyer(raw, pCurrency);
+                return {
+                    buyerAmount: toBuyer(raw, pCurrency),
+                    usdAmount: toUsd(raw, pCurrency),
+                };
             }
-            // Fallback: item.price is the already-displayed USD value
-            return toUsdViaBuyer(Number(item.price) || 0, 'USD');
+            // Fallback: item.price is the displayed USD value
+            const raw = Number(item.price) || 0;
+            return {
+                buyerAmount: toBuyer(raw, 'USD'),
+                usdAmount: raw,
+            };
         };
 
-        const line_items = [
-            ...newOrder.orderItems.map(item => ({
-                price_data: {
-                    currency: stripeCurrency,
-                    product_data: {
-                        name: item.name,
-                        images: item.image ? [item.image] : undefined
-                    },
-                    unit_amount: Math.round(getUnitAmountUSD(item) * 100)
-                },
-                quantity: item.quantity
-            })),
+        const usdFmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)} USD`;
 
-            // SHIPPING — shippingMethod.price is in USD; route via buyer currency.
+        const line_items = [
+            ...newOrder.orderItems.map(item => {
+                const { buyerAmount, usdAmount } = getUnitAmounts(item);
+                return {
+                    price_data: {
+                        currency: stripeCurrency,
+                        product_data: {
+                            name: item.name,
+                            description: `Equivalent: ${usdFmt(usdAmount)}`,
+                            images: item.image ? [item.image] : undefined
+                        },
+                        unit_amount: Math.round(buyerAmount * 100)
+                    },
+                    quantity: item.quantity
+                };
+            }),
+
+            // SHIPPING — shippingMethod.price is in USD; charge in buyer currency.
             {
                 price_data: {
                     currency: stripeCurrency,
                     product_data: {
                         name: `${newOrder.shippingMethod.name} Shipping`,
+                        description: `Equivalent: ${usdFmt(Number(newOrder.shippingMethod.price) || 0)}`,
                     },
                     unit_amount: Math.round(
-                        toUsdViaBuyer(Number(newOrder.shippingMethod.price) || 0, 'USD') * 100
+                        toBuyer(Number(newOrder.shippingMethod.price) || 0, 'USD') * 100
                     )
                 },
                 quantity: 1
             },
 
-            // TAX (only if tax > 0) — same USD → buyer → USD chain.
+            // TAX (only if tax > 0) — orderSummary.tax is in USD.
             ...(newOrder.orderSummary.tax > 0 ? [{
                 price_data: {
                     currency: stripeCurrency,
@@ -475,14 +485,16 @@ exports.placeOrder = async (req, res) => {
                         name: taxConfig && taxConfig.type === 'percentage'
                             ? `Tax (${taxConfig.value}%)`
                             : 'Tax',
+                        description: `Equivalent: ${usdFmt(Number(newOrder.orderSummary.tax) || 0)}`,
                     },
                     unit_amount: Math.round(
-                        toUsdViaBuyer(Number(newOrder.orderSummary.tax) || 0, 'USD') * 100
+                        toBuyer(Number(newOrder.orderSummary.tax) || 0, 'USD') * 100
                     )
                 },
                 quantity: 1
             }] : [])
         ]
+
 
 
         // console.log(line_items);
