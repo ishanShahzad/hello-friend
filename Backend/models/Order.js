@@ -14,6 +14,11 @@ const orderSchema = mongoose.Schema(
                 name: { type: String, required: true },
                 image: { type: String },
                 price: { type: Number, required: true },
+                // Verbatim seller-entered price + its currency at order time.
+                // Used by dashboards so display in matching currency is exact
+                // (avoids USD round-trip rounding drift like 1000 → 1001.36).
+                priceOriginal: { type: Number, default: null },
+                priceCurrency: { type: String, enum: ["USD", "PKR", "EUR", "GBP"], default: null },
                 quantity: { type: Number, required: true },
                 selectedColor: { type: String, default: null },
                 selectedOptions: { type: Map, of: String, default: undefined },

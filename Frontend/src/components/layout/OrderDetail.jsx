@@ -25,7 +25,7 @@ const timeAgo = (dateStr) => {
 
 const OrderDetail = () => {
     const { currentUser } = useAuth();
-    const { formatPrice } = useCurrency();
+    const { formatPrice, formatAmount, formatOrderItemPrice, getOrderItemPriceNumber } = useCurrency();
     const [order, setOrder] = useState(null);
     const [isUpdating, setIsUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState(null);
@@ -307,12 +307,12 @@ const OrderDetail = () => {
                                             </p>
                                         )}
                                         <div className="mt-2 sm:hidden">
-                                            <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(item.price)}</p>
+                                            <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatOrderItemPrice(item)}</p>
                                         </div>
                                     </div>
                                     <div className="text-right hidden sm:block flex-shrink-0">
-                                        <p className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(item.price)}</p>
-                                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatPrice(item.price * item.quantity)}</p>
+                                        <p className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatOrderItemPrice(item)}</p>
+                                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatAmount(getOrderItemPriceNumber(item) * item.quantity)}</p>
                                     </div>
                                 </motion.div>
                             ))}
