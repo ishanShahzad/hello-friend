@@ -312,7 +312,7 @@ const OrderDetail = () => {
                                     </div>
                                     <div className="text-right hidden sm:block flex-shrink-0">
                                         <p className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatOrderItemPrice(item)}</p>
-                                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatPrice(0).replace(/[\d.,]+/, '') /* keep symbol */ }{(getOrderItemPriceNumber(item) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                        <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatAmount(getOrderItemPriceNumber(item) * item.quantity)}</p>
                                     </div>
                                 </motion.div>
                             ))}
