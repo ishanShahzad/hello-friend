@@ -31,7 +31,17 @@ export default function Checkout() {
   const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
   const steps = ["Cart", "Shipping", "Payment"];
-  const [currentStep, setCurrentStep] = useState(0);
+  const CHECKOUT_STORAGE_KEY = 'checkoutProgress_v1';
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.currentStep === 'number') return parsed.currentStep;
+      }
+    } catch (_) {}
+    return 0;
+  });
 
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
