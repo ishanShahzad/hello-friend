@@ -447,13 +447,12 @@ exports.placeOrder = async (req, res) => {
 
         const line_items = [
             ...newOrder.orderItems.map(item => {
-                const { buyerAmount, usdAmount } = getUnitAmounts(item);
+                const { buyerAmount } = getUnitAmounts(item);
                 return {
                     price_data: {
                         currency: stripeCurrency,
                         product_data: {
                             name: item.name,
-                            description: `Equivalent: ${usdFmt(usdAmount)}`,
                             images: item.image ? [item.image] : undefined
                         },
                         unit_amount: Math.round(buyerAmount * 100)
@@ -468,7 +467,6 @@ exports.placeOrder = async (req, res) => {
                     currency: stripeCurrency,
                     product_data: {
                         name: `${newOrder.shippingMethod.name} Shipping`,
-                        description: `Equivalent: ${usdFmt(Number(newOrder.shippingMethod.price) || 0)}`,
                     },
                     unit_amount: Math.round(
                         toBuyer(Number(newOrder.shippingMethod.price) || 0, 'USD') * 100
@@ -485,7 +483,6 @@ exports.placeOrder = async (req, res) => {
                         name: taxConfig && taxConfig.type === 'percentage'
                             ? `Tax (${taxConfig.value}%)`
                             : 'Tax',
-                        description: `Equivalent: ${usdFmt(Number(newOrder.orderSummary.tax) || 0)}`,
                     },
                     unit_amount: Math.round(
                         toBuyer(Number(newOrder.orderSummary.tax) || 0, 'USD') * 100
@@ -494,6 +491,7 @@ exports.placeOrder = async (req, res) => {
                 quantity: 1
             }] : [])
         ]
+
 
 
 
