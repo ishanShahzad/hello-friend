@@ -392,11 +392,16 @@ exports.placeOrder = async (req, res) => {
                 const sellerIds = [...new Set(orderItems.map(p => p.seller?.toString()).filter(Boolean))];
                 for (const sellerId of sellerIds) {
                     const seller = await User.findById(sellerId);
+                    // Send each seller a view scoped to ONLY their items + their totals
+                    const sellerProductIds = orderItems
+                        .filter(p => toId(p.seller) === toId(sellerId))
+                        .map(p => toId(p._id));
+                    const scopedOrder = buildSellerOrderView(newOrder, sellerProductIds, sellerId);
                     if (seller?.email) {
-                        const sellerEmailData = newOrderSellerEmail(newOrder, seller.username);
+                        const sellerEmailData = newOrderSellerEmail(scopedOrder, seller.username);
                         await sendEmail({ to: seller.email, ...sellerEmailData });
                     }
-                    notifySeller(sellerId, 'new_order', sellerTemplates.new_order(newOrder)).catch(e =>
+                    notifySeller(sellerId, 'new_order', sellerTemplates.new_order(scopedOrder)).catch(e =>
                         console.error('[whatsapp] seller new order notification failed:', e.message)
                     );
                 }
@@ -574,10 +579,32 @@ exports.placeOrder = async (req, res) => {
             return res.status(500).json({ msg: "Online payments are not configured. Please contact support." });
         }
 
+        // Apply coupon discount on Stripe via a one-off coupon (line items can't be negative).
+        let stripeDiscounts = undefined;
+        const couponDiscountUSD = Number(newOrder.orderSummary.couponDiscount) || 0;
+        if (couponDiscountUSD > 0) {
+            try {
+                const discountInBuyer = toBuyer(couponDiscountUSD, 'USD');
+                const amountOff = Math.round(discountInBuyer * 100);
+                if (amountOff > 0) {
+                    const stripeCoupon = await stripe.coupons.create({
+                        amount_off: amountOff,
+                        currency: stripeCurrency,
+                        duration: 'once',
+                        name: 'Coupon discount',
+                    });
+                    stripeDiscounts = [{ coupon: stripeCoupon.id }];
+                }
+            } catch (couponErr) {
+                console.error('Failed to create Stripe coupon:', couponErr.message);
+            }
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
             line_items,
+            ...(stripeDiscounts ? { discounts: stripeDiscounts } : {}),
             success_url: successUrl,
             cancel_url: cancelUrl,
             // Auto-expire abandoned checkouts after 30 minutes (Stripe min) so the
@@ -1150,7 +1177,7 @@ exports.getOrderDetail = async (req, res) => {
 
         if (role === 'seller') {
             const sellerProductIds = await getSellerProductIds(userId)
-            if (!orderHasSellerProduct(order, sellerProductIds)) {
+            if (!orderHasSellerProduct(order, sellerProductIds, userId)) {
                 return res.status(403).json({ msg: 'You can only view orders containing your products' })
             }
 
