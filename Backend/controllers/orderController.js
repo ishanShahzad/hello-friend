@@ -288,6 +288,7 @@ exports.placeOrder = async (req, res) => {
                             : null;
                 return {
                     productId: item.id,
+                    seller: prod?.seller || null,
                     name: item.name,
                     image: item.image,
                     price: item.price,
