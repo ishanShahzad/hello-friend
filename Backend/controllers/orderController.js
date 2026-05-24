@@ -1104,15 +1104,16 @@ exports.updateStatus = async (req, res) => {
             return res.status(404).json({ msg: 'Order not found' })
         }
 
-        // If seller, check if order contains their products
+        // If seller, check if order contains their products (snapshot or live).
         if (role === 'seller') {
             const sellerProducts = await Product.find({ seller: userId }).select('_id')
             const sellerProductIds = sellerProducts.map(p => p._id.toString())
-            
-            const hasSellerProduct = existingOrder.orderItems.some(item => 
-                sellerProductIds.includes(item.productId.toString())
+
+            const hasSellerProduct = existingOrder.orderItems.some(item =>
+                (item.seller && toId(item.seller) === toId(userId)) ||
+                sellerProductIds.includes(toId(item.productId))
             )
-            
+
             if (!hasSellerProduct) {
                 return res.status(403).json({ msg: 'You can only update orders containing your products' })
             }
