@@ -30,12 +30,23 @@ const getSellerProductIds = async (sellerId) => {
     return ids.map(toId);
 };
 
-const orderHasSellerProduct = (order, sellerProductIds) =>
-    (order.orderItems || []).some(item => sellerProductIds.includes(toId(item.productId)));
+// True if any orderItem belongs to this seller (snapshot first, fallback to live product list).
+const itemBelongsToSeller = (item, sellerId, sellerProductIds) => {
+    if (item.seller && toId(item.seller) === toId(sellerId)) return true;
+    return sellerProductIds.includes(toId(item.productId));
+};
 
+const orderHasSellerProduct = (order, sellerProductIds, sellerId) =>
+    (order.orderItems || []).some(item => itemBelongsToSeller(item, sellerId, sellerProductIds));
+
+// Build a seller-scoped view of an order:
+//  - only this seller's items
+//  - only this seller's shipping line
+//  - proportional tax share
+//  - coupon discount allocated only to this seller's products
 const buildSellerOrderView = (order, sellerProductIds, sellerId) => {
     const sellerOrderItems = (order.orderItems || []).filter(item =>
-        sellerProductIds.includes(toId(item.productId))
+        itemBelongsToSeller(item, sellerId, sellerProductIds)
     );
 
     const sellerSubtotal = sellerOrderItems.reduce((sum, item) =>
@@ -51,15 +62,50 @@ const buildSellerOrderView = (order, sellerProductIds, sellerId) => {
     const totalOrderValue = Number(summary.subtotal) || 0;
     const sellerProportion = totalOrderValue > 0 ? sellerSubtotal / totalOrderValue : 0;
     const sellerTax = (Number(summary.tax) || 0) * sellerProportion;
-    const sellerTotal = sellerSubtotal + sellerShipping + sellerTax;
 
+    // Coupon discount allocated to ONLY this seller's items (by product id).
+    const sellerItemIds = new Set(sellerOrderItems.map(it => toId(it.productId)));
+    let sellerCouponDiscount = 0;
+    (order.appliedCoupons || []).forEach(c => {
+        const couponItemIds = (c.applicableProductIds || []).map(toId).filter(pid => sellerItemIds.has(pid));
+        if (couponItemIds.length === 0) return;
+        // Subtotal of seller items that this coupon applies to
+        const applicableSubtotal = sellerOrderItems
+            .filter(it => couponItemIds.includes(toId(it.productId)))
+            .reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+        if (applicableSubtotal <= 0) return;
+        if (c.discountType === 'percentage') {
+            sellerCouponDiscount += (applicableSubtotal * (Number(c.discountValue) || 0)) / 100;
+        } else {
+            // Fixed amount — pro-rate across all items the coupon covers globally.
+            const allCouponItems = (order.orderItems || []).filter(it =>
+                (c.applicableProductIds || []).map(toId).includes(toId(it.productId))
+            );
+            const allCouponSubtotal = allCouponItems.reduce(
+                (s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0
+            );
+            if (allCouponSubtotal > 0) {
+                sellerCouponDiscount += (Number(c.discountValue) || 0) * (applicableSubtotal / allCouponSubtotal);
+            }
+        }
+    });
+
+    const sellerTotal = sellerSubtotal + sellerShipping + sellerTax - sellerCouponDiscount;
+
+    const obj = order.toObject();
     return {
-        ...order.toObject(),
+        ...obj,
         orderItems: sellerOrderItems,
+        // Strip other sellers' shipping selections from the seller's view
+        sellerShipping: sellerShippingInfo ? [sellerShippingInfo] : [],
+        shippingMethod: sellerShippingInfo
+            ? { ...sellerShippingInfo.shippingMethod, seller: sellerId }
+            : obj.shippingMethod,
         orderSummary: {
             subtotal: Math.round(sellerSubtotal * 100) / 100,
             shippingCost: Math.round(sellerShipping * 100) / 100,
             tax: Math.round(sellerTax * 100) / 100,
+            couponDiscount: Math.round(sellerCouponDiscount * 100) / 100,
             totalAmount: Math.round(sellerTotal * 100) / 100,
             _originalTotal: summary.totalAmount
         }
@@ -68,12 +114,13 @@ const buildSellerOrderView = (order, sellerProductIds, sellerId) => {
 
 const getSellerScopedOrders = async (query, sellerId, sort = null) => {
     const sellerProductIds = await getSellerProductIds(sellerId);
-    if (sellerProductIds.length === 0) return [];
 
-    const dbQuery = {
-        ...query,
-        'orderItems.productId': { $in: sellerProductIds }
-    };
+    // Match either by snapshot seller (new orders) OR by current product ownership (legacy).
+    const sellerScope = sellerProductIds.length > 0
+        ? { $or: [{ 'orderItems.seller': sellerId }, { 'orderItems.productId': { $in: sellerProductIds } }] }
+        : { 'orderItems.seller': sellerId };
+
+    const dbQuery = { ...query, ...sellerScope };
     const finder = Order.find(dbQuery);
     if (sort) finder.sort(sort);
     const orders = await finder;
