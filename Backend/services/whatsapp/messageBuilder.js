@@ -27,6 +27,28 @@ const { formatMoneySync, normalizeCurrency } = require('../currencyService');
 const orderCurrency = (order) => normalizeCurrency(order?.currency || order?.displayCurrency || 'USD');
 const formatMoney = (n, currency) => formatMoneySync(n, currency || 'USD');
 
+const itemStoreName = (it) =>
+    it?.store?.storeName ||
+    it?.product?.store?.storeName ||
+    it?.storeName ||
+    '';
+
+const buildProductLine = (it, currency) => {
+    const qty = it.quantity || 1;
+    const price = formatMoney(it.price * qty, currency);
+    const store = itemStoreName(it);
+    return `• ${it.name} x${qty} — ${price}${store ? ` _(from ${store})_` : ''}`;
+};
+
+const buildStoresLine = (order) => {
+    const names = Array.from(new Set(
+        (order.orderItems || []).map(itemStoreName).filter(Boolean)
+    ));
+    if (names.length === 0) return '';
+    if (names.length === 1) return `🏬 Sold by: *${names[0]}*`;
+    return `🏬 Sold by: *${names.join(', ')}*`;
+};
+
 // ──────────────────────────────────────────────────────────────────────────
 // Button ids — MUST start with these prefixes. Webhook handler uses the
 // prefix to classify the click, and the suffix (orderId) to double-check
@@ -60,12 +82,9 @@ exports.buildOrderButtonsPayload = (order) => {
     const city = order.shippingInfo?.city || 'your location';
 
     // Build product list
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5); // Max 5 items to keep message short
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more item${itemCount - 5 > 1 ? 's' : ''}_`);
+    const storesLine = buildStoresLine(order);
 
     return {
         title: `Rozare — Order #${order.orderId}`,
@@ -76,6 +95,7 @@ exports.buildOrderButtonsPayload = (order) => {
             ``,
             ...productLines,
             ``,
+            ...(storesLine ? [storesLine] : []),
             `💰 Total: *${total}*`,
             `📍 Shipping to ${city}`,
             ``,
@@ -109,12 +129,9 @@ exports.buildOrderListPayload = (order) => {
     const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5);
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
 
     return {
         title: `Rozare — Order #${order.orderId}`,
@@ -125,6 +142,7 @@ exports.buildOrderListPayload = (order) => {
             ``,
             ...productLines,
             ``,
+            ...(storesLine ? [storesLine] : []),
             `💰 Total: *${total}*`,
             `📍 Shipping to ${city}`,
             ``,
@@ -159,12 +177,9 @@ exports.buildOrderConfirmationMessage = (order) => {
     const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5);
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
 
     return [
         `Hey ${buyerName}! 👋`,
@@ -175,6 +190,7 @@ exports.buildOrderConfirmationMessage = (order) => {
         ``,
         ...productLines,
         ``,
+        ...(storesLine ? [storesLine] : []),
         `💰 Total: *${total}*`,
         `📍 Shipping to ${city}`,
         ``,
@@ -312,12 +328,9 @@ exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
     const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const itemCount = order.orderItems?.length || 0;
 
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5);
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
 
     return {
         title: `Re-confirm Order #${order.orderId}?`,
@@ -327,6 +340,7 @@ exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
             `Here's what was in your order:`,
             ...productLines,
             ``,
+            ...(storesLine ? [storesLine] : []),
             `💰 Total: *${total}*`,
             ``,
             `Are you sure you want to confirm this order again?`,
