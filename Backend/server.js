@@ -203,8 +203,9 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   }
 
   // ── Abandoned / failed Stripe checkout cleanup ──
-  // When a buyer closes the Stripe page or the session expires, mark the
-  // awaiting-payment order as cancelled so it never appears as a real order.
+  // When a buyer closes the Stripe page or the session expires, DELETE the
+  // awaiting-payment order entirely. We never want unpaid orders to appear
+  // in the buyer/seller dashboards (not even as "cancelled").
   if (
     event.type === 'checkout.session.expired' ||
     event.type === 'checkout.session.async_payment_failed'
@@ -214,13 +215,11 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       try {
         const order = await Order.findOne({ orderId: session.metadata.orderId });
         if (order && order.awaitingPayment && !order.isPaid) {
-          order.orderStatus = 'cancelled';
-          order.awaitingPayment = false; // unhide as cancelled
-          await order.save();
-          console.log(`🧹 Cancelled abandoned/failed checkout order ${order.orderId}`);
+          await Order.deleteOne({ _id: order._id });
+          console.log(`🗑️  Deleted abandoned/unpaid checkout order ${order.orderId}`);
         }
       } catch (cleanupErr) {
-        console.error('Failed to cancel abandoned order:', cleanupErr.message);
+        console.error('Failed to delete abandoned order:', cleanupErr.message);
       }
     }
   }
