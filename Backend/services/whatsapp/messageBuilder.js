@@ -328,12 +328,9 @@ exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
     const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const itemCount = order.orderItems?.length || 0;
 
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5);
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
 
     return {
         title: `Re-confirm Order #${order.orderId}?`,
@@ -343,6 +340,7 @@ exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
             `Here's what was in your order:`,
             ...productLines,
             ``,
+            ...(storesLine ? [storesLine] : []),
             `💰 Total: *${total}*`,
             ``,
             `Are you sure you want to confirm this order again?`,
