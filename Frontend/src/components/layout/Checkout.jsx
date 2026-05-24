@@ -539,6 +539,7 @@ export default function Checkout() {
           price: itemPrice,
           quantity: item.qty,
           selectedColor: item.selectedColor || null,
+          selectedOptions: item.selectedOptions || undefined,
         };
       }),
 
