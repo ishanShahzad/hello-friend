@@ -129,12 +129,9 @@ exports.buildOrderListPayload = (order) => {
     const total = formatMoney(order.orderSummary?.totalAmount, currency);
     const city = order.shippingInfo?.city || 'your location';
 
-    const productLines = (order.orderItems || []).map(it => {
-        const qty = it.quantity || 1;
-        const price = formatMoney(it.price * qty, currency);
-        return `• ${it.name} x${qty} — ${price}`;
-    }).slice(0, 5);
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
     if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
 
     return {
         title: `Rozare — Order #${order.orderId}`,
@@ -145,6 +142,7 @@ exports.buildOrderListPayload = (order) => {
             ``,
             ...productLines,
             ``,
+            ...(storesLine ? [storesLine] : []),
             `💰 Total: *${total}*`,
             `📍 Shipping to ${city}`,
             ``,
