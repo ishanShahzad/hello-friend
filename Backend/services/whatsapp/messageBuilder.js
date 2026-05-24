@@ -27,6 +27,28 @@ const { formatMoneySync, normalizeCurrency } = require('../currencyService');
 const orderCurrency = (order) => normalizeCurrency(order?.currency || order?.displayCurrency || 'USD');
 const formatMoney = (n, currency) => formatMoneySync(n, currency || 'USD');
 
+const itemStoreName = (it) =>
+    it?.store?.storeName ||
+    it?.product?.store?.storeName ||
+    it?.storeName ||
+    '';
+
+const buildProductLine = (it, currency) => {
+    const qty = it.quantity || 1;
+    const price = formatMoney(it.price * qty, currency);
+    const store = itemStoreName(it);
+    return `• ${it.name} x${qty} — ${price}${store ? ` _(from ${store})_` : ''}`;
+};
+
+const buildStoresLine = (order) => {
+    const names = Array.from(new Set(
+        (order.orderItems || []).map(itemStoreName).filter(Boolean)
+    ));
+    if (names.length === 0) return '';
+    if (names.length === 1) return `🏬 Sold by: *${names[0]}*`;
+    return `🏬 Sold by: *${names.join(', ')}*`;
+};
+
 // ──────────────────────────────────────────────────────────────────────────
 // Button ids — MUST start with these prefixes. Webhook handler uses the
 // prefix to classify the click, and the suffix (orderId) to double-check
