@@ -228,15 +228,29 @@ exports.placeOrder = async (req, res) => {
             currency: orderCurrency,
             orderId: `ORD-${Date.now()}`,
 
-            orderItems: order.orderItems.map((item) => ({
-                productId: item.id,
-                name: item.name,
-                image: item.image,
-                price: item.price,
-                quantity: item.quantity,
-                selectedColor: item.selectedColor || null,
-                selectedOptions: item.selectedOptions || undefined,
-            })),
+            orderItems: order.orderItems.map((item) => {
+                const prod = orderItems.find(p => toId(p._id) === toId(item.id));
+                const pCurrency = prod ? normalizeCurrency(prod.priceCurrency || 'USD') : null;
+                const discOrig = prod?.discountedPriceOriginal;
+                const baseOrig = prod?.priceOriginal;
+                const original =
+                    (discOrig != null && discOrig !== '' && Number(discOrig) > 0)
+                        ? Number(discOrig)
+                        : (baseOrig != null && baseOrig !== '')
+                            ? Number(baseOrig)
+                            : null;
+                return {
+                    productId: item.id,
+                    name: item.name,
+                    image: item.image,
+                    price: item.price,
+                    priceOriginal: Number.isFinite(original) ? original : null,
+                    priceCurrency: pCurrency,
+                    quantity: item.quantity,
+                    selectedColor: item.selectedColor || null,
+                    selectedOptions: item.selectedOptions || undefined,
+                };
+            }),
 
             shippingInfo: {
                 fullName: order.shippingInfo.fullName,
