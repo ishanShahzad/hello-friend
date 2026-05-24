@@ -11,6 +11,9 @@ const orderSchema = mongoose.Schema(
         orderItems: [
             {
                 productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+                // Snapshot of the product's seller at order time. Used to scope
+                // seller dashboards correctly even if the product is later deleted.
+                seller: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
                 name: { type: String, required: true },
                 image: { type: String },
                 price: { type: Number, required: true },
