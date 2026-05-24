@@ -650,6 +650,7 @@ export default function Checkout() {
             localStorage.removeItem('guestCart');
             fetchCart();
           }
+          try { sessionStorage.removeItem(CHECKOUT_STORAGE_KEY); } catch (_) {}
           navigate('/success');
         }, 1500);
         return;
