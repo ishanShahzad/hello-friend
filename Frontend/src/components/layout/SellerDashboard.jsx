@@ -63,6 +63,7 @@ const normalizeDashboardProduct = (product = {}) => ({
 
 const SellerDashboard = () => {
     const { currentUser } = useAuth();
+    const { currency } = useCurrency();
     const [isMobile, setIsMobile] = useState(false);
     const [aiChatOpen, setAiChatOpen] = useState(false);
     const [subscriptionData, setSubscriptionData] = useState(null);
@@ -116,6 +117,14 @@ const SellerDashboard = () => {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
+    const [productCurrencyState, setProductCurrencyState] = useState({
+        activeCurrency: currency || 'USD',
+        status: 'active',
+        pendingCurrency: null,
+        previousCurrency: null,
+        productCount: 0,
+        canAddProduct: true,
+    });
     const notifTriggerRef = useRef(null);
     const notifMenuRef = useRef(null);
     const [notifPos, setNotifPos] = useState({ top: 0, right: 0 });
@@ -151,6 +160,24 @@ const SellerDashboard = () => {
 
     useEffect(() => { fetchFeaturedStats(); }, []);
 
+    const fetchProductCurrencyState = async () => {
+        try {
+            const token = getAuthToken();
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/product-currency`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data?.productCurrency) {
+                setProductCurrencyState(res.data.productCurrency);
+            }
+        } catch (error) {
+            if (error.response?.status !== 404) {
+                console.error('Failed to fetch product currency settings:', error);
+            }
+        }
+    };
+
+    useEffect(() => { fetchProductCurrencyState(); }, [currency]);
+
     const fetchProducts = async () => {
         setLoading(true);
         try {
@@ -176,9 +203,14 @@ const SellerDashboard = () => {
     useEffect(() => { fetchProducts(); fetchOrders(); }, [searchTerm, selectedCategory]);
 
     const handleCreateProduct = () => {
+        if (productCurrencyState.status === 'pending_conversion') {
+            toast.error(productCurrencyState.message || 'Convert existing product prices or cancel the pending currency change before adding new products.');
+            return;
+        }
+        const productEntryCurrency = productCurrencyState.activeCurrency || currency || 'USD';
         setEditingProduct({
             name: '', description: '', price: '', discountedPrice: "",
-            currency, priceCurrency: currency, discountedPriceCurrency: currency,
+            currency: productEntryCurrency, priceCurrency: productEntryCurrency, discountedPriceCurrency: productEntryCurrency,
             category: '', brand: '', stock: "", image: '', images: [],
             tags: [], colors: [], optionGroups: [], isFeatured: false
         });
@@ -228,12 +260,42 @@ const SellerDashboard = () => {
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/add`,
                     { product: editingProduct }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success(res.data.msg);
-                fetchProducts(); fetchFilters(); fetchFeaturedStats();
-            } catch (error) { toast.error(error.response?.data?.msg || 'Failed to add product'); }
+                fetchProducts(); fetchFilters(); fetchFeaturedStats(); fetchProductCurrencyState();
+            } catch (error) {
+                if (error.response?.data?.productCurrency) setProductCurrencyState(error.response.data.productCurrency);
+                toast.error(error.response?.data?.msg || 'Failed to add product');
+            }
         }
         setUploadingImages(false);
         setIsFormOpen(false);
         setEditingProduct(null);
+    };
+
+    const handleConvertProductCurrency = async () => {
+        try {
+            const token = getAuthToken();
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/stores/product-currency/convert`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.msg || 'Product prices converted');
+            if (res.data?.productCurrency) setProductCurrencyState(res.data.productCurrency);
+            fetchProducts();
+        } catch (error) {
+            toast.error(error.response?.data?.msg || 'Failed to convert product prices');
+        }
+    };
+
+    const handleCancelProductCurrencyChange = async () => {
+        try {
+            const token = getAuthToken();
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/stores/product-currency/cancel`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.msg || 'Product currency change canceled');
+            if (res.data?.productCurrency) setProductCurrencyState(res.data.productCurrency);
+        } catch (error) {
+            toast.error(error.response?.data?.msg || 'Failed to cancel product currency change');
+        }
     };
 
     const handleDeleteProduct = async (id) => {
@@ -269,7 +331,8 @@ const SellerDashboard = () => {
         closeForm: () => { setIsFormOpen(false); setEditingProduct(null); },
         canFeature: subscriptionData?.status === 'trial' || subscriptionData?.bonusFeaturesActive === true || ['active', 'free_period'].includes(subscriptionData?.status),
         featuredStats, fetchFeaturedStats,
-    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading, isFormOpen, editingProduct, uploadingImages, subscriptionData, featuredStats]);
+        productCurrencyState, fetchProductCurrencyState, handleConvertProductCurrency, handleCancelProductCurrencyChange,
+    }), [products, orders, categories, searchTerm, selectedCategory, deleteConfirm, loading, isFormOpen, editingProduct, uploadingImages, subscriptionData, featuredStats, productCurrencyState]);
 
     const location = useLocation();
 
@@ -968,7 +1031,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 const MAX_TAGS = 15;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, featuredStats = { current: 0, max: 3, allowed: true } }) => {
-    const { currency, convertAmount, getCurrencySymbol } = useCurrency();
+    const { currency, currencies } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
     const productImages = Array.isArray(product.images) ? product.images : [];
@@ -1066,7 +1129,12 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const handleSetMainImage = (url) => setProduct({ ...product, image: url });
     const handleSubmit = (e) => { e.preventDefault(); onSave(); };
     const editingCurrency = product.currency || product.priceCurrency || currency;
-    const displayAmount = (amount) => amount ? convertAmount(amount, editingCurrency, currency).toFixed(2) : '';
+    const editingCurrencySymbol = currencies?.[editingCurrency]?.symbol || editingCurrency;
+    const displayAmount = (amount) => {
+        if (amount === '' || amount === null || amount === undefined) return '';
+        const numericAmount = Number(amount);
+        return Number.isFinite(numericAmount) ? String(numericAmount) : '';
+    };
 
     const inputClass = "glass-input w-full";
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
@@ -1162,10 +1230,10 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Price ({getCurrencySymbol()}) * <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
+                                Price ({editingCurrencySymbol}) * <span className="text-[10px] normal-case font-normal ml-1">in {editingCurrency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{editingCurrencySymbol}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
                                     value={displayAmount(product.price)}
                                     onChange={(e) => {
@@ -1173,8 +1241,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                         setProduct({
                                             ...product,
                                             price: inputAmount,
-                                            currency,
-                                            priceCurrency: currency,
+                                            currency: editingCurrency,
+                                            priceCurrency: editingCurrency,
                                             priceInputAmount: inputAmount === '' ? null : inputAmount,
                                         });
                                     }}
@@ -1183,20 +1251,20 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Discounted Price ({getCurrencySymbol()}) <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
+                                Discounted Price ({editingCurrencySymbol}) <span className="text-[10px] normal-case font-normal ml-1">in {editingCurrency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{editingCurrencySymbol}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
                                     value={displayAmount(product.discountedPrice)}
                                     onChange={(e) => {
                                         const inputAmount = parseFloat(e.target.value) || 0;
                                         setProduct({
                                             ...product,
-                                            currency,
-                                            priceCurrency: currency,
+                                            currency: editingCurrency,
+                                            priceCurrency: editingCurrency,
                                             discountedPrice: inputAmount,
-                                            discountedPriceCurrency: currency,
+                                            discountedPriceCurrency: editingCurrency,
                                             discountedPriceInputAmount: inputAmount,
                                         });
                                     }}

@@ -13,6 +13,14 @@ const {
 } = require('../services/orderMoneyService');
 const StoreView = require('../models/StoreView');
 const { normalizeSocialLinks } = require('../services/socialLinksService');
+const {
+    ensureStoreProductCurrencyInitialized,
+    requestProductCurrencyChange,
+    cancelPendingProductCurrencyChange,
+    convertPendingProductPrices,
+    sellerDefaultProductCurrency,
+    normalizeProductCurrency,
+} = require('../services/storeProductCurrencyService');
 
 const comparablePriceUSD = (product) =>
     convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
@@ -219,6 +227,15 @@ exports.createStore = async (req, res) => {
             finalSlug = await generateUniqueSlug(storeName);
         }
 
+        const seller = await User.findById(sellerId).select('currency').lean();
+        const initialAddress = address || {
+            street: '',
+            city: '',
+            state: '',
+            country: '',
+            postalCode: ''
+        };
+
         // Create store
         const newStore = new Store({
             seller: sellerId,
@@ -226,16 +243,12 @@ exports.createStore = async (req, res) => {
             storeSlug: finalSlug,
             sellerType: sellerType === 'brand' ? 'brand' : 'store',
             description: description || '',
+            productCurrency: normalizeProductCurrency(req.body.productCurrency || sellerDefaultProductCurrency({ address: initialAddress }, seller)),
+            productCurrencyStatus: 'active',
             logo: logo || '',
             banner: banner || '',
             socialLinks: normalizeSocialLinks(socialLinks),
-            address: address || {
-                street: '',
-                city: '',
-                state: '',
-                country: '',
-                postalCode: ''
-            },
+            address: initialAddress,
             returnPolicy: returnPolicy || {
                 returnsEnabled: false,
                 returnDuration: 0,
@@ -317,6 +330,8 @@ exports.getMyStore = async (req, res) => {
             await store.save();
         }
 
+        await ensureStoreProductCurrencyInitialized(sellerId, { store });
+
         res.status(200).json({
             msg: 'Store fetched successfully',
             store
@@ -324,6 +339,67 @@ exports.getMyStore = async (req, res) => {
     } catch (error) {
         console.error('Get my store error:', error);
         res.status(500).json({ msg: 'Server error while fetching store' });
+    }
+};
+
+exports.getProductCurrencySettings = async (req, res) => {
+    try {
+        const state = await ensureStoreProductCurrencyInitialized(req.user.id);
+        if (!state.hasStore) {
+            return res.status(404).json({ msg: 'You have not created a store yet', productCurrency: state });
+        }
+        res.status(200).json({ msg: 'Product currency settings fetched successfully', productCurrency: state });
+    } catch (error) {
+        console.error('Get product currency settings error:', error);
+        res.status(500).json({ msg: 'Server error while fetching product currency settings' });
+    }
+};
+
+exports.updateProductCurrencySettings = async (req, res) => {
+    try {
+        const state = await requestProductCurrencyChange(req.user.id, req.body.currency, {
+            confirm: req.body.confirm === true,
+        });
+        const statusCode = state.requiresConfirmation ? 409 : 200;
+        res.status(statusCode).json({
+            msg: state.msg || (state.status === 'pending_conversion'
+                ? `Product currency change to ${state.pendingCurrency} is pending. Convert existing product prices from the Products tab before adding more products.`
+                : `Product currency is now ${state.activeCurrency}.`),
+            productCurrency: state,
+            requiresConfirmation: state.requiresConfirmation === true,
+        });
+    } catch (error) {
+        console.error('Update product currency settings error:', error);
+        res.status(error.status || 500).json({ msg: error.message || 'Server error while updating product currency settings' });
+    }
+};
+
+exports.convertProductCurrencyPrices = async (req, res) => {
+    try {
+        const result = await convertPendingProductPrices(req.user.id);
+        res.status(200).json({
+            msg: result.converted > 0
+                ? `Converted ${result.converted} product price${result.converted === 1 ? '' : 's'} to ${result.state.activeCurrency}.`
+                : 'No pending product currency conversion found.',
+            converted: result.converted,
+            productCurrency: result.state,
+        });
+    } catch (error) {
+        console.error('Convert product currency prices error:', error);
+        res.status(error.status || 500).json({ msg: error.message || 'Server error while converting product prices' });
+    }
+};
+
+exports.cancelProductCurrencyChange = async (req, res) => {
+    try {
+        const state = await cancelPendingProductCurrencyChange(req.user.id);
+        res.status(200).json({
+            msg: `Product currency change canceled. Product currency is back to ${state.activeCurrency}.`,
+            productCurrency: state,
+        });
+    } catch (error) {
+        console.error('Cancel product currency change error:', error);
+        res.status(error.status || 500).json({ msg: error.message || 'Server error while canceling product currency change' });
     }
 };
 

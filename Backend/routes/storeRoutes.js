@@ -20,7 +20,11 @@ const {
     approveVerification,
     rejectVerification,
     removeVerification,
-    checkSubdomainAvailability
+    checkSubdomainAvailability,
+    getProductCurrencySettings,
+    updateProductCurrencySettings,
+    convertProductCurrencyPrices,
+    cancelProductCurrencyChange
 } = require('../controllers/storeController');
 const verifyToken = require('../middleware/authMiddleware');
 const User = require('../models/User');
@@ -70,6 +74,10 @@ router.get('/my-store', verifyToken, isSellerAuth, getMyStore);
 router.put('/update', verifyToken, isSellerAuth, validateStoreData, updateStore);
 router.delete('/delete', verifyToken, isSellerAuth, deleteStore);
 router.get('/analytics', verifyToken, isSellerAuth, getStoreAnalytics);
+router.get('/product-currency', verifyToken, isSellerAuth, getProductCurrencySettings);
+router.patch('/product-currency', verifyToken, isSellerAuth, updateProductCurrencySettings);
+router.post('/product-currency/convert', verifyToken, isSellerAuth, convertProductCurrencyPrices);
+router.post('/product-currency/cancel', verifyToken, isSellerAuth, cancelProductCurrencyChange);
 
 // Verification Routes (Seller)
 router.post('/verification/apply', verifyToken, isSellerAuth, applyForVerification);

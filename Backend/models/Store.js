@@ -29,6 +29,32 @@ const storeSchema = new mongoose.Schema({
     maxlength: [500, 'Description cannot exceed 500 characters'],
     default: ''
   },
+  productCurrency: {
+    type: String,
+    enum: ['USD', 'PKR', 'EUR', 'GBP'],
+    default: null,
+    index: true
+  },
+  productCurrencyStatus: {
+    type: String,
+    enum: ['active', 'pending_conversion'],
+    default: 'active',
+    index: true
+  },
+  previousProductCurrency: {
+    type: String,
+    enum: ['USD', 'PKR', 'EUR', 'GBP'],
+    default: null
+  },
+  pendingProductCurrency: {
+    type: String,
+    enum: ['USD', 'PKR', 'EUR', 'GBP'],
+    default: null
+  },
+  productCurrencyChangedAt: {
+    type: Date,
+    default: null
+  },
   address: {
     street: {
       type: String,

@@ -14,6 +14,7 @@ const {
 } = require('../services/productModerationService');
 const { convertAmountSync, convertAmount, normalizeCurrency, formatMoney } = require('../services/currencyService');
 const { getProductCurrency, getProductEffectivePrice, normalizeNativeProductPricing } = require('../services/productPricingService');
+const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService');
 const {
     resolveRequestedCurrency,
     convertOrderAmount,
@@ -184,7 +185,10 @@ exports.addProduct = async (req, res) => {
         const account = role === 'seller'
             ? await User.findById(userId).select('currency').lean()
             : null;
-        const sellerCurrency = normalizeCurrency(account?.currency || req.user?.currency || 'USD');
+        const productCurrencyState = role === 'seller'
+            ? await assertProductCreationAllowed(userId)
+            : null;
+        const sellerCurrency = normalizeCurrency(productCurrencyState?.activeCurrency || account?.currency || req.user?.currency || 'USD');
         const requestedCurrency = normalizeCurrency(product?.currency || product?.priceCurrency || sellerCurrency);
         const currencyWasExplicit = product?.currencyExplicit === true
             || product?.priceCurrencyExplicit === true
@@ -194,10 +198,11 @@ exports.addProduct = async (req, res) => {
             : requestedCurrency;
         const productData = normalizeNativeProductPricing({
             ...product,
-            currency: inputCurrency,
+            currency: sellerCurrency,
             priceCurrency: inputCurrency,
+            discountedPriceCurrency: product?.discountedPriceCurrency || product?.discountedCurrency || inputCurrency,
             seller: role === 'seller' ? userId : null,
-        }, inputCurrency);
+        }, sellerCurrency);
         const { fields: moderationFields } = buildModerationFields(productData);
         const newProduct = new Product({ ...productData, ...moderationFields });
         await newProduct.save();
@@ -213,7 +218,10 @@ exports.addProduct = async (req, res) => {
         });
     } catch (error) {
         console.error('AI add product error:', error);
-        res.status(500).json({ msg: 'Server error while adding product' });
+        res.status(error.status || 500).json({
+            msg: error.status ? error.message : 'Server error while adding product',
+            productCurrency: error.productCurrencyState,
+        });
     }
 };
 

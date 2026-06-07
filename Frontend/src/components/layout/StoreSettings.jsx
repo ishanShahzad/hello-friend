@@ -4,14 +4,15 @@ import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, Shoppi
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const StoreSettings = () => {
-    const { formatPrice, currency } = useCurrency();
+    const { formatPrice, currency, currencies } = useCurrency();
+    const outletContext = useOutletContext() || {};
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasStore, setHasStore] = useState(false);
@@ -22,6 +23,17 @@ const StoreSettings = () => {
     const [pendingChanges, setPendingChanges] = useState([]); // [{ field, label, days }]
     const [originals, setOriginals] = useState({ storeName: '', storeSlug: '', sellerType: 'store' });
     const [blockedInfo, setBlockedInfo] = useState({ blocked: false, daysUntilRemoval: null, isPurchased: false });
+    const [productCurrencyInfo, setProductCurrencyInfo] = useState({
+        activeCurrency: currency || 'USD',
+        status: 'active',
+        pendingCurrency: null,
+        previousCurrency: null,
+        productCount: 0,
+        canAddProduct: true,
+    });
+    const [productCurrencyDraft, setProductCurrencyDraft] = useState(currency || 'USD');
+    const [productCurrencySaving, setProductCurrencySaving] = useState(false);
+    const [productCurrencyConfirm, setProductCurrencyConfirm] = useState(null);
     
     // Subdomain state
     const [customSubdomain, setCustomSubdomain] = useState('');
@@ -57,6 +69,19 @@ const StoreSettings = () => {
 
     useEffect(() => { fetchStoreData(); fetchVerificationStatus(); }, []);
     useEffect(() => { fetchAnalytics(); }, [currency]);
+
+    const fetchProductCurrencySettings = async () => {
+        try {
+            const token = getAuthToken();
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/product-currency`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.data?.productCurrency) {
+                setProductCurrencyInfo(res.data.productCurrency);
+                setProductCurrencyDraft(res.data.productCurrency.pendingCurrency || res.data.productCurrency.activeCurrency || currency || 'USD');
+            }
+        } catch (error) {
+            if (error.response?.status !== 404) console.error('Error fetching product currency settings:', error);
+        }
+    };
 
     const fetchStoreData = async () => {
         try {
@@ -94,6 +119,7 @@ const StoreSettings = () => {
                 : null;
             setBlockedInfo({ blocked, daysUntilRemoval, isPurchased });
             setHasStore(true);
+            await fetchProductCurrencySettings();
         } catch (error) {
             if (error.response?.status === 404) setHasStore(false);
             else console.error('Error fetching store:', error);
@@ -136,6 +162,50 @@ const StoreSettings = () => {
     const handleInputChange = (e) => { const { name, value } = e.target; setStoreData(prev => ({ ...prev, [name]: value })); };
     const handleSocialLinkChange = (platform, value) => { setStoreData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [platform]: value } })); };
     const handleAddressChange = (field, value) => { setStoreData(prev => ({ ...prev, address: { ...prev.address, [field]: value } })); };
+
+    const requestProductCurrencyChange = async (nextCurrency, confirm = false) => {
+        try {
+            setProductCurrencySaving(true);
+            const token = getAuthToken();
+            const res = await axios.patch(`${import.meta.env.VITE_API_URL}api/stores/product-currency`,
+                { currency: nextCurrency, confirm },
+                { headers: { Authorization: `Bearer ${token}` } });
+            setProductCurrencyInfo(res.data.productCurrency);
+            setProductCurrencyDraft(res.data.productCurrency.pendingCurrency || res.data.productCurrency.activeCurrency || nextCurrency);
+            setProductCurrencyConfirm(null);
+            outletContext.fetchProductCurrencyState?.();
+            toast.success(res.data.msg || 'Product currency updated');
+        } catch (error) {
+            const body = error.response?.data;
+            if (error.response?.status === 409 && body?.requiresConfirmation) {
+                setProductCurrencyConfirm({
+                    requestedCurrency: body.productCurrency?.requestedCurrency || nextCurrency,
+                    msg: body.msg || body.productCurrency?.msg || `Confirm product currency change to ${nextCurrency}.`,
+                });
+                setProductCurrencyDraft(nextCurrency);
+                return;
+            }
+            setProductCurrencyDraft(productCurrencyInfo.pendingCurrency || productCurrencyInfo.activeCurrency || currency || 'USD');
+            toast.error(body?.msg || 'Failed to update product currency');
+        } finally {
+            setProductCurrencySaving(false);
+        }
+    };
+
+    const handleProductCurrencySelect = (nextCurrency) => {
+        if (!nextCurrency || nextCurrency === productCurrencyDraft) return;
+        setProductCurrencyDraft(nextCurrency);
+        if (!hasStore) {
+            setProductCurrencyInfo(prev => ({ ...prev, activeCurrency: nextCurrency }));
+            return;
+        }
+        requestProductCurrencyChange(nextCurrency, false);
+    };
+
+    const cancelProductCurrencyConfirmation = () => {
+        setProductCurrencyConfirm(null);
+        setProductCurrencyDraft(productCurrencyInfo.pendingCurrency || productCurrencyInfo.activeCurrency || currency || 'USD');
+    };
 
     // Sanitize subdomain input: lowercase, alphanumeric + hyphens only
     const sanitizeSubdomain = (val) =>
@@ -231,6 +301,7 @@ const StoreSettings = () => {
             const token = getAuthToken();
             const endpoint = hasStore ? 'update' : 'create';
             const payload = { ...storeData };
+            payload.productCurrency = productCurrencyDraft || productCurrencyInfo.activeCurrency || currency;
             if (customSubdomain && customSubdomain.length >= 3) {
                 payload.storeSlug = customSubdomain;
             }
@@ -240,12 +311,17 @@ const StoreSettings = () => {
             if (res.data.store) {
                 setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
                 setCustomSubdomain(res.data.store.storeSlug);
+                const savedProductCurrency = res.data.store.productCurrency || productCurrencyDraft || currency;
+                setProductCurrencyInfo(prev => ({ ...prev, activeCurrency: savedProductCurrency, status: 'active', pendingCurrency: null, previousCurrency: null }));
+                setProductCurrencyDraft(savedProductCurrency);
                 setOriginals({
                     storeName: res.data.store.storeName,
                     storeSlug: res.data.store.storeSlug,
                     sellerType: res.data.store.sellerType || 'store',
                 });
             }
+            fetchProductCurrencySettings();
+            outletContext.fetchProductCurrencyState?.();
             fetchAnalytics();
         } catch (error) {
             const cd = error.response?.data?.cooldown;
@@ -410,6 +486,69 @@ const StoreSettings = () => {
                             })}
                         </div>
                         <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>You can change this anytime. It controls where you appear in the marketplace.</p>
+                    </div>
+
+                    {/* Product Currency */}
+                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Product Price Currency</label>
+                                <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                                    <DollarSign size={18} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                                    {productCurrencyInfo.status === 'pending_conversion'
+                                        ? `${productCurrencyInfo.previousCurrency || productCurrencyInfo.activeCurrency} to ${productCurrencyInfo.pendingCurrency}`
+                                        : productCurrencyInfo.activeCurrency || productCurrencyDraft}
+                                </h3>
+                            </div>
+                            <select
+                                value={productCurrencyDraft}
+                                onChange={(e) => handleProductCurrencySelect(e.target.value)}
+                                disabled={productCurrencySaving || blockedInfo.blocked}
+                                className="glass-input cursor-pointer font-semibold min-w-[180px]"
+                            >
+                                {Object.entries(currencies || {}).map(([code, info]) => (
+                                    <option key={code} value={code}>{code} - {info.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            New product prices are saved in this currency. Buyers can still view prices in their own selected currency.
+                        </p>
+
+                        {productCurrencyInfo.status === 'pending_conversion' && (
+                            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'hsl(45, 80%, 40%)' }}>
+                                    <AlertTriangle size={15} /> Conversion required
+                                </p>
+                                <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    You changed the product currency to {productCurrencyInfo.pendingCurrency}, but your existing products still need conversion. Go to Products and either convert all prices or keep {productCurrencyInfo.previousCurrency || productCurrencyInfo.activeCurrency}. You cannot add new products until then.
+                                </p>
+                            </div>
+                        )}
+
+                        {productCurrencyConfirm && (
+                            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.22)' }}>
+                                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'hsl(0, 72%, 50%)' }}>
+                                    <AlertTriangle size={15} /> Confirm currency change
+                                </p>
+                                <p className="text-xs mt-1 mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    {productCurrencyConfirm.msg}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={cancelProductCurrencyConfirmation}
+                                        className="px-4 py-2 rounded-lg text-xs font-semibold"
+                                        style={{ background: 'var(--glass-inner)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                        Cancel
+                                    </button>
+                                    <button type="button" disabled={productCurrencySaving}
+                                        onClick={() => requestProductCurrencyChange(productCurrencyConfirm.requestedCurrency, true)}
+                                        className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
+                                        style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(15, 80%, 55%))' }}>
+                                        {productCurrencySaving ? 'Saving...' : `Change to ${productCurrencyConfirm.requestedCurrency}`}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Store Name */}

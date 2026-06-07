@@ -14,6 +14,7 @@ const {
     getProductCurrency,
     getProductEffectivePrice,
 } = require('../services/productPricingService')
+const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService')
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
@@ -26,11 +27,15 @@ const toArray = (value) => Array.isArray(value) ? value : [value];
 
 async function applyProductCurrencyMetadata(product, fallbackCurrency = 'USD') {
     if (!product || typeof product !== 'object') return product;
-    const productCurrency = normalizeCurrency(product.currency || product.priceCurrency || fallbackCurrency);
+    const productCurrency = normalizeCurrency(product.currency || fallbackCurrency);
+    const priceSourceCurrency = normalizeCurrency(product.priceCurrency || product.currency || productCurrency);
     const next = { ...product };
 
     if (next.price !== undefined && next.price !== '') {
-        next.price = roundMoney(next.price);
+        const rawPrice = roundMoney(next.price);
+        next.price = priceSourceCurrency === productCurrency
+            ? rawPrice
+            : await convertAmount(rawPrice, priceSourceCurrency, productCurrency);
         next.currency = productCurrency;
         next.priceCurrency = productCurrency;
         next.priceInputAmount = next.price;
@@ -793,11 +798,7 @@ exports.addProduct = async (req, res) => {
 
         // Sellers must have a store before adding products
         if (role === 'seller') {
-            const Store = require('../models/Store');
-            const store = await Store.findOne({ seller: userId });
-            if (!store) {
-                return res.status(403).json({ msg: 'You must create a store before adding products. Go to Store Settings to set up your store.' });
-            }
+            await assertProductCreationAllowed(userId);
 
             // Enforce product limit for trial sellers (15 products max)
             const SellerSubscription = require('../models/SellerSubscription');
@@ -811,7 +812,16 @@ exports.addProduct = async (req, res) => {
         }
 
         // Gate: enforce featured product limits based on subscription tier.
-        let safeProduct = await applyProductCurrencyMetadata({ ...product }, req.user?.currency || 'USD');
+        const productCurrencyState = role === 'seller'
+            ? await assertProductCreationAllowed(userId)
+            : null;
+        const productEntryCurrency = productCurrencyState?.activeCurrency || req.user?.currency || 'USD';
+        let safeProduct = await applyProductCurrencyMetadata({
+            ...product,
+            currency: productEntryCurrency,
+            priceCurrency: product?.priceCurrency || product?.currency || productEntryCurrency,
+            discountedPriceCurrency: product?.discountedPriceCurrency || product?.discountedCurrency || product?.currency || productEntryCurrency,
+        }, productEntryCurrency);
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);
             if (!featCheck.allowed) {
@@ -844,7 +854,10 @@ exports.addProduct = async (req, res) => {
 
     } catch (error) {
         console.error(error.message);
-        res.status(500).json({ msg: 'Server error while adding new product.' })
+        res.status(error.status || 500).json({
+            msg: error.status ? error.message : 'Server error while adding new product.',
+            productCurrency: error.productCurrencyState,
+        })
     }
 }
 

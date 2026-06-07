@@ -51,6 +51,7 @@ const {
   getProductEffectivePrice,
 } = require('./productPricingService');
 const { normalizeSocialLinks } = require('./socialLinksService');
+const { assertProductCreationAllowed } = require('./storeProductCurrencyService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -2144,6 +2145,8 @@ async function executeToolCall(toolName, args = {}, user) {
         }
         const store = await Store.findOne({ seller: targetSellerId }).select('_id storeName').lean();
         if (!store) return { success: false, error: 'You need to create a store first.' };
+        const productCurrencyState = await assertProductCreationAllowed(targetSellerId);
+        const productEntryCurrency = productCurrencyState.activeCurrency;
         if (role === 'seller') {
           const createCheck = await sellerCanCreateProducts(targetSellerId, 1);
           if (!createCheck.allowed) {
@@ -2175,7 +2178,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const inputCurrency = resolveAIPriceCurrency({
           value: p.price,
           requestedCurrency: p.currency || args.currency,
-          preferredCurrency,
+          preferredCurrency: productEntryCurrency,
           lastUserText,
         });
         const priceInput = parseMoneyInput(p.price, inputCurrency);
@@ -2184,7 +2187,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const discountedCurrency = resolveAIPriceCurrency({
           value: p.discountedPrice,
           requestedCurrency: p.discountedCurrency || p.currency || args.currency,
-          preferredCurrency: inputCurrency,
+          preferredCurrency: productEntryCurrency,
           fallbackCurrency: inputCurrency,
           lastUserText,
         });
@@ -2195,9 +2198,9 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!Number.isFinite(rawPrice) || rawPrice < 0) return { success: false, error: 'Product price must be a non-negative number.' };
         if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Product stock must be a non-negative number.' };
         if (!Number.isFinite(rawDiscountedPrice) || rawDiscountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
-        const price = roundMoney(rawPrice);
+        const price = await convertAmount(rawPrice, priceInput.currency, productEntryCurrency);
         const discountedPrice = rawDiscountedPrice > 0
-          ? await convertAmount(rawDiscountedPrice, discountInput.currency, inputCurrency)
+          ? await convertAmount(rawDiscountedPrice, discountInput.currency, productEntryCurrency)
           : 0;
         if (discountedPrice > 0 && discountedPrice >= price) return { success: false, error: 'Discounted price must be lower than the product price.' };
 
@@ -2221,7 +2224,7 @@ async function executeToolCall(toolName, args = {}, user) {
                 name: duplicate.name,
                 brand: duplicate.brand,
                 price: duplicate.price,
-                currency: getProductCurrency(duplicate, inputCurrency),
+                currency: getProductCurrency(duplicate, productEntryCurrency),
                 stock: duplicate.stock,
                 category: duplicate.category,
                 createdAt: duplicate.createdAt,
@@ -2260,10 +2263,10 @@ async function executeToolCall(toolName, args = {}, user) {
           description,
           price,
           discountedPrice,
-          currency: inputCurrency,
-          priceCurrency: inputCurrency,
+          currency: productEntryCurrency,
+          priceCurrency: productEntryCurrency,
           priceInputAmount: price,
-          discountedPriceCurrency: inputCurrency,
+          discountedPriceCurrency: productEntryCurrency,
           discountedPriceInputAmount: discountedPrice > 0 ? discountedPrice : 0,
           priceVersion: 2,
           category,
@@ -2301,7 +2304,7 @@ async function executeToolCall(toolName, args = {}, user) {
             discountedPrice: product.discountedPrice,
             discountedPriceCurrency: product.discountedPriceCurrency,
             discountedPriceInputAmount: product.discountedPriceInputAmount,
-            displayPrice: await formatMoney(product.price, inputCurrency, { sourceCurrency: inputCurrency }),
+            displayPrice: await formatMoney(product.price, productEntryCurrency, { sourceCurrency: productEntryCurrency }),
             stock: product.stock,
             category: product.category,
             brand: product.brand,
@@ -2318,7 +2321,7 @@ async function executeToolCall(toolName, args = {}, user) {
           },
           message: isProductBlocked(product)
             ? `Product "${product.name}" was saved to your Products tab, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until you edit it with real product details.`
-            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, inputCurrency, { sourceCurrency: inputCurrency })}! 🎉`,
+            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, productEntryCurrency, { sourceCurrency: productEntryCurrency })}!`,
         };
       }
 

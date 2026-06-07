@@ -12,7 +12,7 @@ import { getAuthToken } from "../../utils/cookieHelper";
 
 const ProductManagement = () => {
     const context = useOutletContext() || {};
-    const { products = [], loading, categories = [], searchTerm = '', setSearchTerm, selectedCategory = 'all', setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats } = context;
+    const { products = [], loading, categories = [], searchTerm = '', setSearchTerm, selectedCategory = 'all', setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats, productCurrencyState, handleConvertProductCurrency, handleCancelProductCurrencyChange } = context;
     const safeProducts = Array.isArray(products) ? products : [];
     const safeCategories = Array.isArray(categories) ? categories : [];
     const [selectedProducts, setSelectedProducts] = useState([]);
@@ -21,6 +21,8 @@ const ProductManagement = () => {
     const [hasStore, setHasStore] = useState(true);
     const [storeLoading, setStoreLoading] = useState(true);
     const navigate = useNavigate();
+    const hasPendingCurrencyChange = productCurrencyState?.status === 'pending_conversion';
+    const canAddProduct = hasStore && !hasPendingCurrencyChange;
 
     useEffect(() => {
         const checkStore = async () => {
@@ -103,6 +105,33 @@ const ProductManagement = () => {
                 </motion.div>
             )}
 
+            {hasStore && hasPendingCurrencyChange && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-5 mb-4 sm:mb-6 flex flex-col lg:flex-row items-start lg:items-center gap-4"
+                    style={{ borderLeft: '4px solid hsl(45, 93%, 47%)' }}>
+                    <div className="p-3 rounded-2xl" style={{ background: 'rgba(245, 158, 11, 0.12)' }}>
+                        <AlertTriangle size={26} style={{ color: 'hsl(45, 93%, 47%)' }} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-base mb-1" style={{ color: 'hsl(var(--foreground))' }}>Product Currency Change Pending</h3>
+                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Your existing products are in {productCurrencyState.previousCurrency || productCurrencyState.activeCurrency}. Convert all product prices to {productCurrencyState.pendingCurrency}, or cancel and keep {productCurrencyState.previousCurrency || productCurrencyState.activeCurrency}. New products are paused until this is finished.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                        <button onClick={handleCancelProductCurrencyChange}
+                            className="px-4 py-2.5 rounded-xl font-semibold text-sm"
+                            style={{ background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                            Keep {productCurrencyState.previousCurrency || productCurrencyState.activeCurrency}
+                        </button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={handleConvertProductCurrency}
+                            className="px-4 py-2.5 rounded-xl font-semibold text-white text-sm"
+                            style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(170, 50%, 40%))' }}>
+                            Convert to {productCurrencyState.pendingCurrency}
+                        </motion.button>
+                    </div>
+                </motion.div>
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 mt-4 sm:mt-6">
                 <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Product Management</h2>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
@@ -121,10 +150,10 @@ const ProductManagement = () => {
                         <span>{selectMode ? 'Cancel' : 'Select'}</span>
                     </motion.button>
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleCreateProduct}
-                        disabled={!hasStore}
+                        disabled={!canAddProduct}
                         className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(200, 80%, 50%))', boxShadow: '0 0 20px -4px hsl(220, 70%, 55%, 0.3)' }}
-                        title={!hasStore ? 'Create a store first' : 'Add new product'}>
+                        title={!hasStore ? 'Create a store first' : hasPendingCurrencyChange ? 'Finish product currency conversion first' : 'Add new product'}>
                         <Plus size={16} className="sm:w-5 sm:h-5" /> <span>Add</span>
                     </motion.button>
                 </div>
