@@ -15,6 +15,7 @@ const {
 const { convertAmountSync, convertAmount, normalizeCurrency, formatMoney } = require('../services/currencyService');
 const { getProductCurrency, getProductEffectivePrice, normalizeNativeProductPricing } = require('../services/productPricingService');
 const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService');
+const { sanitizeProductPayload } = require('../services/productTextService');
 const {
     resolveRequestedCurrency,
     convertOrderAmount,
@@ -170,13 +171,19 @@ exports.addProduct = async (req, res) => {
     try {
         if (role !== 'seller' && role !== 'admin') return res.status(403).json({ msg: 'Unauthorized' });
 
+        const sanitizedProduct = sanitizeProductPayload({
+            ...product,
+            description: product?.description || product?.name || '',
+        });
+
         // Validate required fields
         const missing = [];
-        if (!product?.name) missing.push('name');
-        if (!product?.price && product?.price !== 0) missing.push('price');
-        if (!product?.category) missing.push('category');
-        if (!product?.brand) missing.push('brand');
-        if (product?.stock === undefined) missing.push('stock');
+        if (!sanitizedProduct?.name) missing.push('name');
+        if (!sanitizedProduct?.description) missing.push('description');
+        if (!sanitizedProduct?.price && sanitizedProduct?.price !== 0) missing.push('price');
+        if (!sanitizedProduct?.category) missing.push('category');
+        if (!sanitizedProduct?.brand) missing.push('brand');
+        if (sanitizedProduct?.stock === undefined) missing.push('stock');
 
         if (missing.length > 0) {
             return res.status(400).json({ msg: `Missing required fields: ${missing.join(', ')}`, missingFields: missing });
@@ -189,18 +196,18 @@ exports.addProduct = async (req, res) => {
             ? await assertProductCreationAllowed(userId)
             : null;
         const sellerCurrency = normalizeCurrency(productCurrencyState?.activeCurrency || account?.currency || req.user?.currency || 'USD');
-        const requestedCurrency = normalizeCurrency(product?.currency || product?.priceCurrency || sellerCurrency);
-        const currencyWasExplicit = product?.currencyExplicit === true
-            || product?.priceCurrencyExplicit === true
-            || product?.currencySource === 'explicit';
+        const requestedCurrency = normalizeCurrency(sanitizedProduct?.currency || sanitizedProduct?.priceCurrency || sellerCurrency);
+        const currencyWasExplicit = sanitizedProduct?.currencyExplicit === true
+            || sanitizedProduct?.priceCurrencyExplicit === true
+            || sanitizedProduct?.currencySource === 'explicit';
         const inputCurrency = !currencyWasExplicit && requestedCurrency === 'USD' && sellerCurrency !== 'USD'
             ? sellerCurrency
             : requestedCurrency;
         const productData = normalizeNativeProductPricing({
-            ...product,
+            ...sanitizedProduct,
             currency: sellerCurrency,
             priceCurrency: inputCurrency,
-            discountedPriceCurrency: product?.discountedPriceCurrency || product?.discountedCurrency || inputCurrency,
+            discountedPriceCurrency: sanitizedProduct?.discountedPriceCurrency || sanitizedProduct?.discountedCurrency || inputCurrency,
             seller: role === 'seller' ? userId : null,
         }, sellerCurrency);
         const { fields: moderationFields } = buildModerationFields(productData);
@@ -238,8 +245,16 @@ exports.editProduct = async (req, res) => {
         if (!product) return res.status(404).json({ msg: 'Product not found' });
         if (role === 'seller' && product.seller?.toString() !== userId) return res.status(403).json({ msg: 'You can only edit your own products' });
 
+        const sanitizedUpdates = sanitizeProductPayload({ ...updates });
+        if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'name') && !sanitizedUpdates.name) {
+            return res.status(400).json({ msg: 'Product name is required.' });
+        }
+        if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'description') && !sanitizedUpdates.description) {
+            return res.status(400).json({ msg: 'Product description is required.' });
+        }
+
         const wasBlocked = isProductBlocked(product);
-        Object.assign(product, updates);
+        Object.assign(product, sanitizedUpdates);
         const { fields: moderationFields } = buildModerationFields(product.toObject());
         Object.assign(product, moderationFields);
         await product.save();

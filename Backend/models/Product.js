@@ -1,4 +1,10 @@
 const mongoose = require('mongoose');
+const {
+    PRODUCT_NAME_MAX_LENGTH,
+    PRODUCT_DESCRIPTION_MAX_LENGTH,
+    sanitizeProductName,
+    sanitizeProductDescription,
+} = require('../services/productTextService');
 
 // Review schema definition
 const reviewSchema = mongoose.Schema(
@@ -13,6 +19,20 @@ const reviewSchema = mongoose.Schema(
 // Product schema definition
 const productSchema = mongoose.Schema(
     {
+        name: {
+            type: String,
+            trim: true,
+            default: '',
+            maxlength: [PRODUCT_NAME_MAX_LENGTH, `Product name cannot exceed ${PRODUCT_NAME_MAX_LENGTH} characters`],
+            set: sanitizeProductName,
+        },
+        description: {
+            type: String,
+            trim: true,
+            default: '',
+            maxlength: [PRODUCT_DESCRIPTION_MAX_LENGTH, `Description cannot exceed ${PRODUCT_DESCRIPTION_MAX_LENGTH} characters`],
+            set: sanitizeProductDescription,
+        },
         price: { type: Number, required: true },
         discountedPrice: { type: Number, default: 0 },
         currency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD', index: true },

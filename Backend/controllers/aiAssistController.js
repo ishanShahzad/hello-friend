@@ -13,6 +13,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const AI_MODEL = process.env.AI_MODEL || 'google/gemini-2.5-flash';
 const SITE_URL = process.env.FRONTEND_URL || 'https://www.rozare.com';
+const { sanitizeProductDescription } = require('../services/productTextService');
 
 async function callAI(messages, { json = false } = {}) {
   if (!OPENROUTER_API_KEY) {
@@ -59,12 +60,17 @@ exports.improveDescription = async (req, res) => {
           'You are an expert e-commerce copywriter. Rewrite product descriptions so they are clear, compelling, scannable and conversion-focused. Keep them honest and concise (90-160 words). Use short paragraphs or 3-5 bullet points where helpful. Do NOT invent specs that were not provided. Return ONLY the improved description text — no headings, no preface, no quotes.',
       },
       {
+        role: 'system',
+        content:
+          'Important formatting rule: output plain text only. Do not use markdown, asterisks, stars, bold text, bullet markers, numbered lists, headings, prefaces, or quotes.',
+      },
+      {
         role: 'user',
         content: `Improve this product description.\n\nProduct name: ${name}\nBrand: ${brand}\nCategory: ${category}\n\nOriginal description:\n"""${description}"""`,
       },
     ];
 
-    const improved = (await callAI(messages)).trim().replace(/^["']|["']$/g, '');
+    const improved = sanitizeProductDescription((await callAI(messages)).trim().replace(/^["']|["']$/g, ''));
     res.json({ description: improved });
   } catch (e) {
     console.error('improveDescription error:', e);

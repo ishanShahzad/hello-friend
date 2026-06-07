@@ -15,6 +15,7 @@ const {
     getProductEffectivePrice,
 } = require('../services/productPricingService')
 const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService')
+const { sanitizeProductPayload } = require('../services/productTextService')
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
@@ -727,7 +728,15 @@ exports.editProduct = async (req, res) => {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
-        let safeProduct = await applyProductCurrencyMetadata({ ...product }, req.user?.currency || 'USD');
+        const sanitizedProduct = sanitizeProductPayload({ ...product });
+        if (Object.prototype.hasOwnProperty.call(sanitizedProduct, 'name') && !sanitizedProduct.name) {
+            return res.status(400).json({ msg: 'Product name is required.' });
+        }
+        if (Object.prototype.hasOwnProperty.call(sanitizedProduct, 'description') && !sanitizedProduct.description) {
+            return res.status(400).json({ msg: 'Product description is required.' });
+        }
+
+        let safeProduct = await applyProductCurrencyMetadata(sanitizedProduct, req.user?.currency || 'USD');
         if (
             safeProduct.price !== undefined &&
             existingProduct.discountedPrice > 0 &&
@@ -811,16 +820,24 @@ exports.addProduct = async (req, res) => {
             }
         }
 
+        const sanitizedProduct = sanitizeProductPayload({ ...product });
+        if (!sanitizedProduct.name) {
+            return res.status(400).json({ msg: 'Product name is required.' });
+        }
+        if (!sanitizedProduct.description) {
+            return res.status(400).json({ msg: 'Product description is required.' });
+        }
+
         // Gate: enforce featured product limits based on subscription tier.
         const productCurrencyState = role === 'seller'
             ? await assertProductCreationAllowed(userId)
             : null;
         const productEntryCurrency = productCurrencyState?.activeCurrency || req.user?.currency || 'USD';
         let safeProduct = await applyProductCurrencyMetadata({
-            ...product,
+            ...sanitizedProduct,
             currency: productEntryCurrency,
-            priceCurrency: product?.priceCurrency || product?.currency || productEntryCurrency,
-            discountedPriceCurrency: product?.discountedPriceCurrency || product?.discountedCurrency || product?.currency || productEntryCurrency,
+            priceCurrency: sanitizedProduct?.priceCurrency || sanitizedProduct?.currency || productEntryCurrency,
+            discountedPriceCurrency: sanitizedProduct?.discountedPriceCurrency || sanitizedProduct?.discountedCurrency || sanitizedProduct?.currency || productEntryCurrency,
         }, productEntryCurrency);
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);

@@ -52,6 +52,10 @@ const {
 } = require('./productPricingService');
 const { normalizeSocialLinks } = require('./socialLinksService');
 const { assertProductCreationAllowed } = require('./storeProductCurrencyService');
+const {
+  sanitizeProductName,
+  sanitizeProductDescription,
+} = require('./productTextService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -2183,12 +2187,13 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         const p = args.product || args;
-        const name = cleanAIField(p.name, { maxLength: 140 });
+        const name = sanitizeProductName(cleanAIField(p.name, { maxLength: 140 }));
         const category = cleanAIField(p.category, { maxLength: 80 });
         const brand = cleanAIField(p.brand, { maxLength: 80 });
-        const description = cleanAIParagraph(p.description) || name;
+        const description = sanitizeProductDescription(cleanAIParagraph(p.description) || name);
         const missing = [];
         if (!name) missing.push('name');
+        if (!description) missing.push('description');
         if (!p.price && p.price !== 0) missing.push('price');
         if (!category) missing.push('category');
         if (!brand) missing.push('brand');
@@ -2454,8 +2459,12 @@ async function executeToolCall(toolName, args = {}, user) {
           }
         }
         if (updates.description !== undefined) {
-          updates.description = cleanAIParagraph(updates.description);
+          updates.description = sanitizeProductDescription(cleanAIParagraph(updates.description));
           if (!updates.description) return { success: false, error: 'description cannot be empty.' };
+        }
+        if (updates.name !== undefined) {
+          updates.name = sanitizeProductName(updates.name);
+          if (!updates.name) return { success: false, error: 'name cannot be empty.' };
         }
         for (const numericField of ['price', 'discountedPrice', 'stock']) {
           if (updates[numericField] !== undefined) {
