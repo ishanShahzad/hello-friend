@@ -270,6 +270,27 @@ function parseMoneyInput(value, fallbackCurrency = 'USD') {
   };
 }
 
+async function formatMoneyWithCode(amount, currency) {
+  const normalizedCurrency = normalizeCurrency(currency);
+  const formatted = await formatMoney(amount, normalizedCurrency, { sourceCurrency: normalizedCurrency });
+  return formatted.includes(normalizedCurrency) ? formatted : `${formatted} ${normalizedCurrency}`;
+}
+
+async function buildProductCurrencyConversionNotice({
+  sourceAmount,
+  sourceCurrency,
+  savedAmount,
+  productCurrency,
+} = {}) {
+  const fromCurrency = normalizeCurrency(sourceCurrency);
+  const toCurrency = normalizeCurrency(productCurrency);
+  if (fromCurrency === toCurrency) return '';
+
+  const sourceText = await formatMoneyWithCode(sourceAmount, fromCurrency);
+  const savedText = await formatMoneyWithCode(savedAmount, toCurrency);
+  return `Your selected product currency is ${toCurrency}, so I can't save this product in ${fromCurrency}. I converted ${sourceText} to ${savedText} and saved that as the product price. `;
+}
+
 const COMMON_COLOR_WORDS = new Set([
   'black', 'white', 'red', 'yellow', 'blue', 'green', 'orange', 'purple',
   'pink', 'brown', 'gray', 'grey', 'silver', 'gold', 'golden', 'navy',
@@ -2290,6 +2311,12 @@ async function executeToolCall(toolName, args = {}, user) {
         if (isProductBlocked(product)) {
           await notifyProductBlocked({ sellerId: targetSellerId, product });
         }
+        const conversionNotice = await buildProductCurrencyConversionNotice({
+          sourceAmount: rawPrice,
+          sourceCurrency: priceInput.currency,
+          savedAmount: product.price,
+          productCurrency: productEntryCurrency,
+        });
 
         return {
           success: true,
@@ -2321,7 +2348,7 @@ async function executeToolCall(toolName, args = {}, user) {
           },
           message: isProductBlocked(product)
             ? `Product "${product.name}" was saved to your Products tab, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until you edit it with real product details.`
-            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, productEntryCurrency, { sourceCurrency: productEntryCurrency })}!`,
+            : `${conversionNotice}Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoneyWithCode(product.price, productEntryCurrency)}!`,
         };
       }
 
@@ -4177,5 +4204,6 @@ module.exports = {
   __private: {
     detectExplicitCurrencyInText,
     resolveAIPriceCurrency,
+    buildProductCurrencyConversionNotice,
   },
 };

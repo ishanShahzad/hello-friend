@@ -209,12 +209,15 @@ exports.addProduct = async (req, res) => {
         if (isProductBlocked(newProduct)) {
             await notifyProductBlocked({ sellerId: newProduct.seller, product: newProduct });
         }
+        const convertedPriceNotice = inputCurrency !== sellerCurrency
+            ? ` Your selected product currency is ${sellerCurrency}, so I converted the ${inputCurrency} price to ${sellerCurrency} before saving.`
+            : '';
         res.json({
             msg: isProductBlocked(newProduct)
                 ? `Product added, but it was blocked because ${newProduct.blockedReason || newProduct.moderationReason}.`
-                : 'Product added successfully',
+                : `Product added successfully.${convertedPriceNotice}`,
             blocked: isProductBlocked(newProduct),
-            product: { _id: newProduct._id, name: newProduct.name, price: newProduct.price, blocked: isProductBlocked(newProduct), moderationReason: newProduct.moderationReason },
+            product: { _id: newProduct._id, name: newProduct.name, price: newProduct.price, currency: newProduct.currency, priceCurrency: newProduct.priceCurrency, blocked: isProductBlocked(newProduct), moderationReason: newProduct.moderationReason },
         });
     } catch (error) {
         console.error('AI add product error:', error);

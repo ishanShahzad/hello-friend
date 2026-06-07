@@ -35,3 +35,28 @@ describe('aiActionExecutor currency resolution', () => {
     })).toBe('EUR');
   });
 });
+
+describe('aiActionExecutor product currency conversion notice', () => {
+  test('explains when an explicit price currency is converted to store product currency', async () => {
+    const notice = await __private.buildProductCurrencyConversionNotice({
+      sourceAmount: 10,
+      sourceCurrency: 'USD',
+      savedAmount: 2846,
+      productCurrency: 'PKR',
+    });
+
+    expect(notice).toContain('Your selected product currency is PKR');
+    expect(notice).toContain("can't save this product in USD");
+    expect(notice).toContain('converted');
+    expect(notice).toContain('saved that as the product price');
+  });
+
+  test('does not add a conversion notice when input already matches product currency', async () => {
+    await expect(__private.buildProductCurrencyConversionNotice({
+      sourceAmount: 1000,
+      sourceCurrency: 'PKR',
+      savedAmount: 1000,
+      productCurrency: 'PKR',
+    })).resolves.toBe('');
+  });
+});
