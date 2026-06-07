@@ -15,21 +15,18 @@ import {
 } from 'recharts';
 
 const AdminAnalytics = () => {
-    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
+    const { formatPrice, currency } = useCurrency();
     const [timeRange, setTimeRange] = useState('30');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [analytics, setAnalytics] = useState(null);
-
-    const rate = exchangeRates[currency] || 1;
-    const symbol = getCurrencySymbol();
 
     const fetchAnalytics = async () => {
         setLoading(true);
         setError(null);
         const token = getAuthToken();
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/admin?days=${timeRange}`, {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/admin?days=${timeRange}&currency=${currency}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAnalytics(res.data.analytics);
@@ -43,7 +40,7 @@ const AdminAnalytics = () => {
         }
     };
 
-    useEffect(() => { fetchAnalytics(); }, [timeRange]);
+    useEffect(() => { fetchAnalytics(); }, [timeRange, currency]);
 
     const ROLE_COLORS = ['hsl(220,70%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)'];
     const STATUS_COLORS = ['hsl(30,90%,50%)', 'hsl(220,70%,55%)', 'hsl(200,80%,50%)', 'hsl(150,60%,45%)', 'hsl(0,72%,55%)', 'hsl(340,65%,55%)'];
@@ -54,9 +51,9 @@ const AdminAnalytics = () => {
         return analytics.revenueByDay.map(b => ({
             ...b,
             label: new Date(b.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-            revenue: Math.round(b.revenue * rate * 100) / 100,
+            revenue: Math.round(b.revenue * 100) / 100,
         }));
-    }, [analytics, rate]);
+    }, [analytics]);
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (!active || !payload?.length) return null;
@@ -65,7 +62,7 @@ const AdminAnalytics = () => {
                 <p className="text-xs font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
                 {payload.map((p, i) => (
                     <p key={i} className="text-xs" style={{ color: p.color }}>
-                        {p.name}: {p.name === 'revenue' ? `${symbol}${p.value}` : p.value}
+                        {p.name}: {p.name === 'revenue' ? formatPrice(p.value, { sourceCurrency: analytics?.currency || currency }) : p.value}
                     </p>
                 ))}
             </div>
@@ -108,14 +105,16 @@ const AdminAnalytics = () => {
     if (!analytics) return null;
 
     const s = analytics.summary;
+    const analyticsCurrency = analytics.currency || currency;
+    const money = (amount) => formatPrice(amount || 0, { sourceCurrency: analyticsCurrency });
 
     const summaryStats = [
-        { label: 'Total Revenue', value: `${symbol}${(s.totalRevenue * rate).toFixed(2)}`, icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)', change: `${s.revenueChange >= 0 ? '+' : ''}${s.revenueChange}%`, up: s.revenueChange >= 0 },
+        { label: 'Total Revenue', value: money(s.totalRevenue), icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)', change: `${s.revenueChange >= 0 ? '+' : ''}${s.revenueChange}%`, up: s.revenueChange >= 0 },
         { label: 'Total Orders', value: s.totalOrders, icon: <ShoppingBag size={20} />, color: 'hsl(220,70%,55%)', bg: 'rgba(99,102,241,0.12)', change: `${s.ordersChange >= 0 ? '+' : ''}${s.ordersChange}%`, up: s.ordersChange >= 0 },
         { label: 'Total Stores', value: s.totalStores, icon: <Store size={20} />, color: 'hsl(200,80%,50%)', bg: 'rgba(14,165,233,0.12)', change: `${s.verifiedStores} verified`, up: true },
         { label: 'Total Users', value: s.totalUsers, icon: <Users size={20} />, color: 'hsl(280,60%,55%)', bg: 'rgba(139,92,246,0.12)', change: `${s.totalSellers} sellers`, up: true },
         { label: 'Products', value: s.totalProducts, icon: <Package size={20} />, color: 'hsl(30,90%,50%)', bg: 'rgba(249,115,22,0.12)', change: `${s.outOfStock} out of stock`, up: s.outOfStock === 0 },
-        { label: 'Avg Order Value', value: `${symbol}${(s.avgOrderValue * rate).toFixed(2)}`, icon: <TrendingUp size={20} />, color: 'hsl(340,65%,55%)', bg: 'rgba(244,63,94,0.12)', change: `${s.avgChange >= 0 ? '+' : ''}${s.avgChange}%`, up: s.avgChange >= 0 },
+        { label: 'Avg Order Value', value: money(s.avgOrderValue), icon: <TrendingUp size={20} />, color: 'hsl(340,65%,55%)', bg: 'rgba(244,63,94,0.12)', change: `${s.avgChange >= 0 ? '+' : ''}${s.avgChange}%`, up: s.avgChange >= 0 },
     ];
 
     return (
@@ -187,7 +186,7 @@ const AdminAnalytics = () => {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                             <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                            <YAxis tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
+                            <YAxis tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} tickFormatter={v => formatPrice(v, { sourceCurrency: analyticsCurrency, decimals: 0 })} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area type="monotone" dataKey="revenue" stroke="hsl(150,60%,45%)" strokeWidth={2.5} fill="url(#adminRevGrad)" />
                         </AreaChart>
@@ -272,7 +271,7 @@ const AdminAnalytics = () => {
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</p>
                                     <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        {symbol}{(p.revenue * rate).toFixed(2)} · {p.sold} sold
+                                        {money(p.revenue)} · {p.sold} sold
                                     </p>
                                 </div>
                             </div>
@@ -389,7 +388,7 @@ const AdminAnalytics = () => {
                                             {store.verified && <CheckCircle size={12} style={{ color: 'hsl(150,60%,45%)' }} />}
                                         </div>
                                         <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                            {store.revenue > 0 ? `${symbol}${(store.revenue * rate).toFixed(2)} revenue · ` : ''}{store.trustCount} trusts · {store.productCount} products
+                                            {store.revenue > 0 ? `${money(store.revenue)} revenue · ` : ''}{store.trustCount} trusts · {store.productCount} products
                                         </p>
                                     </div>
                                 </motion.div>

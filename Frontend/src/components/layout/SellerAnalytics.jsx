@@ -16,19 +16,16 @@ import {
 
 const SellerAnalytics = () => {
     const { products: localProducts, orders: localOrders } = useOutletContext();
-    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
+    const { formatPrice, currency, convertAmount } = useCurrency();
     const [timeRange, setTimeRange] = useState('30');
     const [loading, setLoading] = useState(true);
     const [analytics, setAnalytics] = useState(null);
-
-    const rate = exchangeRates[currency] || 1;
-    const symbol = getCurrencySymbol();
 
     const fetchAnalytics = async () => {
         setLoading(true);
         const token = getAuthToken();
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/seller?days=${timeRange}`, {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/analytics/seller?days=${timeRange}&currency=${currency}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAnalytics(res.data.analytics);
@@ -67,7 +64,9 @@ const SellerAnalytics = () => {
             const key = new Date(o.createdAt).toISOString().slice(0, 10);
             if (dayBuckets[key]) {
                 dayBuckets[key].orders++;
-                if (o.isPaid) dayBuckets[key].revenue += (o.orderSummary?.totalAmount || 0);
+                if (o.isPaid) {
+                    dayBuckets[key].revenue += convertAmount(o.orderSummary?.totalAmount || 0, o.currency || 'USD', currency);
+                }
             }
         });
 
@@ -77,7 +76,7 @@ const SellerAnalytics = () => {
             o.orderItems?.forEach(item => {
                 const id = item.productId;
                 if (!productMap[id]) productMap[id] = { name: item.name, image: item.image, revenue: 0, sold: 0 };
-                productMap[id].revenue += item.price * item.quantity;
+                productMap[id].revenue += convertAmount(item.price * item.quantity, o.currency || 'USD', currency);
                 productMap[id].sold += item.quantity;
             });
         });
@@ -88,11 +87,14 @@ const SellerAnalytics = () => {
             catMap[p.category].count++;
         });
 
-        const totalRevenue = orders.reduce((s, o) => o.isPaid ? s + (o.orderSummary?.totalAmount || 0) : s, 0);
+        const totalRevenue = orders.reduce((s, o) => (
+            o.isPaid ? s + convertAmount(o.orderSummary?.totalAmount || 0, o.currency || 'USD', currency) : s
+        ), 0);
         const paidOrders = orders.filter(o => o.isPaid).length;
         const totalUnitsSold = orders.reduce((s, o) => o.isPaid ? s + o.orderItems.reduce((a, i) => a + i.quantity, 0) : s, 0);
 
         setAnalytics({
+            currency,
             revenueByDay: Object.values(dayBuckets),
             topProducts: Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
             categoryBreakdown: Object.values(catMap).sort((a, b) => b.count - a.count),
@@ -106,7 +108,7 @@ const SellerAnalytics = () => {
         });
     };
 
-    useEffect(() => { fetchAnalytics(); }, [timeRange]);
+    useEffect(() => { fetchAnalytics(); }, [timeRange, currency]);
 
     const STATUS_COLORS = ['hsl(30,90%,50%)', 'hsl(220,70%,55%)', 'hsl(200,80%,50%)', 'hsl(150,60%,45%)', 'hsl(0,72%,55%)'];
     const CAT_COLORS = ['hsl(220,70%,55%)', 'hsl(150,60%,45%)', 'hsl(200,80%,50%)', 'hsl(280,60%,55%)', 'hsl(30,90%,50%)', 'hsl(340,65%,55%)'];
@@ -116,9 +118,9 @@ const SellerAnalytics = () => {
         return analytics.revenueByDay.map(b => ({
             ...b,
             label: new Date(b.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-            revenue: Math.round(b.revenue * rate * 100) / 100,
+            revenue: Math.round(b.revenue * 100) / 100,
         }));
-    }, [analytics, rate]);
+    }, [analytics]);
 
     const statusData = useMemo(() => {
         const counts = { pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
@@ -133,7 +135,7 @@ const SellerAnalytics = () => {
                 <p className="text-xs font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
                 {payload.map((p, i) => (
                     <p key={i} className="text-xs" style={{ color: p.color }}>
-                        {p.name}: {p.name === 'revenue' ? `${symbol}${p.value}` : p.value}
+                        {p.name}: {p.name === 'revenue' ? formatPrice(p.value, { sourceCurrency: analytics?.currency || currency }) : p.value}
                     </p>
                 ))}
             </div>
@@ -157,11 +159,13 @@ const SellerAnalytics = () => {
     if (!analytics) return null;
 
     const s = analytics.summary;
+    const analyticsCurrency = analytics.currency || currency;
+    const money = (amount) => formatPrice(amount || 0, { sourceCurrency: analyticsCurrency });
 
     const summaryStats = [
-        { label: 'Total Revenue', value: `${symbol}${(s.totalRevenue * rate).toFixed(2)}`, icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)' },
+        { label: 'Total Revenue', value: money(s.totalRevenue), icon: <DollarSign size={20} />, color: 'hsl(150,60%,45%)', bg: 'rgba(16,185,129,0.12)' },
         { label: 'Paid Orders', value: s.paidOrders, icon: <ShoppingBag size={20} />, color: 'hsl(220,70%,55%)', bg: 'rgba(99,102,241,0.12)' },
-        { label: 'Avg Order Value', value: `${symbol}${(s.avgOrderValue * rate).toFixed(2)}`, icon: <TrendingUp size={20} />, color: 'hsl(200,80%,50%)', bg: 'rgba(14,165,233,0.12)' },
+        { label: 'Avg Order Value', value: money(s.avgOrderValue), icon: <TrendingUp size={20} />, color: 'hsl(200,80%,50%)', bg: 'rgba(14,165,233,0.12)' },
         { label: 'Units Sold', value: s.totalUnitsSold, icon: <Package size={20} />, color: 'hsl(280,60%,55%)', bg: 'rgba(139,92,246,0.12)' },
     ];
 
@@ -231,7 +235,7 @@ const SellerAnalytics = () => {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                             <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                            <YAxis tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
+                            <YAxis tick={{ fontSize: 11, fill: 'hsl(220,10%,50%)' }} axisLine={false} tickLine={false} tickFormatter={v => formatPrice(v, { sourceCurrency: analyticsCurrency, decimals: 0 })} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area type="monotone" dataKey="revenue" stroke="hsl(150,60%,45%)" strokeWidth={2.5} fill="url(#revGrad)" />
                         </AreaChart>
@@ -327,7 +331,7 @@ const SellerAnalytics = () => {
                                         <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</p>
                                         <p className="text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{p.sold} units sold</p>
                                     </div>
-                                    <p className="text-sm font-bold shrink-0" style={{ color: 'hsl(150,60%,45%)' }}>{symbol}{(p.revenue * rate).toFixed(2)}</p>
+                                    <p className="text-sm font-bold shrink-0" style={{ color: 'hsl(150,60%,45%)' }}>{money(p.revenue)}</p>
                                 </motion.div>
                             ))}
                         </div>

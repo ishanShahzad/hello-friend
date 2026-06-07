@@ -34,39 +34,38 @@ const cartSchema = mongoose.Schema({
     totalCartPrice: {
         type: Number,
         default: 0,
-    }
+    },
+    totalCartCurrency: {
+        type: String,
+        enum: ['USD', 'PKR', 'EUR', 'GBP'],
+        default: 'USD',
+    },
 })
 
 
 
-// To Recalculate totalCartPrice (always in USD, using live FX on seller's original currency)
-const { convertToUSDSync, normalizeCurrency } = require('../services/currencyService')
-
+// To Recalculate totalCartPrice
 cartSchema.pre('save', async function (next) {
     try {
+        const User = require('./User');
+        const { normalizeCurrency, convertAmount } = require('../services/currencyService');
+        const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
 
         await this.populate('cartItems.product')
+        const user = await User.findById(this.user).select('currency').lean();
+        const targetCurrency = normalizeCurrency(user?.currency || this.totalCartCurrency || 'USD');
 
-        const subtotal = this.cartItems.reduce((acc, item) => {
-            const product = item.product
-            if (!product) return acc
+        let subtotal = 0;
+        for (const item of this.cartItems) {
+            const product = item.product;
+            if (!product) continue;
 
-            const currency = normalizeCurrency(product.priceCurrency || 'USD')
-            const baseOriginal = (product.priceOriginal != null && product.priceOriginal !== '')
-                ? Number(product.priceOriginal)
-                : Number(product.price)
-            const discOriginal = (product.discountedPriceOriginal != null && product.discountedPriceOriginal !== '')
-                ? Number(product.discountedPriceOriginal)
-                : Number(product.discountedPrice)
+            const price = getProductEffectivePrice(product) * (Number(item.qty) || 1);
+            subtotal += await convertAmount(price, getProductCurrency(product, targetCurrency), targetCurrency);
+        }
 
-            const baseUSD = Number.isFinite(baseOriginal) ? convertToUSDSync(baseOriginal, currency) : 0
-            const discUSD = Number.isFinite(discOriginal) && discOriginal > 0 ? convertToUSDSync(discOriginal, currency) : 0
-
-            const lineUnit = discUSD > 0 ? discUSD : baseUSD
-            return acc + lineUnit * item.qty
-        }, 0)
-
-        this.totalCartPrice = Number(subtotal.toFixed(2))
+        this.totalCartPrice = Math.round(subtotal * 100) / 100
+        this.totalCartCurrency = targetCurrency
 
         next()
     } catch (err) {

@@ -24,6 +24,12 @@ const couponSchema = mongoose.Schema(
             required: true,
             min: 0,
         },
+        currency: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: 'USD',
+        },
         // Which products: 'all' = all seller products, 'selected' = specific products
         applicableTo: {
             type: String,

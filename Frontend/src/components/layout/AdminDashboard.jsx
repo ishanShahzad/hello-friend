@@ -656,7 +656,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen
 // Product Form (Glass Design)
 // ============================
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) => {
-    const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
+    const { currency, convertAmount, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
 
@@ -676,6 +676,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
     const handleRemoveImage = (indexToRemove) => setProduct({ ...product, images: product.images.filter((_, index) => index !== indexToRemove) });
     const handleSetMainImage = (url) => setProduct({ ...product, image: url });
     const handleSubmit = (e) => { e.preventDefault(); onSave(); };
+    const editingCurrency = product.currency || product.priceCurrency || currency;
+    const displayAmount = (amount) => amount ? convertAmount(amount, editingCurrency, currency).toFixed(2) : '';
 
     const inputClass = "glass-input w-full";
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
@@ -699,7 +701,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                             {product._id ? 'Update product details below' : 'Fill in the details to create a new product'}
                         </p>
                     </div>
-                    <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} 
+                    <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose}
                         className="p-2.5 rounded-xl transition-colors" style={{ background: 'rgba(0,0,0,0.05)', color: 'hsl(var(--muted-foreground))' }}>
                         <X size={20} />
                     </motion.button>
@@ -738,8 +740,17 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={convertPrice(product.price).toFixed(2)}
-                                    onChange={(e) => setProduct({ ...product, price: convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    value={displayAmount(product.price)}
+                                    onChange={(e) => {
+                                        const inputAmount = e.target.value === '' ? '' : parseFloat(e.target.value) || 0;
+                                        setProduct({
+                                            ...product,
+                                            price: inputAmount,
+                                            currency,
+                                            priceCurrency: currency,
+                                            priceInputAmount: inputAmount === '' ? null : inputAmount,
+                                        });
+                                    }}
                                     className={`${inputClass} pl-10`} placeholder={`Enter price in ${currency}`} />
                             </div>
                         </div>
@@ -750,8 +761,18 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages }) 
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
-                                    value={product.discountedPrice ? convertPrice(product.discountedPrice).toFixed(2) : ''}
-                                    onChange={(e) => setProduct({ ...product, discountedPrice: convertToUSD(parseFloat(e.target.value) || 0) })}
+                                    value={displayAmount(product.discountedPrice)}
+                                    onChange={(e) => {
+                                        const inputAmount = parseFloat(e.target.value) || 0;
+                                        setProduct({
+                                            ...product,
+                                            currency,
+                                            priceCurrency: currency,
+                                            discountedPrice: inputAmount,
+                                            discountedPriceCurrency: currency,
+                                            discountedPriceInputAmount: inputAmount,
+                                        });
+                                    }}
                                     className={`${inputClass} pl-10`} placeholder={`Discounted price (optional)`} />
                             </div>
                         </div>

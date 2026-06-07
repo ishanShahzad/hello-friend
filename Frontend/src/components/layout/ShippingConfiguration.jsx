@@ -8,16 +8,29 @@ import Loader from '../common/Loader';
 import { getAuthToken } from "../../utils/cookieHelper";
 
 export default function ShippingConfiguration() {
-  const { currency, convertPrice, convertToUSD, getCurrencySymbol } = useCurrency();
+  const { currency, convertAmount, formatPrice, getCurrencySymbol } = useCurrency();
   const [methods, setMethods] = useState([
-    { type: 'free', cost: 0, deliveryDays: 5, isActive: true },
-    { type: 'standard', cost: 5.99, deliveryDays: 5, isActive: false },
-    { type: 'fast', cost: 12.99, deliveryDays: 2, isActive: false }
+    { type: 'free', cost: 0, currency, costCurrency: currency, costInputAmount: 0, deliveryDays: 5, isActive: true },
+    { type: 'standard', cost: 5.99, currency, costCurrency: currency, costInputAmount: 5.99, deliveryDays: 5, isActive: false },
+    { type: 'fast', cost: 12.99, currency, costCurrency: currency, costInputAmount: 12.99, deliveryDays: 2, isActive: false }
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => { fetchShippingMethods(); }, []);
+
+  const methodCurrency = (method) => method?.currency || method?.costCurrency || currency;
+  const methodCostInCurrentCurrency = (method) => convertAmount(method?.cost || 0, methodCurrency(method), currency);
+  const normalizeMethodForCurrentCurrency = (method) => {
+    const cost = method.type === 'free' ? 0 : methodCostInCurrentCurrency(method);
+    return {
+      ...method,
+      cost,
+      currency,
+      costCurrency: currency,
+      costInputAmount: cost,
+    };
+  };
 
   const fetchShippingMethods = async () => {
     try {
@@ -28,7 +41,14 @@ export default function ShippingConfiguration() {
       const userId = user._id || user.id;
       if (!userId) { toast.error('Invalid user data.'); setIsLoading(false); return; }
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/shipping/seller/${userId}`);
-      if (res.data.success && res.data.shippingMethods.methods.length > 0) setMethods(res.data.shippingMethods.methods);
+      if (res.data.success && res.data.shippingMethods.methods.length > 0) {
+        setMethods(res.data.shippingMethods.methods.map(method => ({
+          ...method,
+          currency: method.currency || method.costCurrency || currency,
+          costCurrency: method.costCurrency || method.currency || currency,
+          costInputAmount: method.costInputAmount ?? method.cost,
+        })));
+      }
     } catch (error) { console.error('Error fetching shipping methods:', error); toast.error('Failed to load shipping methods'); }
     finally { setIsLoading(false); }
   };
@@ -37,6 +57,10 @@ export default function ShippingConfiguration() {
     setMethods(methods.map(method => {
       if (method.type === type) {
         if (type === 'free' && field === 'cost') return method;
+        if (field === 'cost') {
+          const cost = parseFloat(value) || 0;
+          return { ...method, cost, currency, costCurrency: currency, costInputAmount: cost };
+        }
         return { ...method, [field]: value };
       }
       return method;
@@ -48,16 +72,21 @@ export default function ShippingConfiguration() {
     if (activeMethodsCount === 0) { toast.error('At least one shipping method must be active'); return; }
     for (const method of methods) {
       if (method.isActive) {
-        if (method.type === 'free' && method.cost !== 0) { toast.error('Free shipping must have 0 cost'); return; }
-        if (method.type !== 'free' && method.cost <= 0) { toast.error('Paid shipping must have cost > 0'); return; }
+        const currentCost = method.type === 'free' ? 0 : methodCostInCurrentCurrency(method);
+        if (method.type === 'free' && currentCost !== 0) { toast.error('Free shipping must have 0 cost'); return; }
+        if (method.type !== 'free' && currentCost <= 0) { toast.error('Paid shipping must have cost > 0'); return; }
         if (method.deliveryDays < 1) { toast.error('Delivery days must be at least 1'); return; }
       }
     }
     setIsSaving(true);
     try {
       const token = getAuthToken();
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}api/shipping/methods`, { methods }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data.success) toast.success('Shipping methods updated successfully');
+      const methodsToSave = methods.map(normalizeMethodForCurrentCurrency);
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}api/shipping/methods`, { methods: methodsToSave, currency }, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) {
+        if (res.data.shippingMethods?.methods) setMethods(res.data.shippingMethods.methods);
+        toast.success('Shipping methods updated successfully');
+      }
     } catch (error) { toast.error(error.response?.data?.msg || 'Failed to update'); }
     finally { setIsSaving(false); }
   };
@@ -124,8 +153,8 @@ export default function ShippingConfiguration() {
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                     <input type="number" min="0" step="0.01"
-                      value={method.type === 'free' ? 0 : convertPrice(method.cost).toFixed(2)}
-                      onChange={(e) => { const c = parseFloat(e.target.value) || 0; handleMethodChange(method.type, 'cost', convertToUSD(c)); }}
+                      value={method.type === 'free' ? 0 : methodCostInCurrentCurrency(method).toFixed(2)}
+                      onChange={(e) => handleMethodChange(method.type, 'cost', e.target.value)}
                       disabled={!method.isActive || method.type === 'free'}
                       className="glass-input pl-9 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="0.00" />
                   </div>
@@ -147,7 +176,7 @@ export default function ShippingConfiguration() {
                   <div className="mt-4 glass-inner rounded-xl p-3">
                     <p className="text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Preview:</p>
                     <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                      {getCurrencySymbol()}{convertPrice(method.cost).toFixed(2)} · {method.deliveryDays} {method.deliveryDays === 1 ? 'day' : 'days'}
+                      {formatPrice(method.cost, { sourceCurrency: methodCurrency(method) })} · {method.deliveryDays} {method.deliveryDays === 1 ? 'day' : 'days'}
                     </p>
                   </div>
                 )}

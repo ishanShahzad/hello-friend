@@ -15,8 +15,13 @@ export const useCurrency = () => {
 const CURRENCIES = {
   USD: { symbol: '$', name: 'US Dollar', code: 'USD', position: 'before' },
   PKR: { symbol: 'Rs', name: 'Pakistani Rupee', code: 'PKR', position: 'before' },
-  EUR: { symbol: '€', name: 'Euro', code: 'EUR', position: 'before' },
-  GBP: { symbol: '£', name: 'British Pound', code: 'GBP', position: 'before' }
+  EUR: { symbol: 'EUR', name: 'Euro', code: 'EUR', position: 'before' },
+  GBP: { symbol: 'GBP', name: 'British Pound', code: 'GBP', position: 'before' },
+};
+
+const normalizeCurrency = (code) => {
+  const normalized = String(code || 'USD').trim().toUpperCase();
+  return CURRENCIES[normalized] ? normalized : 'USD';
 };
 
 export const CurrencyProvider = ({ children }) => {
@@ -24,7 +29,6 @@ export const CurrencyProvider = ({ children }) => {
   const [exchangeRates, setExchangeRates] = useState({ USD: 1, PKR: 284.6, EUR: 0.92, GBP: 0.79 });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Detect currency on mount
   useEffect(() => {
     detectAndSetCurrency();
     fetchExchangeRates();
@@ -37,11 +41,10 @@ export const CurrencyProvider = ({ children }) => {
       if (token) {
         try {
           const userRes = await axios.get(`${import.meta.env.VITE_API_URL}api/user/single`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
           });
           const accountCurrency = userRes.data?.user?.currency;
           if (accountCurrency && CURRENCIES[accountCurrency] && (accountCurrency !== 'USD' || savedCurrency)) {
-            console.log('Using account currency:', accountCurrency);
             setCurrency(accountCurrency);
             localStorage.setItem('userCurrency', accountCurrency);
             setIsLoading(false);
@@ -52,25 +55,22 @@ export const CurrencyProvider = ({ children }) => {
         }
       }
 
-      // Check if user has saved preference in localStorage
       if (savedCurrency && CURRENCIES[savedCurrency]) {
-        console.log('💰 Using saved currency:', savedCurrency);
         setCurrency(savedCurrency);
         setIsLoading(false);
         return;
       }
 
-      // Auto-detect from IP
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/currency/detect`);
       if (res.data.success && res.data.detected) {
-        console.log('🌍 Auto-detected currency:', res.data.currency, 'from', res.data.countryName);
-        setCurrency(res.data.currency);
-        localStorage.setItem('userCurrency', res.data.currency);
+        const detectedCurrency = normalizeCurrency(res.data.currency);
+        setCurrency(detectedCurrency);
+        localStorage.setItem('userCurrency', detectedCurrency);
         const token = getAuthToken();
-        if (token && CURRENCIES[res.data.currency]) {
+        if (token && CURRENCIES[detectedCurrency]) {
           axios.patch(
             `${import.meta.env.VITE_API_URL}api/currency/update`,
-            { currency: res.data.currency },
+            { currency: detectedCurrency },
             { headers: { Authorization: `Bearer ${token}` } }
           ).catch(() => {});
         }
@@ -86,174 +86,159 @@ export const CurrencyProvider = ({ children }) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}api/currency/rates`);
       if (res.data.success) {
-        console.log('💱 Exchange rates loaded:', res.data.rates);
-        console.log('💱 PKR rate:', res.data.rates.PKR);
         setExchangeRates(res.data.rates);
       } else {
-        console.warn('⚠️ Exchange rates API returned unsuccessful response');
+        console.warn('Exchange rates API returned unsuccessful response');
       }
     } catch (error) {
-      console.error('❌ Exchange rates fetch error:', error);
-      console.log('Using fallback rates');
+      console.error('Exchange rates fetch error:', error);
     }
   };
 
   const changeCurrency = async (newCurrency) => {
-    if (!CURRENCIES[newCurrency]) return;
-    
-    console.log('💰 Changing currency to:', newCurrency);
-    setCurrency(newCurrency);
-    localStorage.setItem('userCurrency', newCurrency);
+    const targetCurrency = normalizeCurrency(newCurrency);
+    if (!CURRENCIES[targetCurrency]) return;
 
-    // Update in database if user is logged in
+    setCurrency(targetCurrency);
+    localStorage.setItem('userCurrency', targetCurrency);
+
     const token = getAuthToken();
     if (token) {
       try {
         await axios.patch(
           `${import.meta.env.VITE_API_URL}api/currency/update`,
-          { currency: newCurrency },
+          { currency: targetCurrency },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        console.log('✅ Currency preference saved to account');
       } catch (error) {
         console.error('Failed to save currency preference:', error);
       }
     }
   };
 
-  // Convert price from USD to selected currency
-  const convertPrice = (priceInUSD) => {
-    if (!priceInUSD) return 0;
-    const rate = exchangeRates[currency] || 1;
-    return priceInUSD * rate;
+  const roundMoney = (amount) => Math.round((Number(amount) || 0) * 100) / 100;
+
+  const convertAmount = (amount, sourceCurrency = 'USD', targetCurrency = currency) => {
+    const value = Number(amount || 0);
+    if (!Number.isFinite(value)) return 0;
+    const from = normalizeCurrency(sourceCurrency);
+    const to = normalizeCurrency(targetCurrency);
+    if (from === to) return roundMoney(value);
+    const fromRate = Number(exchangeRates[from]) || 1;
+    const toRate = Number(exchangeRates[to]) || 1;
+    return roundMoney((value / fromRate) * toRate);
   };
 
-  // Format price with currency symbol
-  const formatPrice = (priceInUSD, options = {}) => {
-    const { 
-      showSymbol = true, 
+  const convertPrice = (price, sourceCurrency = 'USD') => {
+    return convertAmount(price, sourceCurrency, currency);
+  };
+
+  const formatPrice = (price, options = {}) => {
+    const {
+      showSymbol = true,
       decimals = 2,
-      showCode = false 
+      showCode = false,
+      sourceCurrency = 'USD',
+      targetCurrency = currency,
     } = options;
 
-    const convertedPrice = convertPrice(priceInUSD);
-    const currencyInfo = CURRENCIES[currency];
-    
+    const target = normalizeCurrency(targetCurrency);
+    const convertedPrice = convertAmount(price, sourceCurrency, target);
+    const currencyInfo = CURRENCIES[target];
+
     const formattedNumber = convertedPrice.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
+      maximumFractionDigits: decimals,
     });
 
     if (!showSymbol) return formattedNumber;
 
-    const symbol = currencyInfo.symbol;
-    const code = showCode ? ` ${currency}` : '';
-    
-    return `${symbol}${formattedNumber}${code}`;
+    const code = showCode ? ` ${target}` : '';
+    return `${currencyInfo.symbol}${formattedNumber}${code}`;
   };
 
-  // Convert price from selected currency back to USD (for API calls)
   const convertToUSD = (priceInCurrentCurrency) => {
-    if (!priceInCurrentCurrency) return 0;
-    const rate = exchangeRates[currency] || 1;
-    return priceInCurrentCurrency / rate;
+    return convertAmount(priceInCurrentCurrency, currency, 'USD');
   };
 
-  // Convert an amount from any source currency into the active display currency.
-  // Used when a value is already known to be in a specific currency
-  // (e.g. a product's `priceOriginal` in its `priceCurrency`).
   const convertFromCurrency = (amount, fromCurrency = 'USD') => {
-    if (!amount) return 0;
-    const from = CURRENCIES[fromCurrency] ? fromCurrency : 'USD';
-    const fromRate = exchangeRates[from] || 1;
-    const toRate = exchangeRates[currency] || 1;
-    const inUSD = amount / fromRate;
-    return inUSD * toRate;
+    return convertAmount(amount, fromCurrency, currency);
   };
 
-  // Returns the buyer-currency NUMBER for a product (no rounding drift).
-  // Uses seller's `priceOriginal` + `priceCurrency` when available:
-  //   - same currency  → verbatim
-  //   - other currency → direct conversion (avoids USD double-conversion drift)
-  // Falls back to USD-stored field converted to display currency.
-  const getProductPriceNumber = (product, field = 'price') => {
-    if (!product) return 0;
-    const originalField = field === 'discountedPrice' ? 'discountedPriceOriginal' : 'priceOriginal';
-    const productCurrency = product.priceCurrency && CURRENCIES[product.priceCurrency]
-      ? product.priceCurrency
-      : null;
-    const originalValue = product[originalField];
-
-    if (productCurrency && originalValue != null && originalValue !== '') {
-      const num = Number(originalValue);
-      if (Number.isFinite(num)) {
-        return productCurrency === currency ? num : convertFromCurrency(num, productCurrency);
-      }
-    }
-    const fallback = Number(product[field]);
-    return Number.isFinite(fallback) ? convertPrice(fallback) : 0;
-  };
-
-  // Format an arbitrary amount that is ALREADY in the buyer's display currency
-  // (no conversion). Use with values returned by getProductPriceNumber.
   const formatAmount = (amount, options = {}) => {
     const { showSymbol = true, decimals = 2, showCode = false } = options;
-    const value = Number(amount) || 0;
+    const value = Number(amount || 0);
     const formattedNumber = value.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
     if (!showSymbol) return formattedNumber;
-    const symbol = CURRENCIES[currency].symbol;
     const code = showCode ? ` ${currency}` : '';
-    return `${symbol}${formattedNumber}${code}`;
+    return `${CURRENCIES[currency].symbol}${formattedNumber}${code}`;
   };
 
-  // Format a product's price (drift-free) using getProductPriceNumber.
-  const formatProductPrice = (product, options = {}) => {
-    const { field = 'price', ...rest } = options;
-    return formatAmount(getProductPriceNumber(product, field), rest);
+  const getProductCurrency = (product) => normalizeCurrency(product?.currency || product?.priceCurrency || 'USD');
+
+  const getProductPriceNumber = (product, field = 'price') => {
+    if (!product) return 0;
+    const rawValue = Number(product[field]);
+    if (Number.isFinite(rawValue)) return convertAmount(rawValue, getProductCurrency(product), currency);
+
+    const legacyField = field === 'discountedPrice' ? 'discountedPriceOriginal' : 'priceOriginal';
+    const legacyValue = Number(product[legacyField]);
+    return Number.isFinite(legacyValue)
+      ? convertAmount(legacyValue, getProductCurrency(product), currency)
+      : 0;
   };
 
-  // Drift-free price NUMBER for an order item. Uses verbatim seller-entered
-  // `priceOriginal` + `priceCurrency` when available (set at order time) so
-  // viewing in the same currency shows the exact original (no USD round-trip).
-  const getOrderItemPriceNumber = (item) => {
+  const formatProductPrice = (product, amountOrOptions = undefined, maybeOptions = {}) => {
+    const hasExplicitAmount = typeof amountOrOptions === 'number' || typeof amountOrOptions === 'string';
+    const options = hasExplicitAmount ? maybeOptions : (amountOrOptions || {});
+    const field = options.field || 'price';
+    const amount = hasExplicitAmount ? amountOrOptions : undefined;
+    const value = amount === undefined
+      ? getProductPriceNumber(product, field)
+      : amount;
+    return amount === undefined
+      ? formatAmount(value, options)
+      : formatPrice(value, { ...options, sourceCurrency: getProductCurrency(product) });
+  };
+
+  const getOrderItemCurrency = (item, orderCurrency = 'USD') =>
+    normalizeCurrency(item?.currency || item?.orderCurrency || orderCurrency);
+
+  const getOrderItemPriceNumber = (item, orderCurrency = 'USD') => {
     if (!item) return 0;
-    const itemCurrency = item.priceCurrency && CURRENCIES[item.priceCurrency]
-      ? item.priceCurrency : null;
-    const orig = item.priceOriginal;
-    if (itemCurrency && orig != null && orig !== '') {
-      const num = Number(orig);
-      if (Number.isFinite(num)) {
-        return itemCurrency === currency ? num : convertFromCurrency(num, itemCurrency);
-      }
-    }
-    const fallback = Number(item.price);
-    return Number.isFinite(fallback) ? convertPrice(fallback) : 0;
+    const amount = Number(item.price);
+    if (Number.isFinite(amount)) return convertAmount(amount, getOrderItemCurrency(item, orderCurrency), currency);
+    const sourceAmount = Number(item.sourcePrice ?? item.priceOriginal);
+    const sourceCurrency = item.sourceCurrency || item.priceCurrency || orderCurrency;
+    return Number.isFinite(sourceAmount) ? convertAmount(sourceAmount, sourceCurrency, currency) : 0;
   };
 
   const formatOrderItemPrice = (item, options = {}) =>
-    formatAmount(getOrderItemPriceNumber(item), options);
+    formatAmount(getOrderItemPriceNumber(item, options.orderCurrency), options);
 
-  // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     currency,
     currencies: CURRENCIES,
     exchangeRates,
     isLoading,
     changeCurrency,
+    normalizeCurrency,
+    convertAmount,
     convertPrice,
     formatPrice,
     formatProductPrice,
     getProductPriceNumber,
+    formatAmount,
+    convertFromCurrency,
     getOrderItemPriceNumber,
     formatOrderItemPrice,
-    formatAmount,
+    getProductCurrency,
     convertToUSD,
-    convertFromCurrency,
     getCurrencySymbol: () => CURRENCIES[currency].symbol,
-    getCurrencyName: () => CURRENCIES[currency].name
+    getCurrencyName: () => CURRENCIES[currency].name,
   }), [currency, exchangeRates, isLoading]);
 
   return (

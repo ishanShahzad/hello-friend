@@ -4,14 +4,23 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { publicProductFilter } = require('../services/productModerationService');
-const { applyLivePricesUSD } = require('../services/currencyService');
+const { convertAmountSync } = require('../services/currencyService');
+const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
+const {
+    resolveRequestedCurrency,
+    convertOrderTotal,
+    roundMoney,
+} = require('../services/orderMoneyService');
+
+const comparablePriceUSD = (product) =>
+    convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
 
 // Get store data for subdomain
 exports.getSubdomainStore = async (req, res) => {
     try {
         // Check if store is blocked
         if (req.subdomainStoreBlocked) {
-            return res.status(403).json({ 
+            return res.status(403).json({
                 msg: 'Store temporarily unavailable',
                 blocked: true,
                 storeName: req.subdomainStoreName || 'This store',
@@ -77,11 +86,9 @@ exports.getSubdomainProducts = async (req, res) => {
 
         let products = await Product.find(query).sort({ createdAt: -1 });
 
-        // Live USD conversion + in-memory price filter
-        products = applyLivePricesUSD(products);
         if (priceMinUSD !== null || priceMaxUSD !== null) {
             products = products.filter((p) => {
-                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                const v = comparablePriceUSD(p);
                 if (priceMinUSD !== null && v < priceMinUSD) return false;
                 if (priceMaxUSD !== null && v > priceMaxUSD) return false;
                 return true;
@@ -127,7 +134,12 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
             isPaid: true
         });
 
-        const totalRevenue = orders.reduce((sum, o) => sum + (o.orderSummary?.totalAmount || 0), 0);
+        const targetCurrency = await resolveRequestedCurrency(req, User);
+        let totalRevenue = 0;
+        for (const order of orders) {
+            totalRevenue += await convertOrderTotal(order, targetCurrency);
+        }
+        totalRevenue = roundMoney(totalRevenue);
         const totalOrders = orders.length;
 
         // Simulate subdomain traffic data (views is the closest proxy)
@@ -176,9 +188,10 @@ exports.getSellerSubdomainAnalytics = async (req, res) => {
                 lastTypeChangeAt: store.lastTypeChangeAt || null,
             },
             analytics: {
+                currency: targetCurrency,
                 totalViews,
                 totalOrders,
-                totalRevenue: Math.round(totalRevenue * 100) / 100,
+                totalRevenue,
                 productCount: products.length,
                 trustCount: store.trustCount || 0,
                 monthlyTraffic,
@@ -226,6 +239,7 @@ exports.getAllSubdomains = async (req, res) => {
             .skip(skip);
 
         const total = await Store.countDocuments(query);
+        const targetCurrency = await resolveRequestedCurrency(req, User);
 
         // Enrich with product count and revenue
         const enrichedStores = await Promise.all(stores.map(async (store) => {
@@ -237,7 +251,11 @@ exports.getAllSubdomains = async (req, res) => {
                 isPaid: true
             });
 
-            const totalRevenue = orders.reduce((sum, o) => sum + (o.orderSummary?.totalAmount || 0), 0);
+            let totalRevenue = 0;
+            for (const order of orders) {
+                totalRevenue += await convertOrderTotal(order, targetCurrency);
+            }
+            totalRevenue = roundMoney(totalRevenue);
 
             return {
                 _id: store._id,
@@ -254,7 +272,7 @@ exports.getAllSubdomains = async (req, res) => {
                 isSubdomainActive: store.isActive !== false,
                 productCount: products.length,
                 totalOrders: orders.length,
-                totalRevenue: Math.round(totalRevenue * 100) / 100,
+                totalRevenue,
             };
         }));
 
@@ -268,6 +286,7 @@ exports.getAllSubdomains = async (req, res) => {
 
         res.status(200).json({
             msg: 'All subdomains fetched',
+            currency: targetCurrency,
             stores: enrichedStores,
             summary: {
                 totalStores,

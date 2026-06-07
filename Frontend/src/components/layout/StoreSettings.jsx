@@ -11,7 +11,7 @@ import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const StoreSettings = () => {
-    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
+    const { formatPrice, currency } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasStore, setHasStore] = useState(false);
@@ -31,14 +31,13 @@ const StoreSettings = () => {
     const [subdomainOwned, setSubdomainOwned] = useState(false);
 
     const formatCompactPrice = (amount) => {
-        const usdAmount = Number(amount) || 0;
-        const rate = exchangeRates[currency] || 1;
-        const convertedAmount = usdAmount * rate;
-        const symbol = getCurrencySymbol();
-        if (convertedAmount >= 1000000000) return `${symbol}${(convertedAmount / 1000000000).toFixed(1)}B`;
-        if (convertedAmount >= 1000000) return `${symbol}${(convertedAmount / 1000000).toFixed(1)}M`;
-        if (convertedAmount >= 10000) return `${symbol}${(convertedAmount / 1000).toFixed(1)}K`;
-        return formatPrice(usdAmount);
+        const value = Number(amount) || 0;
+        const analyticsCurrency = analytics.currency || currency;
+        const symbol = formatPrice(0, { sourceCurrency: analyticsCurrency, decimals: 0 }).replace(/[0-9,.]/g, '');
+        if (value >= 1000000000) return `${symbol}${(value / 1000000000).toFixed(1)}B`;
+        if (value >= 1000000) return `${symbol}${(value / 1000000).toFixed(1)}M`;
+        if (value >= 10000) return `${symbol}${(value / 1000).toFixed(1)}K`;
+        return formatPrice(value, { sourceCurrency: analyticsCurrency });
     };
 
     const [storeData, setStoreData] = useState({
@@ -56,7 +55,8 @@ const StoreSettings = () => {
     const [contactPhone, setContactPhone] = useState('');
     const [applyingVerification, setApplyingVerification] = useState(false);
 
-    useEffect(() => { fetchStoreData(); fetchAnalytics(); fetchVerificationStatus(); }, []);
+    useEffect(() => { fetchStoreData(); fetchVerificationStatus(); }, []);
+    useEffect(() => { fetchAnalytics(); }, [currency]);
 
     const fetchStoreData = async () => {
         try {
@@ -103,7 +103,7 @@ const StoreSettings = () => {
     const fetchAnalytics = async () => {
         try {
             const token = getAuthToken();
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/analytics`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/analytics?currency=${currency}`, { headers: { Authorization: `Bearer ${token}` } });
             setAnalytics(res.data.analytics);
         } catch (error) { console.error('Error fetching analytics:', error); }
     };

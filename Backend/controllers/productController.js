@@ -8,39 +8,12 @@ const {
     notifyProductBlocked,
     publicProductFilter,
 } = require('../services/productModerationService')
-const { normalizeCurrency, applyLivePricesUSD, convertToUSDSync, warmRatesCache } = require('../services/currencyService')
-
-// Warm exchange-rate cache at module load so the first request gets real rates.
-warmRatesCache();
-
-/**
- * Normalize price fields on an incoming product payload.
- * Option 1 architecture: the DB stores ONLY the seller's exact entered value
- * (`price`/`discountedPrice`) in the currency they typed (`priceCurrency`).
- * `priceOriginal`/`discountedPriceOriginal` are kept as alias mirrors for
- * transparency and for the seller edit form prefill. No USD conversion happens
- * at write time — every READ recomputes USD live so buyers always see the
- * current exchange rate. Stale-USD drift is impossible by construction.
- */
-function normalizeProductPricing(payload) {
-    if (!payload || typeof payload !== 'object') return payload
-    const out = { ...payload }
-    const currency = normalizeCurrency(out.priceCurrency || 'USD')
-    out.priceCurrency = currency
-
-    if (out.price !== undefined && out.price !== null && out.price !== '') {
-        const entered = Number(out.price) || 0
-        out.price = entered                  // stored in `currency`, NOT USD
-        out.priceOriginal = entered          // mirror for the seller edit form
-    }
-    if (out.discountedPrice !== undefined && out.discountedPrice !== null && out.discountedPrice !== '') {
-        const entered = Number(out.discountedPrice) || 0
-        out.discountedPrice = entered        // stored in `currency`, NOT USD
-        out.discountedPriceOriginal = entered
-    }
-    return out
-}
-
+const { normalizeCurrency, convertAmount, convertAmountSync } = require('../services/currencyService')
+const {
+    roundMoney,
+    getProductCurrency,
+    getProductEffectivePrice,
+} = require('../services/productPricingService')
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
@@ -50,6 +23,81 @@ const cleanList = (items) => [...new Set(
 )].sort((a, b) => a.localeCompare(b));
 
 const toArray = (value) => Array.isArray(value) ? value : [value];
+
+async function applyProductCurrencyMetadata(product, fallbackCurrency = 'USD') {
+    if (!product || typeof product !== 'object') return product;
+    const productCurrency = normalizeCurrency(product.currency || product.priceCurrency || fallbackCurrency);
+    const next = { ...product };
+
+    if (next.price !== undefined && next.price !== '') {
+        next.price = roundMoney(next.price);
+        next.currency = productCurrency;
+        next.priceCurrency = productCurrency;
+        next.priceInputAmount = next.price;
+        if (next.discountedPrice === undefined) {
+            next.discountedPriceCurrency = productCurrency;
+            next.discountedPriceInputAmount = 0;
+        }
+        next.priceVersion = 2;
+    } else if (next.currency !== undefined || next.priceCurrency !== undefined) {
+        next.currency = productCurrency;
+        next.priceCurrency = productCurrency;
+    }
+
+    if (next.discountedPrice !== undefined && next.discountedPrice !== '') {
+        const discountCurrency = normalizeCurrency(product.discountedPriceCurrency || product.discountedCurrency || productCurrency);
+        const rawDiscount = roundMoney(next.discountedPrice);
+        const convertedDiscount = rawDiscount > 0
+            ? await convertAmount(rawDiscount, discountCurrency, productCurrency)
+            : 0;
+        next.discountedPrice = next.price !== undefined && convertedDiscount >= Number(next.price)
+            ? 0
+            : convertedDiscount;
+        next.discountedPriceCurrency = productCurrency;
+        next.discountedPriceInputAmount = next.discountedPrice;
+        next.priceVersion = 2;
+    } else if (next.discountedPrice !== undefined) {
+        next.discountedPrice = 0;
+        next.discountedPriceCurrency = productCurrency;
+        next.discountedPriceInputAmount = 0;
+    }
+
+    delete next.discountedCurrency;
+    return next;
+}
+
+const parsePriceRange = (priceRange) => {
+    if (!priceRange) return null;
+    const [min, max] = String(priceRange).split(',');
+    const minValue = Number(min);
+    const maxValue = Number(max);
+    return {
+        min: Number.isFinite(minValue) ? minValue : null,
+        max: Number.isFinite(maxValue) ? maxValue : null,
+    };
+};
+
+async function attachComparablePrices(products, targetCurrency = 'USD') {
+    const currency = normalizeCurrency(targetCurrency);
+    return Promise.all(products.map(async (product) => ({
+        ...product,
+        _comparablePrice: await convertAmount(getProductEffectivePrice(product), getProductCurrency(product), currency),
+    })));
+}
+
+function filterByComparablePriceRange(products, range) {
+    if (!range || (range.min === null && range.max === null)) return products;
+    return products.filter(product => {
+        const price = Number(product._comparablePrice ?? convertAmountSync(
+            getProductEffectivePrice(product),
+            getProductCurrency(product),
+            'USD'
+        ));
+        if (range.min !== null && price < range.min) return false;
+        if (range.max !== null && price > range.max) return false;
+        return true;
+    });
+}
 
 async function getBrandStats(productScope) {
     const rows = await Product.aggregate([
@@ -88,36 +136,36 @@ const calculateRelevanceScore = (product, sellerProductCounts, totalSellers) => 
     const now = Date.now();
     const createdAt = new Date(product.createdAt).getTime();
     const daysSinceCreated = (now - createdAt) / (1000 * 60 * 60 * 24);
-    
+
     // Base scores
     let score = 0;
-    
+
     // 1. FEATURED BOOST (200-400 points)
     // Featured products get moderate boost, not overwhelming
     // Quality products with sales can still outrank featured products
     if (product.isFeatured) {
         score += 300;
     }
-    
+
     // 2. QUALITY SCORE (0-500 points)
     // Rating × reviews = quality indicator
     const rating = product.rating || 0;
     const numReviews = product.numReviews || 0;
     const qualityScore = (rating * 50) + (Math.min(numReviews, 50) * 5);
     score += qualityScore;
-    
+
     // 3. SALES PERFORMANCE (0-300 points)
     // Products that sell well rank higher
     const totalSales = product.totalSales || 0;
     const salesScore = Math.min(totalSales * 10, 300);
     score += salesScore;
-    
+
     // 4. POPULARITY (0-200 points)
     // Views indicate interest
     const views = product.views || 0;
     const popularityScore = Math.min(views * 0.5, 200);
     score += popularityScore;
-    
+
     // 5. FRESHNESS BOOST (0-600 points, decays over time)
     // New products get temporary boost to ensure visibility
     // Boost is stronger when there are more sellers (more competition)
@@ -129,38 +177,38 @@ const calculateRelevanceScore = (product, sellerProductCounts, totalSellers) => 
         freshnessBoost = 600 * decayFactor * freshnessMultiplier;
         score += freshnessBoost;
     }
-    
+
     // 6. DIVERSITY PENALTY (prevents seller domination)
     // If a seller has many products, reduce their individual product scores slightly
     const sellerId = product.seller?._id?.toString() || product.seller?.toString();
     const sellerProductCount = sellerProductCounts[sellerId] || 1;
-    
+
     if (sellerProductCount > 5) {
         // Sellers with 6+ products get diminishing returns
         // This ensures smaller sellers get fair visibility
         const diversityPenalty = Math.min((sellerProductCount - 5) * 20, 200);
         score -= diversityPenalty;
     }
-    
+
     // 7. STOCK AVAILABILITY (0 or -500 points)
     // Out of stock products rank much lower
     if (product.stock === 0) {
         score -= 500;
     }
-    
+
     // 8. DISCOUNT BOOST (0-150 points)
     // Products on sale get slight boost
     if (product.discountedPrice && product.discountedPrice < product.price) {
         const discountPercent = ((product.price - product.discountedPrice) / product.price) * 100;
         score += Math.min(discountPercent * 3, 150);
     }
-    
+
     // 9. VERIFIED STORE BOOST (0-300 points)
     // Products from verified stores get trust boost
     if (product.seller?.store?.verification?.isVerified) {
         score += 300;
     }
-    
+
     return Math.max(0, score); // Ensure non-negative
 };
 
@@ -169,39 +217,39 @@ const calculateRelevanceScore = (product, sellerProductCounts, totalSellers) => 
  */
 const applySorting = (products, sortBy, sortOrder, sellerProductCounts, totalSellers) => {
     const order = sortOrder === 'asc' ? 1 : -1;
-    
+
     switch(sortBy) {
         case 'price':
             return products.sort((a, b) => {
-                const priceA = a.discountedPrice || a.price;
-                const priceB = b.discountedPrice || b.price;
+                const priceA = a._comparablePrice ?? convertAmountSync(getProductEffectivePrice(a), getProductCurrency(a), 'USD');
+                const priceB = b._comparablePrice ?? convertAmountSync(getProductEffectivePrice(b), getProductCurrency(b), 'USD');
                 return (priceA - priceB) * order;
             });
-            
+
         case 'rating':
             return products.sort((a, b) => {
                 const scoreA = (a.rating || 0) * 100 + (a.numReviews || 0);
                 const scoreB = (b.rating || 0) * 100 + (b.numReviews || 0);
                 return (scoreB - scoreA) * order;
             });
-            
+
         case 'newest':
             return products.sort((a, b) => {
                 const dateA = new Date(a.createdAt).getTime();
                 const dateB = new Date(b.createdAt).getTime();
                 return (dateB - dateA) * order;
             });
-            
+
         case 'popular':
             return products.sort((a, b) => {
                 return ((b.views || 0) - (a.views || 0)) * order;
             });
-            
+
         case 'sales':
             return products.sort((a, b) => {
                 return ((b.totalSales || 0) - (a.totalSales || 0)) * order;
             });
-            
+
         case 'relevance':
         default:
             // Calculate relevance scores for all products
@@ -209,7 +257,7 @@ const applySorting = (products, sortBy, sortOrder, sellerProductCounts, totalSel
                 ...product,
                 _relevanceScore: calculateRelevanceScore(product, sellerProductCounts, totalSellers)
             }));
-            
+
             // Sort by relevance score
             return productsWithScores.sort((a, b) => b._relevanceScore - a._relevanceScore);
     }
@@ -273,17 +321,18 @@ const fuzzyRankProducts = (products, search) => {
 };
 
 exports.getProducts = async (req, res) => {
-    const { 
-        categories, 
-        brands, 
-        priceRange, 
-        search, 
-        page = 1, 
+    const {
+        categories,
+        brands,
+        priceRange,
+        search,
+        page = 1,
         limit = 24,
         sortBy = 'relevance',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
+        currency
     } = { ...req.query }
-    
+
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 24));
     const skip = (pageNum - 1) * limitNum;
@@ -291,14 +340,8 @@ exports.getProducts = async (req, res) => {
     try {
         let query = publicProductFilter()
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
-        // NOTE: priceRange filter is applied IN MEMORY AFTER live-USD conversion
-        // (DB-level filter on `price` is meaningless now that prices are stored
-        // in mixed currencies). Range values from frontend are in USD.
-        let priceRangeFilter = null;
-        if (priceRange) {
-            const [min, max] = priceRange.split(',')
-            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
-        }
+        const requestedCurrency = normalizeCurrency(currency || req.user?.currency || 'USD');
+        const parsedPriceRange = parsePriceRange(priceRange);
 
         // Only show products from active stores (hides blocked/expired seller products)
         const Store = require('../models/Store');
@@ -307,10 +350,10 @@ exports.getProducts = async (req, res) => {
             .populate('seller', '_id')
             .lean();
         const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
-        
+
         // Count total active sellers for diversity calculation
         const totalSellers = activeSellerIds.length;
-        
+
         // Include products with no seller (admin products) + products from active sellers
         const visibilityFilter = {
             $or: [
@@ -347,31 +390,22 @@ exports.getProducts = async (req, res) => {
             })
             .lean()
 
-        // CRITICAL: convert every product's stored (mixed-currency) price into
-        // LIVE USD using current FX rates — buyers never see a stale snapshot.
-        products = applyLivePricesUSD(products);
-
-        // Now that `price` is comparable USD, apply the price-range filter.
-        if (priceRangeFilter) {
-            products = products.filter((p) => {
-                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
-                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
-            });
-        }
-
         // Apply tolerant fuzzy search so buyers can find products with partial names and typos.
         if (search) {
             products = fuzzyRankProducts(products, search)
         }
-        
+
+        products = await attachComparablePrices(products, requestedCurrency);
+        products = filterByComparablePriceRange(products, parsedPriceRange);
+
         // Count products per seller for diversity calculation
         const sellerProductCounts = {};
         products.forEach(product => {
             const sellerId = product.seller?._id?.toString() || product.seller?.toString() || 'admin';
             sellerProductCounts[sellerId] = (sellerProductCounts[sellerId] || 0) + 1;
         });
-        
-        // Apply intelligent sorting (price sort now uses live USD — accurate cross-currency)
+
+        // Apply intelligent sorting
         products = applySorting(products, sortBy, sortOrder, sellerProductCounts, totalSellers);
 
         const totalProducts = products.length;
@@ -394,7 +428,6 @@ exports.getProducts = async (req, res) => {
                 availableSorts: ['relevance', 'price', 'rating', 'newest', 'popular', 'sales']
             }
         })
-
     } catch (error) {
         console.error('Server error while fetching products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching products.' })
@@ -425,15 +458,12 @@ exports.getSingleProduct = async (req, res) => {
             path: 'reviews.user',
             select: 'avatar username email'
         })
-        // Live USD conversion before sending to client
-        const productOut = applyLivePricesUSD(singleProduct);
-        res.status(200).json({ msg: 'fetched single product', product: productOut })
+        res.status(200).json({ msg: 'fetched single product', product: singleProduct })
     } catch (err) {
         console.error(err)
         res.status(500).json({ msg: 'Server error' })
     }
 }
-
 
 
 exports.getFilters = async (req, res) => {
@@ -479,7 +509,7 @@ exports.getFilters = async (req, res) => {
     }
 }
 
-// Add Review to Product (Authenticated Users) 
+// Add Review to Product (Authenticated Users)
 exports.addReview = async (req, res) => {
     const { rating, comment } = req.body
     const { id: prodId } = req.params
@@ -570,7 +600,7 @@ exports.deleteProduct = async (req, res) => {
         if (!product) {
             return res.status(404).json({ msg: 'Product not found' })
         }
-        
+
         // Sellers can only delete their own products
         if (role === 'seller' && product.seller?.toString() !== userId) {
             return res.status(403).json({ msg: 'You can only delete your own products' })
@@ -677,19 +707,28 @@ exports.editProduct = async (req, res) => {
         if (role !== 'admin' && role !== 'seller') {
             return res.status(403).json({ msg: 'Unauthorized to edit product' })
         }
-        
+
         const existingProduct = await Product.findById(id)
-        
+
         if (!existingProduct) {
             return res.status(404).json({ msg: 'Product not found' })
         }
-        
+
         // Sellers can only edit their own products
         if (role === 'seller' && existingProduct.seller?.toString() !== userId) {
             return res.status(403).json({ msg: 'You can only edit your own products' })
         }
 
-        const safeProduct = normalizeProductPricing({ ...product });
+        let safeProduct = await applyProductCurrencyMetadata({ ...product }, req.user?.currency || 'USD');
+        if (
+            safeProduct.price !== undefined &&
+            existingProduct.discountedPrice > 0 &&
+            getProductCurrency(existingProduct, req.user?.currency || 'USD') !== normalizeCurrency(safeProduct.currency || safeProduct.priceCurrency)
+        ) {
+            safeProduct.discountedPrice = 0;
+            safeProduct.discountedPriceCurrency = safeProduct.currency || safeProduct.priceCurrency;
+            safeProduct.discountedPriceInputAmount = 0;
+        }
 
         // Gate: enforce featured product limits based on subscription tier.
         if (role === 'seller' && safeProduct && safeProduct.isFeatured === true) {
@@ -767,9 +806,9 @@ exports.addProduct = async (req, res) => {
                 }
             }
         }
-        
+
         // Gate: enforce featured product limits based on subscription tier.
-        let safeProduct = normalizeProductPricing(product);
+        let safeProduct = await applyProductCurrencyMetadata({ ...product }, req.user?.currency || 'USD');
         if (role === 'seller' && product?.isFeatured === true) {
             const featCheck = await sellerCanFeatureProduct(userId);
             if (!featCheck.allowed) {
@@ -808,7 +847,7 @@ exports.addProduct = async (req, res) => {
 
 exports.bulkDiscount = async (req, res) => {
     const { role, id: userId } = req.user
-    const { productIds, discountType, discountValue } = req.body
+    const { productIds, discountType, discountValue, currency } = req.body
 
     try {
         if (role !== 'admin' && role !== 'seller') {
@@ -844,6 +883,7 @@ exports.bulkDiscount = async (req, res) => {
         // Apply discount to each product
         const updatePromises = products.map(async (product) => {
             let newDiscountedPrice
+            const productCurrency = getProductCurrency(product, req.user?.currency || 'USD')
 
             if (discountType === 'percentage') {
                 // Apply percentage discount
@@ -851,19 +891,19 @@ exports.bulkDiscount = async (req, res) => {
                 newDiscountedPrice = Math.max(0, product.price - discountAmount)
             } else {
                 // Apply fixed amount discount
-                newDiscountedPrice = Math.max(0, product.price - discountValue)
+                const fixedDiscount = await convertAmount(discountValue, normalizeCurrency(currency || productCurrency), productCurrency)
+                newDiscountedPrice = Math.max(0, product.price - fixedDiscount)
             }
 
-            const rounded = Math.round(newDiscountedPrice * 100) / 100
-            product.discountedPrice = rounded
-            product.discountedPriceOriginal = rounded // keep mirror in sync
+            product.discountedPrice = Math.round(newDiscountedPrice * 100) / 100
+            product.discountedPriceCurrency = productCurrency
+            product.discountedPriceInputAmount = product.discountedPrice
             return product.save()
-
         })
 
         await Promise.all(updatePromises)
 
-        res.status(200).json({ 
+        res.status(200).json({
             msg: `Bulk discount applied successfully to ${products.length} product(s)`,
             updatedCount: products.length
         })
@@ -876,7 +916,7 @@ exports.bulkDiscount = async (req, res) => {
 
 exports.bulkPriceUpdate = async (req, res) => {
     const { role, id: userId } = req.user
-    const { productIds, updateType, value } = req.body
+    const { productIds, updateType, value, currency } = req.body
 
     try {
         if (role !== 'admin' && role !== 'seller') {
@@ -912,6 +952,7 @@ exports.bulkPriceUpdate = async (req, res) => {
         // Update price for each product
         const updatePromises = products.map(async (product) => {
             let newPrice
+            const productCurrency = getProductCurrency(product, req.user?.currency || 'USD')
 
             if (updateType === 'percentage') {
                 // Increase/decrease by percentage
@@ -919,29 +960,31 @@ exports.bulkPriceUpdate = async (req, res) => {
                 newPrice = Math.max(0, product.price + changeAmount)
             } else if (updateType === 'fixed') {
                 // Increase/decrease by fixed amount
-                newPrice = Math.max(0, product.price + value)
+                const fixedChange = await convertAmount(value, normalizeCurrency(currency || productCurrency), productCurrency)
+                newPrice = Math.max(0, product.price + fixedChange)
             } else {
                 // Set to specific price
-                newPrice = Math.max(0, value)
+                newPrice = Math.max(0, await convertAmount(value, normalizeCurrency(currency || productCurrency), productCurrency))
             }
 
-            const rounded = Math.round(newPrice * 100) / 100
-            product.price = rounded
-            product.priceOriginal = rounded // mirror stays in sync; both stored in product.priceCurrency
-            
+            product.price = Math.round(newPrice * 100) / 100
+            product.currency = productCurrency
+            product.priceCurrency = productCurrency
+            product.priceInputAmount = product.price
+            product.priceVersion = 2
+
             // Reset discounted price if it's higher than new price
             if (product.discountedPrice > 0 && product.discountedPrice >= product.price) {
                 product.discountedPrice = 0
-                product.discountedPriceOriginal = 0
+                product.discountedPriceInputAmount = 0
             }
 
             return product.save()
-
         })
 
         await Promise.all(updatePromises)
 
-        res.status(200).json({ 
+        res.status(200).json({
             msg: `Bulk price update applied successfully to ${products.length} product(s)`,
             updatedCount: products.length
         })
@@ -975,11 +1018,10 @@ exports.removeDiscount = async (req, res) => {
         // Update all products to remove discount
         const result = await Product.updateMany(
             query,
-            { $set: { discountedPrice: 0, discountedPriceOriginal: 0 } }
+            { $set: { discountedPrice: 0 } }
         )
 
-
-        res.status(200).json({ 
+        res.status(200).json({
             msg: `Discounts removed successfully from ${result.modifiedCount} product(s)`,
             updatedCount: result.modifiedCount
         })
@@ -993,7 +1035,7 @@ exports.removeDiscount = async (req, res) => {
 // Get seller's products
 exports.getSellerProducts = async (req, res) => {
     const { role, id: userId } = req.user
-    const { categories, brands, priceRange, search } = { ...req.query }
+    const { categories, brands, priceRange, search, currency } = { ...req.query }
 
     try {
         if (role !== 'seller') {
@@ -1001,27 +1043,13 @@ exports.getSellerProducts = async (req, res) => {
         }
 
         let query = { seller: userId }
-        
+
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
         if (brands) query.brand = Array.isArray(brands) ? { $in: brands } : brands
-        // priceRange (USD from frontend) applied in-memory after live conversion below
-        let priceRangeFilter = null;
-        if (priceRange) {
-            const [min, max] = priceRange.split(',')
-            priceRangeFilter = { min: Number(min) || 0, max: Number(max) || Infinity };
-        }
+        const parsedPriceRange = parsePriceRange(priceRange);
+        const requestedCurrency = normalizeCurrency(currency || req.user?.currency || 'USD');
 
-        let products = await Product.find(query).lean()
-
-        // Live USD conversion so seller sees the same currency-coherent prices as buyers
-        products = applyLivePricesUSD(products);
-
-        if (priceRangeFilter) {
-            products = products.filter((p) => {
-                const effective = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
-                return effective >= priceRangeFilter.min && effective <= priceRangeFilter.max;
-            });
-        }
+        let products = await Product.find(query)
 
         if (search) {
             const fuse = new Fuse(products, {
@@ -1033,8 +1061,10 @@ exports.getSellerProducts = async (req, res) => {
             products = results.map(r => r.item)
         }
 
-        res.status(200).json({ msg: 'Fetched seller products successfully.', products: products })
+        products = await attachComparablePrices(products, requestedCurrency);
+        products = filterByComparablePriceRange(products, parsedPriceRange);
 
+        res.status(200).json({ msg: 'Fetched seller products successfully.', products: products })
     } catch (error) {
         console.error('Server error while fetching seller products:::', error.message);
         res.status(500).json({ msg: 'Server error while fetching seller products.' })

@@ -7,9 +7,11 @@ import {
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { getAuthToken } from "../../utils/cookieHelper";
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const NotificationsPage = () => {
     const { products, orders } = useOutletContext();
+    const { formatPrice } = useCurrency();
     const location = useLocation();
     const isAdmin = location.pathname.includes('admin-dashboard');
     const [filter, setFilter] = useState('all');
@@ -54,7 +56,7 @@ const NotificationsPage = () => {
             notifs.push({ id: `order-pending-${o._id}`, type: 'info', category: 'order', title: `New order #${o.orderId || 'N/A'}`, description: `${o.shippingInfo?.fullName || 'Customer'} · ${o.orderItems?.length || 0} item(s)`, time: o.createdAt, icon: 'order', linkTo: isAdmin ? `/admin-dashboard/order/${o._id}` : `/seller-dashboard/order/${o._id}` });
         });
         orders.filter(o => o.isPaid && o.orderStatus === 'confirmed').forEach(o => {
-            notifs.push({ id: `order-paid-${o._id}`, type: 'success', category: 'payment', title: `Payment received for #${o.orderId || 'N/A'}`, description: `$${o.orderSummary?.totalAmount?.toFixed(2) || '0.00'}`, time: o.paidAt || o.createdAt, icon: 'order', linkTo: isAdmin ? `/admin-dashboard/order/${o._id}` : `/seller-dashboard/order/${o._id}` });
+            notifs.push({ id: `order-paid-${o._id}`, type: 'success', category: 'payment', title: `Payment received for #${o.orderId || 'N/A'}`, description: formatPrice(o.orderSummary?.totalAmount || 0, { sourceCurrency: o.currency || 'USD' }), time: o.paidAt || o.createdAt, icon: 'order', linkTo: isAdmin ? `/admin-dashboard/order/${o._id}` : `/seller-dashboard/order/${o._id}` });
         });
         orders.filter(o => o.orderStatus === 'delivered').slice(0, 5).forEach(o => {
             notifs.push({ id: `order-delivered-${o._id}`, type: 'success', category: 'order', title: `Order #${o.orderId || 'N/A'} delivered`, description: 'Successfully completed', time: o.updatedAt || o.createdAt, icon: 'order' });

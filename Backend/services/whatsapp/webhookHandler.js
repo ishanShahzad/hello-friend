@@ -316,6 +316,61 @@ const phoneFromJid = (jid) => {
     return raw.replace(/[^\d]/g, '');
 };
 
+const extractMessageText = (msg) => {
+    const m = msg?.message || {};
+    return (
+        m.conversation ||
+        m.extendedTextMessage?.text ||
+        m.imageMessage?.caption ||
+        m.videoMessage?.caption ||
+        m.documentMessage?.caption ||
+        m.documentWithCaptionMessage?.message?.documentMessage?.caption ||
+        ''
+    );
+};
+
+const findWebhookBase64 = (msg, media) => (
+    media?.base64 ||
+    msg?.base64 ||
+    msg?.message?.base64 ||
+    msg?.message?.mediaMessage?.base64 ||
+    msg?.message?.messageContextInfo?.base64 ||
+    msg?.data?.base64 ||
+    ''
+);
+
+const extractMediaAttachments = (msg) => {
+    const m = msg?.message || {};
+    const candidates = [
+        { kind: 'image', media: m.imageMessage },
+        { kind: 'document', media: m.documentMessage },
+        { kind: 'document', media: m.documentWithCaptionMessage?.message?.documentMessage },
+        { kind: 'audio', media: m.audioMessage },
+        { kind: 'video', media: m.videoMessage },
+    ].filter(item => item.media);
+
+    return candidates.map(({ kind, media }) => {
+        const mimetype = media.mimetype || (kind === 'image' ? 'image/jpeg' : kind === 'audio' ? 'audio/ogg' : 'application/octet-stream');
+        const fallbackName = kind === 'image'
+            ? 'whatsapp-image.jpg'
+            : kind === 'audio'
+                ? 'whatsapp-voice.ogg'
+                : kind === 'video'
+                    ? 'whatsapp-video.mp4'
+                    : 'whatsapp-document';
+        return {
+            kind,
+            mimetype,
+            type: mimetype,
+            filename: media.fileName || media.filename || fallbackName,
+            name: media.fileName || media.filename || fallbackName,
+            caption: media.caption || '',
+            base64: findWebhookBase64(msg, media),
+            url: media.url || media.mediaUrl || media.downloadUrl || '',
+        };
+    });
+};
+
 // ──────────────────────────────────────────────────────────────────────────
 // Main webhook entry
 // ──────────────────────────────────────────────────────────────────────────
@@ -383,12 +438,12 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     markInboundConversationWindowOpen(phone);
 
                     // Extract text from the message
-                    const m = msg.message || {};
-                    const text = m.conversation || m.extendedTextMessage?.text || '';
-                    if (!text || !text.trim()) continue;
+                    const text = extractMessageText(msg);
+                    const attachments = extractMediaAttachments(msg);
+                    if ((!text || !text.trim()) && attachments.length === 0) continue;
 
                     // Route to AI chat (fire-and-forget — don't block webhook response)
-                    processIncomingWhatsAppMessage(phone, text.trim(), 'seller').catch(err => {
+                    processIncomingWhatsAppMessage(phone, String(text || '').trim(), 'seller', attachments).catch(err => {
                         console.error('[whatsapp] seller AI chat error:', err.message);
                     });
                 }
@@ -409,6 +464,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 const phone = phoneFromJid(remoteJid);
                 if (!phone) continue;
                 markInboundConversationWindowOpen(phone);
+                const mediaText = extractMessageText(msg);
+                const attachments = extractMediaAttachments(msg);
 
                 // 1) Try the rich extractor — recognises button clicks and text
                 //    replies in any of the 5 WhatsApp payload shapes.
@@ -456,9 +513,9 @@ exports.handleEvolutionWebhook = async (req, res) => {
 
                 // ── No pending order confirmation → route to AI chat ──
                 if (!job) {
-                    const rawText = replyTextForHint || (extracted?.source === 'text' ? extracted.text : '');
-                    if (rawText) {
-                        processIncomingWhatsAppMessage(phone, rawText, 'main').catch(err => {
+                    const rawText = replyTextForHint || (extracted?.source === 'text' ? extracted.text : '') || mediaText;
+                    if (rawText || attachments.length) {
+                        processIncomingWhatsAppMessage(phone, rawText, 'main', attachments).catch(err => {
                             console.error('[whatsapp] main AI chat error:', err.message);
                         });
                     }
@@ -468,8 +525,8 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 // If the buyer has a pending order but sent something that's not YES/NO,
                 // route to AI chat instead of just sending a YES/NO hint — the AI is
                 // smarter and can help with order questions or other requests.
-                if (!decision && replyTextForHint) {
-                    processIncomingWhatsAppMessage(phone, replyTextForHint, 'main').catch(err => {
+                if (!decision && (replyTextForHint || attachments.length)) {
+                    processIncomingWhatsAppMessage(phone, replyTextForHint || mediaText, 'main', attachments).catch(err => {
                         console.error('[whatsapp] main AI chat error (with pending order):', err.message);
                     });
                     continue;
@@ -527,7 +584,7 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 if (decision === 'keepcancel') {
                     console.log(`[whatsapp] Buyer chose to keep/set order ${order.orderId} as cancelled`);
                     const firstName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
-                    
+
                     // If order is currently confirmed (buyer re-confirmed then changed mind), cancel it
                     if (order.orderStatus !== 'cancelled') {
                         const updated = await Order.findOneAndUpdate(
@@ -799,7 +856,7 @@ exports.handleEvolutionWebhook = async (req, res) => {
                     };
 
                 const updatedOrder = await Order.findOneAndUpdate(
-                    { 
+                    {
                         _id: order._id,
                         // Guard: only apply if no one else decided yet via a real channel
                         $or: [

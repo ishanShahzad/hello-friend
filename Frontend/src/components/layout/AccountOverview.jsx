@@ -185,7 +185,7 @@ const AccountOverview = () => {
                                                         if (order.sellerShipping && order.sellerShipping.length > 0) {
                                                             actualShipping = order.sellerShipping.reduce((sum, s) => sum + (s.shippingMethod.price || 0), 0);
                                                         }
-                                                        return formatCurrency(subtotal + tax + actualShipping);
+                                                        return formatPrice(subtotal + tax + actualShipping, { sourceCurrency: order.currency || 'USD' });
                                                     })()}
                                                 </p>
                                             </div>

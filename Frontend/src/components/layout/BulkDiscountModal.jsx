@@ -5,8 +5,10 @@ import { X, Percent, DollarSign, Tag, TrendingUp, TrendingDown, Trash2 } from 'l
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { getAuthToken } from "../../utils/cookieHelper";
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => {
+    const { formatPrice } = useCurrency();
     const [activeOperation, setActiveOperation] = useState('discount');
     const [discountType, setDiscountType] = useState('percentage');
     const [discountValue, setDiscountValue] = useState('');
@@ -167,7 +169,10 @@ const BulkDiscountModal = ({ isOpen, onClose, selectedProducts, onSuccess }) => 
                                         {product.images?.[0] && <img src={product.images[0]} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{product.name}</p>
-                                            <p className="text-[10px] sm:text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>${product.price?.toFixed(2)}{product.discountedPrice && <span className="ml-2" style={{ color: 'hsl(150, 60%, 45%)' }}>${product.discountedPrice.toFixed(2)}</span>}</p>
+                                            <p className="text-[10px] sm:text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                {formatPrice(product.price || 0, { sourceCurrency: product.currency || product.priceCurrency || 'USD' })}
+                                                {product.discountedPrice && <span className="ml-2" style={{ color: 'hsl(150, 60%, 45%)' }}>{formatPrice(product.discountedPrice, { sourceCurrency: product.currency || product.priceCurrency || 'USD' })}</span>}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}

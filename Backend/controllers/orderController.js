@@ -17,13 +17,15 @@ const { notifySeller } = require('../services/whatsapp/sellerNotificationService
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
 const { publicProductFilter } = require('../services/productModerationService');
-const { normalizeCurrency, convertFromUSDSync, convertToUSDSync, warmRatesCache } = require('../services/currencyService');
-
-// Stripe-supported currencies in this project. Keep aligned with CURRENCIES in
-// services/currencyService.js. Anything outside falls back to USD.
-const STRIPE_SUPPORTED_CURRENCIES = new Set(['USD', 'PKR', 'EUR', 'GBP']);
+const { normalizeCurrency, convertAmount } = require('../services/currencyService');
+const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
 
 const toId = (value) => value?.toString?.() || String(value || '');
+const STRIPE_SUPPORTED_CURRENCIES = new Set(
+    String(process.env.STRIPE_SUPPORTED_CURRENCIES || 'USD,EUR,GBP')
+        .split(',')
+        .map(code => normalizeCurrency(code))
+);
 
 const getSellerProductIds = async (sellerId) => {
     const ids = await Product.find({ seller: sellerId }).distinct('_id');
@@ -224,8 +226,10 @@ exports.placeOrder = async (req, res) => {
 
         // console.log(order.orderItems);
 
+        const orderUser = userId ? await User.findById(userId).select('currency').lean() : null;
+        const orderCurrency = normalizeCurrency(order.currency || orderUser?.currency || 'USD');
+
         const productIds = order.orderItems.map(item => item.id)
-        const productQtys = order.orderItems.map(item => item.quantity)
         // console.log(productIds);
         // return
         const orderItems = await Product.find(publicProductFilter({ _id: { $in: productIds } }))
@@ -233,9 +237,38 @@ exports.placeOrder = async (req, res) => {
         if (orderItems.length !== uniqueProductIds.length) {
             return res.status(400).json({ msg: 'One or more products in this order are no longer available.' });
         }
+        const productById = new Map(orderItems.map(product => [toId(product._id), product]));
 
-        // Calculate subtotal from frontend prices
-        const subtotal = order.orderItems.reduce((acc, item) => {
+        const normalizedOrderItems = await Promise.all(order.orderItems.map(async (item) => {
+            const product = productById.get(toId(item.id));
+            if (!product) return null;
+            const quantity = Math.max(1, Number(item.quantity) || 1);
+            if (quantity > product.stock) {
+                const err = new Error(`Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.`);
+                err.statusCode = 400;
+                throw err;
+            }
+            const sourceCurrency = getProductCurrency(product, orderCurrency);
+            const sourcePrice = getProductEffectivePrice(product);
+            const orderPrice = await convertAmount(sourcePrice, sourceCurrency, orderCurrency);
+            return {
+                productId: product._id,
+                seller: product.seller || null,
+                name: product.name,
+                image: product.image,
+                price: orderPrice,
+                sourcePrice,
+                sourceCurrency,
+                priceOriginal: sourcePrice,
+                priceCurrency: sourceCurrency,
+                quantity,
+                selectedColor: item.selectedColor || null,
+                selectedOptions: item.selectedOptions || undefined,
+            };
+        }));
+
+        // Calculate subtotal from current product records in the order currency.
+        const subtotal = normalizedOrderItems.reduce((acc, item) => {
             return acc + item.price * item.quantity
         }, 0)
 
@@ -262,12 +295,13 @@ exports.placeOrder = async (req, res) => {
         const couponDiscount = order.orderSummary?.couponDiscount || 0;
 
         // Final total
-        const totalAmount = subtotal + shippingCost + tax - couponDiscount;
+        const subtotalRounded = Math.round(subtotal * 100) / 100;
+        const shippingCostRounded = Math.round(shippingCost * 100) / 100;
+        const taxRounded = Math.round(tax * 100) / 100;
+        const couponDiscountRounded = Math.round(Number(couponDiscount || 0) * 100) / 100;
+        const totalAmount = Math.max(0, Math.round((subtotalRounded + shippingCostRounded + taxRounded - couponDiscountRounded) * 100) / 100);
         // console.log("cartItems::::", cartItems);
 
-
-        const orderUser = userId ? await User.findById(userId).select('currency').lean() : null;
-        const orderCurrency = normalizeCurrency(order.currency || orderUser?.currency || 'USD');
 
         const newOrder = new Order({
             ...(userId ? { user: userId } : {}),
@@ -275,30 +309,7 @@ exports.placeOrder = async (req, res) => {
             currency: orderCurrency,
             orderId: `ORD-${Date.now()}`,
 
-            orderItems: order.orderItems.map((item) => {
-                const prod = orderItems.find(p => toId(p._id) === toId(item.id));
-                const pCurrency = prod ? normalizeCurrency(prod.priceCurrency || 'USD') : null;
-                const discOrig = prod?.discountedPriceOriginal;
-                const baseOrig = prod?.priceOriginal;
-                const original =
-                    (discOrig != null && discOrig !== '' && Number(discOrig) > 0)
-                        ? Number(discOrig)
-                        : (baseOrig != null && baseOrig !== '')
-                            ? Number(baseOrig)
-                            : null;
-                return {
-                    productId: item.id,
-                    seller: prod?.seller || null,
-                    name: item.name,
-                    image: item.image,
-                    price: item.price,
-                    priceOriginal: Number.isFinite(original) ? original : null,
-                    priceCurrency: pCurrency,
-                    quantity: item.quantity,
-                    selectedColor: item.selectedColor || null,
-                    selectedOptions: item.selectedOptions || undefined,
-                };
-            }),
+            orderItems: normalizedOrderItems,
 
             shippingInfo: {
                 fullName: order.shippingInfo.fullName,
@@ -319,10 +330,10 @@ exports.placeOrder = async (req, res) => {
             },
 
             orderSummary: {
-                subtotal: subtotal,
-                shippingCost: shippingCost,
-                tax: tax,
-                couponDiscount: couponDiscount,
+                subtotal: subtotalRounded,
+                shippingCost: shippingCostRounded,
+                tax: taxRounded,
+                couponDiscount: couponDiscountRounded,
                 totalAmount: totalAmount,
             },
 
@@ -340,14 +351,14 @@ exports.placeOrder = async (req, res) => {
             // ✅ Schema expects just string ("stripe" | "cash_on_delivery")
             paymentMethod: order.paymentMethod,
         });
-        
-        
-        
+
+
+
         // Add seller shipping info if provided (for multi-seller orders)
         if (order.sellerShipping && Array.isArray(order.sellerShipping)) {
             newOrder.sellerShipping = order.sellerShipping;
         }
-        
+
         if (order.instructions && order.instructions !== '') newOrder.instructions = order.instructions
 
         // Always attach a confirmation token so WhatsApp/email auto-verify can use it.
@@ -454,95 +465,41 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
-        // Stripe is charged in the BUYER'S LOCAL CURRENCY directly so the
-        // amount shown on Checkout matches exactly what the buyer saw on the
-        // site (no Stripe FX markup applied to a USD round-trip). The USD
-        // equivalent is appended to each line item's description so the buyer
-        // still sees a USD reference alongside their local currency.
-        warmRatesCache();
-        const buyerCurrency = normalizeCurrency(newOrder.currency || 'USD');
-        const stripeCurrency = buyerCurrency.toLowerCase();
-        const productMap = new Map(orderItems.map(p => [toId(p._id), p]));
-
-        // Convert any amount from a source currency into the buyer's currency.
-        const toBuyer = (amount, fromCurrency) => {
-            const value = Number(amount) || 0;
-            if (!value) return 0;
-            const from = normalizeCurrency(fromCurrency);
-            if (from === buyerCurrency) return value;
-            if (from === 'USD') return convertFromUSDSync(value, buyerCurrency);
-            const inUsd = convertToUSDSync(value, from);
-            return convertFromUSDSync(inUsd, buyerCurrency);
-        };
-
-        // Convert any amount from a source currency into USD (for description).
-        const toUsd = (amount, fromCurrency) => {
-            const value = Number(amount) || 0;
-            if (!value) return 0;
-            const from = normalizeCurrency(fromCurrency);
-            if (from === 'USD') return value;
-            return convertToUSDSync(value, from);
-        };
-
-        // Returns { buyerAmount, usdAmount, sourceCurrency } for an item.
-        const getUnitAmounts = (item) => {
-            const p = productMap.get(toId(item.productId));
-            if (p) {
-                const pCurrency = normalizeCurrency(p.priceCurrency || 'USD');
-                const discOrig = p.discountedPriceOriginal;
-                const baseOrig = p.priceOriginal;
-                const raw =
-                    (discOrig != null && discOrig !== '' && Number(discOrig) > 0)
-                        ? Number(discOrig)
-                        : (baseOrig != null && baseOrig !== '')
-                            ? Number(baseOrig)
-                            : Number(p.price) || 0;
-                return {
-                    buyerAmount: toBuyer(raw, pCurrency),
-                    usdAmount: toUsd(raw, pCurrency),
-                };
-            }
-            // Fallback: item.price is the displayed USD value
-            const raw = Number(item.price) || 0;
-            return {
-                buyerAmount: toBuyer(raw, 'USD'),
-                usdAmount: raw,
-            };
-        };
-
-        const usdFmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)} USD`;
+        if (!STRIPE_SUPPORTED_CURRENCIES.has(newOrder.currency)) {
+            await Order.deleteOne({ _id: newOrder._id });
+            return res.status(400).json({
+                msg: `Card payments are not available in ${newOrder.currency} yet. Please choose cash on delivery or switch checkout currency.`,
+            });
+        }
+        const stripeCurrency = newOrder.currency.toLowerCase();
 
         const line_items = [
-            ...newOrder.orderItems.map(item => {
-                const { buyerAmount } = getUnitAmounts(item);
-                return {
-                    price_data: {
-                        currency: stripeCurrency,
-                        product_data: {
-                            name: item.name,
-                            images: item.image ? [item.image] : undefined
-                        },
-                        unit_amount: Math.round(buyerAmount * 100)
+            ...newOrder.orderItems.map(item => ({
+                price_data: {
+                    currency: stripeCurrency,
+                    product_data: {
+                        name: item.name,
+                        images: item.image ? [item.image] : undefined
                     },
-                    quantity: item.quantity
-                };
-            }),
+                    unit_amount: Math.round(item.price * 100)
+                },
+                quantity: item.quantity
+            })),
 
-            // SHIPPING — shippingMethod.price is in USD; charge in buyer currency.
+
+            // SHIPPING
             {
                 price_data: {
                     currency: stripeCurrency,
                     product_data: {
                         name: `${newOrder.shippingMethod.name} Shipping`,
                     },
-                    unit_amount: Math.round(
-                        toBuyer(Number(newOrder.shippingMethod.price) || 0, 'USD') * 100
-                    )
+                    unit_amount: Math.round(newOrder.shippingMethod.price * 100)
                 },
                 quantity: 1
             },
 
-            // TAX (only if tax > 0) — orderSummary.tax is in USD.
+            // TAX (only if tax > 0)
             ...(newOrder.orderSummary.tax > 0 ? [{
                 price_data: {
                     currency: stripeCurrency,
@@ -551,16 +508,11 @@ exports.placeOrder = async (req, res) => {
                             ? `Tax (${taxConfig.value}%)`
                             : 'Tax',
                     },
-                    unit_amount: Math.round(
-                        toBuyer(Number(newOrder.orderSummary.tax) || 0, 'USD') * 100
-                    )
+                    unit_amount: Math.round(newOrder.orderSummary.tax * 100)
                 },
                 quantity: 1
             }] : [])
         ]
-
-
-
 
         // console.log(line_items);
 
@@ -581,11 +533,10 @@ exports.placeOrder = async (req, res) => {
 
         // Apply coupon discount on Stripe via a one-off coupon (line items can't be negative).
         let stripeDiscounts = undefined;
-        const couponDiscountUSD = Number(newOrder.orderSummary.couponDiscount) || 0;
-        if (couponDiscountUSD > 0) {
+        const couponDiscountAmount = Number(newOrder.orderSummary.couponDiscount) || 0;
+        if (couponDiscountAmount > 0) {
             try {
-                const discountInBuyer = toBuyer(couponDiscountUSD, 'USD');
-                const amountOff = Math.round(discountInBuyer * 100);
+                const amountOff = Math.round(couponDiscountAmount * 100);
                 if (amountOff > 0) {
                     const stripeCoupon = await stripe.coupons.create({
                         amount_off: amountOff,
@@ -640,7 +591,9 @@ exports.placeOrder = async (req, res) => {
         });
     } catch (error) {
         console.error("Stripe session error:::", error);
-        return res.status(500).json({ msg: "Server error while creating checkout session. Try again!" });
+        return res.status(error.statusCode || 500).json({
+            msg: error.statusCode ? error.message : "Server error while creating checkout session. Try again!"
+        });
     }
 }
 
@@ -1117,7 +1070,7 @@ exports.updateStatus = async (req, res) => {
             if (!hasSellerProduct) {
                 return res.status(403).json({ msg: 'You can only update orders containing your products' })
             }
-            
+
             // Sellers can set confirmed and cancelled, but not if order is already shipped or delivered
             if (newStatus === 'cancelled' && ['shipped', 'delivered'].includes(existingOrder.orderStatus)) {
                 return res.status(403).json({ msg: 'Cannot cancel an order that is already shipped or delivered.' })
@@ -1127,7 +1080,7 @@ exports.updateStatus = async (req, res) => {
         // Track confirmation fields when seller/admin explicitly sets confirmed/cancelled
         // Only if the BUYER hasn't already made a decision
         const buyerAlreadyDecided = !!(existingOrder.confirmation?.confirmedAt || existingOrder.confirmation?.declinedAt);
-        
+
         if (newStatus === 'confirmed' && !buyerAlreadyDecided) {
             existingOrder.confirmation = existingOrder.confirmation || {};
             existingOrder.confirmation.confirmedAt = new Date();
@@ -1200,7 +1153,7 @@ exports.getOrderDetail = async (req, res) => {
 // Guest order tracking by email + orderId
 exports.trackGuestOrder = async (req, res) => {
     const { email, orderId } = req.query;
-    
+
     if (!email || !orderId) {
         return res.status(400).json({ msg: 'Email and Order ID are required' });
     }
@@ -1279,7 +1232,7 @@ exports.cancelOrder = async (req, res) => {
         }
 
         await order.save();
-        
+
         // Send cancellation email
         try {
             const emailData = orderStatusUpdateEmail(order, 'cancelled');
@@ -1287,7 +1240,7 @@ exports.cancelOrder = async (req, res) => {
         } catch (emailErr) {
             console.error('Failed to send cancellation email:', emailErr.message);
         }
-        
+
         res.status(200).json({ msg: 'Order cancelled successfully.', order })
     } catch (error) {
         console.error(error);

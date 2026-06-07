@@ -39,6 +39,13 @@ const conditionalVars = [
 
 const optionalVars = [
   'HF_API_KEY',
+  'OPENROUTER_API_KEY',
+  'TRANSCRIPTION_PROVIDER',
+  'OPENROUTER_TRANSCRIPTION_MODEL',
+  'OPENROUTER_TRANSCRIPTION_LANGUAGE',
+  'OPENAI_API_KEY',
+  'OPENAI_TRANSCRIPTION_MODEL',
+  'EVOLUTION_WEBHOOK_BASE64',
   'TRUST_PROXY_HOPS',
   'PORT',
   'STRIPE_MODE'
@@ -128,7 +135,7 @@ if (allMissing.length > 0) {
   console.log('\n✅ All required environment variables are set!');
   console.log(`🔐 Stripe Mode: ${process.env.STRIPE_MODE || 'test'} (default)`);
   console.log('🚀 Your application should work correctly.\n');
-  
+
   if (missingOptional.length > 0) {
     console.log('ℹ️  Optional variables not set:');
     missingOptional.forEach(varName => {
@@ -136,6 +143,6 @@ if (allMissing.length > 0) {
     });
     console.log('   (These are optional and won\'t affect core functionality)\n');
   }
-  
+
   process.exit(0);
 }

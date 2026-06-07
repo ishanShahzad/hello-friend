@@ -309,7 +309,7 @@ function createEvolutionClient(instanceEnvVar, defaultName) {
                 enabled: true,
                 url,
                 webhookByEvents: false,
-                webhookBase64: false,
+                webhookBase64: String(process.env.EVOLUTION_WEBHOOK_BASE64 || '').toLowerCase() === 'true',
                 events: [
                     'MESSAGES_UPSERT',
                     'MESSAGES_UPDATE',

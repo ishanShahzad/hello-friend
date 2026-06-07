@@ -39,6 +39,7 @@ function TrackOrderContent() {
   const [searched, setSearched] = useState(false);
   const [showItems, setShowItems] = useState(false);
   const { formatPrice } = useCurrency();
+  const orderMoney = (amount) => formatPrice(amount, { sourceCurrency: order?.currency || 'USD' });
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -141,7 +142,7 @@ function TrackOrderContent() {
                   <div className="text-right">
                     <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Total</p>
                     <p className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>
-                      {formatPrice(order.orderSummary.totalAmount)}
+                      {orderMoney(order.orderSummary.totalAmount)}
                     </p>
                   </div>
                 </div>
@@ -228,11 +229,11 @@ function TrackOrderContent() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate" style={{ color: "hsl(var(--foreground))" }}>{item.name}</p>
                               <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                                Qty: {item.quantity} × {formatPrice(item.price)}
+                                Qty: {item.quantity} × {orderMoney(item.price)}
                               </p>
                             </div>
                             <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>
-                              {formatPrice(item.price * item.quantity)}
+                              {orderMoney(item.price * item.quantity)}
                             </p>
                           </div>
                         ))}

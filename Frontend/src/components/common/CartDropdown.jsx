@@ -12,15 +12,14 @@ import { getMainDomainUrl, isSubdomain } from "../../utils/subdomainHelper";
 const CartDropdown = () => {
   const { cartItems, handleQtyInc, handleQtyDec, isOpen, dropdownRef, toggleCart, handleRemoveCartItem, isCartLoading, qtyUpdateId } = useGlobal()
   const { currentUser } = useAuth()
-  const { formatProductPrice, getProductPriceNumber, formatAmount } = useCurrency()
+  const { currency, formatPrice, convertAmount } = useCurrency()
 
   const isEmpty = !cartItems?.cart || cartItems.cart.length === 0
 
   const subtotal = isEmpty ? 0 : cartItems.cart.reduce((total, item) => {
     if (!item.product) return total
-    const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price
-    const unit = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price')
-    return total + (unit * item.qty)
+    const productCurrency = item.product.currency || item.product.priceCurrency || 'USD'
+    return total + (convertAmount(item.product.discountedPrice || item.product.price, productCurrency, currency) * item.qty)
   }, 0)
 
   const handleGoToCheckout = () => {
@@ -92,8 +91,10 @@ const CartDropdown = () => {
                     const { product, qty, _id: id } = item
                     if (!product) return null
                     const { _id, name, price, discountedPrice, image } = product
+                    const displayPrice = discountedPrice || price
                     const hasDiscount = discountedPrice && discountedPrice < price
-                    const unitDisplay = getProductPriceNumber(product, hasDiscount ? 'discountedPrice' : 'price')
+                    const productCurrency = product.currency || product.priceCurrency || 'USD'
+                    const lineTotal = convertAmount(displayPrice, productCurrency, currency) * qty
 
                     return (
                       <div key={index} className="relative p-4">
@@ -118,8 +119,8 @@ const CartDropdown = () => {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm leading-snug truncate pr-6" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                             <div className="flex items-baseline gap-1.5 mt-1">
-                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatProductPrice(product, { field: hasDiscount ? 'discountedPrice' : 'price' })}</span>
-                              {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductPrice(product, { field: 'price' })}</span>}
+                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatPrice(displayPrice, { sourceCurrency: productCurrency })}</span>
+                              {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(price, { sourceCurrency: productCurrency })}</span>}
                             </div>
                             <QuantitySelector qty={qty} onIncrement={() => handleQtyInc(item._id)} onDecrement={() => handleQtyDec(item._id)} />
                           </div>
@@ -129,7 +130,7 @@ const CartDropdown = () => {
                               className="p-1.5 rounded-lg glass-button hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 size={15} />
                             </motion.button>
-                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(unitDisplay * qty)}</span>
+                            <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(lineTotal, { sourceCurrency: currency })}</span>
                           </div>
                         </div>
                       </div>
@@ -144,7 +145,7 @@ const CartDropdown = () => {
               <div className="border-t border-white/15 p-4 glass-inner m-3 rounded-2xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span>
-                  <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(subtotal)}</span>
+                  <span className="font-bold text-lg" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(subtotal, { sourceCurrency: currency })}</span>
                 </div>
                 <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>Taxes & shipping calculated at checkout</p>
                 <Link to={mainDomainPath('/checkout')} onClick={handleGoToCheckout}>

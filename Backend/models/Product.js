@@ -13,23 +13,29 @@ const reviewSchema = mongoose.Schema(
 // Product schema definition
 const productSchema = mongoose.Schema(
     {
-        name: { type: String, required: true },
-        description: { type: String, required: true },
-        price: { type: Number, required: true }, // USD-normalized (canonical for all readers)
-        discountedPrice: { type: Number, default: 0 }, // USD-normalized
-        // The exact value the seller entered + the currency they entered it in.
+        price: { type: Number, required: true },
+        discountedPrice: { type: Number, default: 0 },
+        currency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD', index: true },
+        priceCurrency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD' },
+        priceInputAmount: { type: Number, default: null },
+        discountedPriceCurrency: { type: String, enum: ['USD', 'PKR', 'EUR', 'GBP'], default: 'USD' },
+        discountedPriceInputAmount: { type: Number, default: null },
+        // Legacy mirrors from the previous USD-normalized experiment. Kept only
+        // so migrations can recover the seller-entered amount; product.price is
+        // the native stored amount going forward.
         priceOriginal: { type: Number, default: null },
         discountedPriceOriginal: { type: Number, default: null },
-        priceCurrency: { type: String, default: 'USD' },
-        category: { type: String, required: true }, 
-        brand: { type: String, required: true }, 
-        stock: { type: Number, required: true, default: 0 }, 
-        image: { type: String, required: true }, 
+        priceVersion: { type: Number, default: 2, index: true },
+        priceMigratedAt: { type: Date, default: null },
+        category: { type: String, required: true },
+        brand: { type: String, required: true },
+        stock: { type: Number, required: true, default: 0 },
+        image: { type: String, required: true },
         images: [
             {
                 url: { type: String, required: true },
             },
-        ], 
+        ],
         reviews: [reviewSchema],
         rating: { type: Number, default: 0 },
         numReviews: { type: Number, default: 0 },

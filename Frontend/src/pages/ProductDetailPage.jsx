@@ -15,7 +15,7 @@ import { trackProductView } from '../utils/tiktokPixel';
 
 function ProductDetailPage() {
     const { id } = useParams();
-    const { getCurrencySymbol, convertPrice, formatProductPrice } = useCurrency();
+    const { formatPrice } = useCurrency();
     const {
         wishlistItems,
         handleAddToWishlist,
@@ -59,6 +59,7 @@ function ProductDetailPage() {
 
     const displayPrice = product.discountedPrice || product.price;
     const originalPrice = product.price;
+    const productCurrency = product.currency || product.priceCurrency || 'USD';
 
     const discountPercentage = product.discountedPrice && product.discountedPrice < product.price
         ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
@@ -243,7 +244,7 @@ function ProductDetailPage() {
                             offers: {
                                 '@type': 'Offer',
                                 price: product.discountedPrice || product.price,
-                                priceCurrency: 'USD',
+                                priceCurrency: productCurrency,
                                 availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
                                 url: `https://rozare.com/single-product/${id}`,
                                 seller: { '@type': 'Organization', name: 'Rozare' },
@@ -445,10 +446,10 @@ function ProductDetailPage() {
                                 {discountPercentage > 0 ? (
                                     <div className="flex items-center gap-3 flex-wrap">
                                         <span className="text-3xl font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
-                                            {formatProductPrice(product, { field: 'discountedPrice' })}
+                                            {formatPrice(displayPrice, { sourceCurrency: productCurrency })}
                                         </span>
                                         <span className="text-xl line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                            {formatProductPrice(product, { field: 'price' })}
+                                            {formatPrice(originalPrice, { sourceCurrency: productCurrency })}
                                         </span>
                                         <span className="tag-pill text-xs font-semibold"
                                             style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'hsl(0, 72%, 55%)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
@@ -457,7 +458,7 @@ function ProductDetailPage() {
                                     </div>
                                 ) : (
                                     <span className="text-3xl font-extrabold" style={{ color: 'hsl(var(--foreground))' }}>
-                                        {formatProductPrice(product, { field: 'price' })}
+                                        {formatPrice(displayPrice, { sourceCurrency: productCurrency })}
                                     </span>
                                 )}
                             </motion.div>
@@ -618,7 +619,7 @@ function ProductDetailPage() {
                                                             </span>
                                                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                                                                 style={{ background: 'rgba(16,185,129,0.1)', color: 'hsl(150, 60%, 45%)' }}>
-                                                                {coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `$${coupon.discountValue} OFF`}
+                                                                {coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `${formatPrice(coupon.discountValue, { sourceCurrency: coupon.currency || 'USD' })} OFF`}
                                                             </span>
                                                         </div>
                                                         {coupon.description && (
@@ -626,7 +627,7 @@ function ProductDetailPage() {
                                                         )}
                                                         <div className="flex items-center gap-2 mt-1 text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                             {coupon.minOrderAmount > 0 && (
-                                                                <span>Min: ${coupon.minOrderAmount}</span>
+                                                                <span>Min: {formatPrice(coupon.minOrderAmount, { sourceCurrency: coupon.currency || 'USD' })}</span>
                                                             )}
                                                             <span className="flex items-center gap-0.5">
                                                                 <Calendar size={9} />

@@ -1,12 +1,63 @@
 const ShippingMethod = require('../models/ShippingMethod');
 const Product = require('../models/Product');
+const User = require('../models/User');
+const { normalizeCurrency, convertAmount } = require('../services/currencyService');
 const { publicProductFilter } = require('../services/productModerationService');
+
+const roundMoney = (value) => {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100) / 100;
+};
+
+const getSellerCurrency = async (sellerId, fallbackCurrency = 'USD') => {
+  const seller = sellerId
+    ? await User.findById(sellerId).select('currency').lean()
+    : null;
+  return normalizeCurrency(seller?.currency || fallbackCurrency);
+};
+
+const serializeShippingMethod = (method, fallbackCurrency = 'USD') => {
+  const raw = method?.toObject ? method.toObject() : { ...(method || {}) };
+  const currency = normalizeCurrency(raw.currency || raw.costCurrency || fallbackCurrency);
+  const cost = roundMoney(raw.cost);
+  return {
+    ...raw,
+    cost,
+    currency,
+    costCurrency: currency,
+    costInputAmount: raw.costInputAmount != null ? roundMoney(raw.costInputAmount) : cost,
+  };
+};
+
+const normalizeShippingMethodInput = async (method, fallbackCurrency = 'USD') => {
+  const currency = normalizeCurrency(method.currency || method.costCurrency || fallbackCurrency);
+  const sourceCurrency = normalizeCurrency(method.costCurrency || method.currency || currency);
+  const rawCost = method.type === 'free' ? 0 : roundMoney(method.cost);
+  const deliveryDays = Number(method.deliveryDays);
+  const cost = method.type === 'free'
+    ? 0
+    : sourceCurrency === currency
+      ? rawCost
+      : await convertAmount(rawCost, sourceCurrency, currency);
+
+  return {
+    type: method.type,
+    cost,
+    currency,
+    costCurrency: currency,
+    costInputAmount: cost,
+    deliveryDays: Number.isFinite(deliveryDays) ? deliveryDays : 1,
+    isActive: method.isActive !== false,
+  };
+};
 
 // Get shipping methods for a specific seller
 const getSellerShippingMethods = async (req, res) => {
   try {
     const { sellerId } = req.params;
     
+    const sellerCurrency = await getSellerCurrency(sellerId);
     let shippingMethods = await ShippingMethod.findOne({ seller: sellerId });
     
     // If seller has no shipping methods, return default structure
@@ -19,10 +70,13 @@ const getSellerShippingMethods = async (req, res) => {
         }
       });
     }
+
+    const response = shippingMethods.toObject();
+    response.methods = (response.methods || []).map(method => serializeShippingMethod(method, sellerCurrency));
     
     res.status(200).json({
       success: true,
-      shippingMethods
+      shippingMethods: response
     });
   } catch (error) {
     console.error('Error fetching seller shipping methods:', error);
@@ -36,8 +90,10 @@ const getSellerShippingMethods = async (req, res) => {
 // Update seller's shipping methods (seller only)
 const updateShippingMethods = async (req, res) => {
   try {
-    const { methods } = req.body;
+    const { methods, currency } = req.body;
     const sellerId = req.user._id || req.user.id;
+    const sellerCurrency = await getSellerCurrency(sellerId, req.user.currency || currency || 'USD');
+    const inputCurrency = normalizeCurrency(currency || req.user.currency || sellerCurrency);
     
     // Validation
     if (!methods || !Array.isArray(methods)) {
@@ -48,6 +104,7 @@ const updateShippingMethods = async (req, res) => {
     }
     
     // Validate each method
+    const normalizedMethods = [];
     for (const method of methods) {
       if (!['free', 'standard', 'fast'].includes(method.type)) {
         return res.status(400).json({
@@ -55,31 +112,36 @@ const updateShippingMethods = async (req, res) => {
           msg: 'Invalid shipping method type'
         });
       }
+      const normalizedMethod = await normalizeShippingMethodInput(
+        { ...method, currency: method.currency || inputCurrency, costCurrency: method.costCurrency || method.currency || inputCurrency },
+        inputCurrency
+      );
       
-      if (method.type === 'free' && method.cost !== 0) {
+      if (normalizedMethod.type === 'free' && normalizedMethod.cost !== 0) {
         return res.status(400).json({
           success: false,
           msg: 'Free shipping must have 0 cost'
         });
       }
       
-      if (method.type !== 'free' && method.cost <= 0) {
+      if (normalizedMethod.type !== 'free' && normalizedMethod.cost <= 0) {
         return res.status(400).json({
           success: false,
           msg: 'Paid shipping methods must have cost > 0'
         });
       }
       
-      if (method.deliveryDays < 1) {
+      if (normalizedMethod.deliveryDays < 1) {
         return res.status(400).json({
           success: false,
           msg: 'Delivery days must be at least 1'
         });
       }
+      normalizedMethods.push(normalizedMethod);
     }
     
     // Ensure at least one method is active
-    const hasActiveMethod = methods.some(m => m.isActive);
+    const hasActiveMethod = normalizedMethods.some(m => m.isActive);
     if (!hasActiveMethod) {
       return res.status(400).json({
         success: false,
@@ -91,12 +153,12 @@ const updateShippingMethods = async (req, res) => {
     let shippingMethods = await ShippingMethod.findOne({ seller: sellerId });
     
     if (shippingMethods) {
-      shippingMethods.methods = methods;
+      shippingMethods.methods = normalizedMethods;
       await shippingMethods.save();
     } else {
       shippingMethods = await ShippingMethod.create({
         seller: sellerId,
-        methods
+        methods: normalizedMethods
       });
     }
     
@@ -135,7 +197,7 @@ const getShippingMethodsForCart = async (req, res) => {
     // Fetch shipping methods for all sellers
     const shippingMethods = await ShippingMethod.find({
       seller: { $in: sellerIds }
-    }).populate('seller', 'username');
+    }).populate('seller', 'username currency');
     
     // Create a map of seller to their shipping methods
     const sellerShippingMap = {};
@@ -146,16 +208,20 @@ const getShippingMethodsForCart = async (req, res) => {
       );
       
       if (sellerShipping) {
+        const sellerCurrency = normalizeCurrency(sellerShipping.seller?.currency || 'USD');
         sellerShippingMap[sellerId] = {
           seller: sellerShipping.seller,
-          methods: sellerShipping.methods.filter(m => m.isActive)
+          methods: sellerShipping.methods
+            .filter(m => m.isActive)
+            .map(method => serializeShippingMethod(method, sellerCurrency))
         };
       } else {
+        const sellerCurrency = await getSellerCurrency(sellerId);
         // Default shipping methods if seller hasn't configured any
         sellerShippingMap[sellerId] = {
-          seller: { _id: sellerId },
+          seller: { _id: sellerId, currency: sellerCurrency },
           methods: [
-            { type: 'standard', cost: 5.99, deliveryDays: 5, isActive: true }
+            { type: 'standard', cost: 5.99, currency: sellerCurrency, costCurrency: sellerCurrency, costInputAmount: 5.99, deliveryDays: 5, isActive: true }
           ]
         };
       }

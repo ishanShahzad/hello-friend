@@ -6,7 +6,7 @@ import {
   Sparkles, Palette, Clock, ArrowRight, Volume2, VolumeX, Trash2,
   Heart, MapPin, Bell, Ticket, CheckCircle, XCircle, Search,
   ShoppingBag, BarChart3, Shield, Megaphone, Settings,
-  Plus, Star, Eye, ShoppingCart, Maximize2, Store, ImagePlus
+  Plus, Star, Eye, ShoppingCart, Maximize2, Store, ImagePlus, FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,7 +14,6 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 import { getAuthToken } from "../../utils/cookieHelper";
-import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
 import { resilientFetch } from '../../utils/httpResilience';
 import { normalizeAIRoute } from '../../utils/aiRouteGuard';
 
@@ -27,7 +26,7 @@ const extractImageAttachments = (content = '', explicit = []) => {
   const seen = new Set();
   const attachments = [];
   const addAttachment = (attachment) => {
-    const url = attachment?.url || attachment?.imageUrl || attachment?.src;
+    const url = attachment?.url || attachment?.imageUrl || attachment?.src || attachment?.previewUrl;
     if (!url) return;
     const key = String(url).toLowerCase();
     if (seen.has(key)) return;
@@ -117,6 +116,7 @@ const TOOL_ICONS = {
   get_notifications: Bell, mark_notifications_read: Bell,
   get_available_coupons: Ticket, validate_coupon: Ticket,
   add_product: ShoppingBag, edit_product: ShoppingBag, delete_product: Trash2,
+  bulk_add_products: ShoppingBag,
   feature_product: Star,
   list_my_products: ShoppingBag, get_seller_analytics: BarChart3,
   get_seller_orders: Package, update_order_status: CheckCircle,
@@ -141,6 +141,9 @@ const summarizeToolEventsForPrompt = (toolEvents = []) => {
       lines.push(`[Tool memory: add_product saved but blocked. productId=${data.productId}; name="${data.name || ''}"; reason="${data.moderationReason || result.message || ''}". Tell the seller it is blocked and ask them to edit the real product details; do not add it again.]`);
     } else if (event.tool === 'add_product' && result.success && data.productId) {
       lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless explicitly asked for a duplicate.]`);
+    } else if (event.tool === 'bulk_add_products' && result.success && Array.isArray(data.products)) {
+      const products = data.products.slice(0, 12).map(p => `${p.productId || p._id}:${p.name}; brand=${p.brand || ''}; price=${p.price ?? ''}; stock=${p.stock ?? ''}`);
+      lines.push(`[Tool memory: bulk_add_products imported ${data.added ?? data.products.length} products. Internal product lookup: ${products.join(' | ')}. Use these ids internally only; do not show or ask the seller for product IDs.]`);
     } else if (event.tool === 'edit_product' && result.success && (data._id || data.productId)) {
       lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}".]`);
     } else if (event.tool === 'feature_product' && result.success && (data.productId || data._id)) {
@@ -310,6 +313,7 @@ const ProductCardInChat = ({ product, onView, onAddToCart }) => {
   const { formatPrice } = useCurrency();
   const hasDiscount = product.discountedPrice && product.discountedPrice > 0 && product.discountedPrice < product.price;
   const displayPrice = hasDiscount ? product.discountedPrice : product.price;
+  const productCurrency = product.currency || product.priceCurrency || 'USD';
   const stars = product.rating ? Math.round(product.rating) : 0;
 
   return (
@@ -330,9 +334,9 @@ const ProductCardInChat = ({ product, onView, onAddToCart }) => {
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{product.name}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[11px] font-bold" style={{ color: 'hsl(220, 70%, 55%)' }}>{formatPrice(displayPrice)}</span>
+          <span className="text-[11px] font-bold" style={{ color: 'hsl(220, 70%, 55%)' }}>{formatPrice(displayPrice, { sourceCurrency: productCurrency })}</span>
           {hasDiscount && (
-            <span className="text-[9px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price)}</span>
+            <span className="text-[9px] line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price, { sourceCurrency: productCurrency })}</span>
           )}
         </div>
         <div className="flex items-center gap-1 mt-0.5">
@@ -404,6 +408,7 @@ const ProductCardGrid = ({ products, onViewProduct, onAddToCart, title }) => (
 function ChatBot({ embedded = false, conversationId = null, initialMessages = null, loadingHistory = false, onConversationCreated = null, dashboardRole = null }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { formatPrice } = useCurrency();
 
   // State
   const [isOpen, setIsOpen] = useState(embedded);
@@ -414,7 +419,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const [pendingTools, setPendingTools] = useState([]);
   const [activeConvoId, setActiveConvoId] = useState(conversationId);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
+  const isUploadingProductImage = false;
   const [pendingProductImages, setPendingProductImages] = useState([]);
 
   const messagesEndRef = useRef(null);
@@ -430,7 +435,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   const authToken = typeof window !== 'undefined' ? getAuthToken() : null;
   const chips = ROLE_CHIPS[role] || ROLE_CHIPS.user;
   const titles = ROLE_TITLES[role] || ROLE_TITLES.user;
-  const canUploadProductImage = authToken && (role === 'seller' || role === 'admin');
+  const canUploadProductAttachment = authToken && (role === 'seller' || role === 'admin');
 
   // ─── Load initial messages from parent (AI Chat page) ───
   useEffect(() => {
@@ -553,17 +558,21 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
   }, [navigate]);
 
   const handleProductImageUpload = useCallback(async (event) => {
-    const files = Array.from(event.target.files || []).filter(file => file?.type?.startsWith('image/'));
+    const files = Array.from(event.target.files || []).filter(Boolean);
     if (!files.length) return;
 
     try {
+      const tooLarge = files.find(file => file.size > 15 * 1024 * 1024);
+      if (tooLarge) {
+        throw new Error(`${tooLarge.name} is larger than 15MB`);
+      }
       const nextImages = files.map(file => ({
         id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
         file,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : '',
         name: file.name,
         size: file.size,
-        type: file.type,
+        type: file.type || 'application/octet-stream',
       }));
       setPendingProductImages(prev => {
         const combined = [...prev, ...nextImages];
@@ -573,7 +582,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
         });
         return kept;
       });
-      toast.success(`${nextImages.length} image${nextImages.length > 1 ? 's' : ''} attached. Add product details or send when ready.`);
+      toast.success(`${nextImages.length} file${nextImages.length > 1 ? 's' : ''} attached. Add product details or send when ready.`);
       setTimeout(() => inputRef.current?.focus(), 0);
     } catch (error) {
       toast.error(error.message || 'Failed to attach image');
@@ -588,51 +597,31 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     const pendingAttachments = Array.isArray(attachments) ? attachments : (attachments ? [attachments] : []);
     if ((!trimmedText && pendingAttachments.length === 0) || isLoading) return;
 
-    let uploadedAttachments = [];
-    if (pendingAttachments.some(attachment => attachment?.file)) {
-      setIsUploadingProductImage(true);
-      try {
-        uploadedAttachments = await Promise.all(
-          pendingAttachments.map(async (attachment) => {
-            if (attachment?.url && !attachment.file) return attachment;
-            const imageUrl = await uploadImageToCloudinary(attachment.file);
-            return {
-              type: 'image',
-              url: imageUrl,
-              name: attachment.name || 'Product image',
-            };
-          })
-        );
-      } catch (error) {
-        toast.error(error.message || 'Failed to upload image');
-        setIsUploadingProductImage(false);
-        return;
-      }
-      setIsUploadingProductImage(false);
-    }
+    const displayAttachments = pendingAttachments.map(attachment => ({
+      type: attachment.type?.startsWith('image/') ? 'image' : 'file',
+      url: attachment.previewUrl || attachment.url || '',
+      name: attachment.name || 'Attachment',
+    }));
 
-    const visibleContent = trimmedText || (uploadedAttachments.length > 1 ? `${uploadedAttachments.length} images attached` : 'Image attached');
-    const attachmentMetadata = uploadedAttachments
-      .filter(attachment => attachment?.url)
-      .map(attachment => `[Attached product image: ${attachment.url}]`)
-      .join('\n');
+    const visibleContent = trimmedText || (
+      pendingAttachments.length > 1
+        ? `${pendingAttachments.length} files attached`
+        : `${pendingAttachments[0]?.type?.startsWith('image/') ? 'Image' : 'File'} attached`
+    );
     const apiUserMsg = {
       role: 'user',
-      content: attachmentMetadata ? `${visibleContent}\n\n${attachmentMetadata}` : visibleContent,
-      ...(uploadedAttachments.length ? { attachments: uploadedAttachments } : {}),
+      content: visibleContent,
+      ...(displayAttachments.length ? { attachments: displayAttachments } : {}),
     };
     const userMsg = {
       role: 'user',
       content: visibleContent,
-      ...(uploadedAttachments.length ? { attachments: uploadedAttachments } : {}),
+      ...(displayAttachments.length ? { attachments: displayAttachments } : {}),
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setPendingProductImages(prev => {
-      prev.forEach(image => {
-        if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
-      });
       return [];
     });
     setShowChips(false);
@@ -645,7 +634,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
       .map(m => {
         const toolMemory = summarizeToolEventsForPrompt(m.toolEvents);
         const attachmentMemory = (m.attachments || [])
-          .filter(attachment => attachment?.type === 'image' && attachment.url)
+          .filter(attachment => attachment?.type === 'image' && /^https?:\/\//i.test(attachment.url || ''))
           .map(attachment => `[Attached product image: ${attachment.url}]`)
           .join('\n');
         const baseContent = stripAttachmentMetadata(m.content);
@@ -662,14 +651,29 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true, toolEvents: [] }]);
 
     try {
+      const hasFileAttachments = pendingAttachments.some(attachment => attachment?.file);
+      const requestBody = hasFileAttachments ? new FormData() : null;
+      if (requestBody) {
+        requestBody.append('messages', JSON.stringify(apiMessages));
+        if (activeConvoId) requestBody.append('conversationId', activeConvoId);
+        pendingAttachments.forEach(attachment => {
+          if (attachment?.file) requestBody.append('attachments', attachment.file, attachment.name || attachment.file.name);
+        });
+      }
+
       const resp = await fetch(AI_CHAT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ messages: apiMessages, ...(activeConvoId ? { conversationId: activeConvoId } : {}) }),
+        headers: requestBody
+          ? {
+            Accept: 'text/event-stream',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          }
+          : {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+        body: requestBody || JSON.stringify({ messages: apiMessages, ...(activeConvoId ? { conversationId: activeConvoId } : {}) }),
       });
 
       if (!resp.ok) {
@@ -855,6 +859,9 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
     const isAssistant = msg.role === 'assistant';
     const isUser = msg.role === 'user';
     const imageAttachments = isUser ? extractImageAttachments(msg.content, msg.attachments) : [];
+    const fileAttachments = isUser
+      ? (msg.attachments || []).filter(attachment => attachment?.type && attachment.type !== 'image')
+      : [];
     const visibleUserContent = isUser
       ? (stripAttachmentMetadata(msg.content) || (imageAttachments.length ? 'Image attached' : ''))
       : msg.content;
@@ -918,6 +925,16 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                       className="w-full max-h-56 object-cover"
                       loading="lazy"
                     />
+                  </div>
+                ))}
+                {fileAttachments.map((attachment, attachmentIdx) => (
+                  <div
+                    key={`${attachment.name || 'file'}-${attachmentIdx}`}
+                    className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs"
+                    style={{ background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    <FileText size={14} className="shrink-0" />
+                    <span className="truncate">{attachment.name || 'Attached file'}</span>
                   </div>
                 ))}
                 {visibleUserContent && <p>{visibleUserContent}</p>}
@@ -1022,7 +1039,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                       </span>
                       {result.data.price != null && (
                         <span className="text-xs font-bold shrink-0" style={{ color: 'hsl(220, 70%, 55%)' }}>
-                          ${result.data.price}
+                          {formatPrice(result.data.price, { sourceCurrency: result.data.currency || result.data.priceCurrency || 'USD' })}
                         </span>
                       )}
                     </div>
@@ -1039,10 +1056,11 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                       name: item.name,
                       price: item.originalPrice || item.price,
                       discountedPrice: item.price,
+                      currency: item.currency || result.data.currency,
                       image: item.image,
                       stock: 1,
                     }))}
-                    title={`Cart — ${result.data.items.length} items — $${result.data.total?.toFixed(2)}`}
+                    title={`Cart — ${result.data.items.length} items — ${formatPrice(result.data.total || 0, { sourceCurrency: result.data.currency || 'USD' })}`}
                     onViewProduct={(id) => navigate(`/single-product/${id}`)}
                   />
                 );
@@ -1250,7 +1268,7 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
           >
             <div className="flex items-center justify-between gap-2 mb-2">
               <p className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                {pendingProductImages.length} image{pendingProductImages.length > 1 ? 's' : ''} ready
+                {pendingProductImages.length} file{pendingProductImages.length > 1 ? 's' : ''} ready
               </p>
               <button
                 type="button"
@@ -1269,11 +1287,21 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
             <div className="grid grid-cols-4 gap-2">
               {pendingProductImages.map(image => (
                 <div key={image.id || image.previewUrl} className="relative">
-                  <img
-                    src={image.previewUrl}
-                    alt={image.name || 'Selected product image'}
-                    className="h-16 w-full rounded-xl object-cover"
-                  />
+                  {image.previewUrl ? (
+                    <img
+                      src={image.previewUrl}
+                      alt={image.name || 'Selected product image'}
+                      className="h-16 w-full rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="h-16 w-full rounded-xl flex flex-col items-center justify-center px-1 text-center"
+                      style={{ background: 'hsl(var(--background) / 0.7)', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+                    >
+                      <FileText size={16} />
+                      <span className="text-[9px] leading-tight mt-1 line-clamp-2">{image.name}</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPendingProductImages(prev => prev.filter(item => {
@@ -1304,12 +1332,12 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
               '--tw-ring-color': 'rgba(14,165,233,0.35)',
             }}
           >
-            {canUploadProductImage && (
+            {canUploadProductAttachment && (
               <>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.json,.csv,.tsv,.txt,.xlsx,.xls,.pdf,.docx,audio/*,.ogg,.opus,.mp3,.m4a,.wav,.webm,.flac"
                   multiple
                   className="hidden"
                   onChange={handleProductImageUpload}
@@ -1324,8 +1352,8 @@ function ChatBot({ embedded = false, conversationId = null, initialMessages = nu
                     color: 'hsl(var(--muted-foreground))',
                     border: '1px solid hsl(var(--border))',
                   }}
-                  title="Upload product image"
-                  aria-label="Upload product image"
+                  title="Upload product image or file"
+                  aria-label="Upload product image or file"
                 >
                   {isUploadingProductImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
                 </button>

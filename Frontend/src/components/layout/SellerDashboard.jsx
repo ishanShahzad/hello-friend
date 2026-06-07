@@ -155,6 +155,7 @@ const SellerDashboard = () => {
     const handleCreateProduct = () => {
         setEditingProduct({
             name: '', description: '', price: '', discountedPrice: "",
+            currency, priceCurrency: currency, discountedPriceCurrency: currency,
             category: '', brand: '', stock: "", image: '', images: [],
             tags: [], colors: [], optionGroups: [], isFeatured: false
         });
@@ -937,22 +938,7 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
 const MAX_TAGS = 15;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, canFeature = true, featuredStats = { current: 0, max: 3, allowed: true } }) => {
-    const { currency, currencies, getCurrencySymbol } = useCurrency();
-    // When editing an existing product, the entry currency is locked to whatever
-    // the seller originally saved it in. For new products, it follows the live
-    // display currency selector. This prevents accidental currency mixups.
-    const isEditing = Boolean(product?._id);
-    const entryCurrency = isEditing ? (product.priceCurrency || 'USD') : currency;
-    const entryCurrencyInfo = currencies?.[entryCurrency] || { symbol: entryCurrency };
-    const entrySymbol = entryCurrencyInfo.symbol;
-    // Show the seller's original entered value when editing legacy products that
-    // don't yet have `priceOriginal`, fall back to `price` (which was stored as USD).
-    const priceValue = product.price === '' || product.price === undefined || product.price === null
-        ? ''
-        : (product.priceOriginal ?? product.price);
-    const discValue = product.discountedPrice === '' || product.discountedPrice === undefined || product.discountedPrice === null || product.discountedPrice === 0
-        ? ''
-        : (product.discountedPriceOriginal ?? product.discountedPrice);
+    const { currency, convertAmount, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
     const tagsAtLimit = (product.tags?.length || 0) >= MAX_TAGS;
@@ -1047,6 +1033,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const handleRemoveImage = (indexToRemove) => setProduct({ ...product, images: product.images.filter((_, index) => index !== indexToRemove) });
     const handleSetMainImage = (url) => setProduct({ ...product, image: url });
     const handleSubmit = (e) => { e.preventDefault(); onSave(); };
+    const editingCurrency = product.currency || product.priceCurrency || currency;
+    const displayAmount = (amount) => amount ? convertAmount(amount, editingCurrency, currency).toFixed(2) : '';
 
     const inputClass = "glass-input w-full";
     const labelClass = "block text-xs font-semibold uppercase tracking-wider mb-2";
@@ -1096,8 +1084,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 {catOpen && (
                                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
                                         className="absolute z-50 mt-2 left-0 right-0 max-h-64 overflow-y-auto rounded-xl p-2 shadow-2xl border"
-                                        style={{ background: 'hsl(var(--background))', color: 'hsl(var(--foreground))', borderColor: 'hsl(var(--border))', boxShadow: '0 20px 50px -10px rgba(0,0,0,0.35)' }}>
-
+                                        style={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', borderColor: 'var(--glass-border)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
                                         {filteredCategories.length === 0 && !showOtherInput && (
                                             <p className="text-xs italic px-2 py-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>No matches</p>
                                         )}
@@ -1110,7 +1097,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                                 {product.category?.toLowerCase() === c.toLowerCase() && <CheckCircle size={14} style={{ color: 'hsl(150,60%,45%)' }} />}
                                             </button>
                                         ))}
-                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                                        <div className="mt-1 pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
                                             {!showOtherInput ? (
                                                 <button type="button" onClick={() => { setShowOtherInput(true); setProduct({ ...product, category: exactMatch ? '' : product.category }); }}
                                                     className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors flex items-center gap-2"
@@ -1134,7 +1121,6 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>Stock *</label>
@@ -1144,38 +1130,47 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Price ({entrySymbol}) * <span className="text-[10px] normal-case font-normal ml-1">in {entryCurrency}{isEditing ? ' (locked)' : ''}</span>
+                                Price ({getCurrencySymbol()}) * <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{entrySymbol}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" required disabled={uploadingImages}
-                                    value={priceValue}
+                                    value={displayAmount(product.price)}
                                     onChange={(e) => {
-                                        const v = e.target.value;
-                                        const num = v === '' ? '' : (parseFloat(v) || 0);
-                                        setProduct({ ...product, price: num, priceOriginal: num, priceCurrency: entryCurrency });
+                                        const inputAmount = e.target.value === '' ? '' : parseFloat(e.target.value) || 0;
+                                        setProduct({
+                                            ...product,
+                                            price: inputAmount,
+                                            currency,
+                                            priceCurrency: currency,
+                                            priceInputAmount: inputAmount === '' ? null : inputAmount,
+                                        });
                                     }}
-                                    className={`${inputClass} pl-14`} placeholder={`0.00`} />
+                                    className={`${inputClass} pl-9`} placeholder={`0.00`} />
                             </div>
                         </div>
                         <div>
                             <label className={labelClass} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Discounted Price ({entrySymbol}) <span className="text-[10px] normal-case font-normal ml-1">in {entryCurrency}{isEditing ? ' (locked)' : ''}</span>
+                                Discounted Price ({getCurrencySymbol()}) <span className="text-[10px] normal-case font-normal ml-1">in {currency}</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }}>{entrySymbol}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{getCurrencySymbol()}</span>
                                 <input type="number" min="0" step="0.01" disabled={uploadingImages}
-                                    value={discValue}
+                                    value={displayAmount(product.discountedPrice)}
                                     onChange={(e) => {
-                                        const v = e.target.value;
-                                        const num = v === '' ? '' : (parseFloat(v) || 0);
-                                        setProduct({ ...product, discountedPrice: num, discountedPriceOriginal: num, priceCurrency: entryCurrency });
+                                        const inputAmount = parseFloat(e.target.value) || 0;
+                                        setProduct({
+                                            ...product,
+                                            currency,
+                                            priceCurrency: currency,
+                                            discountedPrice: inputAmount,
+                                            discountedPriceCurrency: currency,
+                                            discountedPriceInputAmount: inputAmount,
+                                        });
                                     }}
-                                    className={`${inputClass} pl-14`} placeholder="Optional" />
+                                    className={`${inputClass} pl-9`} placeholder={`Discounted price (optional)`} />
                             </div>
                         </div>
-
-
                     </div>
 
                     {/* Description */}

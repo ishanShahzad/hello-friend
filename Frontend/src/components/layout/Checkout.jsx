@@ -27,7 +27,7 @@ export default function Checkout() {
   const STRIPE_PUBLISHABLE_KEY = STRIPE_MODE === 'live'
     ? import.meta.env.VITE_STRIPE_LIVE_PUBLISHABLE_KEY
     : import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY;
-  
+
   const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
   const steps = ["Cart", "Shipping", "Payment"];
@@ -46,13 +46,13 @@ export default function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  
+
   // Tax and Shipping state
   const [taxConfig, setTaxConfig] = useState(null);
   const [sellerShippingMethods, setSellerShippingMethods] = useState({});
   const [selectedShippingPerSeller, setSelectedShippingPerSeller] = useState({});
   const [expandedSellers, setExpandedSellers] = useState({});
-  
+
   // Saved shipping info for auto-fill
   const [savedShippingInfo, setSavedShippingInfo] = useState(null);
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
@@ -65,11 +65,24 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState({});
 
 
-  const { currency, formatPrice, formatProductPrice, getProductPriceNumber, formatAmount, convertPrice } = useCurrency();
-  
+  const { currency, formatPrice, convertAmount } = useCurrency();
+
   const { cartItems, handleQtyInc, handleQtyDec, handleRemoveCartItem, isCartLoading,
     qtyUpdateId, fetchCart
   } = useGlobal();
+
+  const productCurrency = (product) => product?.currency || product?.priceCurrency || 'USD';
+  const couponCurrency = (coupon) => coupon?.currency || 'USD';
+  const currentMoney = (amount, options = {}) => formatPrice(amount, { ...options, sourceCurrency: currency });
+  const productPriceInCheckoutCurrency = (product, amount = undefined) => {
+    const value = amount === undefined ? (product?.discountedPrice || product?.price || 0) : amount;
+    return convertAmount(value, productCurrency(product), currency);
+  };
+  const shippingMethodCurrency = (method, sellerInfo = null) => method?.currency || method?.costCurrency || sellerInfo?.seller?.currency || currency;
+  const shippingCostInCheckoutCurrency = (method, sellerInfo = null) =>
+    convertAmount(method?.cost || 0, shippingMethodCurrency(method, sellerInfo), currency);
+  const couponAmountInCheckoutCurrency = (amount, coupon = null) => convertAmount(amount || 0, couponCurrency(coupon), currency);
+  const formatCouponAmount = (amount, coupon = null) => currentMoney(couponAmountInCheckoutCurrency(amount, coupon));
 
   // Fetch tax configuration on mount
   useEffect(() => {
@@ -141,24 +154,24 @@ export default function Checkout() {
   const getCouponInputConfig = (sellerId, sellerProducts) => {
     const coupons = sellerCoupons[sellerId];
     if (!coupons || coupons.length === 0) return null;
-    
+
     // Check if ANY coupon from this seller applies to ALL products
     const hasAllCoupon = coupons.some(c => c.applicableTo === 'all');
     // Check if coupons target selected products
     const selectedCoupons = coupons.filter(c => c.applicableTo === 'selected');
-    
+
     if (hasAllCoupon && selectedCoupons.length === 0) {
       // Only "all" coupons — show single input for the seller group
       return { type: 'group', sellerId };
     }
-    
+
     if (!hasAllCoupon && selectedCoupons.length > 0) {
       // Only "selected" coupons — determine which products have coupons
       const productIdsWithCoupons = new Set();
       selectedCoupons.forEach(c => c.applicableProducts.forEach(pid => productIdsWithCoupons.add(pid)));
-      
+
       const productsWithCoupons = sellerProducts.filter(item => productIdsWithCoupons.has(item.product._id));
-      
+
       if (productsWithCoupons.length === sellerProducts.length) {
         // All products have coupons — show group input
         return { type: 'group', sellerId };
@@ -166,7 +179,7 @@ export default function Checkout() {
       // Show per-product inputs for eligible products
       return { type: 'per-product', productIds: [...productIdsWithCoupons] };
     }
-    
+
     // Mix of "all" and "selected" coupons — show group input (simplest UX)
     return { type: 'group', sellerId };
   };
@@ -189,17 +202,17 @@ export default function Checkout() {
         // Check min order amount for applicable products
         const applicableItems = cartItems.cart.filter(item => coupon.applicableProductIds.includes(item.product._id));
         const applicableSubtotal = applicableItems.reduce((sum, item) => {
-          const price = item.product.discountedPrice || item.product.price;
-          return sum + (price * item.qty);
+          return sum + (productPriceInCheckoutCurrency(item.product) * item.qty);
         }, 0);
-        
-        if (coupon.minOrderAmount > 0 && applicableSubtotal < coupon.minOrderAmount) {
-          toast.error(`Minimum order amount of ${formatPrice(coupon.minOrderAmount)} required for this coupon`);
+        const minOrderAmount = couponAmountInCheckoutCurrency(coupon.minOrderAmount || 0, coupon);
+
+        if (minOrderAmount > 0 && applicableSubtotal < minOrderAmount) {
+          toast.error(`Minimum order amount of ${currentMoney(minOrderAmount)} required for this coupon`);
           return;
         }
-        
+
         setAppliedCoupons(prev => ({ ...prev, [inputKey]: coupon }));
-        toast.success(`Coupon ${coupon.code} applied! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${formatPrice(coupon.discountValue)} off`}`);
+        toast.success(`Coupon ${coupon.code} applied! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${formatCouponAmount(coupon.discountValue, coupon)} off`}`);
       }
     } catch (err) {
       toast.error(err.response?.data?.msg || 'Invalid coupon code');
@@ -223,16 +236,26 @@ export default function Checkout() {
     let totalDiscount = 0;
     Object.values(appliedCoupons).forEach(coupon => {
       if (coupon.applicableProductIds.includes(productId)) {
-        let discount = 0;
+        const applicableItems = cartItems.cart.filter(item => coupon.applicableProductIds.includes(item.product._id));
+        const applicableSubtotal = applicableItems.reduce((sum, item) => {
+          return sum + (productPriceInCheckoutCurrency(item.product) * item.qty);
+        }, 0);
+        if (applicableSubtotal <= 0) return;
+
+        const lineSubtotal = itemPrice * qty;
+        let couponDiscount = 0;
         if (coupon.discountType === 'percentage') {
-          discount = (itemPrice * qty * coupon.discountValue) / 100;
+          couponDiscount = (applicableSubtotal * coupon.discountValue) / 100;
         } else {
-          discount = coupon.discountValue; // Fixed discount spread across
+          couponDiscount = couponAmountInCheckoutCurrency(coupon.discountValue, coupon);
         }
-        if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) {
-          discount = coupon.maxDiscountAmount;
+        const maxDiscountAmount = coupon.maxDiscountAmount
+          ? couponAmountInCheckoutCurrency(coupon.maxDiscountAmount, coupon)
+          : 0;
+        if (maxDiscountAmount && couponDiscount > maxDiscountAmount) {
+          couponDiscount = maxDiscountAmount;
         }
-        totalDiscount += discount;
+        totalDiscount += couponDiscount * (lineSubtotal / applicableSubtotal);
       }
     });
     return totalDiscount;
@@ -243,11 +266,11 @@ export default function Checkout() {
     if (!cartItems?.cart || Object.keys(appliedCoupons).length === 0) return 0;
     let total = 0;
     cartItems.cart.forEach(item => {
-      const price = item.product.discountedPrice || item.product.price;
+      const price = productPriceInCheckoutCurrency(item.product);
       total += getProductCouponDiscount(item.product._id, price, item.qty);
     });
     return total;
-  }, [cartItems, appliedCoupons]);
+  }, [cartItems, appliedCoupons, currency, convertAmount]);
 
   const handleAutoFill = () => {
     if (!savedShippingInfo) return;
@@ -267,16 +290,16 @@ export default function Checkout() {
       const cartItemsData = cartItems.cart.map(item => ({
         productId: item.product._id
       }));
-      
+
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}api/shipping/cart`,
         { cartItems: cartItemsData }
       );
-      
+
       if (res.data.success) {
         const shippingData = res.data.shippingMethods;
         setSellerShippingMethods(shippingData);
-        
+
         // Set default shipping method for each seller - prefer free shipping
         const defaultSelections = {};
         Object.keys(shippingData).forEach(sellerId => {
@@ -297,15 +320,15 @@ export default function Checkout() {
   // Calculate tax based on subtotal
   const calculateTax = (subtotal) => {
     if (!taxConfig || taxConfig.type === 'none') return 0;
-    
+
     if (taxConfig.type === 'percentage') {
       return (subtotal * taxConfig.value) / 100;
     }
-    
+
     if (taxConfig.type === 'fixed') {
-      return taxConfig.value;
+      return convertAmount(taxConfig.value, 'USD', currency);
     }
-    
+
     return 0;
   };
 
@@ -351,16 +374,14 @@ export default function Checkout() {
   const billingSameAsShipping = watch("billingSameAsShipping");
   const allFormValues = watch();
 
-  // Restore saved form values + selected shipping/coupons on mount (e.g. user
-  // came back from Stripe without paying — keep their progress intact).
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
       if (!saved) return;
       const parsed = JSON.parse(saved);
       if (parsed.formValues) {
-        Object.entries(parsed.formValues).forEach(([k, v]) => {
-          if (v !== undefined && v !== null) setValue(k, v);
+        Object.entries(parsed.formValues).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) setValue(key, value);
         });
       }
       if (parsed.selectedShippingPerSeller) {
@@ -370,10 +391,8 @@ export default function Checkout() {
         setAppliedCoupons(parsed.appliedCoupons);
       }
     } catch (_) {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setValue]);
 
-  // Persist progress whenever step / form / shipping / coupons change.
   useEffect(() => {
     try {
       sessionStorage.setItem(
@@ -388,45 +407,31 @@ export default function Checkout() {
     } catch (_) {}
   }, [currentStep, allFormValues, selectedShippingPerSeller, appliedCoupons]);
 
-
   // Subtotal
   const subtotal = useMemo(() => {
     if (!cartItems?.cart) return 0;
     return cartItems.cart.reduce((total, item) => {
-      const itemPrice = item.product.discountedPrice || item.product.price;
+      const itemPrice = productPriceInCheckoutCurrency(item.product);
       return total + (itemPrice * item.qty);
     }, 0);
-  }, [cartItems]);
-  
+  }, [cartItems, currency, convertAmount]);
+
   // Calculate tax and shipping
   const tax = useMemo(() => calculateTax(subtotal), [subtotal, taxConfig]);
-  
+
   // Calculate total shipping cost from all sellers
   const shippingCost = useMemo(() => {
     return Object.values(selectedShippingPerSeller).reduce((total, method) => {
-      return total + (method?.cost || 0);
+      return total + shippingCostInCheckoutCurrency(method);
     }, 0);
-  }, [selectedShippingPerSeller]);
-  
+  }, [selectedShippingPerSeller, currency, convertAmount]);
+
   const totalAmount = subtotal + tax + shippingCost - totalCouponDiscount;
 
-  // Drift-free display amounts (in buyer's currency) — used ONLY for showing
-  // prices to the user. Backend still receives USD-based subtotal/total above.
-  const displaySubtotal = useMemo(() => {
-    if (!cartItems?.cart) return 0;
-    return cartItems.cart.reduce((total, item) => {
-      if (!item.product) return total;
-      const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
-      const unit = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
-      return total + (unit * item.qty);
-    }, 0);
-  }, [cartItems, currency, getProductPriceNumber]);
-  const displayTotal = displaySubtotal + convertPrice(tax + shippingCost - totalCouponDiscount);
-  
   // Group cart items by seller
   const cartItemsBySeller = useMemo(() => {
     if (!cartItems?.cart) return {};
-    
+
     const grouped = {};
     cartItems.cart.forEach(item => {
       const sellerId = item.product.seller;
@@ -472,11 +477,11 @@ export default function Checkout() {
         "country",
       ]);
       if (!valid) return;
-      
+
       // Validate shipping method is selected for all sellers
       const sellerIds = Object.keys(sellerShippingMethods);
       const hasAllShippingSelected = sellerIds.every(sellerId => selectedShippingPerSeller[sellerId]);
-      
+
       if (!hasAllShippingSelected) {
         toast.error("Please select a shipping method for all sellers");
         return;
@@ -499,13 +504,13 @@ export default function Checkout() {
     // Validate shipping method is selected for all sellers
     const sellerIds = Object.keys(sellerShippingMethods);
     const hasAllShippingSelected = sellerIds.every(sellerId => selectedShippingPerSeller[sellerId]);
-    
+
     if (!hasAllShippingSelected) {
       toast.error("Please select a shipping method for all sellers");
       setIsProcessing(false);
       return;
     }
-    
+
     setIsProcessing(true);
 
     // Build seller shipping array
@@ -513,30 +518,33 @@ export default function Checkout() {
       seller: sellerId,
       shippingMethod: {
         name: method.type,
-        price: method.cost,
+        price: shippingCostInCheckoutCurrency(method, sellerShippingMethods[sellerId]),
         estimatedDays: method.deliveryDays
       }
     }));
-    
+
     // Use first seller's shipping as primary (for backward compatibility)
     const primaryShipping = sellerShipping[0]?.shippingMethod || {
       name: 'standard',
       price: 0,
       estimatedDays: 5
     };
-    
+
     const tiktokPlaceOrderEventId = createTikTokEventId('place_order');
     const tiktokPurchaseEventId = createTikTokEventId('purchase');
 
     const order = {
       orderItems: cartItems.cart.map((item) => {
-        const itemPrice = item.product.discountedPrice || item.product.price;
+        const sourcePrice = item.product.discountedPrice || item.product.price;
+        const itemPrice = productPriceInCheckoutCurrency(item.product, sourcePrice);
 
         return {
           id: item.product._id,
           name: item.product.name,
           image: item.product.image,
           price: itemPrice,
+          sourcePrice,
+          sourceCurrency: productCurrency(item.product),
           quantity: item.qty,
           selectedColor: item.selectedColor || null,
           selectedOptions: item.selectedOptions || undefined,
@@ -560,7 +568,7 @@ export default function Checkout() {
         estimatedDays: primaryShipping.estimatedDays,
         seller: sellerShipping[0]?.seller
       },
-      
+
       sellerShipping: sellerShipping, // Multi-seller shipping details
 
       orderSummary: {
@@ -576,7 +584,12 @@ export default function Checkout() {
         couponId: c._id,
         code: c.code,
         discountType: c.discountType,
-        discountValue: c.discountValue,
+        discountValue: c.discountType === 'fixed'
+          ? couponAmountInCheckoutCurrency(c.discountValue, c)
+          : c.discountValue,
+        currency,
+        sourceDiscountValue: c.discountValue,
+        sourceCurrency: couponCurrency(c),
         applicableProductIds: c.applicableProductIds,
       })),
 
@@ -591,7 +604,7 @@ export default function Checkout() {
         tiktokPurchaseEventId,
       },
     };
-    
+
 
     if (data.instructions !== '') order.instructions = data.instructions
 
@@ -612,9 +625,9 @@ export default function Checkout() {
         address: data.address, city: data.city, state: data.state,
         postalCode: data.postalCode, country: data.country || 'Pakistan',
       };
-      const hasChanged = !savedShippingInfo || 
+      const hasChanged = !savedShippingInfo ||
         Object.keys(currentShipping).some(k => currentShipping[k] !== (savedShippingInfo[k] || ''));
-      
+
       if (!savedShippingInfo && currentUser) {
         // First time - auto-save silently
         try {
@@ -637,10 +650,10 @@ export default function Checkout() {
           totalAmount,
           eventId: tiktokPlaceOrderEventId,
         });
-        
+
         // If update prompt is showing, don't navigate yet - modal handles it
         if (hasChanged && currentUser) return;
-        
+
         setTimeout(async () => {
           if (token) {
             axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, {
@@ -656,7 +669,7 @@ export default function Checkout() {
         }, 1500);
         return;
       }
-      
+
       trackAddPaymentInfo({
         cartItems: cartItems?.cart || [],
         totalAmount,
@@ -804,14 +817,15 @@ export default function Checkout() {
                           {Object.entries(cartItemsBySeller).map(([sellerId, sellerItems]) => {
                             const couponConfig = getCouponInputConfig(sellerId, sellerItems);
                             const groupKey = `seller-${sellerId}`;
-                            
+
                             return (
                               <div key={sellerId} className="space-y-3">
                                 {/* Seller items */}
                                 {sellerItems.map((item) => {
                                   const { product, qty } = item;
                                   const { _id, name, price, image, discountedPrice } = product;
-                                  const itemPrice = discountedPrice || price;
+                                  const itemSourceCurrency = productCurrency(product);
+                                  const itemPrice = productPriceInCheckoutCurrency(product);
                                   const productCouponDiscount = getProductCouponDiscount(_id, itemPrice, qty);
                                   const productKey = `product-${_id}`;
                                   const showPerProductInput = couponConfig?.type === 'per-product' && couponConfig.productIds.includes(_id);
@@ -838,10 +852,10 @@ export default function Checkout() {
                                           <div>
                                             <h4 className="font-medium text-sm sm:text-base" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
                                             <p>
-                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductPrice(product, { field: discountedPrice ? 'discountedPrice' : 'price' })}</span>
+                                              <span className="font-bold text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(discountedPrice || price, { sourceCurrency: itemSourceCurrency })}</span>
                                               {productCouponDiscount > 0 && (
                                                 <span className="ml-2 text-xs font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>
-                                                  -{formatPrice(productCouponDiscount)} coupon
+                                                  -{currentMoney(productCouponDiscount)} coupon
                                                 </span>
                                               )}
                                             </p>
@@ -867,7 +881,7 @@ export default function Checkout() {
                                           couponLoading={couponLoading}
                                           onApply={() => applyCoupon(productKey, [_id])}
                                           onRemove={() => removeCoupon(productKey)}
-                                          formatPrice={formatPrice}
+                                          formatPrice={formatCouponAmount}
                                         />
                                       )}
                                     </div>
@@ -884,7 +898,7 @@ export default function Checkout() {
                                     couponLoading={couponLoading}
                                     onApply={() => applyCoupon(groupKey, sellerItems.map(i => i.product._id))}
                                     onRemove={() => removeCoupon(groupKey)}
-                                    formatPrice={formatPrice}
+                                    formatPrice={formatCouponAmount}
                                     isGroup
                                   />
                                 )}
@@ -990,7 +1004,7 @@ export default function Checkout() {
                                 Select Shipping Method
                               </div>
                             </label>
-                            
+
                             {Object.keys(sellerShippingMethods).length === 0 ? (
                               <p className="text-gray-500 text-sm">Loading shipping options...</p>
                             ) : (
@@ -1009,20 +1023,20 @@ export default function Checkout() {
                                           Multiple Seller's products in Your Cart!
                                         </h4>
                                         <p className="text-xs text-blue-800">
-                                          Your items are from <span className="font-semibold">{Object.keys(sellerShippingMethods).length} different sellers</span>. 
+                                          Your items are from <span className="font-semibold">{Object.keys(sellerShippingMethods).length} different sellers</span>.
                                           Each seller has their own shipping methods and costs. Please select a shipping method for each seller's products below.
                                         </p>
                                       </div>
                                     </div>
                                   </div>
                                 )}
-                                
+
                                 <div className="space-y-6">
                                 {Object.entries(sellerShippingMethods).map(([sellerId, { seller, methods }]) => {
                                   const sellerProducts = cartItemsBySeller[sellerId] || [];
                                   const isExpanded = expandedSellers[sellerId] === true; // Default to collapsed
                                   const hasMultipleProducts = sellerProducts.length > 1;
-                                  
+
                                   return (
                                     <div key={sellerId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                                       {/* Products from this Seller */}
@@ -1047,15 +1061,15 @@ export default function Checkout() {
                                                   </div>
                                                   <div>
                                                     <p className="font-medium text-sm text-gray-900">
-                                                      {sellerProducts.length === 1 
+                                                      {sellerProducts.length === 1
                                                         ? sellerProducts[0].product.name
                                                         : `${sellerProducts.length} items`
                                                       }
                                                     </p>
                                                     <p className="text-xs text-gray-500">
-                                                      Total: ${sellerProducts.reduce((sum, item) =>
-                                                        sum + ((item.product.discountedPrice || item.product.price) * item.qty), 0 // SPIN WHEEL DISABLED - was getDiscountedPrice(item.product)
-                                                      ).toFixed(2)}
+                                                      Total: {currentMoney(sellerProducts.reduce((sum, item) =>
+                                                        sum + (productPriceInCheckoutCurrency(item.product) * item.qty), 0
+                                                      ))}
                                                     </p>
                                                   </div>
                                                 </div>
@@ -1074,7 +1088,7 @@ export default function Checkout() {
                                                 </button>
                                               </div>
                                             )}
-                                            
+
                                             {/* Expanded View - All Products with Individual Remove */}
                                             <AnimatePresence>
                                               {isExpanded && (
@@ -1086,8 +1100,8 @@ export default function Checkout() {
                                                   className="space-y-2"
                                                 >
                                                   {sellerProducts.map((item) => {
-                                                    const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
-                                                    const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
+                                                    const itemPrice = productPriceInCheckoutCurrency(item.product);
+                                                    // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
 
                                                     return (
                                                       <div key={item._id} className="flex items-center gap-3 p-2 bg-white rounded-lg relative">
@@ -1101,7 +1115,7 @@ export default function Checkout() {
                                                           <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                          <span className="font-semibold text-sm">{formatAmount(unitDisplay * item.qty)}</span>
+                                                          <span className="font-semibold text-sm">{currentMoney(itemPrice * item.qty)}</span>
                                                           {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
                                                           {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
                                                         </div>
@@ -1118,7 +1132,7 @@ export default function Checkout() {
                                                 </motion.div>
                                               )}
                                             </AnimatePresence>
-                                            
+
                                             {/* Expand/Collapse Button */}
                                             <button
                                               type="button"
@@ -1143,13 +1157,13 @@ export default function Checkout() {
                                           </div>
                                         )}
                                       </div>
-                                    
+
                                     {/* Shipping Options for these Products */}
                                     <div className="space-y-2 pt-3 border-t border-gray-300">
                                       <div className="flex items-center justify-between mb-2">
                                         <p className="text-xs font-medium text-gray-600">Choose shipping method:</p>
                                         <p className="text-xs text-gray-500">
-                                          {methods.length === 1 
+                                          {methods.length === 1
                                             ? '1 method available'
                                             : `${methods.length} methods available`
                                           }
@@ -1195,7 +1209,7 @@ export default function Checkout() {
                                               </div>
                                             </div>
                                             <span className="font-semibold">
-                                              {formatPrice(method.cost)}
+                                              {currentMoney(shippingCostInCheckoutCurrency(method, { seller }))}
                                             </span>
                                           </div>
                                         </motion.div>
@@ -1411,8 +1425,8 @@ export default function Checkout() {
 
               <div className="max-h-80 overflow-y-auto mb-4">
                 {cartItems.cart.map((item) => {
-                  const hasDisc = item.product.discountedPrice && item.product.discountedPrice < item.product.price;
-                  const unitDisplay = getProductPriceNumber(item.product, hasDisc ? 'discountedPrice' : 'price');
+                  const itemPrice = productPriceInCheckoutCurrency(item.product);
+                  // const hasSpinDiscount = false; // SPIN WHEEL DISABLED
 
                   return (
                     <div key={item._id} className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
@@ -1425,10 +1439,14 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium text-xs sm:text-sm" style={{ color: 'hsl(var(--foreground))' }}>{item.product.name}</p>
                           <p className="text-xs sm:text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {item.qty}</p>
+                          {/* SPIN WHEEL DISABLED - spin discount badge removed */}
+                          {/* {hasSpinDiscount && (<p className="text-xs text-green-600 font-semibold">🎉 Spin Discount Applied!</p>)} */}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="font-semibold">{formatAmount(unitDisplay * item.qty)}</span>
+                        <span className="font-semibold">{currentMoney(itemPrice * item.qty)}</span>
+                        {/* SPIN WHEEL DISABLED - spin discount strikethrough removed */}
+                        {/* {hasSpinDiscount && (<p className="text-xs text-gray-500 line-through">{formatPrice(originalPrice * item.qty)}</p>)} */}
                       </div>
                     </div>
                   );
@@ -1438,44 +1456,44 @@ export default function Checkout() {
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   <span>Subtotal</span>
-                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatAmount(displaySubtotal)}</span>
+                  <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{currentMoney(subtotal)}</span>
                 </div>
-                
+
                 {Object.keys(selectedShippingPerSeller).length > 0 && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
                       <span>Shipping</span>
-                      <span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(shippingCost)}</span>
+                      <span style={{ color: 'hsl(var(--foreground))' }}>{currentMoney(shippingCost)}</span>
                     </div>
                     {Object.entries(selectedShippingPerSeller).map(([sellerId, method]) => {
                       const sellerInfo = sellerShippingMethods[sellerId];
                       return (
                         <div key={sellerId} className="flex justify-between text-xs pl-4" style={{ color: 'hsl(var(--muted-foreground))' }}>
                           <span className="capitalize">{method.type} shipping</span>
-                          <span>{formatPrice(method.cost)}</span>
+                          <span>{currentMoney(shippingCostInCheckoutCurrency(method, sellerInfo))}</span>
                         </div>
                       );
                     })}
                   </div>
                 )}
-                
+
                 {tax > 0 && (
                   <div className="flex justify-between text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     <span>Tax {taxConfig?.type === 'percentage' && `(${taxConfig.value}%)`}</span>
-                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(tax)}</span>
+                    <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{currentMoney(tax)}</span>
                   </div>
                 )}
-                
+
                 {totalCouponDiscount > 0 && (
                   <div className="flex justify-between text-sm" style={{ color: 'hsl(150, 60%, 45%)' }}>
                     <span className="flex items-center gap-1"><Ticket size={14} /> Coupon Discount</span>
-                    <span className="font-semibold">-{formatPrice(totalCouponDiscount)}</span>
+                    <span className="font-semibold">-{currentMoney(totalCouponDiscount)}</span>
                   </div>
                 )}
-                
+
                 <div className="flex justify-between text-base sm:text-lg font-semibold pt-3" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
                   <span>Total</span>
-                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{formatAmount(displayTotal)}</span>
+                  <span style={{ color: 'hsl(220, 70%, 55%)' }}>{currentMoney(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -1503,6 +1521,7 @@ export default function Checkout() {
                       if (pendingOrderData.order?.paymentMethod === 'cash_on_delivery') {
                         axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, { headers: { Authorization: `Bearer ${token}` } })
                           .then(() => fetchCart()).catch(() => {});
+                        try { sessionStorage.removeItem(CHECKOUT_STORAGE_KEY); } catch (_) {}
                         navigate('/success');
                       }
                     }
@@ -1526,6 +1545,7 @@ export default function Checkout() {
                       const token = getAuthToken();
                       axios.delete(`${import.meta.env.VITE_API_URL}api/cart/clear`, { headers: { Authorization: `Bearer ${token}` } })
                         .then(() => fetchCart()).catch(() => {});
+                      try { sessionStorage.removeItem(CHECKOUT_STORAGE_KEY); } catch (_) {}
                       navigate('/success');
                     }
                   }}
@@ -1602,7 +1622,7 @@ function QuantitySelector({ qty, onIncrement, onDecrement }) {
   );
 }
 
-const ShippingOption = React.forwardRef(({ value, title, price, days, selected, ...props }, ref) => (
+const ShippingOption = React.forwardRef(({ value, title, price, days, selected, formatPrice: formatShippingPrice = (amount) => `$${Number(amount || 0).toFixed(2)}`, ...props }, ref) => (
   <label className={`border rounded-lg p-4 cursor-pointer transition-all ${selected ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100" : "border-gray-300 hover:border-gray-400"}`}>
     <input
       type="radio"
@@ -1616,7 +1636,7 @@ const ShippingOption = React.forwardRef(({ value, title, price, days, selected, 
         <h4 className="font-medium">{title}</h4>
         <p className="text-sm text-gray-500 mt-1">{days}</p>
       </div>
-      <span className="font-semibold">{formatPrice(price)}</span>
+      <span className="font-semibold">{formatShippingPrice(price)}</span>
     </div>
   </label>
 ));
@@ -1662,7 +1682,7 @@ function CouponInput({ inputKey, couponInputs, setCouponInputs, appliedCoupons, 
               {applied.code}
             </span>
             <span className="text-xs ml-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              {applied.discountType === 'percentage' ? `${applied.discountValue}% off` : `${formatPrice(applied.discountValue)} off`}
+              {applied.discountType === 'percentage' ? `${applied.discountValue}% off` : `${formatPrice(applied.discountValue, applied)} off`}
             </span>
           </div>
         </div>

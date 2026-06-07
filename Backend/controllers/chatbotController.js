@@ -4,7 +4,11 @@ const Complaint = require('../models/Complaint');
 const ChatHistory = require('../models/ChatHistory');
 const Fuse = require('fuse.js');
 const { publicProductFilter } = require('../services/productModerationService');
-const { applyLivePricesUSD } = require('../services/currencyService');
+const { convertAmountSync } = require('../services/currencyService');
+const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
+
+const comparablePriceUSD = (product) =>
+    convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
 
 // ─── Chat History CRUD ───
 exports.getChatHistory = async (req, res) => {
@@ -120,7 +124,7 @@ exports.chat = async (req, res) => {
 
         // Intent: Product search
         if (lowerMsg.includes('find') || lowerMsg.includes('search') || lowerMsg.includes('looking for') || lowerMsg.includes('show me') || lowerMsg.includes('recommend')) {
-            const products = applyLivePricesUSD(await Product.find(publicProductFilter()).limit(100));
+            const products = await Product.find(publicProductFilter()).limit(100).lean();
             const fuse = new Fuse(products, {
                 threshold: 0.4,
                 keys: ['name', 'description', 'brand', 'tags', 'category']
@@ -133,16 +137,17 @@ exports.chat = async (req, res) => {
             const aboveMatch = lowerMsg.match(/(above|over)\s*\$?(\d+)/);
 
             let filtered = results.map(r => r.item);
-            if (underMatch) filtered = filtered.filter(p => (p.discountedPrice || p.price) <= parseInt(underMatch[1]));
-            if (aboveMatch) filtered = filtered.filter(p => (p.discountedPrice || p.price) >= parseInt(aboveMatch[2]));
+            if (underMatch) filtered = filtered.filter(p => comparablePriceUSD(p) <= parseInt(underMatch[1]));
+            if (aboveMatch) filtered = filtered.filter(p => comparablePriceUSD(p) >= parseInt(aboveMatch[2]));
 
             if (filtered.length === 0) {
                 // Try broader search
-                const allProducts = applyLivePricesUSD(await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5));
+                const allProducts = await Product.find(publicProductFilter()).sort({ rating: -1 }).limit(5).lean();
                 return res.json({
                     reply: `I couldn't find exact matches for "${searchTerms}", but here are some popular products you might like:`,
                     products: allProducts.map(p => ({
                         _id: p._id, name: p.name, price: p.price,
+                        currency: getProductCurrency(p), priceCurrency: getProductCurrency(p),
                         discountedPrice: p.discountedPrice, image: p.image,
                         rating: p.rating, category: p.category, brand: p.brand
                     })),
@@ -154,6 +159,7 @@ exports.chat = async (req, res) => {
                 reply: `I found ${filtered.length} product${filtered.length > 1 ? 's' : ''} matching your search:`,
                 products: filtered.map(p => ({
                     _id: p._id, name: p.name, price: p.price,
+                    currency: getProductCurrency(p), priceCurrency: getProductCurrency(p),
                     discountedPrice: p.discountedPrice, image: p.image,
                     rating: p.rating, category: p.category, brand: p.brand
                 })),
@@ -257,7 +263,7 @@ exports.getMyComplaints = async (req, res) => {
 // Admin: Get all complaints
 exports.getAllComplaints = async (req, res) => {
     const { category, status, page = 1, limit = 20 } = req.query;
-    
+
     try {
         const query = {};
         if (category) query.category = category;

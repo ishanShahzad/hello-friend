@@ -44,7 +44,12 @@ const {
   notifyProductBlocked,
   publicProductFilter,
 } = require('./productModerationService');
-const { normalizeCurrency, convertToUSD, formatMoney } = require('./currencyService');
+const { normalizeCurrency, convertAmount, convertAmountSync, formatMoney } = require('./currencyService');
+const {
+  roundMoney,
+  getProductCurrency,
+  getProductEffectivePrice,
+} = require('./productPricingService');
 const { normalizeSocialLinks } = require('./socialLinksService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
@@ -212,6 +217,47 @@ function inferCurrencyFromText(value, fallbackCurrency = 'USD') {
   return normalizeCurrency(fallbackCurrency);
 }
 
+function detectExplicitCurrencyInText(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  if (/\b(PKR|PKR\.|RS|RS\.|RUPEES?|PAKISTANI\s+RUPEES?)\b/.test(upper)) return 'PKR';
+  if (/\b(USD|US\$|DOLLARS?|US\s+DOLLARS?)\b/.test(upper) || /\$/.test(raw)) return 'USD';
+  if (/\b(EUR|EUROS?)\b/.test(upper) || /\u20ac/.test(raw)) return 'EUR';
+  if (/\b(GBP|POUNDS?|BRITISH\s+POUNDS?)\b/.test(upper) || /\u00a3/.test(raw)) return 'GBP';
+  return null;
+}
+
+function resolveAIPriceCurrency({
+  value,
+  requestedCurrency,
+  preferredCurrency = 'USD',
+  lastUserText = '',
+  fallbackCurrency = null,
+} = {}) {
+  const valueCurrency = detectExplicitCurrencyInText(value);
+  if (valueCurrency) return valueCurrency;
+
+  const explicitUserCurrency = detectExplicitCurrencyInText(lastUserText);
+  if (explicitUserCurrency) return explicitUserCurrency;
+
+  const preferred = normalizeCurrency(fallbackCurrency || preferredCurrency);
+  if (!requestedCurrency) return preferred;
+
+  const requestedAlias = detectExplicitCurrencyInText(requestedCurrency);
+  if (requestedAlias && !(requestedAlias === 'USD' && preferred !== 'USD')) return requestedAlias;
+
+  const requested = normalizeCurrency(requestedCurrency);
+  const rawRequested = String(requestedCurrency || '').trim();
+
+  // Models can emit USD by habit for plain numbers. Keep the seller's currency
+  // unless USD was actually stated or USD is already the seller preference.
+  if (requested === 'USD' && preferred !== 'USD') return preferred;
+
+  if (rawRequested && requested) return requested;
+  return preferred;
+}
+
 function parseMoneyInput(value, fallbackCurrency = 'USD') {
   const currency = inferCurrencyFromText(value, fallbackCurrency);
   if (typeof value === 'number') return { amount: value, currency };
@@ -367,6 +413,29 @@ function buildProductImageFields(productInput) {
 }
 
 const FEATURED_LIMITS = { free_trial: 6, starter: 6, elite: 12 };
+const TRIAL_PRODUCT_LIMIT = 15;
+
+async function sellerCanCreateProducts(userId, requestedCount = 1) {
+  try {
+    const sub = await SellerSubscription.findOne({ seller: userId }).select('status').lean();
+    if (!sub || sub.status !== 'trial') {
+      return { allowed: true, current: 0, max: null, remaining: null };
+    }
+
+    const current = await Product.countDocuments({ seller: userId });
+    const remaining = Math.max(0, TRIAL_PRODUCT_LIMIT - current);
+    return {
+      allowed: requestedCount <= remaining,
+      current,
+      max: TRIAL_PRODUCT_LIMIT,
+      remaining,
+      reason: requestedCount <= remaining ? null : 'trial_limit_reached',
+    };
+  } catch (e) {
+    console.error('sellerCanCreateProducts error:', e);
+    return { allowed: false, current: 0, max: TRIAL_PRODUCT_LIMIT, remaining: 0, reason: 'error' };
+  }
+}
 
 async function sellerCanFeatureProduct(userId, excludeProductId = null) {
   try {
@@ -477,6 +546,8 @@ function formatProductCandidate(product) {
     name: product.name,
     brand: product.brand,
     price: product.price,
+    currency: getProductCurrency(product),
+    priceCurrency: product.priceCurrency,
     stock: product.stock,
     category: product.category,
     isFeatured: !!product.isFeatured,
@@ -484,6 +555,37 @@ function formatProductCandidate(product) {
     moderationReason: product.moderationReason || product.blockedReason || '',
     createdAt: product.createdAt,
   };
+}
+
+async function attachAIComparablePrices(products = [], targetCurrency = 'USD') {
+  const currency = normalizeCurrency(targetCurrency);
+  return Promise.all((products || []).map(async product => ({
+    ...product,
+    _comparablePrice: await convertAmount(getProductEffectivePrice(product), getProductCurrency(product), currency),
+  })));
+}
+
+function sortAIProductsByPrice(products = [], sortBy = '', targetCurrency = 'USD') {
+  if (!['price_low', 'price_high'].includes(sortBy)) return products;
+  const direction = sortBy === 'price_low' ? 1 : -1;
+  const currency = normalizeCurrency(targetCurrency);
+  return products.sort((a, b) => {
+    const priceA = a._comparablePrice ?? convertAmountSync(getProductEffectivePrice(a), getProductCurrency(a), currency);
+    const priceB = b._comparablePrice ?? convertAmountSync(getProductEffectivePrice(b), getProductCurrency(b), currency);
+    return (priceA - priceB) * direction;
+  });
+}
+
+function filterAIProductsByPriceBounds(products = [], bounds = {}) {
+  const { min = null, max = null } = bounds || {};
+  if (min === null && max === null) return products;
+  return products.filter(product => {
+    const price = Number(product._comparablePrice);
+    if (!Number.isFinite(price)) return true;
+    if (min !== null && price < min) return false;
+    if (max !== null && price > max) return false;
+    return true;
+  });
 }
 
 // ─── Smart Search: Synonym/Multilingual Expansion ───
@@ -597,7 +699,7 @@ const SYNONYM_MAP = {
   basta: ['bag', 'bags', 'backpack', 'handbag'],
   topi: ['cap', 'hat', 'beanie', 'headwear'],
   chasma: ['glasses', 'sunglasses', 'eyewear', 'shades'],
-  
+
   // Common slang/alternate spellings
   airpods: ['airpods', 'wireless earbuds', 'bluetooth earphones', 'tws earbuds', 'ear buds'],
   'air pods': ['airpods', 'wireless earbuds', 'bluetooth earphones', 'tws earbuds', 'ear buds'],
@@ -628,19 +730,19 @@ function expandSearchTerms(query) {
   if (!query) return [];
   const lower = query.toLowerCase().trim();
   const terms = new Set([lower]);
-  
+
   // Check full phrase against synonym map
   if (SYNONYM_MAP[lower]) {
     SYNONYM_MAP[lower].forEach(s => terms.add(s));
   }
-  
+
   // Check each word individually
   lower.split(/\s+/).forEach(word => {
     if (SYNONYM_MAP[word]) {
       SYNONYM_MAP[word].forEach(s => terms.add(s));
     }
   });
-  
+
   return [...terms];
 }
 
@@ -649,7 +751,7 @@ function buildSmartSearchFilter(query, category) {
   if (query) {
     const searchTerms = expandSearchTerms(query);
     const orConditions = [];
-    
+
     for (const term of searchTerms) {
       // Escape regex special chars
       const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -661,14 +763,14 @@ function buildSmartSearchFilter(query, category) {
         { category: { $regex: escaped, $options: 'i' } },
       );
     }
-    
+
     // Also try individual words from the original query for partial matching
     const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     for (const word of words) {
       const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       orConditions.push({ name: { $regex: escaped, $options: 'i' } });
     }
-    
+
     filter.$or = orConditions;
   }
   if (category) filter.category = { $regex: category, $options: 'i' };
@@ -923,7 +1025,12 @@ async function executeToolCall(toolName, args = {}, user) {
       const account = await User.findById(userId).select('currency').lean();
       preferredCurrency = normalizeCurrency(account?.currency || preferredCurrency);
     }
-    const userMoney = (amountInUSD) => formatMoney(amountInUSD, preferredCurrency);
+    const userMoney = (amount, sourceCurrency = 'USD') => formatMoney(amount, preferredCurrency, { sourceCurrency });
+    const productMoney = (product, amount = null) => formatMoney(
+      amount == null ? getProductEffectivePrice(product) : amount,
+      preferredCurrency,
+      { sourceCurrency: getProductCurrency(product, preferredCurrency) }
+    );
 
     switch (toolName) {
 
@@ -935,20 +1042,26 @@ async function executeToolCall(toolName, args = {}, user) {
         const { query, category, minPrice, maxPrice, sortBy, brand, limit } = args;
         const hasMinPrice = minPrice !== undefined && minPrice !== null && minPrice !== '';
         const hasMaxPrice = maxPrice !== undefined && maxPrice !== null && maxPrice !== '';
-        const applyPriceBounds = async (targetFilter) => {
-          if (!hasMinPrice && !hasMaxPrice) return;
-          targetFilter.price = {};
-          if (hasMinPrice) {
-            const parsed = parseMoneyInput(minPrice, args.currency || preferredCurrency);
-            if (Number.isFinite(parsed.amount)) targetFilter.price.$gte = await convertToUSD(parsed.amount, parsed.currency);
-          }
-          if (hasMaxPrice) {
-            const parsed = parseMoneyInput(maxPrice, args.currency || preferredCurrency);
-            if (Number.isFinite(parsed.amount)) targetFilter.price.$lte = await convertToUSD(parsed.amount, parsed.currency);
-          }
-          if (Object.keys(targetFilter.price).length === 0) delete targetFilter.price;
+        const requestedCurrency = normalizeCurrency(args.currency || preferredCurrency);
+        const priceBounds = { min: null, max: null };
+        if (hasMinPrice) {
+          const parsed = parseMoneyInput(minPrice, requestedCurrency);
+          if (Number.isFinite(parsed.amount)) priceBounds.min = await convertAmount(parsed.amount, parsed.currency, requestedCurrency);
+        }
+        if (hasMaxPrice) {
+          const parsed = parseMoneyInput(maxPrice, requestedCurrency);
+          if (Number.isFinite(parsed.amount)) priceBounds.max = await convertAmount(parsed.amount, parsed.currency, requestedCurrency);
+        }
+        const needsComparablePrices = hasMinPrice || hasMaxPrice || ['price_low', 'price_high'].includes(sortBy);
+        const fetchLimit = needsComparablePrices ? 300 : safeLimit(limit, 20, 50);
+        const applyPriceBounds = async () => {};
+        const finalizeProductSearch = async (items) => {
+          let next = await attachAIComparablePrices(items, requestedCurrency);
+          next = filterAIProductsByPriceBounds(next, priceBounds);
+          next = sortAIProductsByPrice(next, sortBy, requestedCurrency);
+          return next.slice(0, safeLimit(limit, 20, 50));
         };
-        
+
         // Use smart search with synonym expansion
         const filter = publicProductFilter(buildSmartSearchFilter(query, category));
         const storeScope = await resolveStoreScope(args);
@@ -980,19 +1093,18 @@ async function executeToolCall(toolName, args = {}, user) {
         await applyPriceBounds(filter);
 
         let sort = { createdAt: -1 };
-        if (sortBy === 'price_low') sort = { price: 1 };
-        else if (sortBy === 'price_high') sort = { price: -1 };
-        else if (sortBy === 'popular') sort = { rating: -1 };
+        if (sortBy === 'popular') sort = { rating: -1 };
         else if (sortBy === 'newest') sort = { createdAt: -1 };
         else if (sortBy === 'best_rated') sort = { rating: -1, numReviews: -1 };
         else if (sortBy === 'trending') sort = { numReviews: -1, rating: -1 };
 
         let products = await Product.find(filter)
           .sort(sort)
-          .limit(safeLimit(limit, 20, 50))
-          .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
+          .limit(fetchLimit)
+          .select('name price discountedPrice currency priceCurrency category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
           .lean();
         products = await hydrateStoresForProducts(products);
+        products = await finalizeProductSearch(products);
 
         if (products.length === 0 && query) {
           const fuzzyFilter = publicProductFilter({ ...(storeScope.filter || {}) });
@@ -1004,10 +1116,11 @@ async function executeToolCall(toolName, args = {}, user) {
           const fuzzyPool = await Product.find(fuzzyFilter)
             .sort({ rating: -1, numReviews: -1, createdAt: -1 })
             .limit(300)
-            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags description createdAt')
+            .select('name price discountedPrice currency priceCurrency category brand image rating numReviews stock colors optionGroups seller isFeatured tags description createdAt')
             .lean();
           products = fuzzyProductMatches(fuzzyPool, query, safeLimit(limit, 20, 50));
           products = await hydrateStoresForProducts(products);
+          products = await finalizeProductSearch(products);
         }
 
         // If no results and we have a query, try a broader fallback: sort by popularity
@@ -1020,10 +1133,11 @@ async function executeToolCall(toolName, args = {}, user) {
           await applyPriceBounds(fallbackFilter);
           products = await Product.find(fallbackFilter)
             .sort({ rating: -1, numReviews: -1, createdAt: -1 })
-            .limit(12)
-            .select('name price discountedPrice category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
+            .limit(300)
+            .select('name price discountedPrice currency priceCurrency category brand image rating numReviews stock colors optionGroups seller isFeatured tags createdAt')
             .lean();
           products = await hydrateStoresForProducts(products);
+          products = await finalizeProductSearch(products).then(items => items.slice(0, 12));
 
           if (products.length > 0) {
             return {
@@ -1062,7 +1176,7 @@ async function executeToolCall(toolName, args = {}, user) {
             .sort({ createdAt: -1 })
             .limit(safeLimit(limit, 20))
             .populate('user', 'username email')
-            .populate('orderItems.productId', 'name image price seller')
+            .populate('orderItems.productId', 'name image price currency priceCurrency seller')
             .lean();
 
           // CRITICAL: Filter order items to only show THIS seller's products + recalculate seller-specific total
@@ -1083,7 +1197,7 @@ async function executeToolCall(toolName, args = {}, user) {
           orders = await Order.find(filter)
             .sort({ createdAt: -1 })
             .limit(safeLimit(limit, 15))
-            .populate('orderItems.productId', 'name image price')
+            .populate('orderItems.productId', 'name image price currency priceCurrency')
             .lean();
         }
 
@@ -1126,7 +1240,7 @@ async function executeToolCall(toolName, args = {}, user) {
             $or: [{ _id: toId(orderId) }, { orderId: orderId }],
             'orderItems.productId': { $in: myProducts.map(p => p._id) },
           })
-            .populate('orderItems.productId', 'name image price category seller')
+            .populate('orderItems.productId', 'name image price currency priceCurrency category seller')
             .populate('user', 'username email')
             .lean();
         } else if (role === 'admin') {
@@ -1134,7 +1248,7 @@ async function executeToolCall(toolName, args = {}, user) {
           order = await Order.findOne({
             $or: [{ _id: toId(orderId) }, { orderId: orderId }],
           })
-            .populate('orderItems.productId', 'name image price category')
+            .populate('orderItems.productId', 'name image price currency priceCurrency category')
             .populate('user', 'username email')
             .lean();
         } else {
@@ -1145,7 +1259,7 @@ async function executeToolCall(toolName, args = {}, user) {
               { orderId: orderId, user: userId },
             ],
           })
-            .populate('orderItems.productId', 'name image price category')
+            .populate('orderItems.productId', 'name image price currency priceCurrency category')
             .lean();
         }
 
@@ -1456,6 +1570,8 @@ async function executeToolCall(toolName, args = {}, user) {
             description: product.description,
             price: product.price,
             discountedPrice: product.discountedPrice,
+            currency: getProductCurrency(product),
+            priceCurrency: product.priceCurrency,
             category: product.category,
             brand: product.brand,
             stock: product.stock,
@@ -1472,7 +1588,7 @@ async function executeToolCall(toolName, args = {}, user) {
             isVerifiedStore: store?.verification?.isVerified || false,
             returnPolicy: product.returnPolicy,
           },
-          message: `${product.name} — ${await userMoney(product.discountedPrice || product.price)} | ${product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'} | ⭐ ${product.rating?.toFixed(1) || 'N/A'} (${product.numReviews} reviews)`,
+          message: `${product.name} — ${await productMoney(product)} | ${product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'} | ⭐ ${product.rating?.toFixed(1) || 'N/A'} (${product.numReviews} reviews)`,
         };
       }
 
@@ -1481,7 +1597,7 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
         const product = await Product.findOne(publicProductFilter({ _id: toId(productId) }))
-          .select('name image images price discountedPrice stock')
+          .select('name image images price discountedPrice currency priceCurrency stock')
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
 
@@ -1497,6 +1613,8 @@ async function executeToolCall(toolName, args = {}, user) {
             imageUrl,
             caption: caption || product.name,
             price: product.discountedPrice || product.price,
+            currency: getProductCurrency(product),
+            priceCurrency: product.priceCurrency,
             stock: product.stock,
           },
           message: `Image ready for "${product.name}".`,
@@ -1535,7 +1653,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const quantity = parseQuantity(args.quantity, 1);
         if (!quantity) return { success: false, error: 'Please provide a valid quantity of at least 1.' };
 
-        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name price discountedPrice stock image colors optionGroups').lean();
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name price discountedPrice currency priceCurrency stock image colors optionGroups').lean();
         if (!product) return { success: false, error: 'Product not found.' };
         if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
         if (quantity > product.stock) return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
@@ -1590,8 +1708,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
-          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice, productId: product._id, name: product.name, quantity },
-          message: `"${product.name}" added to cart! 🛒 Cart total: ${await userMoney(cart.totalCartPrice || 0)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
+          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice, totalCartCurrency: cart.totalCartCurrency, productId: product._id, name: product.name, quantity },
+          message: `"${product.name}" added to cart! 🛒 Cart total: ${await userMoney(cart.totalCartPrice || 0, cart.totalCartCurrency || preferredCurrency)} (${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''})`,
         };
       }
 
@@ -1602,14 +1720,19 @@ async function executeToolCall(toolName, args = {}, user) {
           return { success: true, data: { items: [], total: 0 }, message: 'Your cart is empty. Start shopping! 🛍️' };
         }
 
-        const items = cart.cartItems.filter(i => i.product && !isProductBlocked(i.product)).map(item => {
+        const items = await Promise.all(cart.cartItems.filter(i => i.product && !isProductBlocked(i.product)).map(async item => {
           const p = item.product;
-          const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
+          const sourceCurrency = getProductCurrency(p, preferredCurrency);
+          const sourcePrice = getProductEffectivePrice(p);
+          const price = await convertAmount(sourcePrice, sourceCurrency, preferredCurrency);
           return {
             _id: item._id,
             productId: p._id,
             name: p.name,
             price,
+            currency: preferredCurrency,
+            sourcePrice,
+            sourceCurrency,
             originalPrice: p.price,
             quantity: item.qty || 1,
             image: p.image,
@@ -1617,18 +1740,18 @@ async function executeToolCall(toolName, args = {}, user) {
             selectedOptions: plainOptions(item.selectedOptions),
             subtotal: price * (item.qty || 1),
           };
-        });
+        }));
 
         const visibleCartTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
         const itemSummary = [];
         for (const item of items.slice(0, 8)) {
-          itemSummary.push(`${item.name} (${await userMoney(item.price)})`);
+          itemSummary.push(`${item.name} (${await userMoney(item.price, preferredCurrency)})`);
         }
 
         return {
           success: true,
-          data: { items, total: visibleCartTotal, itemCount: items.length },
-          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: ${await userMoney(visibleCartTotal)}. Items: ${itemSummary.join(', ')}`,
+          data: { items, total: visibleCartTotal, currency: preferredCurrency, itemCount: items.length },
+          message: `Your cart has ${items.length} item${items.length !== 1 ? 's' : ''} — Total: ${await userMoney(visibleCartTotal, preferredCurrency)}. Items: ${itemSummary.join(', ')}`,
         };
       }
 
@@ -1650,8 +1773,8 @@ async function executeToolCall(toolName, args = {}, user) {
 
         return {
           success: true,
-          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice },
-          message: `Item removed from cart. ${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''} remaining — ${await userMoney(cart.totalCartPrice || 0)}`,
+          data: { cartItemCount: cart.cartItems.length, totalCartPrice: cart.totalCartPrice, totalCartCurrency: cart.totalCartCurrency },
+          message: `Item removed from cart. ${cart.cartItems.length} item${cart.cartItems.length !== 1 ? 's' : ''} remaining — ${await userMoney(cart.totalCartPrice || 0, cart.totalCartCurrency || preferredCurrency)}`,
         };
       }
 
@@ -1744,13 +1867,17 @@ async function executeToolCall(toolName, args = {}, user) {
             };
           }
 
-          const effectivePrice = product.discountedPrice && product.discountedPrice > 0 ? product.discountedPrice : product.price;
+          const sourceCurrency = getProductCurrency(product, preferredCurrency);
+          const sourcePrice = getProductEffectivePrice(product);
+          const effectivePrice = await convertAmount(sourcePrice, sourceCurrency, preferredCurrency);
           orderItems = [{
             productId: product._id,
             id: product._id,
             name: product.name,
             image: product.image,
             price: effectivePrice,
+            sourcePrice,
+            sourceCurrency,
             quantity,
             selectedColor: selection.selectedColor,
             selectedOptions: selection.selectedOptions,
@@ -1766,20 +1893,24 @@ async function executeToolCall(toolName, args = {}, user) {
             return { success: false, error: 'Some items in your cart are no longer available. Please refresh your cart before placing the order.' };
           }
           productItems = cart.cartItems.filter(i => i.product).map(item => item.product);
-          orderItems = cart.cartItems.filter(i => i.product).map(item => {
+          orderItems = await Promise.all(cart.cartItems.filter(i => i.product).map(async item => {
             const p = item.product;
-            const price = p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price;
+            const sourceCurrency = getProductCurrency(p, preferredCurrency);
+            const sourcePrice = getProductEffectivePrice(p);
+            const price = await convertAmount(sourcePrice, sourceCurrency, preferredCurrency);
             return {
               productId: p._id,
               id: p._id,
               name: p.name,
               image: p.image,
               price,
+              sourcePrice,
+              sourceCurrency,
               quantity: item.qty || 1,
               selectedColor: item.selectedColor,
               selectedOptions: item.selectedOptions,
             };
-          });
+          }));
         }
 
         if (orderItems.length === 0) return { success: false, error: 'No items to order.' };
@@ -1819,7 +1950,9 @@ async function executeToolCall(toolName, args = {}, user) {
         let tax = 0;
         const taxConfig = await TaxConfig.findOne({ isActive: true }).lean();
         if (taxConfig && taxConfig.type !== 'none') {
-          tax = taxConfig.type === 'percentage' ? subtotal * taxConfig.value / 100 : taxConfig.value;
+          tax = taxConfig.type === 'percentage'
+            ? subtotal * taxConfig.value / 100
+            : await convertAmount(taxConfig.value, 'USD', preferredCurrency);
         }
 
         // Get shipping method per seller. Cart checkout can contain multiple stores.
@@ -1831,7 +1964,15 @@ async function executeToolCall(toolName, args = {}, user) {
           const sellerConfig = await ShippingMethod.findOne({ seller: sellerId }).lean();
           const active = sellerConfig?.methods?.find(m => m.isActive);
           if (active) {
-            method = { name: active.type, price: active.cost || 0, estimatedDays: active.deliveryDays || 5 };
+            const sellerAccount = active.currency || active.costCurrency
+              ? null
+              : await User.findById(sellerId).select('currency').lean();
+            const shippingCurrency = normalizeCurrency(active.currency || active.costCurrency || sellerAccount?.currency || preferredCurrency);
+            method = {
+              name: active.type,
+              price: await convertAmount(active.cost || 0, shippingCurrency, preferredCurrency),
+              estimatedDays: active.deliveryDays || 5,
+            };
           }
           sellerShipping.push({ seller: sellerId, shippingMethod: method });
           shippingCost += Number(method.price || 0);
@@ -1839,7 +1980,10 @@ async function executeToolCall(toolName, args = {}, user) {
         const shippingMethod = sellerShipping[0]?.shippingMethod || { name: 'Standard', price: 0, estimatedDays: 5 };
         if (sellerIds[0]) shippingMethod.seller = sellerIds[0];
 
-        const totalAmount = subtotal + shippingCost + tax;
+        const subtotalRounded = Math.round(subtotal * 100) / 100;
+        const shippingCostRounded = Math.round(shippingCost * 100) / 100;
+        const taxRounded = Math.round(tax * 100) / 100;
+        const totalAmount = Math.round((subtotalRounded + shippingCostRounded + taxRounded) * 100) / 100;
 
         const newOrder = new Order({
           user: userId,
@@ -1850,6 +1994,8 @@ async function executeToolCall(toolName, args = {}, user) {
             name: i.name,
             image: i.image,
             price: i.price,
+            sourcePrice: i.sourcePrice,
+            sourceCurrency: i.sourceCurrency,
             quantity: i.quantity,
             selectedColor: i.selectedColor || null,
             selectedOptions: i.selectedOptions || undefined,
@@ -1867,9 +2013,9 @@ async function executeToolCall(toolName, args = {}, user) {
           shippingMethod,
           sellerShipping,
           orderSummary: {
-            subtotal,
-            shippingCost,
-            tax,
+            subtotal: subtotalRounded,
+            shippingCost: shippingCostRounded,
+            tax: taxRounded,
             couponDiscount: 0,
             totalAmount,
           },
@@ -1963,22 +2109,26 @@ async function executeToolCall(toolName, args = {}, user) {
         if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
           return { success: false, error: 'This coupon has reached its usage limit.' };
         }
-        const cartTotalUSD = cartTotal ? await convertToUSD(Number(cartTotal), preferredCurrency) : 0;
-        if (cartTotal && coupon.minOrderAmount > cartTotalUSD) {
-          return { success: false, error: `Minimum order amount is ${await userMoney(coupon.minOrderAmount)}.` };
+        const couponCurrency = normalizeCurrency(coupon.currency || 'USD');
+        const cartTotalInCouponCurrency = cartTotal
+          ? await convertAmount(Number(cartTotal), preferredCurrency, couponCurrency)
+          : 0;
+        if (cartTotal && coupon.minOrderAmount > cartTotalInCouponCurrency) {
+          return { success: false, error: `Minimum order amount is ${await userMoney(coupon.minOrderAmount, couponCurrency)}.` };
         }
 
-        let discount = coupon.discountType === 'percentage'
-          ? (cartTotal ? cartTotalUSD * coupon.discountValue / 100 : coupon.discountValue)
+        let discountInCouponCurrency = coupon.discountType === 'percentage'
+          ? (cartTotal ? cartTotalInCouponCurrency * coupon.discountValue / 100 : coupon.discountValue)
           : coupon.discountValue;
-        if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) {
-          discount = coupon.maxDiscountAmount;
+        if (coupon.maxDiscountAmount && discountInCouponCurrency > coupon.maxDiscountAmount) {
+          discountInCouponCurrency = coupon.maxDiscountAmount;
         }
+        const discount = await convertAmount(discountInCouponCurrency, couponCurrency, preferredCurrency);
 
         return {
           success: true,
-          data: { code: coupon.code, discount, type: coupon.discountType, value: coupon.discountValue },
-          message: `Coupon "${coupon.code}" is valid! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${await userMoney(coupon.discountValue)} off`}`,
+          data: { code: coupon.code, discount, currency: preferredCurrency, type: coupon.discountType, value: coupon.discountValue, couponCurrency },
+          message: `Coupon "${coupon.code}" is valid! ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${await userMoney(coupon.discountValue, couponCurrency)} off`}`,
         };
       }
 
@@ -1994,6 +2144,19 @@ async function executeToolCall(toolName, args = {}, user) {
         }
         const store = await Store.findOne({ seller: targetSellerId }).select('_id storeName').lean();
         if (!store) return { success: false, error: 'You need to create a store first.' };
+        if (role === 'seller') {
+          const createCheck = await sellerCanCreateProducts(targetSellerId, 1);
+          if (!createCheck.allowed) {
+            return {
+              success: false,
+              blocked: true,
+              error: createCheck.reason === 'trial_limit_reached'
+                ? `You have reached the maximum of ${createCheck.max} product listings during your free trial. Subscribe to add unlimited products.`
+                : 'Product creation is temporarily unavailable. Please try again.',
+              data: { productLimit: createCheck },
+            };
+          }
+        }
 
         const p = args.product || args;
         const name = cleanAIField(p.name, { maxLength: 140 });
@@ -2008,27 +2171,42 @@ async function executeToolCall(toolName, args = {}, user) {
         if (missing.length) {
           return { success: false, error: `Missing required fields: ${missing.join(', ')}`, missingFields: missing };
         }
-        const priceInput = parseMoneyInput(p.price, p.currency || args.currency || preferredCurrency);
-        const inputCurrency = priceInput.currency;
+        const lastUserText = cleanString(args._lastUserText);
+        const inputCurrency = resolveAIPriceCurrency({
+          value: p.price,
+          requestedCurrency: p.currency || args.currency,
+          preferredCurrency,
+          lastUserText,
+        });
+        const priceInput = parseMoneyInput(p.price, inputCurrency);
         const rawPrice = priceInput.amount;
         const stock = p.stock != null ? Number(p.stock) : 0;
+        const discountedCurrency = resolveAIPriceCurrency({
+          value: p.discountedPrice,
+          requestedCurrency: p.discountedCurrency || p.currency || args.currency,
+          preferredCurrency: inputCurrency,
+          fallbackCurrency: inputCurrency,
+          lastUserText,
+        });
         const discountInput = p.discountedPrice
-          ? parseMoneyInput(p.discountedPrice, p.discountedCurrency || p.currency || args.currency || inputCurrency)
+          ? parseMoneyInput(p.discountedPrice, discountedCurrency)
           : { amount: 0, currency: inputCurrency };
         const rawDiscountedPrice = discountInput.amount;
         if (!Number.isFinite(rawPrice) || rawPrice < 0) return { success: false, error: 'Product price must be a non-negative number.' };
         if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Product stock must be a non-negative number.' };
         if (!Number.isFinite(rawDiscountedPrice) || rawDiscountedPrice < 0) return { success: false, error: 'Discounted price must be a non-negative number.' };
-        if (rawDiscountedPrice > 0 && rawDiscountedPrice >= rawPrice) return { success: false, error: 'Discounted price must be lower than the product price.' };
-        const price = await convertToUSD(rawPrice, inputCurrency);
-        const discountedPrice = rawDiscountedPrice > 0 ? await convertToUSD(rawDiscountedPrice, discountInput.currency) : 0;
+        const price = roundMoney(rawPrice);
+        const discountedPrice = rawDiscountedPrice > 0
+          ? await convertAmount(rawDiscountedPrice, discountInput.currency, inputCurrency)
+          : 0;
+        if (discountedPrice > 0 && discountedPrice >= price) return { success: false, error: 'Discounted price must be lower than the product price.' };
 
         const confirmDuplicate = args.confirmDuplicate === true || p.confirmDuplicate === true;
         const duplicate = await Product.findOne({
           seller: targetSellerId,
           name: { $regex: `^${escapeRegExp(name)}$`, $options: 'i' },
           brand: { $regex: `^${escapeRegExp(brand)}$`, $options: 'i' },
-        }).select('_id name brand price stock category createdAt').lean();
+        }).select('_id name brand price currency priceCurrency stock category createdAt').lean();
 
         if (duplicate && !confirmDuplicate) {
           return {
@@ -2043,6 +2221,7 @@ async function executeToolCall(toolName, args = {}, user) {
                 name: duplicate.name,
                 brand: duplicate.brand,
                 price: duplicate.price,
+                currency: getProductCurrency(duplicate, inputCurrency),
                 stock: duplicate.stock,
                 category: duplicate.category,
                 createdAt: duplicate.createdAt,
@@ -2081,6 +2260,12 @@ async function executeToolCall(toolName, args = {}, user) {
           description,
           price,
           discountedPrice,
+          currency: inputCurrency,
+          priceCurrency: inputCurrency,
+          priceInputAmount: price,
+          discountedPriceCurrency: inputCurrency,
+          discountedPriceInputAmount: discountedPrice > 0 ? discountedPrice : 0,
+          priceVersion: 2,
           category,
           brand,
           stock,
@@ -2090,7 +2275,7 @@ async function executeToolCall(toolName, args = {}, user) {
           colors,
           optionGroups,
           isFeatured,
-          createdVia: 'ai',
+          createdVia: p.createdVia === 'import' || args.createdVia === 'import' ? 'import' : 'ai',
           ...(Object.keys(pickObject(p.returnPolicy)).length ? { returnPolicy: p.returnPolicy } : {}),
           seller: targetSellerId,
         };
@@ -2109,9 +2294,14 @@ async function executeToolCall(toolName, args = {}, user) {
             productId: product._id,
             name: product.name,
             price: product.price,
-            currency: inputCurrency,
-            inputPrice: rawPrice,
-            displayPrice: await formatMoney(product.price, inputCurrency),
+            currency: product.currency,
+            priceCurrency: product.priceCurrency,
+            inputPrice: product.priceInputAmount,
+            priceInputAmount: product.priceInputAmount,
+            discountedPrice: product.discountedPrice,
+            discountedPriceCurrency: product.discountedPriceCurrency,
+            discountedPriceInputAmount: product.discountedPriceInputAmount,
+            displayPrice: await formatMoney(product.price, inputCurrency, { sourceCurrency: inputCurrency }),
             stock: product.stock,
             category: product.category,
             brand: product.brand,
@@ -2128,7 +2318,82 @@ async function executeToolCall(toolName, args = {}, user) {
           },
           message: isProductBlocked(product)
             ? `Product "${product.name}" was saved to your Products tab, but it is blocked because ${product.blockedReason || product.moderationReason}. Customers cannot see it until you edit it with real product details.`
-            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, inputCurrency)}! 🎉`,
+            : `Product "${product.name}" added to your store "${store.storeName}" at ${await formatMoney(product.price, inputCurrency, { sourceCurrency: inputCurrency })}! 🎉`,
+        };
+      }
+
+      case 'bulk_add_products': {
+        if (!userId) return { success: false, error: 'Authentication required.' };
+        const rawProducts = Array.isArray(args.products)
+          ? args.products
+          : Array.isArray(args.items)
+            ? args.items
+            : [];
+        const productsToAdd = rawProducts
+          .map(item => pickObject(item))
+          .filter(item => Object.keys(item).length > 0)
+          .slice(0, 50);
+
+        if (!productsToAdd.length) {
+          return { success: false, error: 'No products were provided for import.' };
+        }
+
+        const targetSellerId = role === 'admin' ? toId(args.sellerId || args.seller) : userId;
+        if (role === 'admin' && !targetSellerId) {
+          return { success: false, error: 'Please provide sellerId so the imported products can be assigned to a seller.' };
+        }
+
+        if (role === 'seller') {
+          const createCheck = await sellerCanCreateProducts(targetSellerId, productsToAdd.length);
+          if (!createCheck.allowed) {
+            return {
+              success: false,
+              blocked: true,
+              error: `This import contains ${productsToAdd.length} products, but your free trial has room for ${createCheck.remaining}. Import fewer products or subscribe to add unlimited products.`,
+              data: { productLimit: createCheck },
+            };
+          }
+        }
+
+        const results = [];
+        for (let index = 0; index < productsToAdd.length; index += 1) {
+          const item = productsToAdd[index];
+          const result = await executeToolCall('add_product', {
+            ...item,
+            sellerId: targetSellerId,
+            currency: item.currency || args.currency,
+            _lastUserText: args._lastUserText,
+            createdVia: 'import',
+            confirmDuplicate: item.confirmDuplicate === true || args.confirmDuplicate === true,
+          }, user);
+          results.push({
+            index,
+            success: result.success === true,
+            productId: result.data?.productId || null,
+            name: result.data?.name || item.name || '',
+            error: result.success === true ? '' : (result.error || result.message || 'Failed to add product.'),
+            blocked: result.blocked === true,
+            duplicate: result.duplicate === true,
+            data: result.data,
+          });
+        }
+
+        const added = results.filter(r => r.success).length;
+        const failed = results.length - added;
+
+        return {
+          success: added > 0 && failed === 0,
+          blocked: failed > 0,
+          data: {
+            added,
+            failed,
+            total: results.length,
+            results,
+            products: results.filter(r => r.success).map(r => r.data).filter(Boolean),
+          },
+          message: failed
+            ? `Imported ${added} of ${results.length} products. ${failed} row${failed !== 1 ? 's' : ''} need attention.`
+            : `Imported ${added} product${added !== 1 ? 's' : ''} successfully.`,
         };
       }
 
@@ -2137,14 +2402,21 @@ async function executeToolCall(toolName, args = {}, user) {
         const productId = args.productId;
         const productName = cleanAIField(args.productName, { maxLength: 140 });
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
-        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy', 'isFeatured'];
+        const allowedProductFields = ['name', 'description', 'price', 'discountedPrice', 'currency', 'priceCurrency', 'category', 'brand', 'stock', 'image', 'imageUrl', 'images', 'tags', 'colors', 'optionGroups', 'returnPolicy', 'isFeatured'];
         const updates = {};
         for (const field of allowedProductFields) {
           if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
         }
+        const explicitDiscountUpdate = updates.discountedPrice !== undefined;
         if (!productId && !productName) return { success: false, error: 'Please specify which product to edit (productId or productName).' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid product fields were provided to update.' };
-        const inputCurrency = normalizeCurrency(args.currency || incomingUpdates.currency || preferredCurrency);
+        const lastUserText = cleanString(args._lastUserText);
+        const inputCurrency = resolveAIPriceCurrency({
+          value: updates.price ?? updates.discountedPrice,
+          requestedCurrency: args.currency || incomingUpdates.currency,
+          preferredCurrency,
+          lastUserText,
+        });
         for (const textField of ['name', 'category', 'brand']) {
           if (updates[textField] !== undefined) {
             updates[textField] = cleanAIField(updates[textField], { maxLength: textField === 'name' ? 140 : 80 });
@@ -2157,17 +2429,41 @@ async function executeToolCall(toolName, args = {}, user) {
         }
         for (const numericField of ['price', 'discountedPrice', 'stock']) {
           if (updates[numericField] !== undefined) {
+            const fieldCurrency = ['price', 'discountedPrice'].includes(numericField)
+              ? resolveAIPriceCurrency({
+                value: updates[numericField],
+                requestedCurrency: incomingUpdates[`${numericField}Currency`] || args.currency || incomingUpdates.currency,
+                preferredCurrency: inputCurrency,
+                fallbackCurrency: inputCurrency,
+                lastUserText,
+              })
+              : inputCurrency;
             const parsedMoney = ['price', 'discountedPrice'].includes(numericField)
-              ? parseMoneyInput(updates[numericField], inputCurrency)
+              ? parseMoneyInput(updates[numericField], fieldCurrency)
               : null;
             const numericValue = parsedMoney ? parsedMoney.amount : Number(updates[numericField]);
             if (!Number.isFinite(numericValue) || numericValue < 0) {
               return { success: false, error: `${numericField} must be a non-negative number.` };
             }
             updates[numericField] = ['price', 'discountedPrice'].includes(numericField)
-              ? await convertToUSD(numericValue, parsedMoney.currency)
+              ? roundMoney(numericValue)
               : numericValue;
+            if (numericField === 'price') {
+              updates.priceCurrency = parsedMoney.currency;
+              updates.currency = parsedMoney.currency;
+              updates.priceInputAmount = updates.price;
+              updates.priceVersion = 2;
+            } else if (numericField === 'discountedPrice') {
+              updates.discountedPriceCurrency = parsedMoney.currency;
+              updates.discountedPriceInputAmount = updates.discountedPrice;
+              updates.priceVersion = 2;
+            }
           }
+        }
+        if (updates.currency !== undefined || updates.priceCurrency !== undefined) {
+          const normalizedUpdateCurrency = normalizeCurrency(updates.currency || updates.priceCurrency || inputCurrency);
+          updates.currency = normalizedUpdateCurrency;
+          updates.priceCurrency = normalizedUpdateCurrency;
         }
 
         if (updates.images !== undefined || updates.image !== undefined || updates.imageUrl !== undefined) {
@@ -2241,6 +2537,51 @@ async function executeToolCall(toolName, args = {}, user) {
           .sort({ updatedAt: -1, createdAt: -1 })
           .lean();
         if (!existingForModeration) return { success: false, error: 'Product not found or you don\'t own it.' };
+        const existingCurrency = getProductCurrency(existingForModeration, preferredCurrency);
+        const nextCurrency = normalizeCurrency(updates.currency || updates.priceCurrency || existingCurrency);
+
+        if ((updates.currency !== undefined || updates.priceCurrency !== undefined) && updates.price === undefined) {
+          updates.price = await convertAmount(existingForModeration.price, existingCurrency, nextCurrency);
+          updates.priceInputAmount = updates.price;
+          if (existingForModeration.discountedPrice > 0 && updates.discountedPrice === undefined) {
+            updates.discountedPrice = await convertAmount(existingForModeration.discountedPrice, existingCurrency, nextCurrency);
+            updates.discountedPriceInputAmount = updates.discountedPrice;
+          }
+        }
+
+        if (updates.price !== undefined) {
+          const sourceCurrency = normalizeCurrency(updates.priceCurrency || updates.currency || nextCurrency);
+          updates.price = await convertAmount(updates.price, sourceCurrency, nextCurrency);
+          updates.currency = nextCurrency;
+          updates.priceCurrency = nextCurrency;
+          updates.priceInputAmount = updates.price;
+          updates.priceVersion = 2;
+        }
+
+        if (updates.discountedPrice !== undefined) {
+          const sourceCurrency = normalizeCurrency(updates.discountedPriceCurrency || updates.currency || nextCurrency);
+          updates.discountedPrice = updates.discountedPrice > 0
+            ? await convertAmount(updates.discountedPrice, sourceCurrency, nextCurrency)
+            : 0;
+          updates.discountedPriceCurrency = nextCurrency;
+          updates.discountedPriceInputAmount = updates.discountedPrice;
+          updates.priceVersion = 2;
+        } else if (updates.price !== undefined && existingForModeration.discountedPrice > 0) {
+          const existingDiscount = await convertAmount(existingForModeration.discountedPrice, existingCurrency, nextCurrency);
+          if (existingDiscount >= updates.price) {
+            updates.discountedPrice = 0;
+            updates.discountedPriceCurrency = nextCurrency;
+            updates.discountedPriceInputAmount = 0;
+          }
+        }
+
+        const finalPrice = updates.price !== undefined ? updates.price : existingForModeration.price;
+        if (updates.discountedPrice > 0 && updates.discountedPrice >= finalPrice) {
+          if (explicitDiscountUpdate) return { success: false, error: 'Discounted price must be lower than the product price.' };
+          updates.discountedPrice = 0;
+          updates.discountedPriceInputAmount = 0;
+        }
+
         const wasBlocked = isProductBlocked(existingForModeration);
         const { fields: moderationFields } = buildModerationFields({
           ...existingForModeration,
@@ -2252,7 +2593,7 @@ async function executeToolCall(toolName, args = {}, user) {
           filter,
           { $set: updates },
           { new: true, runValidators: true, sort: { updatedAt: -1, createdAt: -1 } }
-        ).select('name price stock category brand image images tags colors optionGroups isFeatured seller isBlocked blockedReason moderationStatus moderationReason').lean();
+        ).select('name price discountedPrice currency priceCurrency priceInputAmount discountedPriceCurrency discountedPriceInputAmount stock category brand image images tags colors optionGroups isFeatured seller isBlocked blockedReason moderationStatus moderationReason').lean();
 
         if (!product) return { success: false, error: 'Product not found or you don\'t own it.' };
         if (isProductBlocked(product) && !wasBlocked) {
@@ -2361,7 +2702,7 @@ async function executeToolCall(toolName, args = {}, user) {
           filter,
           { $set: { isFeatured: featured } },
           { new: true, runValidators: true }
-        ).select('name brand price stock category isFeatured createdAt').lean();
+        ).select('name brand price currency priceCurrency stock category isFeatured createdAt').lean();
 
         if (!updated) return { success: false, error: 'Product not found or you don\'t own it.' };
         return {
@@ -2380,15 +2721,17 @@ async function executeToolCall(toolName, args = {}, user) {
         if (category) filter.category = { $regex: category, $options: 'i' };
 
         let sort = { createdAt: -1 };
-        if (sortBy === 'price_low') sort = { price: 1 };
-        else if (sortBy === 'price_high') sort = { price: -1 };
-        else if (sortBy === 'name') sort = { name: 1 };
+        if (sortBy === 'name') sort = { name: 1 };
 
         const skip = (safePage(page) - 1) * safeLimit(limit, 20);
         let matchingProducts = await Product.find(filter).sort(sort)
-          .select('name price discountedPrice category brand stock image rating numReviews isFeatured tags colors optionGroups description isBlocked blockedReason moderationStatus moderationReason createdAt')
+          .select('name price discountedPrice currency priceCurrency category brand stock image rating numReviews isFeatured tags colors optionGroups description isBlocked blockedReason moderationStatus moderationReason createdAt')
           .lean();
         if (search) matchingProducts = fuzzyProductMatches(matchingProducts, search, 100);
+        if (['price_low', 'price_high'].includes(sortBy)) {
+          matchingProducts = await attachAIComparablePrices(matchingProducts, preferredCurrency);
+          matchingProducts = sortAIProductsByPrice(matchingProducts, sortBy, preferredCurrency);
+        }
 
         const total = matchingProducts.length;
         const products = matchingProducts.slice(skip, skip + safeLimit(limit, 20));
@@ -2408,34 +2751,42 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!Number.isFinite(discountValue) || discountValue <= 0) return { success: false, error: 'Please specify a positive discount value.' };
         if (!['percentage', 'fixed'].includes(discountType)) return { success: false, error: 'Discount type must be percentage or fixed.' };
         if (discountType === 'percentage' && discountValue > 100) return { success: false, error: 'Percentage discounts cannot exceed 100%.' };
-        const fixedDiscountUSD = discountType === 'fixed'
-          ? await convertToUSD(discountValue, normalizeCurrency(args.currency || preferredCurrency))
-          : discountValue;
+        const inputCurrency = normalizeCurrency(args.currency || preferredCurrency);
 
         const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
         else if (cat) filter.category = { $regex: cat, $options: 'i' };
 
-        const products = await Product.find(filter).select('price').lean();
+        const products = await Product.find(filter).select('price currency priceCurrency').lean();
         if (!products.length) return { success: false, error: 'No matching products found.' };
 
-        const bulkOps = products.map(p => ({
-          updateOne: {
-            filter: { _id: p._id },
-            update: {
-              $set: {
-                discountedPrice: discountType === 'percentage'
-                  ? Math.round(p.price * (1 - discountValue / 100) * 100) / 100
-                  : Math.max(0, Math.round((p.price - fixedDiscountUSD) * 100) / 100),
+        const bulkOps = await Promise.all(products.map(async p => {
+          const productCurrency = getProductCurrency(p, inputCurrency);
+          const fixedDiscount = discountType === 'fixed'
+            ? await convertAmount(discountValue, inputCurrency, productCurrency)
+            : 0;
+          const discountedPrice = discountType === 'percentage'
+            ? Math.round(p.price * (1 - discountValue / 100) * 100) / 100
+            : Math.max(0, Math.round((p.price - fixedDiscount) * 100) / 100);
+          return {
+            updateOne: {
+              filter: { _id: p._id },
+              update: {
+                $set: {
+                  discountedPrice,
+                  discountedPriceCurrency: productCurrency,
+                  discountedPriceInputAmount: discountedPrice,
+                  priceVersion: 2,
+                },
               },
             },
-          },
+          };
         }));
         await Product.bulkWrite(bulkOps);
 
         return {
           success: true,
-          message: `Applied ${discountType === 'percentage' ? `${discountValue}%` : await formatMoney(fixedDiscountUSD, normalizeCurrency(args.currency || preferredCurrency))} discount to ${products.length} product${products.length !== 1 ? 's' : ''}!`,
+          message: `Applied ${discountType === 'percentage' ? `${discountValue}%` : await formatMoney(discountValue, inputCurrency, { sourceCurrency: inputCurrency })} discount to ${products.length} product${products.length !== 1 ? 's' : ''}!`,
         };
       }
 
@@ -2446,30 +2797,44 @@ async function executeToolCall(toolName, args = {}, user) {
         const value = args.value != null ? Number(args.value) : Number(args.priceChange);
         if (!Number.isFinite(value)) return { success: false, error: 'Please specify a valid price update value.' };
         if (!['percentage', 'fixed', 'set'].includes(updateType)) return { success: false, error: 'Price update type must be percentage, fixed, or set.' };
-        const valueUSD = updateType === 'percentage'
-          ? value
-          : await convertToUSD(value, normalizeCurrency(args.currency || preferredCurrency));
+        const inputCurrency = normalizeCurrency(args.currency || preferredCurrency);
 
         const filter = role === 'admin' ? {} : { seller: userId };
         if (productIds?.length) filter._id = { $in: productIds.map(toId).filter(Boolean) };
         else if (cat) filter.category = { $regex: cat, $options: 'i' };
 
-        const products = await Product.find(filter).select('price').lean();
+        const products = await Product.find(filter).select('price discountedPrice currency priceCurrency').lean();
         if (!products.length) return { success: false, error: 'No matching products found.' };
 
-        const bulkOps = products.map(p => {
+        const bulkOps = await Promise.all(products.map(async p => {
+          const productCurrency = getProductCurrency(p, inputCurrency);
+          const convertedValue = updateType === 'percentage'
+            ? value
+            : await convertAmount(value, inputCurrency, productCurrency);
           let newPrice;
-          if (updateType === 'set') newPrice = valueUSD;
+          if (updateType === 'set') newPrice = convertedValue;
           else if (updateType === 'percentage') newPrice = p.price + (p.price * value / 100);
-          else newPrice = p.price + valueUSD;
+          else newPrice = p.price + convertedValue;
           newPrice = Math.max(0, Math.round(newPrice * 100) / 100);
+          const update = {
+            price: newPrice,
+            currency: productCurrency,
+            priceCurrency: productCurrency,
+            priceInputAmount: newPrice,
+            priceVersion: 2,
+          };
+          if (p.discountedPrice > 0 && p.discountedPrice >= newPrice) {
+            update.discountedPrice = 0;
+            update.discountedPriceInputAmount = 0;
+            update.discountedPriceCurrency = productCurrency;
+          }
           return {
             updateOne: {
               filter: { _id: p._id },
-              update: { $set: { price: newPrice } },
+              update: { $set: update },
             },
           };
-        });
+        }));
         await Product.bulkWrite(bulkOps);
 
         return {
@@ -2500,18 +2865,17 @@ async function executeToolCall(toolName, args = {}, user) {
         const productIds = myProducts.map(p => p._id);
 
         const orders = await Order.find({ 'orderItems.productId': { $in: productIds } })
-          .select('orderSummary orderStatus createdAt orderItems')
+          .select('orderSummary orderStatus createdAt orderItems currency')
           .lean();
 
-        // CRITICAL: Calculate revenue from ONLY this seller's items, not the full order total
-        const totalRevenue = orders
-          .filter(o => o.orderStatus !== 'cancelled')
-          .reduce((sum, o) => {
-            const sellerItemsRevenue = (o.orderItems || [])
-              .filter(i => productIds.some(pid => pid.toString() === i.productId?.toString()))
-              .reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
-            return sum + sellerItemsRevenue;
-          }, 0);
+        // CRITICAL: Calculate revenue from ONLY this seller's items, not the full order total.
+        let totalRevenue = 0;
+        for (const order of orders.filter(o => o.orderStatus !== 'cancelled')) {
+          const sellerItemsRevenue = (order.orderItems || [])
+            .filter(i => productIds.some(pid => pid.toString() === i.productId?.toString()))
+            .reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+          totalRevenue += await convertAmount(sellerItemsRevenue, order.currency || preferredCurrency, preferredCurrency);
+        }
 
         const statusCounts = {};
         orders.forEach(o => {
@@ -2545,13 +2909,14 @@ async function executeToolCall(toolName, args = {}, user) {
             totalProducts: myProducts.length,
             totalOrders: orders.length,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
+            currency: preferredCurrency,
             storeViews: store?.views || 0,
             trustCount: store?.trustCount || 0,
             ordersByStatus: statusCounts,
             topProducts,
             lowStockAlerts: lowStock.map(p => ({ name: p.name, stock: p.stock })),
           },
-          message: `📊 Store "${store?.storeName}": ${myProducts.length} products, ${orders.length} orders, $${Math.round(totalRevenue)} revenue, ${store?.views || 0} views.`,
+          message: `📊 Store "${store?.storeName}": ${myProducts.length} products, ${orders.length} orders, ${await userMoney(totalRevenue, preferredCurrency)} revenue, ${store?.views || 0} views.`,
         };
       }
 
@@ -2887,14 +3252,24 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         const existing = shipping.methods.find(m => m.type === method);
+        const shippingCurrency = normalizeCurrency(args.currency || preferredCurrency);
+        const shippingCost = cost != null ? roundMoney(cost) : null;
         if (existing) {
-          if (cost != null) existing.cost = await convertToUSD(Number(cost), normalizeCurrency(args.currency || preferredCurrency));
+          if (shippingCost != null) {
+            existing.cost = shippingCost;
+            existing.currency = shippingCurrency;
+            existing.costCurrency = shippingCurrency;
+            existing.costInputAmount = shippingCost;
+          }
           if (deliveryDays != null) existing.deliveryDays = Number(deliveryDays);
           if (isActive != null) existing.isActive = isActive;
         } else {
           shipping.methods.push({
             type: method,
-            cost: cost != null ? await convertToUSD(Number(cost), normalizeCurrency(args.currency || preferredCurrency)) : 0,
+            cost: shippingCost != null ? shippingCost : 0,
+            currency: shippingCurrency,
+            costCurrency: shippingCurrency,
+            costInputAmount: shippingCost != null ? shippingCost : 0,
             deliveryDays: Number(deliveryDays) || 3,
             isActive: isActive !== false,
           });
@@ -2923,9 +3298,7 @@ async function executeToolCall(toolName, args = {}, user) {
         if (inferredDiscountType === 'percentage' && rawNumericDiscountValue > 100) {
           return { success: false, error: 'Percentage coupon discounts cannot exceed 100%.' };
         }
-        const discountValue = inferredDiscountType === 'fixed'
-          ? await convertToUSD(rawNumericDiscountValue, inputCurrency)
-          : rawNumericDiscountValue;
+        const discountValue = rawNumericDiscountValue;
         const expiryDate = c.expiryDate ? new Date(c.expiryDate) : addDays(new Date(), 30);
         if (Number.isNaN(expiryDate.getTime())) return { success: false, error: 'Coupon expiryDate is invalid.' };
         if (expiryDate <= new Date()) return { success: false, error: 'Coupon expiryDate must be in the future.' };
@@ -2938,10 +3311,10 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser <= 0) return { success: false, error: 'maxUsesPerUser must be a positive number.' };
         if (!Number.isFinite(rawMinOrderAmount) || rawMinOrderAmount < 0) return { success: false, error: 'minOrderAmount must be zero or higher.' };
         if (rawMaxDiscountAmountNumber !== null && (!Number.isFinite(rawMaxDiscountAmountNumber) || rawMaxDiscountAmountNumber <= 0)) return { success: false, error: 'maxDiscountAmount must be a positive number.' };
-        const minOrderAmount = await convertToUSD(rawMinOrderAmount, inputCurrency);
+        const minOrderAmount = rawMinOrderAmount;
         const maxDiscountAmount = rawMaxDiscountAmountNumber == null
           ? null
-          : await convertToUSD(rawMaxDiscountAmountNumber, inputCurrency);
+          : rawMaxDiscountAmountNumber;
         const applicableTo = c.applicableTo === 'selected' ? 'selected' : 'all';
         const applicableProducts = Array.isArray(c.applicableProducts)
           ? c.applicableProducts.map(toId).filter(Boolean)
@@ -2958,6 +3331,7 @@ async function executeToolCall(toolName, args = {}, user) {
           code,
           discountType: inferredDiscountType,
           discountValue,
+          currency: inputCurrency,
           applicableTo,
           applicableProducts: applicableTo === 'selected' ? applicableProducts : [],
           maxUses,
@@ -2971,7 +3345,7 @@ async function executeToolCall(toolName, args = {}, user) {
         return {
           success: true,
           data: { couponId: coupon._id, code: coupon.code, expiryDate: coupon.expiryDate },
-          message: `Coupon "${coupon.code}" created - ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : await formatMoney(coupon.discountValue, inputCurrency)} off, expiring ${coupon.expiryDate.toISOString().slice(0, 10)}.`,
+          message: `Coupon "${coupon.code}" created - ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : await formatMoney(coupon.discountValue, inputCurrency, { sourceCurrency: inputCurrency })} off, expiring ${coupon.expiryDate.toISOString().slice(0, 10)}.`,
         };
       }
 
@@ -2987,6 +3361,7 @@ async function executeToolCall(toolName, args = {}, user) {
               code: c.code,
               type: c.discountType,
               value: c.discountValue,
+              currency: c.currency || 'USD',
               isActive: c.isActive,
               usedCount: c.usedCount,
               maxUses: c.maxUses,
@@ -3001,7 +3376,7 @@ async function executeToolCall(toolName, args = {}, user) {
       case 'update_coupon': {
         if (!userId) return { success: false, error: 'Authentication required.' };
         const incomingUpdates = Object.keys(pickObject(args.updates)).length ? args.updates : args;
-        const allowedCouponFields = ['discountType', 'discountValue', 'applicableTo', 'applicableProducts', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount', 'startDate', 'expiryDate', 'isActive', 'description'];
+        const allowedCouponFields = ['discountType', 'discountValue', 'currency', 'applicableTo', 'applicableProducts', 'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount', 'startDate', 'expiryDate', 'isActive', 'description'];
         const updates = {};
         for (const field of allowedCouponFields) {
           if (incomingUpdates[field] !== undefined) updates[field] = incomingUpdates[field];
@@ -3009,6 +3384,9 @@ async function executeToolCall(toolName, args = {}, user) {
         const coupon = await resolveSellerCoupon(userId, args);
         if (!coupon) return { success: false, error: 'Please specify a valid coupon code or choose a coupon from your coupon list.' };
         if (Object.keys(updates).length === 0) return { success: false, error: 'No valid coupon fields were provided to update.' };
+        if (updates.currency !== undefined || incomingUpdates.currency !== undefined || args.currency !== undefined) {
+          updates.currency = normalizeCurrency(updates.currency || incomingUpdates.currency || args.currency || coupon.currency || preferredCurrency);
+        }
         if (updates.discountType && !['percentage', 'fixed'].includes(updates.discountType)) {
           return { success: false, error: 'Coupon discountType must be percentage or fixed.' };
         }
@@ -3207,11 +3585,13 @@ async function executeToolCall(toolName, args = {}, user) {
           dateFilter.createdAt ? Order.countDocuments(dateFilter) : Promise.resolve(null),
         ]);
 
-        const revenueAgg = await Order.aggregate([
-          { $match: { orderStatus: { $ne: 'cancelled' } } },
-          { $group: { _id: null, total: { $sum: '$orderSummary.totalAmount' } } },
-        ]);
-        const totalRevenue = revenueAgg[0]?.total || 0;
+        const revenueOrders = await Order.find({ orderStatus: { $ne: 'cancelled' } })
+          .select('orderSummary currency')
+          .lean();
+        let totalRevenue = 0;
+        for (const order of revenueOrders) {
+          totalRevenue += await convertAmount(order.orderSummary?.totalAmount || 0, order.currency || preferredCurrency, preferredCurrency);
+        }
 
         return {
           success: true,
@@ -3219,12 +3599,13 @@ async function executeToolCall(toolName, args = {}, user) {
             users: { total: totalUsers + totalSellers + totalAdmins, customers: totalUsers, sellers: totalSellers, admins: totalAdmins },
             orders: { total: totalOrders, ...(periodOrders != null ? { inPeriod: periodOrders } : {}) },
             revenue: Math.round(totalRevenue * 100) / 100,
+            currency: preferredCurrency,
             products: totalProducts,
             stores: totalStores,
             pendingVerifications,
             openComplaints,
           },
-          message: `📊 Platform: ${totalUsers + totalSellers + totalAdmins} users, ${totalOrders} orders, $${Math.round(totalRevenue)} revenue, ${totalProducts} products, ${totalStores} stores, ${pendingVerifications} pending verifications, ${openComplaints} open complaints.`,
+          message: `📊 Platform: ${totalUsers + totalSellers + totalAdmins} users, ${totalOrders} orders, ${await userMoney(totalRevenue, preferredCurrency)} revenue, ${totalProducts} products, ${totalStores} stores, ${pendingVerifications} pending verifications, ${openComplaints} open complaints.`,
         };
       }
 
@@ -3653,7 +4034,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const productPreview = await Product.find(publicProductFilter({ seller: store.seller?._id, stock: { $gt: 0 } }))
           .sort({ isFeatured: -1, rating: -1, createdAt: -1 })
           .limit(8)
-          .select('name price discountedPrice category brand image stock colors optionGroups rating numReviews isFeatured')
+          .select('name price discountedPrice currency priceCurrency category brand image stock colors optionGroups rating numReviews isFeatured')
           .lean();
         let orderCount;
         if (role === 'admin') {
@@ -3712,7 +4093,7 @@ async function executeToolCall(toolName, args = {}, user) {
         const matchingProducts = await Product.find(productFilter)
           .sort({ rating: -1, numReviews: -1, createdAt: -1 })
           .limit(50)
-          .select('seller name price discountedPrice image category brand stock')
+          .select('seller name price discountedPrice currency priceCurrency image category brand stock')
           .lean();
         const sellerProductMap = new Map();
         for (const product of matchingProducts) {
@@ -3785,4 +4166,13 @@ async function executeToolCall(toolName, args = {}, user) {
   }
 }
 
-module.exports = { executeToolCall, isClientSideTool, CLIENT_SIDE_TOOLS, storeChangeLimits };
+module.exports = {
+  executeToolCall,
+  isClientSideTool,
+  CLIENT_SIDE_TOOLS,
+  storeChangeLimits,
+  __private: {
+    detectExplicitCurrencyInText,
+    resolveAIPriceCurrency,
+  },
+};

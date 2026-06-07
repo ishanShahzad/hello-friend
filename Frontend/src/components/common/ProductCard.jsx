@@ -8,13 +8,12 @@ import { optimizeImage, buildSrcSet } from "../../utils/optimizeImage";
 import { getStoreSubdomainUrl } from "../../utils/subdomainHelper";
 
 const ProductCard = memo(({
-  _id, name, image, images, category, price, discountedPrice,
+  _id, name, image, images, category, price, discountedPrice, currency, priceCurrency,
   stock, rating, numReviews, isFeatured, idx, store, seller,
-  priceCurrency, priceOriginal, discountedPriceOriginal,
 }) => {
   const { wishlistItems, handleAddToWishlist, handleDeleteFromWishlist, cartItems, handleAddToCart, handleQtyInc, handleQtyDec, isCartLoading, loadingProductId, qtyUpdateId } = useGlobal();
   const { currentUser } = useAuth();
-  const { formatPrice, formatProductPrice } = useCurrency();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
 
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -25,13 +24,9 @@ const ProductCard = memo(({
   const isInCart = !!cartItem;
   const displayPrice = discountedPrice || price;
   const originalDisplayPrice = discountedPrice ? price : null;
+  const productCurrency = currency || priceCurrency || 'USD';
   const discountPercentage = originalDisplayPrice && displayPrice < originalDisplayPrice
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100) : 0;
-
-  // Use formatProductPrice so same-currency products display the seller's exact saved value (no rounding drift)
-  const productForPrice = { price, discountedPrice, priceCurrency, priceOriginal, discountedPriceOriginal };
-  const formattedDisplayPrice = formatProductPrice(productForPrice, { field: discountedPrice ? 'discountedPrice' : 'price' });
-  const formattedOriginalPrice = originalDisplayPrice ? formatProductPrice(productForPrice, { field: 'price' }) : null;
 
   const handleWishlistToggle = () => {
     if (!currentUser) { navigate('/login'); return; }
@@ -46,12 +41,12 @@ const ProductCard = memo(({
   const handleProductClick = (e) => {
     // Get store slug from populated seller.store or direct store prop
     const storeSlug = seller?.store?.storeSlug || store?.storeSlug || store?.slug;
-    
+
     if (!storeSlug) {
       // No store found, navigate normally
       return;
     }
-    
+
     const productUrl = getStoreSubdomainUrl(storeSlug);
     if (productUrl.startsWith('http')) {
       // Need to redirect to different subdomain
@@ -158,18 +153,8 @@ const ProductCard = memo(({
           style={{ color: 'hsl(var(--muted-foreground))' }}>{category}</span>
 
         <Link to={`/single-product/${_id}`} onClick={handleProductClick}>
-          <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1 sm:mb-1.5 transition-colors"
-            style={{
-              color: 'hsl(var(--foreground))',
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              lineHeight: '1.25',
-              height: '2.5em',
-              wordBreak: 'break-word',
-            }}>
+          <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1 sm:mb-1.5 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] transition-colors"
+            style={{ color: 'hsl(var(--foreground))' }}>
             {name}
           </h3>
         </Link>
@@ -177,31 +162,22 @@ const ProductCard = memo(({
         {/* Rating */}
         <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-2.5">
           <div className="flex">
-            {[...Array(5)].map((_, i) => {
-              const filled = i < Math.floor(rating || 0);
-              return (
-                <Star
-                  key={i}
-                  size={10}
-                  className={`sm:w-3 sm:h-3 ${filled ? 'text-amber-400 fill-amber-400' : ''}`}
-                  style={filled ? undefined : { color: 'hsl(var(--muted-foreground) / 0.55)', fill: 'hsl(var(--muted-foreground) / 0.18)' }}
-                />
-              );
-            })}
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={10} className={`sm:w-3 sm:h-3 ${i < Math.floor(rating || 0) ? "text-amber-400 fill-amber-400" : "text-white/30"}`} />
+            ))}
           </div>
           <span className="text-[10px] sm:text-xs ml-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>({rating?.toFixed(1) || 0})</span>
         </div>
-
 
         {/* Price */}
         <div className="mt-auto flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
           {originalDisplayPrice ? (
             <>
-              <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formattedDisplayPrice}</span>
-              <span className="text-xs sm:text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formattedOriginalPrice}</span>
+              <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice, { sourceCurrency: productCurrency })}</span>
+              <span className="text-xs sm:text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(originalDisplayPrice, { sourceCurrency: productCurrency })}</span>
             </>
           ) : (
-            <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formattedDisplayPrice}</span>
+            <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(displayPrice, { sourceCurrency: productCurrency })}</span>
           )}
         </div>
 

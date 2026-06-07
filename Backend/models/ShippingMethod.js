@@ -19,6 +19,20 @@ const shippingMethodSchema = mongoose.Schema({
         required: true,
         min: 0
       },
+      currency: {
+        type: String,
+        enum: ['USD', 'PKR', 'EUR', 'GBP'],
+        default: null,
+      },
+      costCurrency: {
+        type: String,
+        enum: ['USD', 'PKR', 'EUR', 'GBP'],
+        default: null,
+      },
+      costInputAmount: {
+        type: Number,
+        default: null,
+      },
       deliveryDays: {
         type: Number,
         required: true,

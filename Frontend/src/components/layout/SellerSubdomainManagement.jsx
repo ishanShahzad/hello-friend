@@ -10,7 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const SellerSubdomainManagement = () => {
-    const { formatPrice } = useCurrency();
+    const { formatPrice, currency } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [editing, setEditing] = useState(false);
@@ -28,7 +28,7 @@ const SellerSubdomainManagement = () => {
             setLoading(true);
             const token = getAuthToken();
             const [analyticsRes, ownershipRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/analytics/seller`, {
+                axios.get(`${import.meta.env.VITE_API_URL}api/subdomain/analytics/seller?currency=${currency}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 }),
                 axios.get(`${import.meta.env.VITE_API_URL}api/subscription/subdomain/ownership`, {
@@ -55,7 +55,7 @@ const SellerSubdomainManagement = () => {
         if (searchParams.get('purchase') === 'cancelled') {
             toast.info('Subdomain purchase was cancelled.');
         }
-    }, []);
+    }, [currency]);
 
     const sanitize = (val) => val.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');
 
@@ -140,7 +140,7 @@ const SellerSubdomainManagement = () => {
     const stats = [
         { label: 'Total Views', value: analytics.totalViews, icon: <Eye size={18} />, color: 'hsl(220, 70%, 55%)' },
         { label: 'Total Orders', value: analytics.totalOrders, icon: <ShoppingBag size={18} />, color: 'hsl(150, 60%, 45%)' },
-        { label: 'Revenue', value: formatPrice(analytics.totalRevenue), icon: <DollarSign size={18} />, color: 'hsl(200, 80%, 50%)' },
+        { label: 'Revenue', value: formatPrice(analytics.totalRevenue, { sourceCurrency: analytics.currency || currency }), icon: <DollarSign size={18} />, color: 'hsl(200, 80%, 50%)' },
         { label: 'Conversion', value: `${analytics.conversionRate}%`, icon: <TrendingUp size={18} />, color: 'hsl(280, 60%, 55%)' },
     ];
 

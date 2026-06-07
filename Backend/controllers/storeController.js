@@ -4,9 +4,18 @@ const crypto = require('crypto');
 const { sendEmail } = require('./mailController');
 const { initializeSubscription } = require('./subscriptionController');
 const { publicProductFilter } = require('../services/productModerationService');
-const { applyLivePricesUSD, convertToUSDSync, normalizeCurrency } = require('../services/currencyService');
+const { convertAmountSync } = require('../services/currencyService');
+const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
+const {
+    resolveRequestedCurrency,
+    sellerOrderSummaryInCurrency,
+    roundMoney,
+} = require('../services/orderMoneyService');
 const StoreView = require('../models/StoreView');
 const { normalizeSocialLinks } = require('../services/socialLinksService');
+
+const comparablePriceUSD = (product) =>
+    convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
 
 // Email template helper
 const storeEmailTemplate = (title, bodyHtml, ctaUrl, ctaText) => `
@@ -110,20 +119,20 @@ exports._releaseExpiredSlug = releaseExpiredSlug;
 exports.checkSubdomainAvailability = async (req, res) => {
     try {
         const { slug } = req.params;
-        
+
         if (!slug || slug.trim().length < 3) {
-            return res.status(400).json({ 
-                available: false, 
-                msg: 'Subdomain must be at least 3 characters' 
+            return res.status(400).json({
+                available: false,
+                msg: 'Subdomain must be at least 3 characters'
             });
         }
 
         // Reserved subdomains
         const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
         if (reserved.includes(slug.toLowerCase())) {
-            return res.status(200).json({ 
-                available: false, 
-                msg: 'This subdomain is reserved by the system' 
+            return res.status(200).json({
+                available: false,
+                msg: 'This subdomain is reserved by the system'
             });
         }
 
@@ -139,21 +148,21 @@ exports.checkSubdomainAvailability = async (req, res) => {
         if (existingStore) {
             // If it's the current user's store, it's "available" for them
             if (req.user && existingStore.seller.toString() === req.user.id) {
-                return res.status(200).json({ 
-                    available: true, 
+                return res.status(200).json({
+                    available: true,
                     isOwned: true,
-                    msg: 'This is your current subdomain' 
+                    msg: 'This is your current subdomain'
                 });
             }
-            return res.status(200).json({ 
-                available: false, 
-                msg: 'This subdomain is already taken' 
+            return res.status(200).json({
+                available: false,
+                msg: 'This subdomain is already taken'
             });
         }
 
-        res.status(200).json({ 
-            available: true, 
-            msg: 'Subdomain is available' 
+        res.status(200).json({
+            available: true,
+            msg: 'Subdomain is available'
         });
     } catch (error) {
         console.error('Check subdomain availability error:', error);
@@ -183,7 +192,7 @@ exports.createStore = async (req, res) => {
         }
 
         // Check if store name already exists (case-insensitive)
-        const duplicateStore = await Store.findOne({ 
+        const duplicateStore = await Store.findOne({
             storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') }
         });
         if (duplicateStore) {
@@ -376,7 +385,7 @@ exports.updateStore = async (req, res) => {
 
             // Check if store name already exists (case-insensitive), excluding current store
             if (wantsNameChange) {
-                const duplicateStore = await Store.findOne({ 
+                const duplicateStore = await Store.findOne({
                     storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') },
                     _id: { $ne: store._id }
                 });
@@ -394,7 +403,7 @@ exports.updateStore = async (req, res) => {
             if (storeSlug.length < 3) {
                 return res.status(400).json({ msg: 'Subdomain must be at least 3 characters long' });
             }
-            
+
             const reserved = ['www', 'api', 'admin', 'app', 'mail', 'ftp', 'shop', 'store', 'blog', 'docs', 'help', 'cdn', 'static', 'support'];
             if (reserved.includes(storeSlug.toLowerCase())) {
                 return res.status(400).json({ msg: 'This subdomain is reserved by the system' });
@@ -423,7 +432,7 @@ exports.updateStore = async (req, res) => {
             }
 
             // Check if available (lazy-release stale blocked slugs)
-            let duplicateSlug = await Store.findOne({ 
+            let duplicateSlug = await Store.findOne({
                 storeSlug: storeSlug.toLowerCase(),
                 _id: { $ne: store._id }
             });
@@ -434,7 +443,7 @@ exports.updateStore = async (req, res) => {
             if (duplicateSlug) {
                 return res.status(409).json({ msg: 'This subdomain is already taken by another store' });
             }
-            
+
             store.storeSlug = storeSlug.toLowerCase();
             store.lastSlugChangeAt = new Date();
         }
@@ -641,7 +650,7 @@ exports.getStoreProducts = async (req, res) => {
             query.brand = { $in: brandArray };
         }
 
-        // priceRange is in display USD; defer to in-memory filter after live conversion
+        // priceRange is interpreted as USD for this legacy endpoint.
         let priceMinUSD = null;
         let priceMaxUSD = null;
         if (priceRange) {
@@ -663,11 +672,9 @@ exports.getStoreProducts = async (req, res) => {
         let products = await Product.find(query)
             .sort({ createdAt: -1 });
 
-        // Convert to live USD before price-range filter
-        products = applyLivePricesUSD(products);
         if (priceMinUSD !== null || priceMaxUSD !== null) {
             products = products.filter((p) => {
-                const v = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
+                const v = comparablePriceUSD(p);
                 if (priceMinUSD !== null && v < priceMinUSD) return false;
                 if (priceMaxUSD !== null && v > priceMaxUSD) return false;
                 return true;
@@ -835,6 +842,7 @@ exports.getStoreAnalytics = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found' });
         }
 
+        const targetCurrency = await resolveRequestedCurrency(req, User);
         const Product = require('../models/Product');
         const sellerProductIds = await Product.find({ seller: sellerId }).distinct('_id');
         const productCount = sellerProductIds.length;
@@ -846,23 +854,17 @@ exports.getStoreAnalytics = async (req, res) => {
         });
 
         const sellerProductIdSet = new Set(sellerProductIds.map(id => id.toString()));
-        const totalSales = orders.reduce((sum, order) => {
-            const sellerSubtotal = (order.orderItems || []).reduce((itemSum, item) => {
-                if (!sellerProductIdSet.has(item.productId?.toString())) return itemSum;
-                return itemSum + ((Number(item.price) || 0) * (Number(item.quantity) || 0));
-            }, 0);
-            const orderSubtotal = Number(order.orderSummary?.subtotal) || 0;
-            const sellerProportion = orderSubtotal > 0 ? sellerSubtotal / orderSubtotal : 0;
-            const sellerTax = (Number(order.orderSummary?.tax) || 0) * sellerProportion;
-            const sellerShipping = (order.sellerShipping || []).find(
-                ss => ss.seller?.toString() === sellerId.toString()
-            )?.shippingMethod?.price || 0;
-            return sum + sellerSubtotal + sellerTax + sellerShipping;
-        }, 0);
+        let totalSales = 0;
+        for (const order of orders) {
+            const summary = await sellerOrderSummaryInCurrency(order, sellerProductIdSet, sellerId, targetCurrency);
+            totalSales += summary.totalAmount;
+        }
+        totalSales = roundMoney(totalSales);
 
         res.status(200).json({
             msg: 'Analytics fetched successfully',
             analytics: {
+                currency: targetCurrency,
                 views: store.views || 0,
                 productCount: productCount || 0,
                 totalSales: totalSales || 0,
@@ -997,7 +999,7 @@ exports.approveVerification = async (req, res) => {
         store.verification.reviewedAt = new Date();
         store.verification.reviewedBy = adminId;
         store.verification.rejectionReason = '';
-        
+
         // If there was no application, set appliedAt to now
         if (!store.verification.appliedAt) {
             store.verification.appliedAt = new Date();

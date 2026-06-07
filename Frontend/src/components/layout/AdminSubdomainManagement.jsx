@@ -9,7 +9,7 @@ import { getStoreSubdomainUrl } from '../../utils/subdomainHelper';
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const AdminSubdomainManagement = () => {
-    const { formatPrice } = useCurrency();
+    const { formatPrice, currency } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [stores, setStores] = useState([]);
     const [summary, setSummary] = useState({});
@@ -28,6 +28,7 @@ const AdminSubdomainManagement = () => {
             const params = new URLSearchParams();
             if (search) params.append('search', search);
             if (statusFilter !== 'all') params.append('status', statusFilter);
+            params.append('currency', currency);
             params.append('page', page);
             params.append('limit', 15);
 
@@ -35,14 +36,14 @@ const AdminSubdomainManagement = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStores(res.data.stores || []);
-            setSummary(res.data.summary || {});
+            setSummary({ ...(res.data.summary || {}), currency: res.data.currency || currency });
             setPagination(res.data.pagination || {});
         } catch (error) {
             toast.error('Failed to load subdomain data');
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchData(); }, [statusFilter, page]);
+    useEffect(() => { fetchData(); }, [statusFilter, page, currency]);
 
     useEffect(() => {
         const timer = setTimeout(() => { setPage(1); fetchData(); }, 400);
@@ -232,7 +233,7 @@ const AdminSubdomainManagement = () => {
                                     </div>
                                     <div className="text-center">
                                         <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Revenue</p>
-                                        <p className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(store.totalRevenue)}</p>
+                                        <p className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(store.totalRevenue, { sourceCurrency: summary.currency || currency })}</p>
                                     </div>
                                     <div className="text-center">
                                         <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Trust</p>

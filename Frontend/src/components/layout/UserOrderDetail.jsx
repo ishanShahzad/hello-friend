@@ -9,8 +9,9 @@ import Loader from "../common/Loader";
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const OrderDetail = () => {
-    const { formatPrice, formatAmount, formatOrderItemPrice, getOrderItemPriceNumber } = useCurrency();
+    const { formatPrice } = useCurrency();
     const [order, setOrder] = useState(null);
+    const orderMoney = (amount) => formatPrice(amount, { sourceCurrency: order?.currency || 'USD' });
     const { id } = useParams();
     const [isUpdating, setIsUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState(null);
@@ -128,7 +129,7 @@ const OrderDetail = () => {
 
                     // Re-confirmed after cancel (status is now confirmed, but declinedAt was set then cleared)
                     const orderConfirmed = order.orderStatus === 'confirmed' || order.orderStatus === 'processing' || order.orderStatus === 'shipped';
-                    
+
                     const whenIso = confirmed ? order.confirmation.confirmedAt : order.confirmation.declinedAt;
                     const verbPast = orderConfirmed ? 'confirmed' : (order.orderStatus === 'cancelled' ? 'cancelled' : (confirmed ? 'confirmed' : 'cancelled'));
                     const viaLabel = via === 'whatsapp'
@@ -199,7 +200,7 @@ const OrderDetail = () => {
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span>
-                                <span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order?.orderSummary.subtotal)}</span>
+                                <span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(order?.orderSummary.subtotal)}</span>
                             </div>
                             {(() => {
                                 let actualShippingCost = order?.orderSummary.shippingCost || 0;
@@ -210,14 +211,14 @@ const OrderDetail = () => {
                                     <div className="space-y-1">
                                         <div className="flex justify-between">
                                             <span className="font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Shipping</span>
-                                            <span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(actualShippingCost)}</span>
+                                            <span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(actualShippingCost)}</span>
                                         </div>
                                         {order?.sellerShipping && order.sellerShipping.length > 0 && (
                                             <div className="pl-4 space-y-1">
                                                 {order.sellerShipping.map((s, i) => (
                                                     <div key={i} className="flex justify-between text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                         <span className="capitalize">{s.shippingMethod.name} ({s.shippingMethod.estimatedDays} days)</span>
-                                                        <span>{formatPrice(s.shippingMethod.price)}</span>
+                                                        <span>{orderMoney(s.shippingMethod.price)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -228,13 +229,13 @@ const OrderDetail = () => {
                             {order?.orderSummary.tax > 0 && (
                                 <div className="flex justify-between">
                                     <span style={{ color: 'hsl(var(--muted-foreground))' }}>Tax</span>
-                                    <span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order?.orderSummary.tax)}</span>
+                                    <span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(order?.orderSummary.tax)}</span>
                                 </div>
                             )}
                             {order?.orderSummary.couponDiscount > 0 && (
                                 <div className="flex justify-between">
                                     <span style={{ color: 'hsl(150, 60%, 45%)' }}>Coupon Discount</span>
-                                    <span style={{ color: 'hsl(150, 60%, 45%)' }}>-{formatPrice(order?.orderSummary.couponDiscount)}</span>
+                                    <span style={{ color: 'hsl(150, 60%, 45%)' }}>-{orderMoney(order?.orderSummary.couponDiscount)}</span>
                                 </div>
                             )}
                             {order?.appliedCoupons?.length > 0 && (
@@ -255,7 +256,7 @@ const OrderDetail = () => {
                                         if (order?.sellerShipping && order.sellerShipping.length > 0) {
                                             actualShipping = order.sellerShipping.reduce((sum, s) => sum + (s.shippingMethod.price || 0), 0);
                                         }
-                                        return formatPrice(subtotal + tax + actualShipping - couponDiscount);
+                                        return orderMoney(subtotal + tax + actualShipping - couponDiscount);
                                     })()}
                                 </span>
                             </div>
@@ -323,13 +324,13 @@ const OrderDetail = () => {
                                             </p>
                                         )}
                                         <div className="mt-2 sm:hidden">
-                                            <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatOrderItemPrice(item)}</p>
-                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatAmount(getOrderItemPriceNumber(item) * item.quantity)}</p>
+                                            <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(item.price)}</p>
+                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {orderMoney(item.price * item.quantity)}</p>
                                         </div>
                                     </div>
                                     <div className="text-right hidden sm:block shrink-0">
-                                        <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatOrderItemPrice(item)}</p>
-                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {formatAmount(getOrderItemPriceNumber(item) * item.quantity)}</p>
+                                        <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(item.price)}</p>
+                                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal: {orderMoney(item.price * item.quantity)}</p>
                                     </div>
                                 </motion.div>
                             ))}

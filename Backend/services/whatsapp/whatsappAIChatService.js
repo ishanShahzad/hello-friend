@@ -15,6 +15,7 @@ const AdminWhatsAppNumber = require('../../models/AdminWhatsAppNumber');
 const WhatsAppAIChatRateLimit = require('../../models/WhatsAppAIChatRateLimit');
 const ChatHistory = require('../../models/ChatHistory');
 const { processAIChatMessage } = require('../../controllers/aiChatController');
+const { processChatAttachments } = require('../aiAttachmentService');
 const evolution = require('./evolutionClient');           // buyer instance (rozare-main)
 const sellerEvolution = require('./sellerEvolutionClient'); // seller instance (rozare-seller)
 
@@ -193,6 +194,7 @@ const TOOL_ACTIVITY_LABELS = {
     show_style_advice: 'prepared style advice',
     suggest_outfit: 'prepared an outfit idea',
     send_product_image: 'prepared a product image',
+    bulk_add_products: 'imported products',
 };
 
 function formatToolActivitySummary(toolResults = [], clientActions = []) {
@@ -232,6 +234,9 @@ function summarizeToolEventsForMemory(toolEvents = []) {
             lines.push(`[Tool memory: add_product saved but blocked. productId=${data.productId}; name="${data.name || ''}"; reason="${data.moderationReason || result.message || ''}". Tell the seller it is blocked and ask them to edit the real product details; do not add it again.]`);
         } else if (tool === 'add_product' && result.success && data.productId) {
             lines.push(`[Tool memory: add_product succeeded. productId=${data.productId}; name="${data.name || ''}"; brand="${data.brand || ''}"; price=${data.price ?? ''}; tags=${JSON.stringify(data.tags || [])}; colors=${JSON.stringify(data.colors || [])}. Use this productId for follow-up edits; do not add it again unless the seller explicitly asks for a duplicate.]`);
+        } else if (tool === 'bulk_add_products' && result.success && Array.isArray(data.products)) {
+            const products = data.products.slice(0, 12).map(p => `${p.productId || p._id}:${p.name}; brand=${p.brand || ''}; price=${p.price ?? ''}; stock=${p.stock ?? ''}`);
+            lines.push(`[Tool memory: bulk_add_products imported ${data.added ?? data.products.length} products. Internal product lookup: ${products.join(' | ')}. Use these ids internally only; do not show or ask the seller for product IDs.]`);
         } else if (tool === 'edit_product' && result.success && (data._id || data.productId)) {
             lines.push(`[Tool memory: edit_product succeeded. productId=${data._id || data.productId}; name="${data.name || ''}". Continue editing this product if the seller gives more details.]`);
         } else if (tool === 'feature_product' && result.success && (data.productId || data._id)) {
@@ -473,16 +478,17 @@ async function handleNonSellerOnSellerInstance(phone) {
  * @param {string} messageText - The text content of the message
  * @param {string} instanceType - 'main' | 'seller'
  */
-async function processIncomingWhatsAppMessage(phone, messageText, instanceType) {
+async function processIncomingWhatsAppMessage(phone, messageText, instanceType, rawAttachments = []) {
     if (!AI_CHAT_ENABLED) {
         console.log(`[wa-ai-chat] AI chat disabled, ignoring message from ${phone}`);
         return;
     }
 
-    if (!messageText || !messageText.trim()) return;
+    const attachments = Array.isArray(rawAttachments) ? rawAttachments : [];
+    if ((!messageText || !messageText.trim()) && attachments.length === 0) return;
 
-    const trimmedText = messageText.trim();
-    console.log(`[wa-ai-chat] Processing ${instanceType} message from ${phone}: "${trimmedText.slice(0, 100)}..."`);
+    const trimmedText = String(messageText || '').trim();
+    console.log(`[wa-ai-chat] Processing ${instanceType} message from ${phone}: "${trimmedText.slice(0, 100)}..." attachments=${attachments.length}`);
 
     try {
         // 1. Identify the user
@@ -519,22 +525,29 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType) 
             return;
         }
 
-        // 3. Load conversation history
+        // 3. Process media/files after the user is identified and rate-limited.
+        const attachmentResult = attachments.length
+            ? await processChatAttachments(attachments)
+            : { context: '', attachments: [] };
+        const userContent = [trimmedText, attachmentResult.context].filter(Boolean).join('\n\n') ||
+            (attachments.length ? 'Attachment uploaded' : trimmedText);
+
+        // 4. Load conversation history
         const conversationHistory = await loadWhatsAppConversation(user._id);
 
-        // 4. Build messages array (history + new message)
+        // 5. Build messages array (history + new message)
         const messages = [
             ...conversationHistory,
-            { role: 'user', content: trimmedText },
+            { role: 'user', content: userContent },
         ];
 
-        // 5. Process through AI pipeline
+        // 6. Process through AI pipeline
         const userObj = { _id: user._id, id: user._id.toString(), role };
 
         const aiOptions = { mode: 'whatsapp' };
         const result = await processAIChatMessage(userObj, messages, aiOptions);
 
-        // 6. Send AI response
+        // 7. Send AI response
         if (result.responseText) {
             const actionSummary = formatToolActivitySummary(result.toolResults, result.clientActions);
             const responseText = actionSummary
@@ -546,7 +559,7 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType) 
             await sendResponse(phone, "I'm sorry, I couldn't process that. Could you try rephrasing? 🤔", instanceType);
         }
 
-        // 7. Send pending product images (if AI used send_product_image tool)
+        // 8. Send pending product images (if AI used send_product_image tool)
         if (aiOptions._pendingImages?.length) {
             const client = getClient(instanceType);
             for (const img of aiOptions._pendingImages) {

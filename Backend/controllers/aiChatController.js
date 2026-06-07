@@ -21,7 +21,9 @@ const Store = require('../models/Store');
 const ChatHistory = require('../models/ChatHistory');
 const { executeToolCall, isClientSideTool, storeChangeLimits } = require('../services/aiActionExecutor');
 const { publicProductFilter } = require('../services/productModerationService');
-const { applyLivePricesUSD } = require('../services/currencyService');
+const { processChatAttachments, appendAttachmentContextToMessages } = require('../services/aiAttachmentService');
+const { formatMoneySync } = require('../services/currencyService');
+const { getProductCurrency } = require('../services/productPricingService');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -54,6 +56,39 @@ function extractImageAttachments(content = '', explicit = []) {
 
 function stripAttachmentMetadata(content = '') {
   return String(content || '').replace(PRODUCT_IMAGE_ATTACHMENT_RE, '').trim();
+}
+
+function parseMaybeJson(value, fallback) {
+  if (typeof value !== 'string') return value ?? fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+async function getIncomingMessagesFromRequest(req) {
+  const body = req.body || {};
+  const parsedMessages = parseMaybeJson(body.messages, body.messages);
+  let incoming = Array.isArray(parsedMessages) ? parsedMessages : [];
+
+  const bodyAttachments = parseMaybeJson(body.attachments, body.attachments);
+  const uploadAttachments = Array.isArray(req.files)
+    ? req.files.map(file => ({
+      ...file,
+      name: file.originalname,
+      filename: file.originalname,
+      type: file.mimetype,
+    }))
+    : [];
+  const explicitAttachments = Array.isArray(bodyAttachments) ? bodyAttachments : [];
+
+  if (uploadAttachments.length || explicitAttachments.length) {
+    const attachmentResult = await processChatAttachments([...uploadAttachments, ...explicitAttachments]);
+    incoming = appendAttachmentContextToMessages(incoming, attachmentResult);
+  }
+
+  return incoming;
 }
 
 // ─── SYSTEM PROMPTS ──────────────────────────────────────────────────
@@ -227,6 +262,7 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 
 ## Interaction Style
 - When the seller says "add a product": collect name, price, category, brand, stock. The add_product tool also supports description, image URL(s), tags, colors, optionGroups (for Size, Color, Material, etc.), and product return policy.
+- When the seller attaches or pastes product data for multiple items (CSV, JSON, spreadsheet rows, PDF/DOCX text, text list), extract every complete product row and use bulk_add_products. Do not add partial rows without the required name, price, category, brand, and stock; ask for the missing columns once.
 - Visible replies must be plain text. Do not use markdown stars for bold or italic text.
 - Tool arguments must be clean business values only. For product name, category, brand, store name, and store description, never include labels like "Product Name:", "Brand:", "Category:", markdown stars, headings, copied form labels, or placeholder text. Example: name must be "Car", not "**Product Name:** Car".
 - For product category and brand, use the seller's exact brand when provided and choose a sensible clean category when obvious. Do not invent a fake brand; ask once if the brand is required and unclear.
@@ -236,8 +272,9 @@ Trigger phrases: "I want to buy", "find me a [product]", "show me [category]", "
 - If the seller asks you to improve the description, write a polished description before calling add_product.
 - If the seller says "choose tags yourself", create sensible searchable tags and pass them to add_product or edit_product. Never say tags are unsupported.
 - If the seller provides colors, sizes, variants, image URLs, or tags in the same product request, include them in the original add_product call. If they provide those details after a successful add, use edit_product on the most recently added productId from tool results; do not add the product again.
-- Web chat image uploads arrive as hidden text like [Attached product image: https://...]. Treat one or more attached URLs as provided product images. If seller text connects the image to a product, use the URL(s) in add_product or edit_product; never say you cannot view or receive the image. If the seller only sends image(s) with no context, ask which product they belong to. Never echo raw image URLs back to the seller.
-- Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add an image, colors, sizes, or other options. On web they can attach an image in chat or paste a URL; on WhatsApp they should paste a public image URL.
+- Image uploads arrive as hidden text like [Attached product image: https://...]. Treat one or more attached URLs as provided product images. If seller text connects the image to a product, use the URL(s) in add_product or edit_product; never say you cannot view or receive the image. If the seller only sends image(s) with no context, ask which product they belong to. Never echo raw image URLs back to the seller.
+- Product file uploads arrive as an "Attached product file" block with parsed rows or text. Read it carefully and import complete product rows with bulk_add_products.
+- Sometimes, when it feels helpful and not interruptive, ask whether the seller wants to add an image, colors, sizes, or other options. On web and WhatsApp they can attach supported files or images directly.
 - If a duplicate product is detected, explain that you stopped the duplicate and ask whether they intentionally want a second listing. Do not re-add an existing product unless they explicitly confirm a duplicate.
 - If add_product or edit_product says a product is blocked, be direct: the item is saved in Products but customers cannot see it because it looks like test/placeholder content. Ask the seller to edit the real product name and description; do not claim it is live.
 - Product IDs are internal. Do not ask sellers to provide product IDs and do not show raw product IDs unless the seller specifically asks for them. Use product names, brand, price, stock, created order, and "latest/oldest" wording to identify products.
@@ -768,7 +805,7 @@ const sellerTools = [
           category: { type: 'string', description: 'Clean category name only.' },
           brand: { type: 'string', description: 'Clean brand name only.' },
           stock: { type: 'number' },
-          image: { type: 'string', description: 'Primary product image URL. On WhatsApp, user must paste a public URL. On web, use the hidden [Attached product image: URL] metadata when present.' },
+          image: { type: 'string', description: 'Primary product image URL from an upload, pasted URL, or hidden [Attached product image: URL] metadata.' },
           images: {
             type: 'array',
             description: 'Additional product image URLs.',
@@ -837,6 +874,56 @@ const sellerTools = [
           deleteAllMatches: { type: 'boolean', description: 'True only after seller confirms all matching products should be deleted.' },
           sellerId: { type: 'string', description: 'Admin only: restrict deletion to this seller.' },
         },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'bulk_add_products',
+      description: "Import multiple products into the seller's store from structured data such as CSV, JSON, spreadsheets, or pasted rows. Each product must include name, price, category, brand, and stock. Supports currency, description, image(s), tags, colors, optionGroups, discounts, and return policy.",
+      parameters: {
+        type: 'object',
+        properties: {
+          products: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                price: { type: 'number' },
+                currency: { type: 'string', description: 'ISO currency for this row when explicit or inferred from the file/context.' },
+                description: { type: 'string' },
+                category: { type: 'string' },
+                brand: { type: 'string' },
+                stock: { type: 'number' },
+                image: { type: 'string' },
+                images: { type: 'array', items: { type: 'string' } },
+                discountedPrice: { type: 'number' },
+                discountedCurrency: { type: 'string' },
+                tags: { type: 'array', items: { type: 'string' } },
+                colors: { type: 'array', items: { type: 'string' } },
+                optionGroups: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      values: { type: 'array', items: { type: 'string' } },
+                      default: { type: 'string' },
+                    },
+                  },
+                },
+                returnPolicy: { type: 'object' },
+              },
+              required: ['name', 'price', 'category', 'brand', 'stock'],
+            },
+          },
+          currency: { type: 'string', description: 'Default import currency if rows omit one and the seller message/file specifies it.' },
+          confirmDuplicate: { type: 'boolean', description: 'Only true when the seller explicitly confirms duplicate listings are intentional.' },
+          sellerId: { type: 'string', description: 'Admin only: seller user id to import products under.' },
+        },
+        required: ['products'],
       },
     },
   },
@@ -1470,8 +1557,12 @@ function isPlaceholderStoreValue(value) {
 }
 
 async function executeToolCallForChat(toolName, args, userObj, lastUserText = '') {
+  const argsWithContext = args && typeof args === 'object' && !Array.isArray(args)
+    ? { ...args, _lastUserText: lastUserText }
+    : { _lastUserText: lastUserText };
+
   if (toolName !== 'update_store') {
-    return executeToolCall(toolName, args, userObj);
+    return executeToolCall(toolName, argsWithContext, userObj);
   }
 
   const updates = getUpdatePayload(args);
@@ -1497,7 +1588,7 @@ async function executeToolCallForChat(toolName, args, userObj, lastUserText = ''
     };
   }
 
-  return executeToolCall(toolName, args, userObj);
+  return executeToolCall(toolName, argsWithContext, userObj);
 }
 
 /**
@@ -1555,6 +1646,7 @@ async function buildUserContext(userId, role) {
       orderId: o.orderId,
       status: o.orderStatus,
       total: o.orderSummary?.totalAmount || 0,
+      currency: o.currency || 'USD',
       items: (o.orderItems || []).map(i => i.productId?.name).filter(Boolean).slice(0, 3),
       date: o.createdAt,
     }));
@@ -1624,7 +1716,7 @@ function formatContextBlock(ctx, role) {
   if (ctx.recentOrders?.length) {
     s += `- Recent orders:\n`;
     ctx.recentOrders.forEach(o => {
-      s += `  • #${o.orderId}: ${o.items?.join(', ') || 'items'} — ${o.status} — $${o.total}\n`;
+      s += `  • #${o.orderId}: ${o.items?.join(', ') || 'items'} — ${o.status} — ${formatMoneySync(o.total, o.currency || 'USD', { sourceCurrency: o.currency || 'USD' })}\n`;
     });
   }
   if (role === 'seller' && ctx.store) {
@@ -1763,7 +1855,7 @@ const WHATSAPP_SYSTEM_PROMPT_ADDENDUM = `
 - You can send multiple images if the user asks for multiple (e.g. "show me 1st and 3rd")
 - Only send images when explicitly asked — never spam images automatically
 - If the product has no image, tell the user: "This product doesn't have an image yet"
-- For seller product creation/editing on WhatsApp, ask the seller to paste public image URL(s). Do not imply WhatsApp can upload a product image file directly into the catalog unless a URL is provided.
+- For seller product creation/editing on WhatsApp, use uploaded images and supported product files when provided. If the seller sends only media with no product context, ask which product it belongs to.
 `;
 
 /**
@@ -1875,8 +1967,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       // Special handling for send_product_image in WhatsApp mode
       if (toolName === 'send_product_image' && isWhatsApp) {
         try {
-          const productRaw = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice priceOriginal discountedPriceOriginal priceCurrency stock').lean();
-          const product = applyLivePricesUSD(productRaw);
+          const product = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice currency priceCurrency stock').lean();
           const imageUrl = product?.image || product?.images?.[0]?.url || product?.images?.[0];
           if (!product || !imageUrl) {
             conversationMessages.push({
@@ -1886,7 +1977,11 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
             });
             toolResults.push({ tool: toolName, result: { success: false, error: 'This product does not have an image.' }, id: tc.id });
           } else {
-            const caption = args.caption || `*${product.name}*\n💰 ${product.discountedPrice ? `~$${product.price}~ $${product.discountedPrice}` : `$${product.price}`}\n🔗 ${SITE_URL}/single-product/${product._id}`;
+            const productCurrency = getProductCurrency(product);
+            const priceText = product.discountedPrice
+              ? `~${formatMoneySync(product.price, productCurrency, { sourceCurrency: productCurrency })}~ ${formatMoneySync(product.discountedPrice, productCurrency, { sourceCurrency: productCurrency })}`
+              : formatMoneySync(product.price, productCurrency, { sourceCurrency: productCurrency });
+            const caption = args.caption || [`*${product.name}*`, `Price: ${priceText}`, `${SITE_URL}/single-product/${product._id}`].join('\n');
             // Store image info for the WhatsApp service to send after response
             if (!options._pendingImages) options._pendingImages = [];
             options._pendingImages.push({ imageUrl, caption });
@@ -1898,6 +1993,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
                 imageUrl,
                 caption,
                 price: product.discountedPrice || product.price,
+                currency: productCurrency,
                 stock: product.stock,
               },
               message: `Image of "${product.name}" will be sent to the user.`,
@@ -2029,7 +2125,7 @@ exports.streamChat = async (req, res) => {
     }
 
     const body = req.body || {};
-    const incoming = Array.isArray(body.messages) ? body.messages : [];
+    const incoming = await getIncomingMessagesFromRequest(req);
 
     const authenticatedRole = req.user?.role || 'guest';
     const userId = req.user?.id || null;
@@ -2259,7 +2355,7 @@ exports.chatOnce = async (req, res) => {
     }
 
     const body = req.body || {};
-    const incoming = Array.isArray(body.messages) ? body.messages : [];
+    const incoming = await getIncomingMessagesFromRequest(req);
     const authenticatedRole = req.user?.role || 'guest';
     const userId = req.user?.id || null;
     const effectiveRole = ['user', 'seller', 'admin'].includes(authenticatedRole)

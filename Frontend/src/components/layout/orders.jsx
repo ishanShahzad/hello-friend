@@ -308,12 +308,12 @@ const OrderManagement = () => {
                                                 </td>
                                                 <td className="px-5 py-4 text-sm font-bold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
                                                     {(() => {
-                                                        if (currentUser?.role === 'seller') return formatPrice(order.orderSummary.totalAmount || order.orderSummary.subtotal || 0);
+                                                        if (currentUser?.role === 'seller') return formatPrice(order.orderSummary.totalAmount || order.orderSummary.subtotal || 0, { sourceCurrency: order.currency || 'USD' });
                                                         const subtotal = order.orderSummary.subtotal || 0;
                                                         const tax = order.orderSummary.tax || 0;
                                                         let shipping = order.orderSummary.shippingCost || 0;
                                                         if (order.sellerShipping?.length > 0) shipping = order.sellerShipping.reduce((sum, s) => sum + (s.shippingMethod.price || 0), 0);
-                                                        return formatPrice(subtotal + tax + shipping);
+                                                        return formatPrice(subtotal + tax + shipping, { sourceCurrency: order.currency || 'USD' });
                                                     })()}
                                                 </td>
                                                 <td className="px-5 py-4">
@@ -437,7 +437,7 @@ const OrderManagement = () => {
                                                             );
                                                         })()}
                                                         <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
+                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0, { sourceCurrency: order.currency || 'USD' })}
                                                         </span>
                                                     </div>
                                                 </div>

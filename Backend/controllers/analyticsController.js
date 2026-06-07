@@ -2,6 +2,16 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const User = require('../models/User');
+const {
+    resolveRequestedCurrency,
+    convertOrderAmount,
+    convertOrderTotal,
+    lineTotal,
+    sellerOrderSubtotal,
+    sellerOrderUnits,
+    roundMoney,
+    formatOrderMoney,
+} = require('../services/orderMoneyService');
 
 // ============================
 // SELLER ANALYTICS
@@ -15,6 +25,7 @@ exports.getSellerAnalytics = async (req, res) => {
             return res.status(403).json({ msg: 'Unauthorized' });
         }
 
+        const targetCurrency = await resolveRequestedCurrency(req, User);
         const daysNum = Math.min(parseInt(days) || 30, 365);
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - daysNum);
@@ -27,6 +38,7 @@ exports.getSellerAnalytics = async (req, res) => {
             return res.status(200).json({
                 msg: 'Analytics fetched',
                 analytics: {
+                    currency: targetCurrency,
                     revenueByDay: [], topProducts: [], categoryBreakdown: [],
                     summary: { totalRevenue: 0, paidOrders: 0, avgOrderValue: 0, totalUnitsSold: 0, conversionRate: 0 },
                     notifications: []
@@ -45,8 +57,8 @@ exports.getSellerAnalytics = async (req, res) => {
                 sellerOrders.push({
                     ...order.toObject(),
                     sellerItems,
-                    sellerRevenue: sellerItems.reduce((s, i) => s + i.price * i.quantity, 0),
-                    sellerUnits: sellerItems.reduce((s, i) => s + i.quantity, 0),
+                    sellerRevenue: sellerOrderSubtotal(order, sellerProductIds),
+                    sellerUnits: sellerOrderUnits(order, sellerProductIds),
                 });
             }
         });
@@ -58,24 +70,28 @@ exports.getSellerAnalytics = async (req, res) => {
             dayBuckets[key] = { date: key, revenue: 0, orders: 0 };
         }
 
-        sellerOrders.forEach(o => {
+        for (const o of sellerOrders) {
             const key = new Date(o.createdAt).toISOString().slice(0, 10);
             if (dayBuckets[key]) {
                 dayBuckets[key].orders++;
-                if (o.isPaid) dayBuckets[key].revenue += o.sellerRevenue;
+                if (o.isPaid) {
+                    dayBuckets[key].revenue += await convertOrderAmount(o, o.sellerRevenue, targetCurrency);
+                    dayBuckets[key].revenue = roundMoney(dayBuckets[key].revenue);
+                }
             }
-        });
+        }
 
         const productMap = {};
-        sellerOrders.forEach(o => {
-            if (!o.isPaid) return;
-            o.sellerItems.forEach(item => {
+        for (const o of sellerOrders) {
+            if (!o.isPaid) continue;
+            for (const item of o.sellerItems) {
                 const id = item.productId.toString();
                 if (!productMap[id]) productMap[id] = { name: item.name, image: item.image, revenue: 0, sold: 0 };
-                productMap[id].revenue += item.price * item.quantity;
+                productMap[id].revenue += await convertOrderAmount(o, lineTotal(item), targetCurrency);
+                productMap[id].revenue = roundMoney(productMap[id].revenue);
                 productMap[id].sold += item.quantity;
-            });
-        });
+            }
+        }
 
         const catMap = {};
         sellerProducts.forEach(p => {
@@ -83,7 +99,7 @@ exports.getSellerAnalytics = async (req, res) => {
             catMap[p.category].count++;
         });
 
-        const totalRevenue = sellerOrders.reduce((s, o) => o.isPaid ? s + o.sellerRevenue : s, 0);
+        const totalRevenue = Object.values(dayBuckets).reduce((s, b) => s + b.revenue, 0);
         const paidOrders = sellerOrders.filter(o => o.isPaid).length;
         const totalUnitsSold = sellerOrders.reduce((s, o) => o.isPaid ? s + o.sellerUnits : s, 0);
 
@@ -101,13 +117,14 @@ exports.getSellerAnalytics = async (req, res) => {
         res.status(200).json({
             msg: 'Analytics fetched',
             analytics: {
+                currency: targetCurrency,
                 revenueByDay: Object.values(dayBuckets),
                 topProducts: Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
                 categoryBreakdown: Object.values(catMap).sort((a, b) => b.count - a.count),
                 summary: {
-                    totalRevenue: Math.round(totalRevenue * 100) / 100,
+                    totalRevenue: roundMoney(totalRevenue),
                     paidOrders,
-                    avgOrderValue: paidOrders > 0 ? Math.round((totalRevenue / paidOrders) * 100) / 100 : 0,
+                    avgOrderValue: paidOrders > 0 ? roundMoney(totalRevenue / paidOrders) : 0,
                     totalUnitsSold,
                     conversionRate: sellerOrders.length > 0 ? Math.round((paidOrders / sellerOrders.length) * 100) : 0,
                 },
@@ -159,7 +176,7 @@ exports.getSellerNotifications = async (req, res) => {
                 notifications.push({ id: `order-${order._id}`, type: 'info', category: 'order', title: `New order ${order.orderId}`, description: `${order.shippingInfo?.fullName} - ${sellerItems.length} item(s)`, time: order.createdAt, read: false, orderId: order._id });
             }
             if (order.isPaid && order.orderStatus === 'confirmed') {
-                notifications.push({ id: `paid-${order._id}`, type: 'success', category: 'payment', title: `Payment received for ${order.orderId}`, description: `$${sellerTotal.toFixed(2)}`, time: order.paidAt || order.createdAt, read: false, orderId: order._id });
+                notifications.push({ id: `paid-${order._id}`, type: 'success', category: 'payment', title: `Payment received for ${order.orderId}`, description: formatOrderMoney(sellerTotal, order.currency), time: order.paidAt || order.createdAt, read: false, orderId: order._id });
             }
             if (order.confirmation?.confirmedAt && order.confirmation?.confirmedVia === 'email') {
                 notifications.push({
@@ -195,6 +212,7 @@ exports.getAdminAnalytics = async (req, res) => {
             return res.status(403).json({ msg: 'Admin access only' });
         }
 
+        const targetCurrency = await resolveRequestedCurrency(req, User);
         const daysNum = Math.min(parseInt(days) || 30, 365);
         const now = new Date();
         const startDate = new Date(now);
@@ -222,13 +240,16 @@ exports.getAdminAnalytics = async (req, res) => {
             dayBuckets[key] = { date: key, revenue: 0, orders: 0, newUsers: 0 };
         }
 
-        allOrders.forEach(o => {
+        for (const o of allOrders) {
             const key = new Date(o.createdAt).toISOString().slice(0, 10);
             if (dayBuckets[key]) {
                 dayBuckets[key].orders++;
-                if (o.isPaid) dayBuckets[key].revenue += (o.orderSummary?.totalAmount || 0);
+                if (o.isPaid) {
+                    dayBuckets[key].revenue += await convertOrderTotal(o, targetCurrency);
+                    dayBuckets[key].revenue = roundMoney(dayBuckets[key].revenue);
+                }
             }
-        });
+        }
 
         // User growth by day
         allUsers.forEach(u => {
@@ -238,8 +259,17 @@ exports.getAdminAnalytics = async (req, res) => {
         });
 
         // Summary stats
-        const totalRevenue = allOrders.reduce((s, o) => o.isPaid ? s + (o.orderSummary?.totalAmount || 0) : s, 0);
-        const prevRevenue = prevOrders.reduce((s, o) => o.isPaid ? s + (o.orderSummary?.totalAmount || 0) : s, 0);
+        let totalRevenue = 0;
+        for (const order of allOrders) {
+            if (order.isPaid) totalRevenue += await convertOrderTotal(order, targetCurrency);
+        }
+        totalRevenue = roundMoney(totalRevenue);
+
+        let prevRevenue = 0;
+        for (const order of prevOrders) {
+            if (order.isPaid) prevRevenue += await convertOrderTotal(order, targetCurrency);
+        }
+        prevRevenue = roundMoney(prevRevenue);
         const paidOrders = allOrders.filter(o => o.isPaid).length;
         const prevPaidOrders = prevOrders.filter(o => o.isPaid).length;
         const avgOrderValue = paidOrders > 0 ? totalRevenue / paidOrders : 0;
@@ -270,14 +300,14 @@ exports.getAdminAnalytics = async (req, res) => {
 
         // Top stores by order revenue
         const storeRevenueMap = {};
-        allOrders.forEach(o => {
-            if (!o.isPaid) return;
-            o.orderItems.forEach(item => {
+        for (const o of allOrders) {
+            if (!o.isPaid) continue;
+            for (const item of o.orderItems) {
                 const product = allProducts.find(p => p._id.toString() === item.productId?.toString());
-                if (!product) return;
+                if (!product) continue;
                 const sellerId = product.seller?.toString();
                 const store = allStores.find(s => s.seller?.toString() === sellerId);
-                if (!store) return;
+                if (!store) continue;
                 const sid = store._id.toString();
                 if (!storeRevenueMap[sid]) {
                     storeRevenueMap[sid] = {
@@ -290,10 +320,11 @@ exports.getAdminAnalytics = async (req, res) => {
                         productCount: 0,
                     };
                 }
-                storeRevenueMap[sid].revenue += item.price * item.quantity;
+                storeRevenueMap[sid].revenue += await convertOrderAmount(o, lineTotal(item), targetCurrency);
+                storeRevenueMap[sid].revenue = roundMoney(storeRevenueMap[sid].revenue);
                 storeRevenueMap[sid].orders++;
-            });
-        });
+            }
+        }
         // Add product counts
         Object.keys(storeRevenueMap).forEach(sid => {
             const store = allStores.find(s => s._id.toString() === sid);
@@ -337,31 +368,33 @@ exports.getAdminAnalytics = async (req, res) => {
 
         // Top products by revenue
         const productRevenueMap = {};
-        allOrders.forEach(o => {
-            if (!o.isPaid) return;
-            o.orderItems.forEach(item => {
+        for (const o of allOrders) {
+            if (!o.isPaid) continue;
+            for (const item of o.orderItems) {
                 const id = item.productId?.toString();
-                if (!id) return;
+                if (!id) continue;
                 if (!productRevenueMap[id]) {
                     const prod = allProducts.find(p => p._id.toString() === id);
                     productRevenueMap[id] = { name: item.name || prod?.name || 'Unknown', image: item.image || prod?.image, revenue: 0, sold: 0 };
                 }
-                productRevenueMap[id].revenue += item.price * item.quantity;
+                productRevenueMap[id].revenue += await convertOrderAmount(o, lineTotal(item), targetCurrency);
+                productRevenueMap[id].revenue = roundMoney(productRevenueMap[id].revenue);
                 productRevenueMap[id].sold += item.quantity;
-            });
-        });
+            }
+        }
         const topProducts = Object.values(productRevenueMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
         res.status(200).json({
             msg: 'Admin analytics fetched',
             analytics: {
+                currency: targetCurrency,
                 revenueByDay: Object.values(dayBuckets),
                 summary: {
-                    totalRevenue: Math.round(totalRevenue * 100) / 100,
+                    totalRevenue: roundMoney(totalRevenue),
                     revenueChange: calcChange(totalRevenue, prevRevenue),
                     totalOrders: allOrders.length,
                     ordersChange: calcChange(allOrders.length, prevOrders.length),
-                    avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+                    avgOrderValue: roundMoney(avgOrderValue),
                     avgChange: calcChange(avgOrderValue, prevAvg),
                     totalUnitsSold,
                     totalStores,
@@ -471,7 +504,7 @@ exports.getAdminNotifications = async (req, res) => {
             notifications.push({
                 id: `paid-${o._id}`, type: 'success', category: 'payment',
                 title: `Payment received for ${o.orderId}`,
-                description: `$${o.orderSummary?.totalAmount?.toFixed(2) || '0.00'}`,
+                description: formatOrderMoney(o.orderSummary?.totalAmount || 0, o.currency),
                 time: o.paidAt || o.createdAt, read: false, orderId: o._id
             });
         });

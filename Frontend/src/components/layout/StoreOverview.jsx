@@ -5,24 +5,26 @@ import { useOutletContext, Link } from "react-router-dom";
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const StoreOverview = () => {
-    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
+    const { formatPrice, currency, convertAmount } = useCurrency();
     const { products, orders } = useOutletContext();
 
     const formatCompactPrice = (amount) => {
-        const usdAmount = Number(amount) || 0;
-        const rate = exchangeRates[currency] || 1;
-        const convertedAmount = usdAmount * rate;
-        const symbol = getCurrencySymbol();
-        if (convertedAmount >= 1000000) return `${symbol}${(convertedAmount / 1000000).toFixed(1)}M`;
-        if (convertedAmount >= 10000) return `${symbol}${(convertedAmount / 1000).toFixed(1)}K`;
-        return formatPrice(usdAmount);
+        const value = Number(amount) || 0;
+        const symbol = formatPrice(0, { sourceCurrency: currency, decimals: 0 }).replace(/[0-9,.]/g, '');
+        if (value >= 1000000) return `${symbol}${(value / 1000000).toFixed(1)}M`;
+        if (value >= 10000) return `${symbol}${(value / 1000).toFixed(1)}K`;
+        return formatPrice(value, { sourceCurrency: currency });
     };
 
     const totalProducts = products.length;
     const outOfStock = products.filter(p => p.stock === 0).length;
     const lowStock = products.filter(p => p.stock <= 10 && p.stock !== 0).length;
     const featuredProducts = products.filter(p => p.isFeatured).length;
-    const totalRevenue = orders.reduce((sum, order) => order.isPaid ? sum + (order.orderSummary?.totalAmount || 0) : sum, 0);
+    const totalRevenue = orders.reduce((sum, order) => (
+        order.isPaid
+            ? sum + convertAmount(order.orderSummary?.totalAmount || 0, order.currency || 'USD', currency)
+            : sum
+    ), 0);
     const deliveredOrders = orders.filter(o => o.orderStatus === 'delivered').length;
     const totalOrders = orders.length;
 
@@ -105,7 +107,7 @@ const StoreOverview = () => {
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{product.brand}</span>
                                         <span className="w-1 h-1 rounded-full" style={{ background: 'hsl(var(--muted-foreground))' }} />
-                                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price)}</span>
+                                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price, { sourceCurrency: product.currency || product.priceCurrency || 'USD' })}</span>
                                     </div>
                                 </div>
                                 <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0"
@@ -186,7 +188,7 @@ const StoreOverview = () => {
                                     </div>
                                 </div>
                                 <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                                    {formatPrice(product.price)}
+                                    {formatPrice(product.price, { sourceCurrency: product.currency || product.priceCurrency || 'USD' })}
                                 </span>
                             </motion.div>
                         ))}

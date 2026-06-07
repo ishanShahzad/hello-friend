@@ -12,17 +12,15 @@ import { isOrderConfirmedByBuyer, isOrderDecidedByBuyer, getConfirmationSourceLa
 
 const SellerHome = () => {
     const { currentUser } = useAuth();
-    const { formatPrice, currency, exchangeRates, getCurrencySymbol } = useCurrency();
+    const { formatPrice, currency, convertAmount } = useCurrency();
     const { products, orders } = useOutletContext();
 
     const formatCompactPrice = (amount) => {
-        const usdAmount = Number(amount) || 0;
-        const rate = exchangeRates[currency] || 1;
-        const converted = usdAmount * rate;
-        const symbol = getCurrencySymbol();
-        if (converted >= 1000000) return `${symbol}${(converted / 1000000).toFixed(1)}M`;
-        if (converted >= 10000) return `${symbol}${(converted / 1000).toFixed(1)}K`;
-        return formatPrice(usdAmount);
+        const value = Number(amount) || 0;
+        const symbol = formatPrice(0, { sourceCurrency: currency, decimals: 0 }).replace(/[0-9,.]/g, '');
+        if (value >= 1000000) return `${symbol}${(value / 1000000).toFixed(1)}M`;
+        if (value >= 10000) return `${symbol}${(value / 1000).toFixed(1)}K`;
+        return formatPrice(value, { sourceCurrency: currency });
     };
 
     const totalProducts = products.length;
@@ -32,7 +30,11 @@ const SellerHome = () => {
     const deliveredOrders = orders.filter(o => o.orderStatus === 'delivered').length;
     const outOfStock = products.filter(p => p.stock === 0).length;
     const lowStock = products.filter(p => p.stock <= 10 && p.stock > 0).length;
-    const totalRevenue = orders.reduce((sum, order) => order.isPaid ? sum + (order.orderSummary?.totalAmount || 0) : sum, 0);
+    const totalRevenue = orders.reduce((sum, order) => (
+        order.isPaid
+            ? sum + convertAmount(order.orderSummary?.totalAmount || 0, order.currency || 'USD', currency)
+            : sum
+    ), 0);
 
     const stats = [
         { label: 'Total Revenue', value: formatCompactPrice(totalRevenue), icon: <DollarSign size={22} />, color: 'hsl(150, 60%, 45%)', bg: 'rgba(16, 185, 129, 0.12)' },
@@ -230,7 +232,7 @@ const SellerHome = () => {
                                                     </div>
                                                     <div className="text-right shrink-0">
                                                         <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0)}
+                                                            {formatPrice(order.orderSummary?.totalAmount || order.orderSummary?.subtotal || 0, { sourceCurrency: order.currency || 'USD' })}
                                                         </p>
                                                         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                                                             style={order.isPaid

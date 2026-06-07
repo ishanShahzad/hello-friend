@@ -15,7 +15,7 @@ exports.addToWishlist = async (req, res) => {
 
 
         if (!targetedUser.wishlist.includes(id)) {
-            const product = await Product.findOne(publicProductFilter({ _id: id })).select('name price discountedPrice image category brand');
+            const product = await Product.findOne(publicProductFilter({ _id: id })).select('name price discountedPrice currency priceCurrency image category brand');
             if (!product) return res.status(404).json({ msg: 'Product not found' });
             targetedUser.wishlist.push(id);
             await targetedUser.save();
@@ -37,7 +37,7 @@ exports.deleteFromWishlist = async (req, res) => {
     if (!user) res.status(404).json({ msg: 'user not found.' })
 
     user.wishlist = user.wishlist.filter(item => item.toString() !== id)
-    
+
     await user.save()
     console.log('updated wishlist user:::', user);
     res.status(200).json({ msg: 'Item successfully removed form wishlist.' })
@@ -49,7 +49,7 @@ exports.getWishlist = async (req, res) => {
     const user = await User.findById(userId).populate({
         path: 'wishlist',
         match: publicProductFilter(),
-        select: 'name price image discountedPrice priceOriginal discountedPriceOriginal priceCurrency'
+        select: 'name price image discountedPrice currency priceCurrency'
     })
     // console.log(user.wishlist);
 

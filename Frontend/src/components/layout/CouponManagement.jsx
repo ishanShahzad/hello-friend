@@ -12,7 +12,7 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const CouponManagement = () => {
-    const { formatPrice } = useCurrency();
+    const { formatPrice, currency } = useCurrency();
     const [coupons, setCoupons] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -35,6 +35,7 @@ const CouponManagement = () => {
         maxUsesPerUser: '1',
         minOrderAmount: '',
         maxDiscountAmount: '',
+        currency,
         startDate: new Date().toISOString().split('T')[0],
         expiryDate: '',
         description: '',
@@ -47,14 +48,17 @@ const CouponManagement = () => {
     useEffect(() => {
         fetchCoupons();
         fetchProducts();
-        fetchAnalytics();
     }, []);
+
+    useEffect(() => {
+        fetchAnalytics();
+    }, [currency]);
 
     const fetchAnalytics = async () => {
         setAnalyticsLoading(true);
         try {
             const token = getAuthToken();
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/analytics`, {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/coupons/analytics?currency=${currency}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAnalyticsData(res.data);
@@ -102,6 +106,7 @@ const CouponManagement = () => {
             maxUsesPerUser: '1',
             minOrderAmount: '',
             maxDiscountAmount: '',
+            currency,
             startDate: new Date().toISOString().split('T')[0],
             expiryDate: '',
             description: '',
@@ -127,6 +132,7 @@ const CouponManagement = () => {
             maxUsesPerUser: coupon.maxUsesPerUser?.toString() || '1',
             minOrderAmount: coupon.minOrderAmount?.toString() || '',
             maxDiscountAmount: coupon.maxDiscountAmount?.toString() || '',
+            currency: coupon.currency || currency,
             startDate: coupon.startDate ? new Date(coupon.startDate).toISOString().split('T')[0] : '',
             expiryDate: coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().split('T')[0] : '',
             description: coupon.description || '',
@@ -168,6 +174,7 @@ const CouponManagement = () => {
                 maxUsesPerUser: form.maxUsesPerUser ? Number(form.maxUsesPerUser) : 1,
                 minOrderAmount: form.minOrderAmount ? Number(form.minOrderAmount) : 0,
                 maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : null,
+                currency: form.currency || currency,
             };
 
             if (editingCoupon) {
@@ -266,6 +273,15 @@ const CouponManagement = () => {
         );
     }
 
+    const analyticsCurrency = analyticsData?.summary?.currency || currency;
+    const couponCurrency = (coupon) => coupon?.currency || 'USD';
+    const formatCouponMoney = (coupon, amount = coupon?.discountValue) =>
+        formatPrice(amount || 0, { sourceCurrency: couponCurrency(coupon) });
+    const formatAnalyticsMoney = (amount) =>
+        formatPrice(amount || 0, { sourceCurrency: analyticsCurrency });
+    const formatProductMoney = (product) =>
+        formatPrice(product?.price || 0, { sourceCurrency: product?.currency || product?.priceCurrency || 'USD' });
+
     return (
         <div className="p-4 sm:p-6 max-w-6xl mx-auto">
             {/* Header */}
@@ -328,8 +344,8 @@ const CouponManagement = () => {
                                 { label: 'Total Coupons', value: analyticsData.summary.totalCoupons, icon: <Ticket size={16} />, color: 'hsl(280, 60%, 55%)' },
                                 { label: 'Active', value: analyticsData.summary.activeCoupons, icon: <Check size={16} />, color: 'hsl(150, 60%, 45%)' },
                                 { label: 'Total Uses', value: analyticsData.summary.totalUses, icon: <Users size={16} />, color: 'hsl(220, 70%, 55%)' },
-                                { label: 'Revenue Generated', value: formatPrice(analyticsData.summary.totalRevenueFromCoupons), icon: <TrendingUp size={16} />, color: 'hsl(45, 80%, 45%)' },
-                                { label: 'Total Discounts', value: formatPrice(analyticsData.summary.totalDiscountGiven), icon: <ArrowDownRight size={16} />, color: 'hsl(0, 72%, 55%)' },
+                                { label: 'Revenue Generated', value: formatAnalyticsMoney(analyticsData.summary.totalRevenueFromCoupons), icon: <TrendingUp size={16} />, color: 'hsl(45, 80%, 45%)' },
+                                { label: 'Total Discounts', value: formatAnalyticsMoney(analyticsData.summary.totalDiscountGiven), icon: <ArrowDownRight size={16} />, color: 'hsl(0, 72%, 55%)' },
                                 { label: 'Top Coupon', value: analyticsData.summary.topCouponCode || 'N/A', icon: <Award size={16} />, color: 'hsl(320, 50%, 55%)' },
                             ].map((stat, i) => (
                                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
@@ -378,13 +394,13 @@ const CouponManagement = () => {
                                                         {c.description && <p className="text-[10px] mt-0.5 truncate max-w-[120px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{c.description}</p>}
                                                     </td>
                                                     <td className="px-4 py-3 text-xs">
-                                                        {c.discountType === 'percentage' ? `${c.discountValue}%` : formatPrice(c.discountValue)}
+                                                        {c.discountType === 'percentage' ? `${c.discountValue}%` : formatCouponMoney(c)}
                                                     </td>
                                                     <td className="px-4 py-3 font-semibold">{c.usedCount}{c.maxUses ? `/${c.maxUses}` : ''}</td>
                                                     <td className="px-4 py-3">{c.ordersGenerated}</td>
-                                                    <td className="px-4 py-3 font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>{formatPrice(c.totalRevenue)}</td>
-                                                    <td className="px-4 py-3" style={{ color: 'hsl(0, 72%, 55%)' }}>{formatPrice(c.totalDiscount)}</td>
-                                                    <td className="px-4 py-3">{formatPrice(c.avgOrderValue)}</td>
+                                                    <td className="px-4 py-3 font-semibold" style={{ color: 'hsl(150, 60%, 45%)' }}>{formatAnalyticsMoney(c.totalRevenue)}</td>
+                                                    <td className="px-4 py-3" style={{ color: 'hsl(0, 72%, 55%)' }}>{formatAnalyticsMoney(c.totalDiscount)}</td>
+                                                    <td className="px-4 py-3">{formatAnalyticsMoney(c.avgOrderValue)}</td>
                                                     <td className="px-4 py-3">{c.uniqueUsers}</td>
                                                     <td className="px-4 py-3">
                                                         {c.conversionRate !== null ? (
@@ -431,7 +447,7 @@ const CouponManagement = () => {
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div>
                                                     <span style={{ color: 'hsl(var(--muted-foreground))' }}>Revenue</span>
-                                                    <p className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(c.totalRevenue)}</p>
+                                                    <p className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{formatAnalyticsMoney(c.totalRevenue)}</p>
                                                 </div>
                                                 <div>
                                                     <span style={{ color: 'hsl(var(--muted-foreground))' }}>Uses</span>
@@ -539,7 +555,7 @@ const CouponManagement = () => {
                                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                                             <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'hsl(var(--foreground))' }}>
                                                 {coupon.discountType === 'percentage' ? <Percent size={12} /> : <DollarSign size={12} />}
-                                                {coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${formatPrice(coupon.discountValue)} off`}
+                                                {coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `${formatCouponMoney(coupon)} off`}
                                             </span>
                                             <span className="text-xs flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                                 <Package size={12} />
@@ -655,12 +671,12 @@ const CouponManagement = () => {
                                         <select value={form.discountType} onChange={(e) => setForm(f => ({ ...f, discountType: e.target.value }))}
                                             className="glass-input w-full text-sm">
                                             <option value="percentage">Percentage (%)</option>
-                                            <option value="fixed">Fixed Amount ($)</option>
+                                            <option value="fixed">Fixed Amount ({form.currency || currency})</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
-                                            Discount Value * {form.discountType === 'percentage' ? '(%)' : '($)'}
+                                            Discount Value * {form.discountType === 'percentage' ? '(%)' : `(${form.currency || currency})`}
                                         </label>
                                         <input type="number" min="0" max={form.discountType === 'percentage' ? 100 : undefined}
                                             value={form.discountValue} onChange={(e) => setForm(f => ({ ...f, discountValue: e.target.value }))}
@@ -718,7 +734,7 @@ const CouponManagement = () => {
                                                                 <img src={product.image} alt="" className="w-8 h-8 rounded object-cover" />
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{product.name}</p>
-                                                                    <p className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(product.price)}</p>
+                                                                    <p className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatProductMoney(product)}</p>
                                                                 </div>
                                                             </label>
                                                         ))}
@@ -758,7 +774,7 @@ const CouponManagement = () => {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
-                                            Min. Order Amount
+                                            Min. Order Amount ({form.currency || currency})
                                         </label>
                                         <input type="number" min="0" value={form.minOrderAmount}
                                             onChange={(e) => setForm(f => ({ ...f, minOrderAmount: e.target.value }))}
@@ -767,7 +783,7 @@ const CouponManagement = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
-                                            Max Discount Cap
+                                            Max Discount Cap ({form.currency || currency})
                                         </label>
                                         <input type="number" min="0" value={form.maxDiscountAmount}
                                             onChange={(e) => setForm(f => ({ ...f, maxDiscountAmount: e.target.value }))}

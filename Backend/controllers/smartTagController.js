@@ -1,5 +1,6 @@
 const Product = require('../models/Product')
 const { callHF } = require('../utils/hfClient')
+const { getProductCurrency } = require('../services/productPricingService')
 
 // Auto-generate tags for a product using AI
 exports.generateProductTags = async (req, res) => {
@@ -23,7 +24,7 @@ Product Name: ${product.name}
 Description: ${product.description}
 Category: ${product.category}
 Brand: ${product.brand}
-Price: $${product.price}
+Price: ${product.price} ${getProductCurrency(product)}
 
 Generate exactly 8 tags in these categories, one tag per category:
 1. Style (casual, formal, vintage, modern, minimalist, classic, trendy, bohemian)
@@ -39,7 +40,7 @@ Return ONLY a comma-separated list of the 8 tags, nothing else.
 Example: casual, everyday, all-season, unisex, relaxed, value, comfortable, daily [/INST]`
 
     const aiResponse = await callHF(prompt)
-    
+
     // Parse AI response to extract tags
     let generatedTags = []
     if (aiResponse) {
@@ -105,22 +106,22 @@ exports.bulkGenerateTags = async (req, res) => {
     }
 
     const products = await Product.find(query)
-    
+
     if (products.length === 0) {
       return res.status(404).json({ msg: 'No products found' })
     }
 
     const results = []
-    
+
     for (const product of products) {
       try {
         const tags = generateFallbackTags(product)
         const existingTags = product.tags || []
         const allTags = [...new Set([...existingTags, ...tags])].slice(0, 12)
-        
+
         product.tags = allTags
         await product.save()
-        
+
         results.push({ productId: product._id, tags: allTags, success: true })
       } catch (err) {
         results.push({ productId: product._id, success: false, error: err.message })
@@ -155,7 +156,7 @@ exports.getTagSuggestions = async (req, res) => {
 
   // Smart suggestions based on category/price
   const smartSuggestions = []
-  
+
   const categoryLower = (category || '').toLowerCase()
   const nameLower = (name || '').toLowerCase()
   const descLower = (description || '').toLowerCase()
@@ -174,7 +175,7 @@ exports.getTagSuggestions = async (req, res) => {
   if (combined.includes('home') || combined.includes('decor') || combined.includes('furniture')) {
     smartSuggestions.push('home', 'decor', 'functional')
   }
-  
+
   // Price-based suggestions
   if (price > 200) {
     smartSuggestions.push('premium', 'luxury')

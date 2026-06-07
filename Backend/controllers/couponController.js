@@ -1,8 +1,15 @@
 const Coupon = require('../models/Coupon');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 const { publicProductFilter } = require('../services/productModerationService');
+const {
+    resolveRequestedCurrency,
+    convertOrderAmount,
+    lineTotal,
+    roundMoney,
+} = require('../services/orderMoneyService');
 
 const isObjectId = (value) => (
     typeof value === 'string' &&
@@ -120,6 +127,7 @@ exports.createCoupon = async (req, res) => {
         const couponScope = applicableTo === 'selected' ? 'selected' : 'all';
         const selectedProducts = await validateSelectedProducts(sellerId, couponScope, applicableProducts);
         if (selectedProducts.error) return res.status(400).json({ msg: selectedProducts.error });
+        const couponCurrency = await resolveRequestedCurrency(req, User);
 
         const parsedMaxUses = parseOptionalPositiveNumber(maxUses, 'Max uses', { integer: true });
         const parsedMaxUsesPerUser = parseOptionalPositiveNumber(maxUsesPerUser ?? 1, 'Max uses per user', { allowNull: false, integer: true });
@@ -134,6 +142,7 @@ exports.createCoupon = async (req, res) => {
             code: normalizedCode,
             discountType,
             discountValue: parsedDiscount.value,
+            currency: couponCurrency,
             applicableTo: couponScope,
             applicableProducts: selectedProducts.productIds,
             maxUses: parsedMaxUses.value,
@@ -160,7 +169,7 @@ exports.getSellerCoupons = async (req, res) => {
     try {
         const sellerId = req.user.id;
         const coupons = await Coupon.find({ seller: sellerId })
-            .populate('applicableProducts', 'name image price')
+            .populate('applicableProducts', 'name image price currency priceCurrency')
             .sort({ createdAt: -1 });
 
         res.json({ coupons });
@@ -182,7 +191,7 @@ exports.updateCoupon = async (req, res) => {
         if (!coupon) return res.status(404).json({ msg: 'Coupon not found.' });
 
         const allowedFields = [
-            'code', 'discountType', 'discountValue', 'applicableTo', 'applicableProducts',
+            'code', 'discountType', 'discountValue', 'currency', 'applicableTo', 'applicableProducts',
             'maxUses', 'maxUsesPerUser', 'minOrderAmount', 'maxDiscountAmount',
             'startDate', 'expiryDate', 'isActive', 'description',
         ];
@@ -210,6 +219,9 @@ exports.updateCoupon = async (req, res) => {
             const parsedDiscount = parseOptionalPositiveNumber(updates.discountValue, 'Discount value', { allowNull: false });
             if (parsedDiscount.error) return res.status(400).json({ msg: parsedDiscount.error });
             coupon.discountValue = parsedDiscount.value;
+        }
+        if (updates.currency !== undefined) {
+            coupon.currency = await resolveRequestedCurrency(req, User, coupon.currency || 'USD');
         }
 
         if (coupon.discountType === 'percentage' && coupon.discountValue > 100) {
@@ -385,6 +397,7 @@ exports.validateCoupon = async (req, res) => {
                 code: coupon.code,
                 discountType: coupon.discountType,
                 discountValue: coupon.discountValue,
+                currency: coupon.currency || 'USD',
                 applicableTo: coupon.applicableTo,
                 applicableProductIds,
                 minOrderAmount: coupon.minOrderAmount,
@@ -428,6 +441,7 @@ exports.getCheckoutCoupons = async (req, res) => {
                 code: c.code,
                 discountType: c.discountType,
                 discountValue: c.discountValue,
+                currency: c.currency || 'USD',
                 applicableTo: c.applicableTo,
                 applicableProducts: c.applicableProducts.map(p => p._id.toString()),
                 minOrderAmount: c.minOrderAmount,
@@ -449,9 +463,10 @@ exports.getCouponAnalytics = async (req, res) => {
     try {
         const sellerId = req.user.id;
         const Order = require('../models/Order');
+        const targetCurrency = await resolveRequestedCurrency(req, User);
 
         const coupons = await Coupon.find({ seller: sellerId })
-            .populate('applicableProducts', 'name image price')
+            .populate('applicableProducts', 'name image price currency priceCurrency')
             .sort({ usedCount: -1 });
 
         // Get all orders with this seller's coupons
@@ -461,22 +476,30 @@ exports.getCouponAnalytics = async (req, res) => {
         });
 
         // Calculate per-coupon analytics
-        const couponAnalytics = coupons.map(coupon => {
+        const couponAnalytics = await Promise.all(coupons.map(async coupon => {
             const couponOrders = ordersWithCoupons.filter(order =>
                 order.appliedCoupons.some(ac => ac.couponId?.toString() === coupon._id.toString())
             );
 
-            const totalRevenue = couponOrders.reduce((sum, order) => {
+            let totalRevenue = 0;
+            for (const order of couponOrders) {
                 const sellerItems = order.orderItems.filter(item => {
                     if (coupon.applicableTo === 'all') return true;
                     return coupon.applicableProducts.some(p => p._id.toString() === item.productId.toString());
                 });
-                return sum + sellerItems.reduce((s, i) => s + i.price * i.quantity, 0);
-            }, 0);
+                totalRevenue += await convertOrderAmount(
+                    order,
+                    sellerItems.reduce((sum, item) => sum + lineTotal(item), 0),
+                    targetCurrency
+                );
+            }
+            totalRevenue = roundMoney(totalRevenue);
 
-            const totalDiscount = couponOrders.reduce((sum, order) => {
-                return sum + (order.orderSummary?.couponDiscount || 0);
-            }, 0);
+            let totalDiscount = 0;
+            for (const order of couponOrders) {
+                totalDiscount += await convertOrderAmount(order, order.orderSummary?.couponDiscount || 0, targetCurrency);
+            }
+            totalDiscount = roundMoney(totalDiscount);
 
             const conversionRate = coupon.maxUses
                 ? Math.round((coupon.usedCount / coupon.maxUses) * 100)
@@ -487,6 +510,7 @@ exports.getCouponAnalytics = async (req, res) => {
                 code: coupon.code,
                 discountType: coupon.discountType,
                 discountValue: coupon.discountValue,
+                currency: coupon.currency || 'USD',
                 applicableTo: coupon.applicableTo,
                 applicableProducts: coupon.applicableProducts,
                 isActive: coupon.isActive,
@@ -495,16 +519,16 @@ exports.getCouponAnalytics = async (req, res) => {
                 expiryDate: coupon.expiryDate,
                 startDate: coupon.startDate,
                 description: coupon.description,
-                totalRevenue: Math.round(totalRevenue * 100) / 100,
-                totalDiscount: Math.round(totalDiscount * 100) / 100,
+                totalRevenue,
+                totalDiscount,
                 ordersGenerated: couponOrders.length,
                 conversionRate,
                 avgOrderValue: couponOrders.length > 0
-                    ? Math.round((totalRevenue / couponOrders.length) * 100) / 100
+                    ? roundMoney(totalRevenue / couponOrders.length)
                     : 0,
                 uniqueUsers: coupon.usedBy?.length || 0,
             };
-        });
+        }));
 
         // Summary stats
         const totalCoupons = coupons.length;
@@ -519,6 +543,7 @@ exports.getCouponAnalytics = async (req, res) => {
         res.json({
             analytics: couponAnalytics,
             summary: {
+                currency: targetCurrency,
                 totalCoupons,
                 activeCoupons,
                 totalUses,
@@ -554,7 +579,7 @@ exports.getProductCoupons = async (req, res) => {
                 { applicableTo: 'all' },
                 { applicableTo: 'selected', applicableProducts: productId }
             ]
-        }).select('code discountType discountValue applicableTo description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
+        }).select('code discountType discountValue currency applicableTo description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
 
         const validCoupons = coupons
             .filter(c => c.maxUses === null || c.usedCount < c.maxUses)
@@ -582,7 +607,7 @@ exports.getStoreCoupons = async (req, res) => {
             expiryDate: { $gte: now },
         })
             .populate('applicableProducts', 'name image')
-            .select('code discountType discountValue applicableTo applicableProducts description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
+            .select('code discountType discountValue currency applicableTo applicableProducts description expiryDate minOrderAmount maxDiscountAmount maxUses usedCount');
 
         const validCoupons = coupons
             .filter(c => c.maxUses === null || c.usedCount < c.maxUses)

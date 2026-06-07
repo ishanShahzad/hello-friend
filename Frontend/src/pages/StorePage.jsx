@@ -11,6 +11,7 @@ import VerifiedBadge from '../components/common/VerifiedBadge';
 import SEOHead from '../components/common/SEOHead';
 import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
 import { getAuthToken } from "../utils/cookieHelper";
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const getEntityId = (value) => {
     if (!value) return '';
@@ -32,6 +33,7 @@ const StorePage = ({ slugOverride = null }) => {
     const { slug: slugFromParams } = useParams();
     const slug = slugOverride || slugFromParams;
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
     const [store, setStore] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -529,7 +531,7 @@ const StorePage = ({ slugOverride = null }) => {
                                                     {coupon.discountType === 'percentage' ? (
                                                         <span className="flex items-center gap-0.5"><Percent size={9} />{coupon.discountValue}% OFF</span>
                                                     ) : (
-                                                        <span className="flex items-center gap-0.5"><DollarSign size={9} />{coupon.discountValue} OFF</span>
+                                                        <span className="flex items-center gap-0.5"><DollarSign size={9} />{formatPrice(coupon.discountValue, { sourceCurrency: coupon.currency || 'USD' })} OFF</span>
                                                     )}
                                                 </span>
                                                 <span className="text-[10px] px-2 py-0.5 rounded-full"
@@ -554,8 +556,8 @@ const StorePage = ({ slugOverride = null }) => {
                                     )}
 
                                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                        {coupon.minOrderAmount > 0 && <span>Min order: ${coupon.minOrderAmount}</span>}
-                                        {coupon.maxDiscountAmount && <span>Max discount: ${coupon.maxDiscountAmount}</span>}
+                                        {coupon.minOrderAmount > 0 && <span>Min order: {formatPrice(coupon.minOrderAmount, { sourceCurrency: coupon.currency || 'USD' })}</span>}
+                                        {coupon.maxDiscountAmount && <span>Max discount: {formatPrice(coupon.maxDiscountAmount, { sourceCurrency: coupon.currency || 'USD' })}</span>}
                                         <span className="flex items-center gap-0.5">
                                             <Calendar size={9} />
                                             Expires {new Date(coupon.expiryDate).toLocaleDateString()}

@@ -27,6 +27,7 @@ export default function OrderConfirmationPage() {
   const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
+  const orderMoney = (amount) => formatPrice(amount, { sourceCurrency: order?.currency || 'USD' });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState(null); // 'confirmed' | 'declined'
@@ -317,18 +318,18 @@ export default function OrderConfirmationPage() {
                       <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{it.name}</p>
                       <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {it.quantity} x ${Number(it.price).toFixed(2)}</p>
                     </div>
-                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>${(it.price * it.quantity).toFixed(2)}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(it.price * it.quantity)}</p>
                   </div>
                 ))}
               </div>
               <div className="pt-3 mt-1 space-y-1.5" style={{ borderTop: '1px solid var(--glass-border-subtle)' }}>
-                <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span><span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order.orderSummary.subtotal)}</span></div>
-                <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Shipping</span><span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order.orderSummary.shippingCost)}</span></div>
+                <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Subtotal</span><span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(order.orderSummary.subtotal)}</span></div>
+                <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Shipping</span><span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(order.orderSummary.shippingCost)}</span></div>
                 {order.orderSummary.tax > 0 && (
-                  <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Tax</span><span style={{ color: 'hsl(var(--foreground))' }}>{formatPrice(order.orderSummary.tax)}</span></div>
+                  <div className="flex justify-between text-xs"><span style={{ color: 'hsl(var(--muted-foreground))' }}>Tax</span><span style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(order.orderSummary.tax)}</span></div>
                 )}
                 <div className="flex justify-between text-sm font-bold pt-1.5" style={{ borderTop: '1px solid var(--glass-border-subtle)', color: 'hsl(var(--foreground))' }}>
-                  <span>Total</span><span style={{ color: 'hsl(var(--primary))' }}>{formatPrice(order.orderSummary.totalAmount)}</span>
+                  <span>Total</span><span style={{ color: 'hsl(var(--primary))' }}>{orderMoney(order.orderSummary.totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -379,12 +380,12 @@ export default function OrderConfirmationPage() {
                           {it.image ? <img src={it.image} alt={it.name} className="w-full h-full object-cover" /> : <Package size={12} style={{ color: 'hsl(var(--muted-foreground))' }} />}
                         </div>
                         <span className="text-xs flex-1 truncate" style={{ color: 'hsl(var(--foreground))' }}>{it.name} x{it.quantity}</span>
-                        <span className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>${(it.price * it.quantity).toFixed(2)}</span>
+                        <span className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(it.price * it.quantity)}</span>
                       </div>
                     ))}
                     <div className="pt-2 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--glass-border-subtle)' }}>
                       <span style={{ color: 'hsl(var(--foreground))' }}>Total</span>
-                      <span style={{ color: 'hsl(var(--primary))' }}>{formatPrice(order.orderSummary.totalAmount)}</span>
+                      <span style={{ color: 'hsl(var(--primary))' }}>{orderMoney(order.orderSummary.totalAmount)}</span>
                     </div>
                   </div>
                   <p className="text-sm mb-4" style={{ color: 'hsl(var(--muted-foreground))' }}>

@@ -8,8 +8,9 @@ import { useCurrency } from '../../contexts/CurrencyContext'
 import { getStoreSubdomainUrl } from '../../utils/subdomainHelper'
 
 const SliderProductCard = ({ product, formatPrice }) => {
-  const { formatProductPrice } = useCurrency()
+  const displayPrice = product.discountedPrice || product.price
   const hasDiscount = product.discountedPrice > 0 && product.discountedPrice < product.price
+  const productCurrency = product.currency || product.priceCurrency || 'USD'
   const discountPercentage = hasDiscount
     ? Math.round(((product.price - product.discountedPrice) / product.price) * 100)
     : 0
@@ -18,12 +19,12 @@ const SliderProductCard = ({ product, formatPrice }) => {
   const handleProductClick = (e) => {
     // Get store slug from populated seller.store
     const storeSlug = product.seller?.store?.storeSlug;
-    
+
     if (!storeSlug) {
       // No store found, navigate normally
       return;
     }
-    
+
     const productUrl = getStoreSubdomainUrl(storeSlug);
     if (productUrl.startsWith('http')) {
       // Need to redirect to different subdomain
@@ -86,11 +87,11 @@ const SliderProductCard = ({ product, formatPrice }) => {
             <div className="flex items-end justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-base font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                  {formatProductPrice(product, { field: hasDiscount ? 'discountedPrice' : 'price' })}
+                  {formatPrice(displayPrice, { sourceCurrency: productCurrency })}
                 </p>
                 {hasDiscount && (
                   <p className="truncate text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    {formatProductPrice(product, { field: 'price' })}
+                    {formatPrice(product.price, { sourceCurrency: productCurrency })}
                   </p>
                 )}
               </div>
@@ -279,7 +280,7 @@ const CollapsibleSection = ({ icon: Icon, title, subtitle, color, bgStyle, child
 const PersonalizedSections = () => {
   const { currentUser } = useAuth()
   const { formatPrice } = useCurrency()
-  
+
   const [pickedForYou, setPickedForYou] = useState([])
   const [trending, setTrending] = useState([])
   const [priceDrops, setPriceDrops] = useState([])
@@ -298,7 +299,7 @@ const PersonalizedSections = () => {
       const allProducts = res.data.products || []
 
       const viewedIds = JSON.parse(localStorage.getItem('viewedProducts') || '[]')
-      
+
       const viewed = allProducts.filter(p => viewedIds.includes(p._id)).slice(0, 10)
       setRecentlyViewed(viewed)
 

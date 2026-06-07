@@ -3,19 +3,8 @@ const users = require('../models/User')
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { isProductBlocked, publicProductFilter } = require('../services/productModerationService');
-const { applyLivePricesUSD } = require('../services/currencyService');
-
-// Apply live USD pricing to populated products on cart items (for response payload).
-const liveCart = (cart) => {
-    if (!cart || !Array.isArray(cart.cartItems)) return cart?.cartItems || [];
-    return cart.cartItems.map((item) => {
-        const plain = typeof item.toObject === 'function' ? item.toObject() : item;
-        if (plain.product && typeof plain.product === 'object') {
-            plain.product = applyLivePricesUSD(plain.product);
-        }
-        return plain;
-    });
-};
+const { normalizeCurrency, convertAmount } = require('../services/currencyService');
+const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
 
 // Stable string key for an option set, used to dedupe cart lines per variant combo
 const optionsKey = (opts) => {
@@ -23,6 +12,35 @@ const optionsKey = (opts) => {
     const obj = opts instanceof Map ? Object.fromEntries(opts) : opts;
     return Object.keys(obj).sort().map(k => `${k}:${obj[k]}`).join('|');
 };
+
+async function getUserCurrency(userId, fallback = 'USD') {
+    const user = await users.findById(userId).select('currency').lean();
+    return normalizeCurrency(user?.currency || fallback);
+}
+
+async function buildCartPayload(cart, userId, msg) {
+    const currency = await getUserCurrency(userId);
+    const items = cart?.cartItems || [];
+    let totalCartPrice = 0;
+
+    for (const item of items) {
+        const product = item.product;
+        if (!product) continue;
+        const itemTotal = await convertAmount(
+            getProductEffectivePrice(product) * (Number(item.qty) || 1),
+            getProductCurrency(product, currency),
+            currency
+        );
+        totalCartPrice += itemTotal;
+    }
+
+    return {
+        msg,
+        cart: items,
+        totalCartPrice: Math.round(totalCartPrice * 100) / 100,
+        totalCartCurrency: currency,
+    };
+}
 
 exports.addToCart = async (req, res) => {
     const { id: userId } = req.user
@@ -47,11 +65,7 @@ exports.addToCart = async (req, res) => {
 
             if (item) {
                 await existingCart.populate('cartItems.product')
-                return res.status(200).json({
-                    msg: "Item already in cart",
-                    cart: liveCart(existingCart),
-                    totalCartPrice: existingCart.totalCartPrice
-                })
+                return res.status(200).json(await buildCartPayload(existingCart, userId, 'Item already in cart'))
             }
 
             existingCart.cartItems.push({
@@ -61,7 +75,7 @@ exports.addToCart = async (req, res) => {
             })
             await existingCart.populate('cartItems.product')
             await existingCart.save()
-            return res.status(200).json({ msg: 'Item added to cart' , cart: liveCart(existingCart), totalCartPrice: existingCart.totalCartPrice})
+            return res.status(200).json(await buildCartPayload(existingCart, userId, 'Item added to cart'))
 
         }
 
@@ -77,7 +91,7 @@ exports.addToCart = async (req, res) => {
         })
         await newCart.populate('cartItems.product')
         await newCart.save()
-        res.status(200).json({ msg: 'Item added to cart', cart: liveCart(newCart), totalCartPrice: newCart.totalCartPrice })
+        res.status(200).json(await buildCartPayload(newCart, userId, 'Item added to cart'))
     } catch (error) {
         console.error('Error adding to cart:', error.message);
         res.status(500).json({ msg: 'Server error while adding to cart' });
@@ -90,28 +104,20 @@ exports.getCart = async (req, res) => {
         const { id: userId } = req.user
 
         const userCart = await Cart.findOne({ user: userId })
-        if (!userCart) return res.status(200).json({ msg: 'No cart found', cart: [], totalCartPrice: 0 })
+        if (!userCart) return res.status(200).json({ msg: 'No cart found', cart: [], totalCartPrice: 0, totalCartCurrency: await getUserCurrency(userId) })
 
         await userCart.populate('cartItems.product')
-        
+
         // Filter out items with null/deleted/blocked products
         const validCartItems = userCart.cartItems.filter(item => item.product !== null && !isProductBlocked(item.product));
-        
+
         // If items were removed, update the cart
         if (validCartItems.length !== userCart.cartItems.length) {
             userCart.cartItems = validCartItems;
             await userCart.save();
         }
-        
-        // Build live-USD response and recompute total from current FX rates
-        const items = liveCart(userCart);
-        const liveTotal = items.reduce((acc, it) => {
-            const p = it.product || {};
-            const unit = (p.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : p.price;
-            return acc + (Number(unit) || 0) * (it.qty || 1);
-        }, 0);
 
-        res.status(200).json({ msg: 'cart fetched successfully', cart: items, totalCartPrice: Number(liveTotal.toFixed(2)) })
+        res.status(200).json(await buildCartPayload(userCart, userId, 'cart fetched successfully'))
     } catch (error) {
         console.error('error while fetching cart:::', error);
         res.status(500).json({ msg: 'Failed to fetch user cart' })
@@ -138,7 +144,7 @@ exports.qtyIncrement = async (req, res) => {
         // console.log(userCart);
 
         await userCart.save()
-        res.status(200).json({ msg: 'quantity increased', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json(await buildCartPayload(userCart, userId, 'quantity increased'))
     } catch (error) {
         console.error('Error increasing quantity:', error.message);
         res.status(500).json({ msg: 'Failed to increase quantity' });
@@ -164,7 +170,7 @@ exports.qtyDecrement = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'quantity decreased', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json(await buildCartPayload(userCart, userId, 'quantity decreased'))
     } catch (error) {
         console.error('Error decreasing quantity:', error.message);
         res.status(500).json({ msg: 'Failed to decrease quantity' });
@@ -184,7 +190,7 @@ exports.removeCartItem = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'Item removed from cart', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json(await buildCartPayload(userCart, userId, 'Item removed from cart'))
     } catch (error) {
         console.error('Error removing cart item:', error.message);
         res.status(500).json({ msg: 'Failed remove cart item' });
@@ -203,7 +209,7 @@ exports.clearCart = async (req, res) => {
         await userCart.populate('cartItems.product')
 
         await userCart.save()
-        res.status(200).json({ msg: 'cart cleared', cart: liveCart(userCart), totalCartPrice: userCart.totalCartPrice })
+        res.status(200).json(await buildCartPayload(userCart, userId, 'cart cleared'))
     } catch (error) {
         console.error('Error clearing cart:', error.message);
         res.status(500).json({ msg: ' Failed to clear cart' });

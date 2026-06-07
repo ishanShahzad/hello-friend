@@ -6,7 +6,7 @@ const orderSchema = mongoose.Schema(
         guestEmail: { type: String, default: null },
         currency: { type: String, enum: ["USD", "PKR", "EUR", "GBP"], default: "USD" },
         orderId: { type: String, required: true },
-        
+
 
         orderItems: [
             {
@@ -14,9 +14,11 @@ const orderSchema = mongoose.Schema(
                 // Snapshot of the product's seller at order time. Used to scope
                 // seller dashboards correctly even if the product is later deleted.
                 seller: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
-                name: { type: String, required: true },
+                name: { type: String, default: '' },
                 image: { type: String },
                 price: { type: Number, required: true },
+                sourcePrice: { type: Number, default: null },
+                sourceCurrency: { type: String, enum: ["USD", "PKR", "EUR", "GBP"], default: null },
                 // Verbatim seller-entered price + its currency at order time.
                 // Used by dashboards so display in matching currency is exact
                 // (avoids USD round-trip rounding drift like 1000 → 1001.36).
@@ -71,6 +73,9 @@ const orderSchema = mongoose.Schema(
                 code: { type: String },
                 discountType: { type: String, enum: ["percentage", "fixed"] },
                 discountValue: { type: Number },
+                currency: { type: String, uppercase: true, trim: true },
+                sourceDiscountValue: { type: Number },
+                sourceCurrency: { type: String, uppercase: true, trim: true },
                 applicableProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
             }
         ],

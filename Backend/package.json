@@ -6,6 +6,8 @@
     "test": "jest --runInBand --detectOpenHandles",
     "test:watch": "jest --watch",
     "start": "node server.js",
+    "migrate:product-currency:dry-run": "node scripts/migrateProductNativeCurrency.js",
+    "migrate:product-currency:write": "node scripts/migrateProductNativeCurrency.js --write",
     "heroku-postbuild": "echo 'Backend build complete'"
   },
   "jest": {
@@ -36,6 +38,7 @@
     "express-rate-limit": "^8.2.1",
     "fuse.js": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.12.0",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^2.2.1",
@@ -43,6 +46,7 @@
     "nodemailer": "^8.0.7",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "pdf-parse": "^2.4.5",
     "pdfkit": "^0.18.0",
     "qrcode": "^1.5.4",
     "resend": "^6.4.1",
@@ -51,6 +55,7 @@
   "devDependencies": {
     "fast-check": "^4.3.0",
     "jest": "^30.2.0",
+    "jszip": "^3.10.1",
     "mongodb-memory-server": "^10.3.0",
     "supertest": "^7.1.4"
   }

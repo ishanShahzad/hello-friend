@@ -4,8 +4,9 @@ import { Bot, Edit, Trash2, Star, Package, TrendingDown, ShieldAlert } from "luc
 import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
-    const { formatProductPrice } = useCurrency();
+    const { formatPrice } = useCurrency();
     const hasDiscount = product.discountedPrice > 0;
+    const productCurrency = product.currency || product.priceCurrency || 'USD';
     const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
     const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
     const addedByAi = product.createdVia === "ai";
@@ -110,15 +111,15 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     {hasDiscount ? (
                         <>
                             <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                                {formatProductPrice(product, { field: 'discountedPrice' })}
+                                {formatPrice(product.discountedPrice, { sourceCurrency: productCurrency })}
                             </span>
                             <span className="text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {formatProductPrice(product, { field: 'price' })}
+                                {formatPrice(product.price, { sourceCurrency: productCurrency })}
                             </span>
                         </>
                     ) : (
                         <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                            {formatProductPrice(product, { field: 'price' })}
+                            {formatPrice(product.price, { sourceCurrency: productCurrency })}
                         </span>
                     )}
                 </div>
