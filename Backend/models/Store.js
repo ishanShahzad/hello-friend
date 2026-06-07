@@ -1,5 +1,54 @@
 const mongoose = require('mongoose');
 
+const storeThemeCustomSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    default: 'Custom Store Theme',
+    maxlength: 40
+  },
+  layout: {
+    type: String,
+    enum: ['classic', 'centered', 'editorial', 'showcase', 'compact'],
+    default: 'classic'
+  },
+  colors: {
+    primary: { type: String, default: '#3b82f6' },
+    secondary: { type: String, default: '#8b5cf6' },
+    accent: { type: String, default: '#10b981' },
+    background: { type: String, default: '#eef4ff' },
+    surface: { type: String, default: '#ffffff' },
+    text: { type: String, default: '#111827' }
+  }
+}, { _id: false });
+
+const storeThemeSchema = new mongoose.Schema({
+  themeId: {
+    type: String,
+    enum: [
+      'rozare-professional-store',
+      'pearl-boutique',
+      'sage-studio',
+      'skyline-market',
+      'lilac-gallery',
+      'sunlit-minimal',
+      'coral-showroom',
+      'aqua-retail',
+      'orchid-luxe',
+      'mint-catalog',
+      'custom'
+    ],
+    default: 'rozare-professional-store'
+  },
+  customTheme: {
+    type: storeThemeCustomSchema,
+    default: null
+  },
+  updatedAt: {
+    type: Date,
+    default: null
+  }
+}, { _id: false });
+
 const storeSchema = new mongoose.Schema({
   seller: {
     type: mongoose.Schema.Types.ObjectId,
@@ -54,6 +103,14 @@ const storeSchema = new mongoose.Schema({
   productCurrencyChangedAt: {
     type: Date,
     default: null
+  },
+  storeTheme: {
+    type: storeThemeSchema,
+    default: () => ({
+      themeId: 'rozare-professional-store',
+      customTheme: null,
+      updatedAt: null
+    })
   },
   address: {
     street: {

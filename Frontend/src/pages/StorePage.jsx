@@ -12,6 +12,7 @@ import SEOHead from '../components/common/SEOHead';
 import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
 import { getAuthToken } from "../utils/cookieHelper";
 import { useCurrency } from '../contexts/CurrencyContext';
+import { buildStoreThemeStyle, getStoreTheme, isDefaultStoreTheme } from '../utils/storeThemes';
 
 const getEntityId = (value) => {
     if (!value) return '';
@@ -229,10 +230,49 @@ const StorePage = ({ slugOverride = null }) => {
     }
 
     const trustCount = trustStatus.trustCount || store?.trustCount || 0;
+    const activeTheme = getStoreTheme(store?.storeTheme);
+    const isDefaultTheme = isDefaultStoreTheme(activeTheme);
+    const isCenteredTheme = ['centered', 'showcase'].includes(activeTheme.layout);
+    const isCompactTheme = activeTheme.layout === 'compact';
+    const isEditorialTheme = activeTheme.layout === 'editorial';
+    const themePageStyle = buildStoreThemeStyle(activeTheme);
+    const themedPanelStyle = isDefaultTheme ? undefined : {
+        background: activeTheme.palette.panel,
+        borderColor: activeTheme.palette.chipBorder,
+        borderRadius: activeTheme.radius,
+        boxShadow: `0 28px 90px -56px ${activeTheme.colors.primary}`,
+    };
+    const themeForeground = isDefaultTheme ? 'hsl(var(--foreground))' : activeTheme.palette.text;
+    const themeMuted = isDefaultTheme ? 'hsl(var(--muted-foreground))' : activeTheme.palette.muted;
+    const themePrimaryGradient = activeTheme.palette.accentGradient || activeTheme.palette.heroGradient;
+    const chipStyle = isDefaultTheme ? undefined : {
+        background: activeTheme.palette.chipBackground,
+        color: activeTheme.palette.chipText,
+        borderColor: activeTheme.palette.chipBorder,
+    };
+    const headerLayoutClass = isCenteredTheme
+        ? 'flex flex-col gap-5 items-center text-center'
+        : 'flex flex-col md:flex-row gap-6 items-start';
+    const storeDetailsClass = isCenteredTheme
+        ? 'flex-1 min-w-0 w-full flex flex-col items-center'
+        : 'flex-1 min-w-0';
+    const titleRowClass = isCenteredTheme
+        ? 'flex flex-wrap items-center justify-center gap-2 mb-2'
+        : 'flex flex-wrap items-center gap-2 mb-2';
+    const bannerClass = isCompactTheme
+        ? 'w-full h-32 md:h-44 overflow-hidden relative'
+        : isEditorialTheme || activeTheme.layout === 'showcase'
+            ? 'w-full h-52 md:h-72 overflow-hidden relative'
+            : 'w-full h-44 md:h-60 overflow-hidden relative';
+    const fallbackBannerClass = isCompactTheme ? 'w-full h-20 relative' : 'w-full h-24 relative';
+    const logoOffsetClass = store?.banner
+        ? isCenteredTheme ? '-mt-14 md:-mt-16 mx-auto' : '-mt-16 md:-mt-20'
+        : isCenteredTheme ? '-mt-10 mx-auto' : '-mt-12';
 
     return (
         <motion.div
             className="min-h-screen py-8"
+            style={themePageStyle}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
@@ -289,13 +329,14 @@ const StorePage = ({ slugOverride = null }) => {
                 {/* Store Header Card */}
                 <motion.div
                     className="glass-panel-strong water-shimmer relative overflow-hidden mb-8"
+                    style={themedPanelStyle}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 }}
                 >
                     {/* Banner or fallback gradient */}
                     {store?.banner ? (
-                        <div className="w-full h-44 md:h-60 overflow-hidden relative">
+                        <div className={bannerClass}>
                             <motion.img
                                 src={store.banner}
                                 alt={`${store.storeName} banner`}
@@ -307,17 +348,17 @@ const StorePage = ({ slugOverride = null }) => {
                             <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent)' }} />
                         </div>
                     ) : (
-                        <div className="w-full h-24 relative" style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' }}>
+                        <div className={fallbackBannerClass} style={{ background: activeTheme.palette.heroGradient }}>
                             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
                         </div>
                     )}
 
                     {/* Store Info */}
-                    <div className="p-6 md:p-8">
-                        <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <div className={isCompactTheme ? 'p-5 md:p-6' : 'p-6 md:p-8'}>
+                        <div className={headerLayoutClass}>
                             {/* Logo */}
                             <motion.div
-                                className={`shrink-0 relative z-10 ${store?.banner ? '-mt-16 md:-mt-20' : '-mt-12'}`}
+                                className={`shrink-0 relative z-10 ${logoOffsetClass}`}
                                 initial={{ scale: 0.85, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ duration: 0.4, delay: 0.2 }}
@@ -331,18 +372,18 @@ const StorePage = ({ slugOverride = null }) => {
                                     />
                                 ) : (
                                     <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl flex items-center justify-center shadow-xl"
-                                        style={{ background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', border: '3px solid var(--glass-border-strong)' }}>
+                                        style={{ background: activeTheme.palette.heroGradient, border: '3px solid var(--glass-border-strong)' }}>
                                         <Store size={36} className="text-white" />
                                     </div>
                                 )}
                             </motion.div>
 
                             {/* Store Details */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <div className={storeDetailsClass}>
+                                <div className={titleRowClass}>
                                     <motion.h1
                                         className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight"
-                                        style={{ color: 'hsl(var(--foreground))' }}
+                                        style={{ color: themeForeground }}
                                         initial={{ opacity: 0, x: -15 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ duration: 0.4, delay: 0.3 }}
@@ -353,9 +394,9 @@ const StorePage = ({ slugOverride = null }) => {
                                     {store && (
                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide"
                                             style={{
-                                                background: (store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)',
-                                                border: `1px solid ${(store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.35)' : 'hsla(220, 70%, 55%, 0.35)'}`,
-                                                color: (store.sellerType === 'brand') ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)',
+                                                background: isDefaultTheme ? ((store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.15)' : 'hsla(220, 70%, 55%, 0.15)') : activeTheme.palette.chipBackground,
+                                                border: `1px solid ${isDefaultTheme ? ((store.sellerType === 'brand') ? 'hsla(280, 70%, 55%, 0.35)' : 'hsla(220, 70%, 55%, 0.35)') : activeTheme.palette.chipBorder}`,
+                                                color: isDefaultTheme ? ((store.sellerType === 'brand') ? 'hsl(280, 70%, 55%)' : 'hsl(220, 70%, 55%)') : activeTheme.palette.chipText,
                                             }}>
                                             {(store.sellerType === 'brand') ? 'Brand' : 'Store'}
                                         </span>
@@ -375,21 +416,21 @@ const StorePage = ({ slugOverride = null }) => {
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: themeMuted }}>
                                     <Users size={13} />
                                     <span>{trustCount} {trustCount === 1 ? 'truster' : 'trusters'}</span>
                                 </div>
 
                                 {store?.description && (
-                                    <p className="text-sm mb-4 max-w-2xl leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <p className="text-sm mb-4 max-w-2xl leading-relaxed" style={{ color: themeMuted }}>
                                         {store.description}
                                     </p>
                                 )}
 
                                 {/* Store Address */}
                                 {store?.address && (store.address.street || store.address.city || store.address.country) && (
-                                    <div className="mb-4 flex items-start gap-2 text-sm glass-inner rounded-xl p-3" style={{ color: 'hsl(var(--foreground))' }}>
-                                        <MapPin size={16} className="shrink-0 mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                                    <div className={`mb-4 flex items-start gap-2 text-sm glass-inner rounded-xl p-3 ${isCenteredTheme ? 'max-w-2xl' : ''}`} style={{ color: themeForeground }}>
+                                        <MapPin size={16} className="shrink-0 mt-0.5" style={{ color: themeMuted }} />
                                         <div>
                                             {store.address.street && <p>{store.address.street}</p>}
                                             <p>{[store.address.city, store.address.state, store.address.postalCode].filter(Boolean).join(', ')}</p>
@@ -399,10 +440,10 @@ const StorePage = ({ slugOverride = null }) => {
                                 )}
 
                                 <div className="flex flex-wrap gap-2 text-xs">
-                                    <span className="tag-pill flex items-center gap-1.5">
+                                    <span className="tag-pill flex items-center gap-1.5" style={chipStyle}>
                                         <Package size={13} />{products.length} Products
                                     </span>
-                                    <span className="tag-pill flex items-center gap-1.5" style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'hsl(200, 80%, 50%)', borderColor: 'rgba(56, 189, 248, 0.18)' }}>
+                                    <span className="tag-pill flex items-center gap-1.5" style={isDefaultTheme ? { background: 'rgba(56, 189, 248, 0.1)', color: 'hsl(200, 80%, 50%)', borderColor: 'rgba(56, 189, 248, 0.18)' } : chipStyle}>
                                         <Eye size={13} />{store?.views || 0} Views
                                     </span>
                                 </div>
@@ -480,7 +521,7 @@ const StorePage = ({ slugOverride = null }) => {
                             <motion.button
                                 onClick={handleShare}
                                 className="glass-button px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium text-sm"
-                                style={{ color: 'hsl(var(--foreground))' }}
+                                style={{ color: themeForeground }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 initial={{ opacity: 0, scale: 0.9 }}
@@ -498,12 +539,13 @@ const StorePage = ({ slugOverride = null }) => {
                 {storeCoupons.length > 0 && (
                     <motion.div
                         className="glass-panel-strong p-5 sm:p-6 mb-8"
+                        style={themedPanelStyle}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.25 }}
                     >
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
-                            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(168, 85, 247, 0.12)', color: 'hsl(280, 60%, 55%)' }}>
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: themeForeground }}>
+                            <div className="p-1.5 rounded-lg" style={{ background: isDefaultTheme ? 'rgba(168, 85, 247, 0.12)' : activeTheme.palette.chipBackground, color: isDefaultTheme ? 'hsl(280, 60%, 55%)' : activeTheme.palette.chipText }}>
                                 <Ticket size={18} />
                             </div>
                             Available Coupons
@@ -518,11 +560,11 @@ const StorePage = ({ slugOverride = null }) => {
                                     className="glass-inner rounded-xl p-4 relative overflow-hidden group hover:shadow-md transition-shadow"
                                 >
                                     {/* Decorative accent */}
-                                    <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{ background: 'linear-gradient(90deg, hsl(280, 60%, 55%), hsl(320, 50%, 55%))' }} />
+                                    <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{ background: activeTheme.palette.couponGradient }} />
                                     
                                     <div className="flex items-start justify-between gap-2 mb-2">
                                         <div>
-                                            <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsl(280, 60%, 55%)' }}>
+                                            <span className="font-mono font-bold text-sm tracking-wider" style={{ color: isDefaultTheme ? 'hsl(280, 60%, 55%)' : activeTheme.palette.chipText }}>
                                                 {coupon.code}
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-1">
@@ -576,17 +618,17 @@ const StorePage = ({ slugOverride = null }) => {
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
+                        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: themeForeground }}>
                             Products
                         </h2>
-                        <span className="tag-pill text-sm font-medium">
+                        <span className="tag-pill text-sm font-medium" style={chipStyle}>
                             {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}
                         </span>
                     </div>
 
                     {/* Search + Categories */}
                     {products.length > 0 && (
-                        <div className="glass-panel p-3 sm:p-4 mb-5 space-y-3">
+                        <div className="glass-panel p-3 sm:p-4 mb-5 space-y-3" style={themedPanelStyle}>
                             <div className="search-input-wrapper">
                                 <div className="search-input-icon"><Search size={16} /></div>
                                 <input
@@ -602,16 +644,16 @@ const StorePage = ({ slugOverride = null }) => {
                                     <motion.button whileTap={{ scale: 0.96 }} onClick={() => setSelectedCategory('all')}
                                         className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5"
                                         style={selectedCategory === 'all'
-                                            ? { background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }
-                                            : { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                            ? { background: themePrimaryGradient, color: 'white' }
+                                            : { background: 'rgba(255,255,255,0.08)', color: themeForeground, border: '1px solid var(--glass-border)' }}>
                                         <Tag size={12} /> All
                                     </motion.button>
                                     {categories.map(cat => (
                                         <motion.button key={cat} whileTap={{ scale: 0.96 }} onClick={() => setSelectedCategory(cat)}
                                             className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                                             style={selectedCategory === cat
-                                                ? { background: 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))', color: 'white' }
-                                                : { background: 'rgba(255,255,255,0.08)', color: 'hsl(var(--foreground))', border: '1px solid var(--glass-border)' }}>
+                                                ? { background: themePrimaryGradient, color: 'white' }
+                                                : { background: 'rgba(255,255,255,0.08)', color: themeForeground, border: '1px solid var(--glass-border)' }}>
                                             {cat.charAt(0).toUpperCase() + cat.slice(1)}
                                         </motion.button>
                                     ))}
@@ -627,6 +669,7 @@ const StorePage = ({ slugOverride = null }) => {
                     ) : filteredProducts.length === 0 ? (
                         <motion.div
                             className="flex flex-col items-center justify-center h-64 glass-panel"
+                            style={themedPanelStyle}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.4 }}
@@ -634,15 +677,15 @@ const StorePage = ({ slugOverride = null }) => {
                             <div className="glass-inner p-5 rounded-2xl mb-4">
                                 <Package size={40} style={{ color: 'hsl(var(--muted-foreground))' }} />
                             </div>
-                            <p className="text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                            <p className="text-base font-semibold" style={{ color: themeForeground }}>
                                 {products.length === 0 ? 'No products yet' : 'No products match your filters'}
                             </p>
-                            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <p className="text-sm mt-1" style={{ color: themeMuted }}>
                                 {products.length === 0 ? "This store hasn't added any products" : 'Try a different search or category'}
                             </p>
                         </motion.div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                        <div className={`grid ${activeTheme.gridClass} gap-3 sm:gap-4 md:gap-5`}>
                             {filteredProducts.map((product, idx) => (
                                 <motion.div
                                     key={product._id}

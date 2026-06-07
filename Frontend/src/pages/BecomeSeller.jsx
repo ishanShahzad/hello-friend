@@ -399,6 +399,7 @@ export default function BecomeSeller() {
     'Stripe-powered secure checkout',
     'Multi-currency support (USD, EUR, GBP, PKR)',
     'Custom store subdomain (yourstore.rozare.com)',
+    '10 professional store themes',
     'Order management & shipping tools',
     'Coupon & discount engine',
     'Push & WhatsApp notifications',

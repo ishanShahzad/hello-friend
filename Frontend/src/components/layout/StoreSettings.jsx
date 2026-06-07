@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle, Sparkles } from 'lucide-react';
+import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle, Sparkles, Palette } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -9,12 +9,15 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import Loader from '../common/Loader';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { getAuthToken } from "../../utils/cookieHelper";
+import StoreThemeSettings from './StoreThemeSettings';
+import { DEFAULT_STORE_THEME_ID, normalizeThemeSelection } from '../../utils/storeThemes';
 
 const StoreSettings = () => {
     const { formatPrice, currency, currencies } = useCurrency();
     const outletContext = useOutletContext() || {};
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [activeSettingsTab, setActiveSettingsTab] = useState('details');
     const [hasStore, setHasStore] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -54,6 +57,7 @@ const StoreSettings = () => {
 
     const [storeData, setStoreData] = useState({
         storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
+        storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
         address: { street: '', city: '', state: '', country: '', postalCode: '' },
         socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
         returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
@@ -95,9 +99,10 @@ const StoreSettings = () => {
             const sName = res.data.store.storeName || '';
             const sType = res.data.store.sellerType || 'store';
             setStoreData({
-                storeName: sName, description: res.data.store.description,
-                logo: res.data.store.logo, banner: res.data.store.banner, storeSlug: slug,
+                storeName: sName, description: res.data.store.description || '',
+                logo: res.data.store.logo || '', banner: res.data.store.banner || '', storeSlug: slug,
                 sellerType: sType,
+                storeTheme: normalizeThemeSelection(res.data.store.storeTheme),
                 address: { ...defaultAddress, ...(res.data.store.address || {}) },
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
                 returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
@@ -309,7 +314,11 @@ const StoreSettings = () => {
             toast.success(res.data.msg);
             setHasStore(true);
             if (res.data.store) {
-                setStoreData(prev => ({ ...prev, storeSlug: res.data.store.storeSlug }));
+                setStoreData(prev => ({
+                    ...prev,
+                    storeSlug: res.data.store.storeSlug,
+                    storeTheme: normalizeThemeSelection(res.data.store.storeTheme || prev.storeTheme),
+                }));
                 setCustomSubdomain(res.data.store.storeSlug);
                 const savedProductCurrency = res.data.store.productCurrency || productCurrencyDraft || currency;
                 setProductCurrencyInfo(prev => ({ ...prev, activeCurrency: savedProductCurrency, status: 'active', pendingCurrency: null, previousCurrency: null }));
@@ -338,7 +347,13 @@ const StoreSettings = () => {
             const token = getAuthToken();
             await axios.delete(`${import.meta.env.VITE_API_URL}api/stores/delete`, { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Store deleted'); setHasStore(false);
-            setStoreData({ storeName: '', description: '', logo: '', banner: '', storeSlug: '' });
+            setStoreData({
+                storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
+                storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
+                address: { street: '', city: '', state: '', country: '', postalCode: '' },
+                socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
+                returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
+            });
             setShowDeleteConfirm(false);
         } catch (error) { toast.error(error.response?.data?.msg || 'Failed to delete store'); }
     };
@@ -453,7 +468,40 @@ const StoreSettings = () => {
                 </div>
             )}
 
-            {/* Store Form */}
+            {/* Settings Tabs */}
+            <div className="glass-panel p-2 mb-6 flex flex-col sm:flex-row gap-2">
+                {[
+                    { id: 'details', label: 'Store Details', Icon: Store },
+                    { id: 'themes', label: 'Themes', Icon: Palette },
+                ].map(tab => {
+                    const active = activeSettingsTab === tab.id;
+                    const Icon = tab.Icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveSettingsTab(tab.id)}
+                            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                            style={{
+                                background: active ? 'linear-gradient(135deg, hsl(220, 70%, 55%), hsl(260, 60%, 60%))' : 'transparent',
+                                color: active ? 'white' : 'hsl(var(--foreground))',
+                            }}
+                        >
+                            <Icon size={17} /> {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {activeSettingsTab === 'themes' ? (
+                <StoreThemeSettings
+                    storeData={storeData}
+                    setStoreData={setStoreData}
+                    hasStore={hasStore}
+                    blockedInfo={blockedInfo}
+                />
+            ) : (
+            /* Store Form */
             <div className="glass-panel p-6 md:p-8">
                 <div className="space-y-4 md:space-y-6">
                     {/* Seller Type — Store / Brand */}
@@ -895,6 +943,7 @@ const StoreSettings = () => {
                     </div>
                 </div>
             </div>
+            )}
 
 
             {/* Delete Confirmation Modal */}

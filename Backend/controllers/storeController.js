@@ -21,6 +21,11 @@ const {
     sellerDefaultProductCurrency,
     normalizeProductCurrency,
 } = require('../services/storeProductCurrencyService');
+const {
+    normalizeStoreTheme,
+    sellerCanUseCustomStoreTheme,
+    ensureStoreThemeEntitlement,
+} = require('../services/storeThemeService');
 
 const comparablePriceUSD = (product) =>
     convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
@@ -181,7 +186,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -235,6 +240,10 @@ exports.createStore = async (req, res) => {
             country: '',
             postalCode: ''
         };
+        const canUseCustomTheme = await sellerCanUseCustomStoreTheme(sellerId);
+        const normalizedStoreTheme = storeTheme !== undefined
+            ? normalizeStoreTheme(storeTheme, { allowCustom: canUseCustomTheme })
+            : normalizeStoreTheme();
 
         // Create store
         const newStore = new Store({
@@ -245,6 +254,7 @@ exports.createStore = async (req, res) => {
             description: description || '',
             productCurrency: normalizeProductCurrency(req.body.productCurrency || sellerDefaultProductCurrency({ address: initialAddress }, seller)),
             productCurrencyStatus: 'active',
+            storeTheme: normalizedStoreTheme,
             logo: logo || '',
             banner: banner || '',
             socialLinks: normalizeSocialLinks(socialLinks),
@@ -302,7 +312,7 @@ exports.createStore = async (req, res) => {
         });
     } catch (error) {
         console.error('Create store error:', error);
-        res.status(500).json({ msg: 'Server error while creating store' });
+        res.status(error.status || 500).json({ msg: error.message || 'Server error while creating store' });
     }
 };
 
@@ -331,6 +341,7 @@ exports.getMyStore = async (req, res) => {
         }
 
         await ensureStoreProductCurrencyInitialized(sellerId, { store });
+        await ensureStoreThemeEntitlement(sellerId, store);
 
         res.status(200).json({
             msg: 'Store fetched successfully',
@@ -406,7 +417,7 @@ exports.cancelProductCurrencyChange = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -422,9 +433,10 @@ exports.updateStore = async (req, res) => {
         const wantsTypeChange = sellerType !== undefined &&
             (sellerType === 'store' || sellerType === 'brand') &&
             sellerType !== (store.sellerType || 'store');
+        const wantsThemeChange = storeTheme !== undefined;
 
         // Block changes while the store is blocked (subscription ended)
-        if ((wantsNameChange || wantsSlugChange || wantsTypeChange) && store.isActive === false) {
+        if ((wantsNameChange || wantsSlugChange || wantsTypeChange || wantsThemeChange) && store.isActive === false) {
             return res.status(423).json({
                 msg: 'Your store is blocked. Reactivate your subscription before changing this.',
                 blocked: true,
@@ -565,6 +577,14 @@ exports.updateStore = async (req, res) => {
             store.markModified('returnPolicy');
         }
 
+        if (storeTheme !== undefined) {
+            const canUseCustomTheme = await sellerCanUseCustomStoreTheme(sellerId);
+            store.storeTheme = normalizeStoreTheme(storeTheme, { allowCustom: canUseCustomTheme });
+            store.markModified('storeTheme');
+        } else {
+            await ensureStoreThemeEntitlement(sellerId, store);
+        }
+
         await store.save();
         console.log('Store saved with socialLinks:', store.socialLinks);
 
@@ -574,7 +594,7 @@ exports.updateStore = async (req, res) => {
         });
     } catch (error) {
         console.error('Update store error:', error);
-        res.status(500).json({ msg: 'Server error while updating store' });
+        res.status(error.status || 500).json({ msg: error.message || 'Server error while updating store' });
     }
 };
 
@@ -665,6 +685,8 @@ exports.getStoreBySlug = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found' });
         }
 
+        await ensureStoreThemeEntitlement(store.seller?._id || store.seller, store);
+
         res.status(200).json({
             msg: 'Store fetched successfully',
             store
@@ -687,6 +709,8 @@ exports.getStoreBySellerId = async (req, res) => {
         if (!store) {
             return res.status(404).json({ msg: 'Store not found for this seller' });
         }
+
+        await ensureStoreThemeEntitlement(store.seller?._id || id, store);
 
         res.status(200).json({
             msg: 'Store fetched successfully',

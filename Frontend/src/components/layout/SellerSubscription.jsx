@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Crown, Check, Zap, Shield, Bot, Clock, AlertTriangle,
     CreditCard, ArrowRight, Sparkles, X, Lock, Store, Package,
-    Users, Award, Star, MessageCircle, Gem, Bell
+    Users, Award, Star, MessageCircle, Gem, Bell, Palette
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -194,6 +194,7 @@ const SellerSubscription = () => {
         'Manage your store, orders & products from WhatsApp by chatting with AI',
         'Get WhatsApp notifications when you receive a new order',
         'Rozare WhatsApp order confirmation automation',
+        '10 professional store themes',
         'Featured product highlighting (6 products)',
     ];
 
@@ -204,6 +205,10 @@ const SellerSubscription = () => {
         'Priority support & early access to new features',
         'Coupon & discount management system',
         'Bulk discount & promotional tools',
+    ];
+
+    const eliteOnlyFeatures = [
+        'Customizable store themes with your own colors and layouts',
     ];
 
     return (
@@ -509,7 +514,7 @@ const SellerSubscription = () => {
                 {isTrial && (
                     <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
                         <p className="text-xs font-semibold mb-3" style={{ color: 'hsl(var(--foreground))' }}>
-                            All features from every Rozare plan are available in your 15-day free trial
+                            Starter features and eligible Elite tools are available in your 15-day free trial
                         </p>
 
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(150, 60%, 45%)' }}>Features from Starter</p>
@@ -585,6 +590,7 @@ const SellerSubscription = () => {
                                 'Manage your store, orders & products from WhatsApp by chatting with AI',
                                 'Get WhatsApp notifications when you receive a new order',
                                 'Rozare WhatsApp order confirmation automation',
+                                '10 professional store themes',
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <Check size={12} style={{ color: 'hsl(150, 60%, 45%)' }} />
@@ -638,6 +644,7 @@ const SellerSubscription = () => {
                                 'Manage your store, orders & products from WhatsApp by chatting with AI',
                                 'Get WhatsApp notifications when you receive a new order',
                                 'Rozare WhatsApp order confirmation automation',
+                                '10 professional store themes',
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <Check size={12} style={{ color: 'hsl(150, 60%, 45%)' }} />
@@ -655,6 +662,12 @@ const SellerSubscription = () => {
                         <div className="space-y-1.5">
                             {bonusFeatures.map((f, i) => (
                                 <div key={i} className="flex items-center gap-2">
+                                    <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                            {eliteOnlyFeatures.map((f, i) => (
+                                <div key={`elite-only-${i}`} className="flex items-center gap-2">
                                     <Check size={12} style={{ color: 'hsl(270, 60%, 55%)' }} />
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
                                 </div>
@@ -704,6 +717,7 @@ const SellerSubscription = () => {
                                 { icon: <MessageCircle size={13} />, text: 'Manage store, orders & products from WhatsApp via AI' },
                                 { icon: <Bell size={13} />, text: 'WhatsApp notifications for new orders' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                                { icon: <Palette size={13} />, text: '10 professional store themes' },
                                 { icon: <Sparkles size={13} />, text: 'Featured product highlighting (6 products)' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
@@ -818,6 +832,7 @@ const SellerSubscription = () => {
                                 { icon: <MessageCircle size={13} />, text: 'Manage store, orders & products from WhatsApp via AI' },
                                 { icon: <Bell size={13} />, text: 'WhatsApp notifications for new orders' },
                                 { icon: <MessageCircle size={13} />, text: 'WhatsApp order confirmation' },
+                                { icon: <Palette size={13} />, text: '10 professional store themes' },
                                 { icon: <Sparkles size={13} />, text: 'Featured product highlighting (12 products)' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-2.5">
@@ -833,6 +848,14 @@ const SellerSubscription = () => {
                                 <div key={`elite-bonus-${i}`} className="flex items-center gap-2.5">
                                     <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
                                         <Check size={11} />
+                                    </div>
+                                    <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
+                                </div>
+                            ))}
+                            {eliteOnlyFeatures.map((f, i) => (
+                                <div key={`elite-only-card-${i}`} className="flex items-center gap-2.5">
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'hsl(270, 60%, 55%)' }}>
+                                        <Palette size={11} />
                                     </div>
                                     <span className="text-[11px]" style={{ color: 'hsl(var(--foreground))' }}>{f}</span>
                                 </div>
@@ -1017,6 +1040,7 @@ const SellerSubscription = () => {
                                         'Advanced analytics & growth insights',
                                         'Smart tag AI generator for products',
                                         'Featured product highlighting',
+                                        'Customizable store themes',
                                         'Coupon & discount management',
                                     ].map((f, i) => (
                                         <div key={i} className="flex items-center gap-2">

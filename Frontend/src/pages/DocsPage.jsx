@@ -111,7 +111,7 @@ function DocsPage() {
         { '@type': 'Question', name: 'What is Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare is an AI-powered marketplace where shoppers discover products and sellers manage stores through dashboard tools, AI chat, and WhatsApp.' } },
         { '@type': 'Question', name: 'How do I become a seller on Rozare?', acceptedAnswer: { '@type': 'Answer', text: 'Go to /become-seller, create or sign in to your account, add your store details, verify your WhatsApp number, and activate your seller account to start the 15-day free trial.' } },
         { '@type': 'Question', name: 'Can I manage my Rozare store from WhatsApp?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. Connect your WhatsApp number in seller settings and chat with the Rozare AI to add products, update stock, manage orders, run analytics, and get instant new-order notifications.' } },
-        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial of every feature, then choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro).' } },
+        { '@type': 'Question', name: 'How much does Rozare cost?', acceptedAnswer: { '@type': 'Answer', text: 'Shopping on Rozare is free. Sellers start with a 15-day free trial for core selling features and eligible Elite tools, then choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro).' } },
         { '@type': 'Question', name: 'Does Rozare have a mobile app?', acceptedAnswer: { '@type': 'Answer', text: 'Rozare includes a React Native / Expo mobile app experience for iOS and Android with shopping, selling, AI chat, and push notification support.' } },
       ],
     },
@@ -379,7 +379,7 @@ function DocsPage() {
 
               {/* BECOME A SELLER */}
               <DocSection id="become-a-seller" title="Become a Seller" icon={Store}>
-                <p>Anyone can start selling on Rozare with a <strong>15-day free trial of every feature</strong>. After that, sellers choose Starter or Elite to keep the store active, with a free intro period on the selected plan.</p>
+                <p>Anyone can start selling on Rozare with a <strong>15-day free trial for core selling features and eligible Elite tools</strong>. After that, sellers choose Starter or Elite to keep the store active, with a free intro period on the selected plan.</p>
 
                 <h3>How to sign up as a seller</h3>
                 <StepList steps={[
@@ -547,16 +547,17 @@ function DocsPage() {
 
               {/* SUBSCRIPTION PLANS */}
               <DocSection id="subscription-plans" title="Subscription Plans" icon={Award}>
-                <p>Every new seller gets a <strong>15-day free trial of every feature</strong> — including all Elite-tier perks. After the trial, choose Rozare Starter or Rozare Elite. Both plans include a generous free intro period.</p>
+                <p>Every new seller gets a <strong>15-day free trial to launch their store</strong> with Starter features and eligible Elite tools. After the trial, choose Rozare Starter or Rozare Elite. Both plans include a generous free intro period.</p>
 
                 <div className="grid md:grid-cols-3 gap-4 my-6">
                   <PlanCard name="Free Trial" price="15 days" features={[
-                    'Every feature unlocked',
+                    'Core selling features unlocked',
                     'Unlimited product listings',
                     'Smart description generator with AI',
                     '100 AI messages/day',
                     'Manage store via WhatsApp by chatting with AI',
                     'WhatsApp notifications for new orders',
+                    '10 professional store themes',
                     'Analytics, smart tags, coupons, bulk tools',
                     'No credit card required',
                   ]} />
@@ -569,6 +570,7 @@ function DocsPage() {
                     'Manage store via WhatsApp by chatting with AI',
                     'WhatsApp notifications for new orders',
                     'WhatsApp order confirmation automation',
+                    '10 professional store themes',
                     'Featured products (6)',
                     'Bonus Elite features for 6 months',
                   ]} />
@@ -581,13 +583,14 @@ function DocsPage() {
                     'Smart tag AI generator',
                     'Coupon & discount management',
                     'Bulk discount & promotional tools',
+                    'Customizable store themes',
                     'Priority support',
                     'Featured products (12)',
                   ]} />
                 </div>
 
                 <InfoBox type="tip" title="Bonus features for Starter">
-                  Rozare Starter includes bonus Elite features (advanced analytics, smart tags, coupons, bulk tools, priority support) <strong>for the first 6 months</strong>. Upgrade to Elite at any time to keep them permanently.
+                  Rozare Starter includes bonus Elite features (advanced analytics, smart tags, coupons, bulk tools, priority support) <strong>for the first 6 months</strong>. Customizable themes stay Elite-only. Upgrade to Elite at any time to keep bonus features permanently.
                 </InfoBox>
 
                 <h3>Manage your subscription</h3>
@@ -796,14 +799,14 @@ function DocsPage() {
               {/* FAQ */}
               <DocSection id="faq" title="Frequently Asked Questions" icon={HelpCircle}>
                 <FAQItem q="Is Rozare free for shoppers?" a="Yes. Shopping is completely free. You only pay for the products you buy. There are no membership fees." />
-                <FAQItem q="How much does it cost to sell on Rozare?" a="Every new seller gets a 15-day free trial of every feature. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro)." />
+                <FAQItem q="How much does it cost to sell on Rozare?" a="Every new seller gets a 15-day free trial for core selling features and eligible Elite tools. After that, choose Rozare Starter ($5.99/month, with a 30-day free intro) or Rozare Elite ($12.99/month, with a 45-day free intro)." />
                 <FAQItem q="Can I manage my store from WhatsApp?" a="Yes. Once you connect your WhatsApp number in seller settings, you can chat with the Rozare AI to handle supported tasks such as adding products, updating stock, managing orders, running discounts, and checking analytics. You can also get instant notifications for new orders." />
                 <FAQItem q="Does Rozare have a mobile app?" a="Rozare includes a React Native / Expo mobile app experience for iOS and Android with shopping, selling, AI chat, push notifications, voice search, and the same core marketplace workflows." />
                 <FAQItem q="How does the AI know about my store?" a="The AI calls secure server-side tools that read and write only your store's data. Other sellers cannot see your data, and you cannot see theirs." />
                 <FAQItem q="Is my data safe?" a="Yes. All traffic is encrypted (HTTPS). Authentication uses JWT tokens. Personal data is never sold or shared with third parties outside what's required to fulfil your order." />
                 <FAQItem q="What payment methods are available?" a="Currently Cash on Delivery and Stripe (Visa, Mastercard, Amex and more). Additional methods are added over time." />
                 <FAQItem q="How do sellers receive Stripe payments?" a="Sellers add their bank details in Seller Dashboard - Payments. Delivered Stripe-paid order revenue becomes withdrawable, then the seller sends a withdrawal request for admin review. COD payments are handled by the seller directly." />
-                <FAQItem q="What's the difference between Starter and Elite?" a="Both plans include unlimited listings, a custom subdomain, WhatsApp store management, new-order WhatsApp notifications, and the core marketplace features. Elite adds 250 AI messages/day (vs 100), the smart description generator with AI, advanced analytics, smart tag AI, coupon and bulk tools permanently, priority support, and 12 featured products (vs 6)." />
+                <FAQItem q="What's the difference between Starter and Elite?" a="Both plans include unlimited listings, a custom subdomain, WhatsApp store management, new-order WhatsApp notifications, 10 professional store themes, and the core marketplace features. Elite adds 250 AI messages/day (vs 100), customizable store themes, the smart description generator with AI, advanced analytics, smart tag AI, coupon and bulk tools permanently, priority support, and 12 featured products (vs 6)." />
                 <FAQItem q="What happens after my 15-day free trial ends?" a="If you don't subscribe, your store and products are temporarily hidden until you subscribe — your data is preserved. Subscribe to Starter or Elite to instantly reactivate everything, with the plan's free intro period applied when eligible." />
                 <FAQItem q="Can I cancel anytime?" a="Yes. Cancel from Seller Dashboard → Subscription. Your store stays active until the end of your current billing period." />
                 <FAQItem q="What's the maximum number of tags per product?" a="15 tags per product. Both manual entry and AI generation respect this limit." />
