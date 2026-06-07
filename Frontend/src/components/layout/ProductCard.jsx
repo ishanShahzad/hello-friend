@@ -5,12 +5,19 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
     const { formatPrice } = useCurrency();
-    const hasDiscount = product.discountedPrice > 0;
-    const productCurrency = product.currency || product.priceCurrency || 'USD';
-    const discountPercent = hasDiscount ? Math.round(((product.price - product.discountedPrice) / product.price) * 100) : 0;
-    const isBlocked = product.isBlocked || product.moderationStatus === "blocked";
-    const addedByAi = product.createdVia === "ai";
-    const blockedReason = product.blockedReason || product.moderationReason || "This looks like test or placeholder product details.";
+    const safeProduct = product || {};
+    const price = Number.isFinite(Number(safeProduct.price)) ? Number(safeProduct.price) : 0;
+    const discountedPrice = Number.isFinite(Number(safeProduct.discountedPrice)) ? Number(safeProduct.discountedPrice) : 0;
+    const stock = Number.isFinite(Number(safeProduct.stock)) ? Number(safeProduct.stock) : 0;
+    const rating = Number.isFinite(Number(safeProduct.rating)) ? Number(safeProduct.rating) : 0;
+    const hasDiscount = discountedPrice > 0 && discountedPrice < price;
+    const productCurrency = safeProduct.currency || safeProduct.priceCurrency || 'USD';
+    const discountPercent = hasDiscount && price > 0 ? Math.round(((price - discountedPrice) / price) * 100) : 0;
+    const isBlocked = safeProduct.isBlocked || safeProduct.moderationStatus === "blocked";
+    const addedByAi = safeProduct.createdVia === "ai";
+    const blockedReason = safeProduct.blockedReason || safeProduct.moderationReason || "This looks like test or placeholder product details.";
+    const image = safeProduct.image || safeProduct.images?.[0]?.url || '';
+    const name = safeProduct.name || 'Untitled product';
 
     return (
         <motion.div
@@ -22,8 +29,8 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
             {/* Image */}
             <div className="relative h-[220px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
                 <motion.img
-                    src={product.image}
-                    alt={product.name}
+                    src={image}
+                    alt={name}
                     className="h-full w-full object-contain object-center p-3 transition-transform duration-500 group-hover:scale-110"
                 />
                 {hasDiscount && (
@@ -32,7 +39,7 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                         -{discountPercent}%
                     </span>
                 )}
-                {product.stock === 0 && (
+                {stock === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
                         <span className="px-3 py-1.5 rounded-full text-xs font-bold text-white"
                             style={{ background: 'hsl(0, 72%, 55%)' }}>
@@ -53,13 +60,13 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                 {/* Hover Actions */}
                 <div className="absolute top-3 left-3 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                        onClick={() => onEditProduct(product)}
+                        onClick={() => onEditProduct(safeProduct)}
                         className="p-2 rounded-xl shadow-lg"
                         style={{ background: 'var(--glass-bg-strong)', border: '1px solid var(--glass-border)', color: 'hsl(var(--primary))' }}>
                         <Edit size={16} />
                     </motion.button>
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                        onClick={() => setDeleteConfirm(product._id)}
+                        onClick={() => setDeleteConfirm(safeProduct._id)}
                         className="p-2 rounded-xl shadow-lg"
                         style={{ background: 'var(--glass-bg-strong)', border: '1px solid var(--glass-border)', color: 'hsl(0, 72%, 55%)' }}>
                         <Trash2 size={16} />
@@ -75,7 +82,7 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                 <div>
                     <div className="flex items-start gap-2">
                         <h3 className="text-base font-semibold truncate flex-1" style={{ color: 'hsl(var(--foreground))' }}>
-                            {product.name}
+                            {name}
                         </h3>
                         {addedByAi && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
@@ -94,9 +101,9 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                         )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{product.brand}</span>
+                        <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>{safeProduct.brand || 'No brand'}</span>
                         <span className="w-1 h-1 rounded-full" style={{ background: 'hsl(var(--muted-foreground))' }} />
-                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{product.category}</span>
+                        <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{safeProduct.category || 'Uncategorized'}</span>
                     </div>
                 </div>
                 {isBlocked && (
@@ -111,15 +118,15 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                     {hasDiscount ? (
                         <>
                             <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                                {formatPrice(product.discountedPrice, { sourceCurrency: productCurrency })}
+                                {formatPrice(discountedPrice, { sourceCurrency: productCurrency })}
                             </span>
                             <span className="text-sm line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                {formatPrice(product.price, { sourceCurrency: productCurrency })}
+                                {formatPrice(price, { sourceCurrency: productCurrency })}
                             </span>
                         </>
                     ) : (
                         <span className="text-lg font-extrabold" style={{ color: 'hsl(var(--foreground))', letterSpacing: '-0.03em' }}>
-                            {formatPrice(product.price, { sourceCurrency: productCurrency })}
+                            {formatPrice(price, { sourceCurrency: productCurrency })}
                         </span>
                     )}
                 </div>
@@ -127,14 +134,14 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                 {/* Stock & Rating Row */}
                 <div className="flex items-center justify-between mt-auto pt-2" style={{ borderTop: '1px solid var(--glass-border-subtle)' }}>
                     <div className="flex items-center gap-1.5">
-                        {product.stock > 0 ? (
+                        {stock > 0 ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                                style={product.stock <= 10
+                                style={stock <= 10
                                     ? { background: 'rgba(245, 158, 11, 0.12)', color: 'hsl(45, 80%, 40%)' }
                                     : { background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 40%)' }
                                 }>
                                 <Package size={10} />
-                                {product.stock <= 10 ? `Low: ${product.stock}` : `${product.stock} in stock`}
+                                {stock <= 10 ? `Low: ${stock}` : `${stock} in stock`}
                             </span>
                         ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
@@ -148,12 +155,12 @@ const ProductCard = ({ product, index, onEditProduct, setDeleteConfirm }) => {
                         {[1, 2, 3, 4, 5].map(star => (
                             <Star key={star} size={12}
                                 style={{
-                                    color: star <= product.rating ? 'hsl(45, 93%, 47%)' : 'hsl(var(--muted-foreground))',
-                                    fill: star <= product.rating ? 'hsl(45, 93%, 47%)' : 'none'
+                                    color: star <= rating ? 'hsl(45, 93%, 47%)' : 'hsl(var(--muted-foreground))',
+                                    fill: star <= rating ? 'hsl(45, 93%, 47%)' : 'none'
                                 }} />
                         ))}
                         <span className="text-[10px] ml-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            ({product.numReviews})
+                            ({safeProduct.numReviews || 0})
                         </span>
                     </div>
                 </div>

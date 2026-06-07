@@ -79,10 +79,13 @@ const parsePriceRange = (priceRange) => {
 
 async function attachComparablePrices(products, targetCurrency = 'USD') {
     const currency = normalizeCurrency(targetCurrency);
-    return Promise.all(products.map(async (product) => ({
-        ...product,
-        _comparablePrice: await convertAmount(getProductEffectivePrice(product), getProductCurrency(product), currency),
-    })));
+    return Promise.all(products.map(async (product) => {
+        const plainProduct = product?.toObject ? product.toObject() : product;
+        return {
+            ...plainProduct,
+            _comparablePrice: await convertAmount(getProductEffectivePrice(plainProduct), getProductCurrency(plainProduct), currency),
+        };
+    }));
 }
 
 function filterByComparablePriceRange(products, range) {
@@ -379,7 +382,7 @@ exports.getProducts = async (req, res) => {
             }
         }
 
-        let products = await Product.find(query)
+        let products = await Product.find(query).lean()
             .populate({
                 path: 'seller',
                 select: 'username email',

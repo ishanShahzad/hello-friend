@@ -38,6 +38,29 @@ const getSellerMenuItems = ({ pendingOrders = 0, lowStockProducts = 0 } = {}) =>
     { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} />, action: 'ai-chat' },
 ]);
 
+const normalizeDashboardProduct = (product = {}) => ({
+    ...product,
+    name: product.name || '',
+    brand: product.brand || '',
+    category: product.category || '',
+    description: product.description || '',
+    price: Number.isFinite(Number(product.price)) ? Number(product.price) : 0,
+    discountedPrice: Number.isFinite(Number(product.discountedPrice)) ? Number(product.discountedPrice) : 0,
+    stock: Number.isFinite(Number(product.stock)) ? Number(product.stock) : 0,
+    image: product.image || product.images?.[0]?.url || '',
+    images: Array.isArray(product.images) ? product.images.filter(Boolean).map(img => (
+        typeof img === 'string' ? { url: img } : { ...img, url: img?.url || '' }
+    )).filter(img => img.url) : [],
+    tags: Array.isArray(product.tags) ? product.tags.filter(Boolean) : [],
+    colors: Array.isArray(product.colors) ? product.colors.filter(Boolean) : [],
+    optionGroups: Array.isArray(product.optionGroups) ? product.optionGroups.map(group => ({
+        ...group,
+        name: group?.name || '',
+        values: Array.isArray(group?.values) ? group.values.filter(Boolean) : [],
+        default: group?.default || '',
+    })) : [],
+});
+
 const SellerDashboard = () => {
     const { currentUser } = useAuth();
     const [isMobile, setIsMobile] = useState(false);
@@ -110,7 +133,7 @@ const SellerDashboard = () => {
     const fetchFilters = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-filters`);
-            setCategories(res.data.categories);
+            setCategories(Array.isArray(res.data.categories) ? res.data.categories : []);
         } catch (error) { console.error(error); setCategories([]); }
     };
 
@@ -136,7 +159,7 @@ const SellerDashboard = () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-seller-products?${query}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProducts(res.data.products);
+            setProducts(Array.isArray(res.data.products) ? res.data.products.map(normalizeDashboardProduct) : []);
         } catch (err) {
             toast.error(err.response?.data?.msg || 'Failed to fetch products');
             setProducts([]);
@@ -163,7 +186,7 @@ const SellerDashboard = () => {
     };
 
     const handleEditProduct = (product) => {
-        setEditingProduct({ ...product });
+        setEditingProduct(normalizeDashboardProduct(product));
         setIsFormOpen(true);
     };
 
@@ -177,7 +200,7 @@ const SellerDashboard = () => {
             }
             if (editingProduct.imageFiles && editingProduct.imageFiles.length > 0) {
                 const uploadedUrls = await Promise.all(editingProduct.imageFiles.map(file => uploadImageToCloudinary(file)));
-                const existingImages = editingProduct.images.filter(img => !img.isFile);
+                const existingImages = (Array.isArray(editingProduct.images) ? editingProduct.images : []).filter(img => !img.isFile);
                 const newImages = uploadedUrls.map(url => ({ url }));
                 editingProduct.images = [...existingImages, ...newImages];
                 delete editingProduct.imageFiles;
@@ -830,7 +853,14 @@ const OptionGroupsBuilder = ({ product, setProduct, disabled }) => {
     const [newGroupName, setNewGroupName] = useState("");
     const [valueDrafts, setValueDrafts] = useState({}); // { groupIdx: 'draft text' }
 
-    const groups = product.optionGroups || [];
+    const groups = Array.isArray(product.optionGroups)
+        ? product.optionGroups.map(group => ({
+            ...group,
+            name: group?.name || '',
+            values: Array.isArray(group?.values) ? group.values : [],
+            default: group?.default || '',
+        }))
+        : [];
     const update = (next) => setProduct({ ...product, optionGroups: next });
 
     const addGroup = () => {
@@ -941,7 +971,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const { currency, convertAmount, getCurrencySymbol } = useCurrency();
     const [newTag, setNewTag] = useState("");
     const [newImage, setNewImage] = useState("");
-    const tagsAtLimit = (product.tags?.length || 0) >= MAX_TAGS;
+    const productImages = Array.isArray(product.images) ? product.images : [];
+    const productTags = Array.isArray(product.tags) ? product.tags : [];
+    const tagsAtLimit = productTags.length >= MAX_TAGS;
     const descLength = product.description?.length || 0;
     const descAtLimit = descLength >= MAX_DESCRIPTION_LENGTH;
 
@@ -1001,8 +1033,8 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                 { name: product.name, description: product.description, category: product.category, brand: product.brand },
                 { headers: { Authorization: `Bearer ${token}` } });
             const incoming = res.data.tags || [];
-            const merged = [...new Set([...(product.tags || []), ...incoming])].slice(0, MAX_TAGS);
-            const added = merged.length - (product.tags?.length || 0);
+            const merged = [...new Set([...productTags, ...incoming])].slice(0, MAX_TAGS);
+            const added = merged.length - productTags.length;
             setProduct({ ...product, tags: merged });
             if (added > 0) toast.success(`Added ${added} AI tag${added === 1 ? '' : 's'}`);
             else toast.info(`Tag limit reached (${MAX_TAGS} max)`);
@@ -1014,23 +1046,23 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
     const handleAddTag = () => {
         const trimmed = newTag.trim();
         if (!trimmed) return;
-        if ((product.tags?.length || 0) >= MAX_TAGS) {
+        if (productTags.length >= MAX_TAGS) {
             toast.info(`Tag limit reached (${MAX_TAGS} max)`);
             return;
         }
-        if (!product.tags.includes(trimmed)) {
-            setProduct({ ...product, tags: [...product.tags, trimmed] });
+        if (!productTags.includes(trimmed)) {
+            setProduct({ ...product, tags: [...productTags, trimmed] });
             setNewTag("");
         }
     };
-    const handleRemoveTag = (tagToRemove) => setProduct({ ...product, tags: product.tags.filter(tag => tag !== tagToRemove) });
+    const handleRemoveTag = (tagToRemove) => setProduct({ ...product, tags: productTags.filter(tag => tag !== tagToRemove) });
     const handleAddImage = () => {
         if (newImage.trim()) {
-            setProduct({ ...product, images: [...product.images, { url: newImage.trim() }] });
+            setProduct({ ...product, images: [...productImages, { url: newImage.trim() }] });
             setNewImage("");
         }
     };
-    const handleRemoveImage = (indexToRemove) => setProduct({ ...product, images: product.images.filter((_, index) => index !== indexToRemove) });
+    const handleRemoveImage = (indexToRemove) => setProduct({ ...product, images: productImages.filter((_, index) => index !== indexToRemove) });
     const handleSetMainImage = (url) => setProduct({ ...product, image: url });
     const handleSubmit = (e) => { e.preventDefault(); onSave(); };
     const editingCurrency = product.currency || product.priceCurrency || currency;
@@ -1305,7 +1337,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                             if (file.size > 5 * 1024 * 1024) { alert('File size should be less than 5MB'); e.target.value = ''; return; }
                                             const imageFiles = product.imageFiles || [];
                                             imageFiles.push(file);
-                                            setProduct({ ...product, imageFiles, images: [...product.images, { url: URL.createObjectURL(file), isFile: true }] });
+                                            setProduct({ ...product, imageFiles, images: [...productImages, { url: URL.createObjectURL(file), isFile: true }] });
                                             e.target.value = '';
                                         }
                                     }}
@@ -1314,9 +1346,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                             </div>
                         )}
 
-                        {product.images.length > 0 && (
+                        {productImages.length > 0 && (
                             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {product.images.map((img, index) => (
+                                {productImages.map((img, index) => (
                                     <div key={index} className="relative group rounded-xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
                                         <img src={img.url} alt={`Product view ${index + 1}`} className="h-28 w-full object-cover" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
@@ -1345,7 +1377,7 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                     <div>
                         <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                             <label className={labelClass + ' mb-0'} style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                Tags <span className="text-[10px] normal-case font-normal" style={{ color: tagsAtLimit ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>({product.tags?.length || 0}/{MAX_TAGS})</span>
+                                Tags <span className="text-[10px] normal-case font-normal" style={{ color: tagsAtLimit ? 'hsl(0, 72%, 55%)' : 'hsl(var(--muted-foreground))' }}>({productTags.length}/{MAX_TAGS})</span>
                             </label>
                             <motion.button type="button" disabled={generatingTags || uploadingImages || tagsAtLimit}
                                 whileHover={{ scale: tagsAtLimit ? 1 : 1.02 }} whileTap={{ scale: tagsAtLimit ? 1 : 0.98 }}
@@ -1370,9 +1402,9 @@ const ProductForm = ({ product, setProduct, onSave, onClose, uploadingImages, ca
                                 Add
                             </motion.button>
                         </div>
-                        {product.tags.length > 0 && (
+                        {productTags.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
-                                {product.tags.map((tag, index) => (
+                                {productTags.map((tag, index) => (
                                     <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
                                         style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'hsl(150, 60%, 45%)' }}>
                                         {tag}

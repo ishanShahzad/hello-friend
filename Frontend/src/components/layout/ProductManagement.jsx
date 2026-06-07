@@ -11,7 +11,10 @@ import axios from "axios";
 import { getAuthToken } from "../../utils/cookieHelper";
 
 const ProductManagement = () => {
-    const { products, loading, categories, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats } = useOutletContext();
+    const context = useOutletContext() || {};
+    const { products = [], loading, categories = [], searchTerm = '', setSearchTerm, selectedCategory = 'all', setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats } = context;
+    const safeProducts = Array.isArray(products) ? products : [];
+    const safeCategories = Array.isArray(categories) ? categories : [];
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
@@ -61,8 +64,8 @@ const ProductManagement = () => {
 
     const handleToggleSelectMode = () => { setSelectMode(!selectMode); setSelectedProducts([]); };
     const handleSelectProduct = (product) => { setSelectedProducts(prev => prev.find(p => p._id === product._id) ? prev.filter(p => p._id !== product._id) : [...prev, product]); };
-    const handleSelectAll = () => { selectedProducts.length === products.length ? setSelectedProducts([]) : setSelectedProducts([...products]); };
-    const handleBulkOperationSuccess = () => { setSelectedProducts([]); setSelectMode(false); fetchProducts(); };
+    const handleSelectAll = () => { selectedProducts.length === safeProducts.length ? setSelectedProducts([]) : setSelectedProducts([...safeProducts]); };
+    const handleBulkOperationSuccess = () => { setSelectedProducts([]); setSelectMode(false); fetchProducts?.(); };
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className='p-3 sm:p-4 lg:p-6'>
@@ -138,13 +141,13 @@ const ProductManagement = () => {
                         <div className="flex items-center gap-2 flex-1">
                             <Filter size={18} style={{ color: 'hsl(var(--muted-foreground))' }} className="flex-shrink-0" />
                             <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="glass-input cursor-pointer font-medium flex-1">
-                                {['all', ...categories].map(category => (<option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>))}
+                                {['all', ...safeCategories].map(category => (<option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>))}
                             </select>
                         </div>
-                        {selectMode && products.length > 0 && (
+                        {selectMode && safeProducts.length > 0 && (
                             <button onClick={handleSelectAll} className="px-3 sm:px-4 py-2 rounded-xl text-sm whitespace-nowrap font-medium"
                                 style={{ background: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }}>
-                                {selectedProducts.length === products.length ? 'Deselect All' : 'Select All'}
+                                {selectedProducts.length === safeProducts.length ? 'Deselect All' : 'Select All'}
                             </button>
                         )}
                     </div>
@@ -156,14 +159,14 @@ const ProductManagement = () => {
                 <div className="glass-panel flex justify-center items-center min-h-[300px]"><Loader /></div>
             ) : (
                 <div className="glass-panel p-4 sm:p-6 overflow-hidden">
-                    {products.length === 0 ? (
+                    {safeProducts.length === 0 ? (
                         <div className="p-8 text-center">
                             <div className="glass-inner inline-flex p-4 rounded-2xl mb-3"><Package size={40} style={{ color: 'hsl(var(--muted-foreground))' }} /></div>
                             <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No products found. Try adjusting your search or add a new product.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {products.map((product, index) => (
+                            {safeProducts.map((product, index) => (
                                 <div key={index} className="relative">
                                     {selectMode && (
                                         <div className="absolute top-2 left-2 z-10">
