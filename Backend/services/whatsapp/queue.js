@@ -348,6 +348,7 @@ exports.stopQueueProcessor = () => {
 exports.findPendingJobByPhone = async (phone) => {
     return WhatsAppPendingMessage.findOne({
         phone,
+        messageType: { $ne: 'info' }, // info messages have no Yes/No vote
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     }).sort({ createdAt: -1 });
 };
@@ -356,6 +357,7 @@ exports.findPendingJobByPhone = async (phone) => {
 exports.findPendingJobByOrderId = async (orderId) => {
     return WhatsAppPendingMessage.findOne({
         orderId,
+        messageType: { $ne: 'info' },
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     });
 };
