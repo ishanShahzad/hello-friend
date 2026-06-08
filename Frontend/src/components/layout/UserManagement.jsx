@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { Search, Filter, User, UserX, UserCheck, Shield, ShieldOff, Trash2, Users, UserCog, AlertCircle } from 'lucide-react';
+import { Search, Filter, User, UserX, UserCheck, Shield, ShieldOff, Trash2, Users, UserCog, AlertCircle, Store, CalendarDays, CreditCard, MessageCircle, Mail, Clock, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Loader from '../common/Loader';
@@ -19,6 +19,7 @@ const UserManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [unblockingUserId, setUnblockingUserId] = useState('');
 
   const serializeFilters = () => {
     let params = new URLSearchParams();
@@ -60,15 +61,49 @@ const UserManagement = () => {
     catch (error) { toast.error('Server error'); } setShowRoleModal(false); setSelectedUser(null);
   };
 
+  const handleUnblockSeller = async (user) => {
+    if (!window.confirm(`Unblock ${user.username}'s store and extend the trial by 15 days?`)) return;
+    try {
+      setUnblockingUserId(user._id);
+      const token = getAuthToken();
+      const res = await axios.patch(
+        `${import.meta.env.VITE_API_URL}api/user/seller/${user._id}/unblock-subscription`,
+        { extensionDays: 15 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data?.msg || 'Seller unblocked');
+      fetchUsers();
+      fetchAllUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.msg || 'Failed to unblock seller');
+    } finally {
+      setUnblockingUserId('');
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Not set';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return 'Not set';
+    return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const sellerWhatsApp = (user) => user.sellerInfo?.whatsappNumber || user.sellerInfo?.phoneNumber || user.whatsappInfo?.number || '';
+  const sellerPlan = (user) => user.sellerSubscription?.planName || (user.sellerSubscription?.plan ? user.sellerSubscription.plan.replace(/_/g, ' ') : 'No plan');
+  const sellerPlanExpiry = (user) => user.sellerSubscription?.currentPeriodEnd || user.sellerSubscription?.freePeriodEndDate || user.sellerSubscription?.trialEndDate || null;
+  const isSellerSubscriptionBlocked = (user) => user.role === 'seller' && (user.sellerSubscription?.status === 'blocked' || user.store?.isActive === false);
+
   const totalUsers = allUsers.length;
   const activeUsers = allUsers.filter(u => u.status === 'active').length;
   const adminUsers = allUsers.filter(u => u.role === 'admin').length;
   const sellerUsers = allUsers.filter(u => u.role === 'seller').length;
+  const blockedSellers = allUsers.filter(isSellerSubscriptionBlocked).length;
 
   const statsCards = [
     { label: 'Total Users', value: totalUsers, icon: <Users size={18} />, color: 'hsl(220, 70%, 55%)' },
     { label: 'Active Users', value: activeUsers, icon: <UserCheck size={18} />, color: 'hsl(150, 60%, 45%)' },
     { label: 'Sellers', value: sellerUsers, icon: <Shield size={18} />, color: 'hsl(160, 60%, 40%)' },
+    { label: 'Blocked Sellers', value: blockedSellers, icon: <UserX size={18} />, color: 'hsl(0, 72%, 55%)' },
     { label: 'Admins', value: adminUsers, icon: <Shield size={18} />, color: 'hsl(200, 80%, 50%)' },
   ];
 
@@ -93,7 +128,7 @@ const UserManagement = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           {statsCards.map((card, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} whileHover={{ y: -3 }} className="glass-card p-5">
               <div className="flex justify-between items-center">
@@ -141,7 +176,7 @@ const UserManagement = () => {
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      {['User', 'Email', 'Role', 'Status', 'Actions'].map(h => (
+                      {['User', 'Contact', 'Role', 'Status', 'Seller Plan', 'Store', 'Actions'].map(h => (
                         <th key={h} className="py-3 px-6 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>{h}</th>
                       ))}
                     </tr>
@@ -156,16 +191,61 @@ const UserManagement = () => {
                               <div className="flex-shrink-0 h-10 w-10 rounded-full glass-inner flex items-center justify-center">
                                 <User className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} />
                               </div>
-                              <div className="ml-4"><div className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{user.username}</div></div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{user.username}</div>
+                                <div className="text-xs flex items-center gap-1 mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                  <CalendarDays size={12} /> Joined {formatDate(user.createdAt)}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                          <td className="py-4 px-6 whitespace-nowrap"><div className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{user.email}</div></td>
+                          <td className="py-4 px-6 min-w-[220px]">
+                            <div className="text-sm flex items-center gap-1.5" style={{ color: 'hsl(var(--foreground))' }}><Mail size={13} /> {user.email}</div>
+                            {user.role === 'seller' && (
+                              <div className="text-xs flex items-center gap-1.5 mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                <MessageCircle size={13} /> {sellerWhatsApp(user) || 'No WhatsApp linked'}
+                              </div>
+                            )}
+                          </td>
                           <td className="py-4 px-6 whitespace-nowrap">{getRoleBadge(user.role)}</td>
                           <td className="py-4 px-6 whitespace-nowrap">{getStatusBadge(user.status)}</td>
+                          <td className="py-4 px-6 min-w-[190px]">
+                            {user.role === 'seller' ? (
+                              <div>
+                                <div className="text-sm font-semibold flex items-center gap-1.5 capitalize" style={{ color: 'hsl(var(--foreground))' }}>
+                                  <CreditCard size={13} /> {sellerPlan(user)}
+                                </div>
+                                <div className="text-xs flex items-center gap-1.5 mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                  <Clock size={12} /> Expires {formatDate(sellerPlanExpiry(user))}
+                                </div>
+                                {user.sellerSubscription?.status && <div className="text-[11px] mt-1 capitalize" style={{ color: isSellerSubscriptionBlocked(user) ? 'hsl(0, 72%, 55%)' : 'hsl(150, 60%, 40%)' }}>{user.sellerSubscription.status.replace(/_/g, ' ')}</div>}
+                              </div>
+                            ) : <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Not a seller</span>}
+                          </td>
+                          <td className="py-4 px-6 min-w-[190px]">
+                            {user.role === 'seller' ? (
+                              <div>
+                                <div className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'hsl(var(--foreground))' }}>
+                                  <Store size={13} /> {user.store?.storeName || 'No store'}
+                                </div>
+                                <div className="text-xs mt-1 font-mono" style={{ color: 'hsl(var(--muted-foreground))' }}>{user.store?.storeSlug ? `${user.store.storeSlug}.rozare.com` : 'No subdomain'}</div>
+                                <div className="text-[11px] mt-1" style={{ color: user.store?.isActive === false ? 'hsl(0, 72%, 55%)' : 'hsl(150, 60%, 40%)' }}>
+                                  {user.store?.isActive === false ? `Blocked ${formatDate(user.store?.blockedAt)}` : 'Store active'}
+                                </div>
+                              </div>
+                            ) : <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>-</span>}
+                          </td>
                           <td className="py-4 px-6 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                            <div className="flex flex-wrap gap-2">
                               {currentUser.email === user.email ? <span className="text-xs font-medium px-2 py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>You</span> : (
                                 <>
+                                  {isSellerSubscriptionBlocked(user) && (
+                                    <button onClick={() => handleUnblockSeller(user)} disabled={unblockingUserId === user._id} className="p-2 rounded-xl transition-colors disabled:opacity-50"
+                                      style={{ color: 'hsl(150, 60%, 45%)', background: 'rgba(16, 185, 129, 0.08)' }}
+                                      title="Unblock seller store and extend trial">
+                                      {unblockingUserId === user._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                                    </button>
+                                  )}
                                   <button onClick={() => handleBlockUser(user)} className="p-2 rounded-xl transition-colors"
                                     style={user.status === 'active' ? { color: 'hsl(0, 72%, 55%)', background: 'rgba(239, 68, 68, 0.08)' } : { color: 'hsl(150, 60%, 45%)', background: 'rgba(16, 185, 129, 0.08)' }}
                                     title={user.status === 'active' ? 'Block User' : 'Unblock User'}>

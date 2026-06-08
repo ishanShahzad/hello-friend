@@ -293,7 +293,7 @@ exports.googleCallback = async (req, res) => {
 
 // Send OTP for seller registration
 exports.sendSellerOTP = async (req, res) => {
-    const { username, email, password, phoneNumber, address, city, country, businessName } = req.body;
+    const { username, email, password, phoneNumber, address, city, state, stateCode, country, countryCode, businessName } = req.body;
 
     try {
         const existingUser = await User.findOne({ email });
@@ -316,7 +316,7 @@ exports.sendSellerOTP = async (req, res) => {
             }
         });
         // Store seller info in a separate field via the OTP doc
-        otpDoc._sellerInfo = { phoneNumber, address, city, country, businessName };
+        otpDoc._sellerInfo = { phoneNumber, address, city, state, stateCode, country, countryCode, businessName };
         await otpDoc.save();
 
         // Professional seller OTP email template
@@ -400,7 +400,7 @@ exports.sendSellerOTP = async (req, res) => {
 
 // Verify OTP and create seller
 exports.verifySellerOTPAndRegister = async (req, res) => {
-    const { email, otp, phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, sellerType, whatsappNumber } = req.body;
+    const { email, otp, phoneNumber, address, city, state, stateCode, country, countryCode, businessName, storeName, storeDescription, socialLinks, sellerType, whatsappNumber } = req.body;
 
     try {
         const otpDoc = await OTP.findOne({ email, otp });
@@ -434,7 +434,10 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
             whatsappVerified: whatsappVerifiedServerSide,
             address: address?.trim() || '',
             city: city?.trim() || '',
+            state: state?.trim() || '',
+            stateCode: stateCode?.trim() || '',
             country: country?.trim() || '',
+            countryCode: countryCode?.trim() || '',
             businessName: businessName?.trim() || ''
         };
         await newUser.save();
@@ -468,7 +471,10 @@ exports.verifySellerOTPAndRegister = async (req, res) => {
                     address: {
                         street: address?.trim() || '',
                         city: city?.trim() || '',
-                        country: country?.trim() || ''
+                        state: state?.trim() || '',
+                        stateCode: stateCode?.trim() || '',
+                        country: country?.trim() || '',
+                        countryCode: countryCode?.trim() || ''
                     }
                 });
                 await newStore.save();

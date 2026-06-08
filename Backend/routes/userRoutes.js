@@ -1,11 +1,12 @@
 
 const express = require('express')
-const { getUsers, toggleBlockUser, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, savePushToken, removePushToken, initiateWhatsAppChange, verifyWhatsAppChange, initiateEmailChange, verifyEmailChange } = require('../controllers/userController')
+const { getUsers, toggleBlockUser, unblockSellerSubscription, toggleAdminUser, deleteUser, deleteOwnAccount, getSingle, updateUser, becomeSeller, getShippingInfo, updateShippingInfo, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, savePushToken, removePushToken, initiateWhatsAppChange, verifyWhatsAppChange, initiateEmailChange, verifyEmailChange } = require('../controllers/userController')
 const verifyToken = require('../middleware/authMiddleware')
 const router = express.Router()
 
 router.get('/get', verifyToken, getUsers)
 router.patch('/block-toggle/:id' , verifyToken, toggleBlockUser)
+router.patch('/seller/:id/unblock-subscription' , verifyToken, unblockSellerSubscription)
 router.patch('/admin-toggle/:id' , verifyToken, toggleAdminUser)
 router.delete('/delete/:id' , verifyToken, deleteUser)
 router.get('/single' , verifyToken, getSingle)

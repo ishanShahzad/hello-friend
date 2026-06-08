@@ -6,6 +6,8 @@ const { trackCompleteRegistration } = require('../services/tiktokEventsApi')
 const { normalizeSocialLinks } = require('../services/socialLinksService')
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService')
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates')
+const SellerSubscription = require('../models/SellerSubscription')
+const Store = require('../models/Store')
 
 exports.getUsers = async (req, res) => {
     const { role: userRole, id: _id } = req.user
@@ -24,7 +26,34 @@ exports.getUsers = async (req, res) => {
             ]
         }
         const users = await User.find(query)
-        res.status(200).json({ msg: 'Users fetched succcessfully.', users: users })
+            .select('username email avatar profilePicture role status isVerified sellerInfo whatsappInfo currency savedShippingInfo createdAt updatedAt')
+            .sort({ createdAt: -1 })
+            .lean()
+
+        const sellerIds = users.filter(user => user.role === 'seller').map(user => user._id)
+        const [subscriptions, stores] = await Promise.all([
+            sellerIds.length
+                ? SellerSubscription.find({ seller: { $in: sellerIds } })
+                    .select('seller status plan planName trialStartDate trialEndDate subscribedAt freePeriodEndDate currentPeriodStart currentPeriodEnd bonusExpiryDate blockedAt blockedReason aiMessageLimit cancelledAt createdAt updatedAt')
+                    .lean()
+                : [],
+            sellerIds.length
+                ? Store.find({ seller: { $in: sellerIds } })
+                    .select('seller storeName storeSlug sellerType isActive blockedAt productCurrency productCurrencyStatus previousProductCurrency pendingProductCurrency subdomainPurchase verification address createdAt updatedAt')
+                    .lean()
+                : [],
+        ])
+
+        const subscriptionBySeller = new Map(subscriptions.map(sub => [String(sub.seller), sub]))
+        const storeBySeller = new Map(stores.map(store => [String(store.seller), store]))
+
+        const enrichedUsers = users.map(user => ({
+            ...user,
+            sellerSubscription: user.role === 'seller' ? subscriptionBySeller.get(String(user._id)) || null : null,
+            store: user.role === 'seller' ? storeBySeller.get(String(user._id)) || null : null,
+        }))
+
+        res.status(200).json({ msg: 'Users fetched succcessfully.', users: enrichedUsers })
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server error while fetching users.' })
@@ -47,6 +76,75 @@ exports.toggleBlockUser = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Server error while updating user status.' })
+    }
+}
+
+exports.unblockSellerSubscription = async (req, res) => {
+    const { role } = req.user
+    const { id } = req.params
+    const extensionDays = Math.max(1, Math.min(90, Number.parseInt(req.body?.extensionDays, 10) || 15))
+
+    if (role !== 'admin') return res.status(403).json({ msg: 'Admin access only.' })
+
+    try {
+        const seller = await User.findById(id)
+        if (!seller) return res.status(404).json({ msg: 'Seller not found.' })
+        if (seller.role !== 'seller') return res.status(400).json({ msg: 'This account is not a seller.' })
+
+        const now = new Date()
+        const trialEndDate = new Date(now.getTime() + extensionDays * 24 * 60 * 60 * 1000)
+
+        let subscription = await SellerSubscription.findOne({ seller: seller._id })
+        if (!subscription) {
+            subscription = new SellerSubscription({
+                seller: seller._id,
+                trialStartDate: now,
+                trialEndDate,
+                status: 'trial',
+                plan: 'free_trial',
+                planName: 'Rozare Free Trial',
+                aiMessageLimit: 25,
+            })
+        } else {
+            subscription.status = 'trial'
+            subscription.plan = subscription.plan || 'free_trial'
+            subscription.planName = subscription.planName || 'Rozare Free Trial'
+            subscription.trialEndDate = trialEndDate
+            subscription.blockedAt = null
+            subscription.blockedReason = ''
+            subscription.warningEmailSent = false
+            subscription.cancelledAt = null
+        }
+        await subscription.save()
+
+        seller.status = 'active'
+        await seller.save()
+
+        const store = await Store.findOne({ seller: seller._id })
+        if (store) {
+            store.isActive = true
+            store.blockedAt = null
+            store.subdomainPurchase = {
+                ...(store.subdomainPurchase?.toObject?.() || {}),
+                removalScheduledAt: null,
+            }
+            await store.save()
+        }
+
+        res.status(200).json({
+            msg: `${seller.username}'s store has been unblocked and the trial was extended for ${extensionDays} day${extensionDays === 1 ? '' : 's'}.`,
+            seller: {
+                _id: seller._id,
+                username: seller.username,
+                email: seller.email,
+                status: seller.status,
+            },
+            sellerSubscription: subscription,
+            store,
+        })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: 'Server error while unblocking seller.' })
     }
 }
 
@@ -155,7 +253,7 @@ exports.updateUser = async (req, res) => {
 // Become a seller - update user role and save seller information
 exports.becomeSeller = async (req, res) => {
     const { id: _id } = req.user
-    const { phoneNumber, address, city, country, businessName, storeName, storeDescription, socialLinks, whatsappNumber, whatsappVerified } = req.body
+    const { phoneNumber, address, city, state, stateCode, country, countryCode, businessName, storeName, storeDescription, socialLinks, whatsappNumber, whatsappVerified } = req.body
 
     try {
         // Check if user exists
@@ -217,7 +315,10 @@ exports.becomeSeller = async (req, res) => {
             whatsappVerified: whatsappVerifiedServerSide,
             address: address.trim(),
             city: city.trim(),
+            state: state?.trim() || '',
+            stateCode: stateCode?.trim() || '',
             country: country.trim(),
+            countryCode: countryCode?.trim() || '',
             businessName: businessName?.trim() || ''
         }
         
@@ -240,7 +341,10 @@ exports.becomeSeller = async (req, res) => {
                 address: {
                     street: address?.trim() || '',
                     city: city?.trim() || '',
-                    country: country?.trim() || ''
+                    state: state?.trim() || '',
+                    stateCode: stateCode?.trim() || '',
+                    country: country?.trim() || '',
+                    countryCode: countryCode?.trim() || ''
                 }
             })
             await newStore.save()
@@ -338,8 +442,10 @@ const sanitizeAddress = (a = {}) => ({
     address: (a.address || '').toString().trim(),
     city: (a.city || '').toString().trim(),
     state: (a.state || '').toString().trim(),
+    stateCode: (a.stateCode || '').toString().trim().toUpperCase(),
     postalCode: (a.postalCode || '').toString().trim(),
     country: (a.country || 'Pakistan').toString().trim(),
+    countryCode: (a.countryCode || 'PK').toString().trim().toUpperCase(),
     isDefault: !!a.isDefault,
 });
 

@@ -60,10 +60,13 @@ const storeVisibilitySchema = new mongoose.Schema({
   countryCode: { type: String, default: '' },
   countryKey: { type: String, default: '', index: true },
   region: { type: String, default: '' },
+  regionCode: { type: String, default: '' },
   regionKey: { type: String, default: '', index: true },
   city: { type: String, default: '' },
+  cityStateCode: { type: String, default: '' },
   cityKey: { type: String, default: '', index: true },
   town: { type: String, default: '' },
+  townStateCode: { type: String, default: '' },
   townKey: { type: String, default: '', index: true },
   radiusKm: { type: Number, default: null, min: 0.1, max: 500 },
   location: {
@@ -161,7 +164,15 @@ const storeSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
+    stateCode: {
+      type: String,
+      default: ''
+    },
     country: {
+      type: String,
+      default: ''
+    },
+    countryCode: {
       type: String,
       default: ''
     },

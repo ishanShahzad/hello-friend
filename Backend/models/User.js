@@ -26,7 +26,10 @@ const userSchema = mongoose.Schema({
         whatsappVerified: { type: Boolean, default: false }, // verified via OTP
         address: { type: String },
         city: { type: String },
+        state: { type: String },
+        stateCode: { type: String },
         country: { type: String },
+        countryCode: { type: String },
         businessName: { type: String },
         lastWhatsAppChange: { type: Date },         // Last time WhatsApp number was changed (30-day cooldown)
         lastEmailChange: { type: Date }             // Last time email was changed (30-day cooldown)
@@ -55,8 +58,10 @@ const userSchema = mongoose.Schema({
         address: { type: String, default: '' },
         city: { type: String, default: '' },
         state: { type: String, default: '' },
+        stateCode: { type: String, default: '' },
         postalCode: { type: String, default: '' },
         country: { type: String, default: 'Pakistan' },
+        countryCode: { type: String, default: 'PK' },
     },
 
     // Multiple saved shipping addresses (address book)
@@ -69,8 +74,10 @@ const userSchema = mongoose.Schema({
             address: { type: String, required: true },
             city: { type: String, required: true },
             state: { type: String, default: '' },
+            stateCode: { type: String, default: '' },
             postalCode: { type: String, default: '' },
             country: { type: String, default: 'Pakistan' },
+            countryCode: { type: String, default: 'PK' },
             isDefault: { type: Boolean, default: false },
             createdAt: { type: Date, default: Date.now },
         }

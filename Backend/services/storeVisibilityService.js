@@ -2,6 +2,10 @@
 
 const EARTH_RADIUS_KM = 6371;
 const MAX_RADIUS_KM = 500;
+const {
+  countryCodeFromName,
+  countryNameFromCode,
+} = require('./locationCatalogService');
 
 const VISIBILITY_MODES = new Set(['global', 'country', 'region', 'city', 'town', 'radius']);
 
@@ -48,9 +52,10 @@ function normalizeCountryCode(value) {
 
 function normalizeCountry(value, countryCode = '') {
   const code = normalizeCountryCode(countryCode || value);
-  const country = cleanText(code && COUNTRY_NAMES_BY_CODE[code] ? COUNTRY_NAMES_BY_CODE[code] : value, 80);
+  const catalogName = code ? countryNameFromCode(code) : '';
+  const country = cleanText(catalogName || (code && COUNTRY_NAMES_BY_CODE[code] ? COUNTRY_NAMES_BY_CODE[code] : value), 80);
   const countryKey = normalizeAreaKey(country);
-  const derivedCode = code || COUNTRY_CODES_BY_KEY[countryKey] || '';
+  const derivedCode = code || countryCodeFromName(country) || COUNTRY_CODES_BY_KEY[countryKey] || '';
   return {
     country,
     countryCode: derivedCode,
@@ -80,10 +85,11 @@ function coordinatesFrom(input = {}) {
 
 function fallbackSellerCountry({ store = null, seller = null } = {}) {
   const storeCountry = store?.address?.country;
-  if (storeCountry) return normalizeCountry(storeCountry);
+  if (storeCountry || store?.address?.countryCode) return normalizeCountry(storeCountry, store?.address?.countryCode);
 
   const sellerCountry = seller?.sellerInfo?.country || seller?.savedShippingInfo?.country;
-  if (sellerCountry) return normalizeCountry(sellerCountry);
+  const sellerCountryCode = seller?.sellerInfo?.countryCode || seller?.savedShippingInfo?.countryCode;
+  if (sellerCountry || sellerCountryCode) return normalizeCountry(sellerCountry, sellerCountryCode);
 
   const mapped = CURRENCY_COUNTRY[String(seller?.currency || '').toUpperCase()];
   if (mapped) return normalizeCountry(mapped.country, mapped.countryCode);
@@ -104,8 +110,11 @@ function normalizeStoreVisibility(input = {}, options = {}) {
     source.countryCode || (explicitCountry ? '' : fallbackCountry.countryCode)
   );
   const region = cleanText(source.region ?? source.state ?? source.province, 80);
+  const regionCode = cleanText(source.regionCode ?? source.stateCode, 12).toUpperCase();
   const city = cleanText(source.city, 80);
+  const cityStateCode = cleanText(source.cityStateCode ?? source.cityState ?? regionCode, 12).toUpperCase();
   const town = cleanText(source.town ?? source.area ?? source.neighborhood, 80);
+  const townStateCode = cleanText(source.townStateCode ?? source.townState ?? cityStateCode, 12).toUpperCase();
   const coords = coordinatesFrom(source);
   const radiusKm = clampRadiusKm(source.radiusKm ?? source.radius);
 
@@ -115,10 +124,13 @@ function normalizeStoreVisibility(input = {}, options = {}) {
     countryCode: mode === 'global' ? '' : countryInfo.countryCode,
     countryKey: mode === 'global' ? '' : countryInfo.countryKey,
     region: '',
+    regionCode: '',
     regionKey: '',
     city: '',
+    cityStateCode: '',
     cityKey: '',
     town: '',
+    townStateCode: '',
     townKey: '',
     radiusKm: null,
     location: undefined,
@@ -133,6 +145,7 @@ function normalizeStoreVisibility(input = {}, options = {}) {
       throw err;
     }
     visibility.region = region;
+    visibility.regionCode = regionCode;
     visibility.regionKey = normalizeAreaKey(region);
   }
 
@@ -143,6 +156,7 @@ function normalizeStoreVisibility(input = {}, options = {}) {
       throw err;
     }
     visibility.city = city;
+    visibility.cityStateCode = cityStateCode;
     visibility.cityKey = normalizeAreaKey(city);
   }
 
@@ -153,6 +167,7 @@ function normalizeStoreVisibility(input = {}, options = {}) {
       throw err;
     }
     visibility.town = town;
+    visibility.townStateCode = townStateCode;
     visibility.townKey = normalizeAreaKey(town);
   }
 
@@ -168,10 +183,13 @@ function normalizeStoreVisibility(input = {}, options = {}) {
       coordinates: [coords.lng, coords.lat],
     };
     visibility.city = city;
+    visibility.cityStateCode = cityStateCode;
     visibility.cityKey = normalizeAreaKey(city);
     visibility.region = region;
+    visibility.regionCode = regionCode;
     visibility.regionKey = normalizeAreaKey(region);
     visibility.town = town;
+    visibility.townStateCode = townStateCode;
     visibility.townKey = normalizeAreaKey(town);
   }
 

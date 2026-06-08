@@ -10,8 +10,11 @@ const emptyLocation = {
   country: '',
   countryCode: '',
   region: '',
+  regionCode: '',
   city: '',
+  cityStateCode: '',
   town: '',
+  townStateCode: '',
   lat: '',
   lng: '',
 };
@@ -42,7 +45,9 @@ const defaultFromUser = (user) => {
   return {
     ...emptyLocation,
     country: clean(defaultAddress?.country || user?.savedShippingInfo?.country || user?.sellerInfo?.country),
+    countryCode: clean(defaultAddress?.countryCode || user?.savedShippingInfo?.countryCode || user?.sellerInfo?.countryCode),
     region: clean(defaultAddress?.state || user?.savedShippingInfo?.state),
+    regionCode: clean(defaultAddress?.stateCode || user?.savedShippingInfo?.stateCode),
     city: clean(defaultAddress?.city || user?.savedShippingInfo?.city || user?.sellerInfo?.city),
   };
 };
@@ -128,8 +133,11 @@ export const BuyerLocationProvider = ({ children }) => {
     if (buyerLocation.country) params.set('buyerCountry', buyerLocation.country);
     if (buyerLocation.countryCode) params.set('buyerCountryCode', buyerLocation.countryCode);
     if (buyerLocation.region) params.set('buyerRegion', buyerLocation.region);
+    if (buyerLocation.regionCode) params.set('buyerRegionCode', buyerLocation.regionCode);
     if (buyerLocation.city) params.set('buyerCity', buyerLocation.city);
+    if (buyerLocation.cityStateCode) params.set('buyerCityStateCode', buyerLocation.cityStateCode);
     if (buyerLocation.town) params.set('buyerTown', buyerLocation.town);
+    if (buyerLocation.townStateCode) params.set('buyerTownStateCode', buyerLocation.townStateCode);
     if (buyerLocation.lat && buyerLocation.lng) {
       params.set('buyerLat', buyerLocation.lat);
       params.set('buyerLng', buyerLocation.lng);

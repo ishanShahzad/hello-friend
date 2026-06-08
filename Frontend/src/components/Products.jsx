@@ -265,6 +265,8 @@ function Products() {
         )}
       </div>
 
+      <BuyerLocationSelector compact />
+
       {/* Search */}
       <div>
         <label className='block text-xs font-semibold uppercase tracking-wider mb-2' style={{ color: 'hsl(var(--muted-foreground))' }}>Search</label>
@@ -568,7 +570,6 @@ function Products() {
           </form>
 
           <StoreSearch />
-          <BuyerLocationSelector compact />
           <div className='flex flex-col sm:flex-row justify-between items-center gap-3'>
             <div className='flex items-center gap-3'>
               <h1 className='text-2xl lg:text-3xl font-extrabold tracking-tight'>All Products</h1>

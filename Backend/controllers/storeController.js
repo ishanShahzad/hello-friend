@@ -240,7 +240,7 @@ exports.createStore = async (req, res) => {
         }
 
         const seller = await User.findById(sellerId)
-            .select('currency sellerInfo.country savedShippingInfo.country')
+            .select('currency sellerInfo.country sellerInfo.countryCode savedShippingInfo.country savedShippingInfo.countryCode')
             .lean();
         const initialAddress = address || {
             street: '',
@@ -354,7 +354,7 @@ exports.getMyStore = async (req, res) => {
         }
 
         const seller = await User.findById(sellerId)
-            .select('currency sellerInfo.country savedShippingInfo.country')
+            .select('currency sellerInfo.country sellerInfo.countryCode savedShippingInfo.country savedShippingInfo.countryCode')
             .lean();
 
         await ensureStoreVisibilityInitialized(store, seller);
@@ -577,7 +577,9 @@ exports.updateStore = async (req, res) => {
                 street: address.street || '',
                 city: address.city || '',
                 state: address.state || '',
+                stateCode: address.stateCode || '',
                 country: address.country || '',
+                countryCode: address.countryCode || '',
                 postalCode: address.postalCode || ''
             };
             store.markModified('address');
@@ -606,13 +608,13 @@ exports.updateStore = async (req, res) => {
 
         if (visibility !== undefined) {
             const seller = await User.findById(sellerId)
-                .select('currency sellerInfo.country savedShippingInfo.country')
+                .select('currency sellerInfo.country sellerInfo.countryCode savedShippingInfo.country savedShippingInfo.countryCode')
                 .lean();
             store.visibility = normalizeStoreVisibility(visibility, { store, seller });
             store.markModified('visibility');
         } else {
             const seller = await User.findById(sellerId)
-                .select('currency sellerInfo.country savedShippingInfo.country')
+                .select('currency sellerInfo.country sellerInfo.countryCode savedShippingInfo.country savedShippingInfo.countryCode')
                 .lean();
             await ensureStoreVisibilityInitialized(store, seller);
         }

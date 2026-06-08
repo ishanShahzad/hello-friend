@@ -7,6 +7,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import SEOHead from '../components/common/SEOHead';
 import PhoneField, { isValidPhone } from '../components/common/PhoneField';
+import LocationAutocomplete from '../components/common/LocationAutocomplete';
 import { getAuthToken, setCrossDomainCookie } from "../utils/cookieHelper";
 import {
   createTikTokEventId,
@@ -23,7 +24,7 @@ export default function BecomeSeller() {
   const [loading, setLoading] = useState(false);
   // Steps: 0=landing, 0.5=guest signup, 0.6=OTP verify, 1=seller info, 2=store setup, 3=WhatsApp verify
   const [formStep, setFormStep] = useState(0);
-  const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', country: '', businessName: '' });
+  const [formData, setFormData] = useState({ phoneNumber: '', address: '', city: '', state: '', stateCode: '', country: '', countryCode: '', businessName: '' });
   const [storeData, setStoreData] = useState({ storeName: '', storeDescription: '', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
   // Store name availability state
   const [storeSlugPreview, setStoreSlugPreview] = useState('');
@@ -287,8 +288,8 @@ export default function BecomeSeller() {
     setFormError('');
     if (!formData.phoneNumber || !isValidPhone(formData.phoneNumber)) { setFormError('Please enter a valid phone number (select your country and enter the number)'); return; }
     if (!formData.address || formData.address.trim().length < 5) { setFormError('Please enter a valid address'); return; }
-    if (!formData.city || formData.city.trim().length < 2) { setFormError('Please enter your city'); return; }
-    if (!formData.country || formData.country.trim().length < 2) { setFormError('Please enter your country'); return; }
+    if (!formData.country || !formData.countryCode) { setFormError('Please select your country from the list'); return; }
+    if (!formData.city || formData.city.trim().length < 2) { setFormError('Please select your city from the list'); return; }
     trackSellerFormSubmitted('seller_details');
     setFormStep(2);
   };
@@ -328,7 +329,12 @@ export default function BecomeSeller() {
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}api/user/become-seller`, {
         phoneNumber: formData.phoneNumber.trim(), address: formData.address.trim(),
-        city: formData.city.trim(), country: formData.country.trim(), businessName: formData.businessName.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        stateCode: formData.stateCode.trim(),
+        country: formData.country.trim(),
+        countryCode: formData.countryCode.trim(),
+        businessName: formData.businessName.trim(),
         whatsappNumber: formData.phoneNumber.trim(),
         whatsappVerified: true,
         storeName: storeData.storeName?.trim() || '',
@@ -703,15 +709,64 @@ export default function BecomeSeller() {
                 <input type="text" name="address" value={formData.address} onChange={handleInputChange} placeholder="Street address" className="glass-input" required />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>City <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
-                  <input type="text" name="city" value={formData.city} onChange={handleInputChange} placeholder="Your city" className="glass-input" required />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Country <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
-                  <input type="text" name="country" value={formData.country} onChange={handleInputChange} placeholder="Your country" className="glass-input" required />
-                </div>
+                <LocationAutocomplete
+                  type="country"
+                  label="Country"
+                  value={formData.country}
+                  code={formData.countryCode}
+                  placeholder="Select country"
+                  required
+                  onSelect={(option) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      country: option.name,
+                      countryCode: option.isoCode,
+                      state: '',
+                      stateCode: '',
+                      city: '',
+                    }));
+                    setFormError('');
+                  }}
+                  onClear={() => setFormData(prev => ({ ...prev, country: '', countryCode: '', state: '', stateCode: '', city: '' }))}
+                />
+                <LocationAutocomplete
+                  type="state"
+                  label="State/Province"
+                  value={formData.state}
+                  code={formData.stateCode}
+                  countryCode={formData.countryCode}
+                  countryName={formData.country}
+                  placeholder="Select state"
+                  disabled={!formData.country && !formData.countryCode}
+                  onSelect={(option) => {
+                    setFormData(prev => ({ ...prev, state: option.name, stateCode: option.isoCode, city: '' }));
+                    setFormError('');
+                  }}
+                  onClear={() => setFormData(prev => ({ ...prev, state: '', stateCode: '', city: '' }))}
+                />
               </div>
+              <LocationAutocomplete
+                type="city"
+                label="City"
+                value={formData.city}
+                code={formData.stateCode}
+                countryCode={formData.countryCode}
+                countryName={formData.country}
+                stateCode={formData.stateCode}
+                stateName={formData.state}
+                placeholder="Select city"
+                disabled={!formData.country && !formData.countryCode}
+                required
+                onSelect={(option) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    city: option.name,
+                    stateCode: prev.stateCode || option.stateCode || '',
+                  }));
+                  setFormError('');
+                }}
+                onClear={() => setFormData(prev => ({ ...prev, city: '' }))}
+              />
               {formError && formStep === 1 && (
                 <div className="p-3 rounded-lg text-sm font-medium" style={{ background: 'hsla(0, 72%, 55%, 0.08)', color: 'hsl(0, 72%, 55%)', border: '1px solid hsla(0, 72%, 55%, 0.15)' }}>{formError}</div>
               )}

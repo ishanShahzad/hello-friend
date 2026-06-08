@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { loadStripe } from '@stripe/stripe-js'
 import Loader from "../common/Loader";
 import PhoneField, { isValidPhone } from "../common/PhoneField";
+import LocationAutocomplete from "../common/LocationAutocomplete";
 import { getAuthToken } from "../../utils/cookieHelper";
 import {
   createTikTokEventId,
@@ -282,8 +283,10 @@ export default function Checkout() {
     setValue('address', savedShippingInfo.address || '');
     setValue('city', savedShippingInfo.city || '');
     setValue('state', savedShippingInfo.state || '');
+    setValue('stateCode', savedShippingInfo.stateCode || '');
     setValue('postalCode', savedShippingInfo.postalCode || '');
     setValue('country', savedShippingInfo.country || 'Pakistan');
+    setValue('countryCode', savedShippingInfo.countryCode || (savedShippingInfo.country === 'Pakistan' ? 'PK' : ''));
     toast.success('Shipping info auto-filled!');
   };
 
@@ -355,8 +358,10 @@ export default function Checkout() {
       address: "",
       city: "",
       state: "",
+      stateCode: "",
       postalCode: "",
       country: "Pakistan",
+      countryCode: "PK",
       shippingMethod: "standard",
       instructions: "",
       // Payment
@@ -366,8 +371,10 @@ export default function Checkout() {
       billingAddress: "",
       billingCity: "",
       billingState: "",
+      billingStateCode: "",
       billingPostalCode: "",
       billingCountry: "Pakistan",
+      billingCountryCode: "PK",
     },
   });
 
@@ -477,6 +484,7 @@ export default function Checkout() {
         "state",
         "postalCode",
         "country",
+        "countryCode",
       ]);
       if (!valid) return;
 
@@ -560,15 +568,20 @@ export default function Checkout() {
         address: data.address,
         city: data.city,
         state: data.state,
+        stateCode: data.stateCode || "",
         postalCode: data.postalCode,
         country: data.country || "Pakistan",
+        countryCode: data.countryCode || "",
       },
       buyerLocation: {
         country: buyerLocation.country || data.country || "Pakistan",
-        countryCode: buyerLocation.countryCode || "",
+        countryCode: buyerLocation.countryCode || data.countryCode || "",
         region: buyerLocation.region || data.state || "",
+        regionCode: buyerLocation.regionCode || data.stateCode || "",
         city: buyerLocation.city || data.city || "",
+        cityStateCode: buyerLocation.cityStateCode || data.stateCode || "",
         town: buyerLocation.town || "",
+        townStateCode: buyerLocation.townStateCode || "",
         lat: buyerLocation.lat || "",
         lng: buyerLocation.lng || "",
       },
@@ -633,8 +646,8 @@ export default function Checkout() {
       // Check if shipping info changed - save it
       const currentShipping = {
         fullName: data.fullName, email: data.email, phone: data.phone,
-        address: data.address, city: data.city, state: data.state,
-        postalCode: data.postalCode, country: data.country || 'Pakistan',
+        address: data.address, city: data.city, state: data.state, stateCode: data.stateCode || '',
+        postalCode: data.postalCode, country: data.country || 'Pakistan', countryCode: data.countryCode || '',
       };
       const hasChanged = !savedShippingInfo ||
         Object.keys(currentShipping).some(k => currentShipping[k] !== (savedShippingInfo[k] || ''));
@@ -983,28 +996,81 @@ export default function Checkout() {
                               {...register("address", { required: "Address is required" })}
                               error={errors.address}
                             />
-                            <InputField
-                              placeholder="City"
-                              {...register("city", { required: "City is required" })}
-                              error={errors.city}
+                            <input type="hidden" {...register("country", { required: "Country is required" })} />
+                            <input type="hidden" {...register("countryCode", { required: "Country is required" })} />
+                            <input type="hidden" {...register("state")} />
+                            <input type="hidden" {...register("stateCode")} />
+                            <input type="hidden" {...register("city", { required: "City is required" })} />
+                            <LocationAutocomplete
+                              type="country"
+                              label="Country"
+                              value={watch("country")}
+                              code={watch("countryCode")}
+                              placeholder="Select country"
+                              required
+                              onSelect={(option) => {
+                                setValue("country", option.name, { shouldValidate: true, shouldDirty: true });
+                                setValue("countryCode", option.isoCode, { shouldValidate: true, shouldDirty: true });
+                                setValue("state", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("stateCode", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("city", "", { shouldValidate: true, shouldDirty: true });
+                              }}
+                              onClear={() => {
+                                setValue("country", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("countryCode", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("state", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("stateCode", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("city", "", { shouldValidate: true, shouldDirty: true });
+                              }}
                             />
-                            <InputField
-                              placeholder="State"
-                              {...register("state", { required: "State is required" })}
-                              error={errors.state}
+                            <LocationAutocomplete
+                              type="state"
+                              label="State/Province"
+                              value={watch("state")}
+                              code={watch("stateCode")}
+                              countryCode={watch("countryCode")}
+                              countryName={watch("country")}
+                              placeholder="Select state"
+                              disabled={!watch("country") && !watch("countryCode")}
+                              onSelect={(option) => {
+                                setValue("state", option.name, { shouldValidate: true, shouldDirty: true });
+                                setValue("stateCode", option.isoCode, { shouldValidate: true, shouldDirty: true });
+                                setValue("city", "", { shouldValidate: true, shouldDirty: true });
+                              }}
+                              onClear={() => {
+                                setValue("state", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("stateCode", "", { shouldValidate: true, shouldDirty: true });
+                                setValue("city", "", { shouldValidate: true, shouldDirty: true });
+                              }}
+                            />
+                            <LocationAutocomplete
+                              type="city"
+                              label="City"
+                              value={watch("city")}
+                              code={watch("stateCode")}
+                              countryCode={watch("countryCode")}
+                              countryName={watch("country")}
+                              stateCode={watch("stateCode")}
+                              stateName={watch("state")}
+                              placeholder="Select city"
+                              disabled={!watch("country") && !watch("countryCode")}
+                              required
+                              onSelect={(option) => {
+                                setValue("city", option.name, { shouldValidate: true, shouldDirty: true });
+                                if (!watch("stateCode") && option.stateCode) setValue("stateCode", option.stateCode, { shouldValidate: true, shouldDirty: true });
+                              }}
+                              onClear={() => setValue("city", "", { shouldValidate: true, shouldDirty: true })}
                             />
                             <InputField
                               placeholder="Postal Code"
                               {...register("postalCode", { required: "Postal code is required" })}
                               error={errors.postalCode}
                             />
-                            <div className="md:col-span-2">
-                              <InputField
-                                placeholder="Country"
-                                {...register("country")}
-                                error={errors.country}
-                              />
-                            </div>
+                            {(errors.country || errors.city) && (
+                              <p className="md:col-span-2 text-sm" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                                {errors.country?.message || errors.city?.message}
+                              </p>
+                            )}
                           </div>
 
                           {/* Shipping Method Selection - Grouped by Seller */}
@@ -1324,19 +1390,70 @@ export default function Checkout() {
                             })}
                             error={errors.billingAddress}
                           />
-                          <InputField
-                            placeholder="Billing City"
-                            {...register("billingCity", {
-                              required: !billingSameAsShipping && "Billing city is required"
-                            })}
-                            error={errors.billingCity}
+                          <input type="hidden" {...register("billingCountry", { required: !billingSameAsShipping && "Billing country is required" })} />
+                          <input type="hidden" {...register("billingCountryCode", { required: !billingSameAsShipping && "Billing country is required" })} />
+                          <input type="hidden" {...register("billingState")} />
+                          <input type="hidden" {...register("billingStateCode")} />
+                          <input type="hidden" {...register("billingCity", { required: !billingSameAsShipping && "Billing city is required" })} />
+                          <LocationAutocomplete
+                            type="country"
+                            label="Billing Country"
+                            value={watch("billingCountry")}
+                            code={watch("billingCountryCode")}
+                            placeholder="Select billing country"
+                            required={!billingSameAsShipping}
+                            onSelect={(option) => {
+                              setValue("billingCountry", option.name, { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCountryCode", option.isoCode, { shouldValidate: true, shouldDirty: true });
+                              setValue("billingState", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingStateCode", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCity", "", { shouldValidate: true, shouldDirty: true });
+                            }}
+                            onClear={() => {
+                              setValue("billingCountry", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCountryCode", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingState", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingStateCode", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCity", "", { shouldValidate: true, shouldDirty: true });
+                            }}
                           />
-                          <InputField
-                            placeholder="Billing State"
-                            {...register("billingState", {
-                              required: !billingSameAsShipping && "Billing state is required"
-                            })}
-                            error={errors.billingState}
+                          <LocationAutocomplete
+                            type="state"
+                            label="Billing State/Province"
+                            value={watch("billingState")}
+                            code={watch("billingStateCode")}
+                            countryCode={watch("billingCountryCode")}
+                            countryName={watch("billingCountry")}
+                            placeholder="Select billing state"
+                            disabled={!watch("billingCountry") && !watch("billingCountryCode")}
+                            onSelect={(option) => {
+                              setValue("billingState", option.name, { shouldValidate: true, shouldDirty: true });
+                              setValue("billingStateCode", option.isoCode, { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCity", "", { shouldValidate: true, shouldDirty: true });
+                            }}
+                            onClear={() => {
+                              setValue("billingState", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingStateCode", "", { shouldValidate: true, shouldDirty: true });
+                              setValue("billingCity", "", { shouldValidate: true, shouldDirty: true });
+                            }}
+                          />
+                          <LocationAutocomplete
+                            type="city"
+                            label="Billing City"
+                            value={watch("billingCity")}
+                            code={watch("billingStateCode")}
+                            countryCode={watch("billingCountryCode")}
+                            countryName={watch("billingCountry")}
+                            stateCode={watch("billingStateCode")}
+                            stateName={watch("billingState")}
+                            placeholder="Select billing city"
+                            disabled={!watch("billingCountry") && !watch("billingCountryCode")}
+                            required={!billingSameAsShipping}
+                            onSelect={(option) => {
+                              setValue("billingCity", option.name, { shouldValidate: true, shouldDirty: true });
+                              if (!watch("billingStateCode") && option.stateCode) setValue("billingStateCode", option.stateCode, { shouldValidate: true, shouldDirty: true });
+                            }}
+                            onClear={() => setValue("billingCity", "", { shouldValidate: true, shouldDirty: true })}
                           />
                           <InputField
                             placeholder="Billing Postal Code"
@@ -1345,13 +1462,11 @@ export default function Checkout() {
                             })}
                             error={errors.billingPostalCode}
                           />
-                          <div className="md:col-span-2">
-                            <InputField
-                              placeholder="Billing Country"
-                              {...register("billingCountry")}
-                              error={errors.billingCountry}
-                            />
-                          </div>
+                          {(errors.billingCountry || errors.billingCity) && (
+                            <p className="md:col-span-2 text-sm" style={{ color: 'hsl(0, 72%, 55%)' }}>
+                              {errors.billingCountry?.message || errors.billingCity?.message}
+                            </p>
+                          )}
                         </motion.div>
                       )}
                     </div>

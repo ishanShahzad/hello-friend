@@ -11,14 +11,18 @@ import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { getAuthToken } from "../../utils/cookieHelper";
 import StoreThemeSettings from './StoreThemeSettings';
 import { DEFAULT_STORE_THEME_ID, normalizeThemeSelection } from '../../utils/storeThemes';
+import LocationAutocomplete from '../common/LocationAutocomplete';
 
 const DEFAULT_VISIBILITY = {
     mode: 'country',
     country: '',
     countryCode: '',
     region: '',
+    regionCode: '',
     city: '',
+    cityStateCode: '',
     town: '',
+    townStateCode: '',
     radiusKm: 1,
     lat: '',
     lng: '',
@@ -31,7 +35,9 @@ const normalizeVisibilityForm = (visibility = {}, address = {}) => {
         ...DEFAULT_VISIBILITY,
         ...visibility,
         country: visibility.country || address.country || '',
+        countryCode: visibility.countryCode || address.countryCode || '',
         region: visibility.region || address.state || '',
+        regionCode: visibility.regionCode || address.stateCode || '',
         city: visibility.city || address.city || '',
         radiusKm: visibility.radiusKm || 1,
         lng: Array.isArray(coordinates) && coordinates[0] !== undefined ? String(coordinates[0]) : String(visibility.lng || ''),
@@ -51,6 +57,7 @@ const visibilityModes = [
 const StoreVisibilitySettings = ({
     storeData,
     handleVisibilityChange,
+    handleVisibilityPatch,
     useSellerCurrentPosition,
     saveVisibility,
     visibilitySaving,
@@ -58,7 +65,6 @@ const StoreVisibilitySettings = ({
     blockedInfo,
 }) => {
     const visibility = storeData.visibility || DEFAULT_VISIBILITY;
-    const inputClass = "glass-input";
     const disabled = visibilitySaving || blockedInfo.blocked || !hasStore;
 
     return (
@@ -115,27 +121,96 @@ const StoreVisibilitySettings = ({
             {visibility.mode !== 'global' && (
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</label>
-                            <input type="text" value={visibility.country} onChange={(e) => handleVisibilityChange('country', e.target.value)} className={inputClass} placeholder="Pakistan" disabled={disabled} />
-                        </div>
+                        <LocationAutocomplete
+                            type="country"
+                            label="Country"
+                            value={visibility.country}
+                            code={visibility.countryCode}
+                            placeholder="Select country"
+                            disabled={disabled}
+                            onSelect={(option) => handleVisibilityPatch({
+                                country: option.name,
+                                countryCode: option.isoCode,
+                                region: '',
+                                regionCode: '',
+                                city: '',
+                                cityStateCode: '',
+                                town: '',
+                                townStateCode: '',
+                            })}
+                            onClear={() => handleVisibilityPatch({
+                                country: '',
+                                countryCode: '',
+                                region: '',
+                                regionCode: '',
+                                city: '',
+                                cityStateCode: '',
+                                town: '',
+                                townStateCode: '',
+                            })}
+                        />
                         {(visibility.mode === 'region' || visibility.mode === 'city' || visibility.mode === 'town' || visibility.mode === 'radius') && (
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>State/Province</label>
-                                <input type="text" value={visibility.region} onChange={(e) => handleVisibilityChange('region', e.target.value)} className={inputClass} placeholder="Punjab" disabled={disabled} />
-                            </div>
+                            <LocationAutocomplete
+                                type="state"
+                                label="State/Province"
+                                value={visibility.region}
+                                code={visibility.regionCode}
+                                countryCode={visibility.countryCode}
+                                countryName={visibility.country}
+                                placeholder="Select state"
+                                disabled={disabled || (!visibility.country && !visibility.countryCode)}
+                                onSelect={(option) => handleVisibilityPatch({
+                                    region: option.name,
+                                    regionCode: option.isoCode,
+                                    city: '',
+                                    cityStateCode: '',
+                                    town: '',
+                                    townStateCode: '',
+                                })}
+                                onClear={() => handleVisibilityPatch({ region: '', regionCode: '', city: '', cityStateCode: '', town: '', townStateCode: '' })}
+                            />
                         )}
                         {(visibility.mode === 'city' || visibility.mode === 'town' || visibility.mode === 'radius') && (
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>City</label>
-                                <input type="text" value={visibility.city} onChange={(e) => handleVisibilityChange('city', e.target.value)} className={inputClass} placeholder="Lahore" disabled={disabled} />
-                            </div>
+                            <LocationAutocomplete
+                                type="city"
+                                label="City"
+                                value={visibility.city}
+                                code={visibility.cityStateCode}
+                                countryCode={visibility.countryCode}
+                                countryName={visibility.country}
+                                stateCode={visibility.regionCode}
+                                stateName={visibility.region}
+                                placeholder="Select city"
+                                disabled={disabled || (!visibility.country && !visibility.countryCode)}
+                                onSelect={(option) => handleVisibilityPatch({
+                                    city: option.name,
+                                    cityStateCode: option.stateCode || visibility.regionCode,
+                                    lat: visibility.mode === 'radius' ? String(option.latitude ?? visibility.lat ?? '') : visibility.lat,
+                                    lng: visibility.mode === 'radius' ? String(option.longitude ?? visibility.lng ?? '') : visibility.lng,
+                                    town: '',
+                                    townStateCode: '',
+                                })}
+                                onClear={() => handleVisibilityPatch({ city: '', cityStateCode: '', town: '', townStateCode: '' })}
+                            />
                         )}
                         {visibility.mode === 'town' && (
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Town/Area</label>
-                                <input type="text" value={visibility.town} onChange={(e) => handleVisibilityChange('town', e.target.value)} className={inputClass} placeholder="Gulberg" disabled={disabled} />
-                            </div>
+                            <LocationAutocomplete
+                                type="city"
+                                label="Town/Area"
+                                value={visibility.town}
+                                code={visibility.townStateCode}
+                                countryCode={visibility.countryCode}
+                                countryName={visibility.country}
+                                stateCode={visibility.regionCode || visibility.cityStateCode}
+                                stateName={visibility.region}
+                                placeholder="Select town or area"
+                                disabled={disabled || (!visibility.country && !visibility.countryCode)}
+                                onSelect={(option) => handleVisibilityPatch({
+                                    town: option.name,
+                                    townStateCode: option.stateCode || visibility.regionCode || visibility.cityStateCode,
+                                })}
+                                onClear={() => handleVisibilityPatch({ town: '', townStateCode: '' })}
+                            />
                         )}
                     </div>
 
@@ -154,15 +229,15 @@ const StoreVisibilitySettings = ({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Radius KM</label>
-                                    <input type="number" min="0.1" max="500" step="0.1" value={visibility.radiusKm} onChange={(e) => handleVisibilityChange('radiusKm', e.target.value)} className={inputClass} disabled={disabled} />
+                                    <input type="number" min="0.1" max="500" step="0.1" value={visibility.radiusKm} onChange={(e) => handleVisibilityChange('radiusKm', e.target.value)} className="glass-input" disabled={disabled} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Latitude</label>
-                                    <input type="number" step="0.000001" value={visibility.lat} onChange={(e) => handleVisibilityChange('lat', e.target.value)} className={inputClass} placeholder="31.5204" disabled={disabled} />
+                                    <input type="number" step="0.000001" value={visibility.lat} onChange={(e) => handleVisibilityChange('lat', e.target.value)} className="glass-input" placeholder="31.5204" disabled={disabled} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Longitude</label>
-                                    <input type="number" step="0.000001" value={visibility.lng} onChange={(e) => handleVisibilityChange('lng', e.target.value)} className={inputClass} placeholder="74.3587" disabled={disabled} />
+                                    <input type="number" step="0.000001" value={visibility.lng} onChange={(e) => handleVisibilityChange('lng', e.target.value)} className="glass-input" placeholder="74.3587" disabled={disabled} />
                                 </div>
                             </div>
                         </div>
@@ -227,7 +302,7 @@ const StoreSettings = () => {
         storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
         storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
         visibility: DEFAULT_VISIBILITY,
-        address: { street: '', city: '', state: '', country: '', postalCode: '' },
+        address: { street: '', city: '', state: '', stateCode: '', country: '', countryCode: '', postalCode: '' },
         socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
         returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
     });
@@ -262,7 +337,7 @@ const StoreSettings = () => {
             const token = getAuthToken();
             const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/my-store`, { headers: { Authorization: `Bearer ${token}` } });
             const defaultSocialLinks = { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' };
-            const defaultAddress = { street: '', city: '', state: '', country: '', postalCode: '' };
+            const defaultAddress = { street: '', city: '', state: '', stateCode: '', country: '', countryCode: '', postalCode: '' };
             const defaultReturnPolicy = { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' };
             const slug = res.data.store.storeSlug || '';
             const sName = res.data.store.storeName || '';
@@ -339,6 +414,7 @@ const StoreSettings = () => {
     const handleSocialLinkChange = (platform, value) => { setStoreData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [platform]: value } })); };
     const handleAddressChange = (field, value) => { setStoreData(prev => ({ ...prev, address: { ...prev.address, [field]: value } })); };
     const handleVisibilityChange = (field, value) => { setStoreData(prev => ({ ...prev, visibility: { ...prev.visibility, [field]: value } })); };
+    const handleVisibilityPatch = (patch) => { setStoreData(prev => ({ ...prev, visibility: { ...prev.visibility, ...patch } })); };
 
     const useSellerCurrentPosition = () => {
         if (!navigator.geolocation) {
@@ -587,7 +663,7 @@ const StoreSettings = () => {
                 storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
                 storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
                 visibility: DEFAULT_VISIBILITY,
-                address: { street: '', city: '', state: '', country: '', postalCode: '' },
+                address: { street: '', city: '', state: '', stateCode: '', country: '', countryCode: '', postalCode: '' },
                 socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
                 returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
             });
@@ -742,6 +818,7 @@ const StoreSettings = () => {
                 <StoreVisibilitySettings
                     storeData={storeData}
                     handleVisibilityChange={handleVisibilityChange}
+                    handleVisibilityPatch={handleVisibilityPatch}
                     useSellerCurrentPosition={useSellerCurrentPosition}
                     saveVisibility={saveVisibility}
                     visibilitySaving={visibilitySaving}
@@ -1022,20 +1099,81 @@ const StoreSettings = () => {
                                 <input type="text" value={storeData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="glass-input" placeholder="123 Main Street" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>City</label>
-                                    <input type="text" value={storeData.address.city} onChange={(e) => handleAddressChange('city', e.target.value)} className="glass-input" placeholder="New York" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>State/Province</label>
-                                    <input type="text" value={storeData.address.state} onChange={(e) => handleAddressChange('state', e.target.value)} className="glass-input" placeholder="NY" />
-                                </div>
+                                <LocationAutocomplete
+                                    type="country"
+                                    label="Country"
+                                    value={storeData.address.country}
+                                    code={storeData.address.countryCode}
+                                    placeholder="Select country"
+                                    onSelect={(option) => setStoreData(prev => ({
+                                        ...prev,
+                                        address: {
+                                            ...prev.address,
+                                            country: option.name,
+                                            countryCode: option.isoCode,
+                                            state: '',
+                                            stateCode: '',
+                                            city: '',
+                                        },
+                                    }))}
+                                    onClear={() => setStoreData(prev => ({
+                                        ...prev,
+                                        address: {
+                                            ...prev.address,
+                                            country: '',
+                                            countryCode: '',
+                                            state: '',
+                                            stateCode: '',
+                                            city: '',
+                                        },
+                                    }))}
+                                />
+                                <LocationAutocomplete
+                                    type="state"
+                                    label="State/Province"
+                                    value={storeData.address.state}
+                                    code={storeData.address.stateCode}
+                                    countryCode={storeData.address.countryCode}
+                                    countryName={storeData.address.country}
+                                    placeholder="Select state"
+                                    disabled={!storeData.address.country && !storeData.address.countryCode}
+                                    onSelect={(option) => setStoreData(prev => ({
+                                        ...prev,
+                                        address: {
+                                            ...prev.address,
+                                            state: option.name,
+                                            stateCode: option.isoCode,
+                                            city: '',
+                                        },
+                                    }))}
+                                    onClear={() => setStoreData(prev => ({
+                                        ...prev,
+                                        address: { ...prev.address, state: '', stateCode: '', city: '' },
+                                    }))}
+                                />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</label>
-                                    <input type="text" value={storeData.address.country} onChange={(e) => handleAddressChange('country', e.target.value)} className="glass-input" placeholder="United States" />
-                                </div>
+                                <LocationAutocomplete
+                                    type="city"
+                                    label="City"
+                                    value={storeData.address.city}
+                                    code={storeData.address.stateCode}
+                                    countryCode={storeData.address.countryCode}
+                                    countryName={storeData.address.country}
+                                    stateCode={storeData.address.stateCode}
+                                    stateName={storeData.address.state}
+                                    placeholder="Select city"
+                                    disabled={!storeData.address.country && !storeData.address.countryCode}
+                                    onSelect={(option) => setStoreData(prev => ({
+                                        ...prev,
+                                        address: {
+                                            ...prev.address,
+                                            city: option.name,
+                                            stateCode: prev.address.stateCode || option.stateCode || '',
+                                        },
+                                    }))}
+                                    onClear={() => handleAddressChange('city', '')}
+                                />
                                 <div>
                                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Postal Code</label>
                                     <input type="text" value={storeData.address.postalCode} onChange={(e) => handleAddressChange('postalCode', e.target.value)} className="glass-input" placeholder="10001" />

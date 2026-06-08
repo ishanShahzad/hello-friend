@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2, Store, Phone, MapPin, ArrowLeft, ArrowRight, Globe, Instagram, Facebook, Twitter, Youtube, SkipForward, MessageCircle, Edit3 } from 'lucide-react';
 import GlassBackground from '../common/GlassBackground';
 import PhoneField, { isValidPhone } from '../common/PhoneField';
+import LocationAutocomplete from '../common/LocationAutocomplete';
 import { motion, AnimatePresence } from 'framer-motion';
 import { setCrossDomainCookie } from '../../utils/cookieHelper';
 import {
@@ -18,7 +19,7 @@ import {
 const SellerSignUp = () => {
   const [step, setStep] = useState(1); // 1: account, 2: business info, 3: store setup, 4: WhatsApp verify, 5: email OTP
   const [form, setForm] = useState({ username: '', email: '', password: '' });
-  const [sellerForm, setSellerForm] = useState({ phoneNumber: '', businessName: '', address: '', city: '', country: '' });
+  const [sellerForm, setSellerForm] = useState({ phoneNumber: '', businessName: '', address: '', city: '', state: '', stateCode: '', country: '', countryCode: '' });
   const [storeForm, setStoreForm] = useState({ storeName: '', storeDescription: '', sellerType: 'store', website: '', instagram: '', facebook: '', twitter: '', youtube: '', tiktok: '' });
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -137,8 +138,8 @@ const SellerSignUp = () => {
     e.preventDefault();
     if (!sellerForm.phoneNumber || !isValidPhone(sellerForm.phoneNumber)) { setError('Please enter a valid phone number (select your country and enter the number)'); return; }
     if (!sellerForm.address || sellerForm.address.trim().length < 5) { setError('Please enter a valid address'); return; }
-    if (!sellerForm.city || sellerForm.city.trim().length < 2) { setError('Please enter your city'); return; }
-    if (!sellerForm.country || sellerForm.country.trim().length < 2) { setError('Please enter your country'); return; }
+    if (!sellerForm.country || !sellerForm.countryCode) { setError('Please select your country from the list'); return; }
+    if (!sellerForm.city || sellerForm.city.trim().length < 2) { setError('Please select your city from the list'); return; }
     trackSellerFormSubmitted('seller_details');
     setError(''); setStep(3);
   };
@@ -323,16 +324,66 @@ const SellerSignUp = () => {
                   <label className="flex text-sm font-medium mb-1 items-center gap-2"><MapPin size={14} style={{ color: 'hsl(var(--primary))' }} /> Address <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
                   <input type="text" name="address" value={sellerForm.address} onChange={handleSellerChange} className="glass-input" placeholder="Street address" required disabled={loading} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">City <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
-                    <input type="text" name="city" value={sellerForm.city} onChange={handleSellerChange} className="glass-input" placeholder="Your city" required disabled={loading} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Country <span style={{ color: 'hsl(0, 72%, 55%)' }}>*</span></label>
-                    <input type="text" name="country" value={sellerForm.country} onChange={handleSellerChange} className="glass-input" placeholder="Your country" required disabled={loading} />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <LocationAutocomplete
+                    type="country"
+                    label="Country"
+                    value={sellerForm.country}
+                    code={sellerForm.countryCode}
+                    placeholder="Select country"
+                    disabled={loading}
+                    required
+                    onSelect={(option) => {
+                      setSellerForm(prev => ({
+                        ...prev,
+                        country: option.name,
+                        countryCode: option.isoCode,
+                        state: '',
+                        stateCode: '',
+                        city: '',
+                      }));
+                      if (error) setError('');
+                    }}
+                    onClear={() => setSellerForm(prev => ({ ...prev, country: '', countryCode: '', state: '', stateCode: '', city: '' }))}
+                  />
+                  <LocationAutocomplete
+                    type="state"
+                    label="State/Province"
+                    value={sellerForm.state}
+                    code={sellerForm.stateCode}
+                    countryCode={sellerForm.countryCode}
+                    countryName={sellerForm.country}
+                    placeholder="Select state"
+                    disabled={loading || (!sellerForm.country && !sellerForm.countryCode)}
+                    onSelect={(option) => {
+                      setSellerForm(prev => ({ ...prev, state: option.name, stateCode: option.isoCode, city: '' }));
+                      if (error) setError('');
+                    }}
+                    onClear={() => setSellerForm(prev => ({ ...prev, state: '', stateCode: '', city: '' }))}
+                  />
                 </div>
+                <LocationAutocomplete
+                  type="city"
+                  label="City"
+                  value={sellerForm.city}
+                  code={sellerForm.stateCode}
+                  countryCode={sellerForm.countryCode}
+                  countryName={sellerForm.country}
+                  stateCode={sellerForm.stateCode}
+                  stateName={sellerForm.state}
+                  placeholder="Select city"
+                  disabled={loading || (!sellerForm.country && !sellerForm.countryCode)}
+                  required
+                  onSelect={(option) => {
+                    setSellerForm(prev => ({
+                      ...prev,
+                      city: option.name,
+                      stateCode: prev.stateCode || option.stateCode || '',
+                    }));
+                    if (error) setError('');
+                  }}
+                  onClear={() => setSellerForm(prev => ({ ...prev, city: '' }))}
+                />
               </div>
               <div className="flex gap-3 mt-8">
                 <button type="button" onClick={() => { setStep(1); setError(''); }} className="flex-1 py-3 px-4 rounded-xl font-semibold glass-button flex items-center justify-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
