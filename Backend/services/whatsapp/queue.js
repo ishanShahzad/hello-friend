@@ -8,6 +8,7 @@ const {
     buildOrderButtonsPayload,
     buildOrderListPayload,
     buildOrderConfirmationMessage,
+    buildOrderPlacedInfoMessage,
     normalizePhone,
 } = require('./messageBuilder');
 const Order = require('../../models/Order');
