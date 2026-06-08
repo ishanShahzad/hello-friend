@@ -109,6 +109,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       // If this order was awaiting payment, send seller "new order" notifications
       // now (we deliberately deferred them at place-time so abandoned checkouts
       // don't spam sellers).
+      let resolvedSellerIds = [];
       if (wasAwaiting) {
         try {
           const { newOrderSellerEmail } = require('./utils/emailTemplates');
@@ -119,7 +120,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
             return i.seller?.toString();
           }).filter(Boolean))];
           // Fallback: derive sellers from products
-          let resolvedSellerIds = sellerIds;
+          resolvedSellerIds = sellerIds;
           if (resolvedSellerIds.length === 0) {
             const productIds = (order.orderItems || []).map(i => i.productId).filter(Boolean);
             const products = await Product.find({ _id: { $in: productIds } }).select('seller');
