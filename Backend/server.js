@@ -109,6 +109,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       // If this order was awaiting payment, send seller "new order" notifications
       // now (we deliberately deferred them at place-time so abandoned checkouts
       // don't spam sellers).
+      let resolvedSellerIds = [];
       if (wasAwaiting) {
         try {
           const { newOrderSellerEmail } = require('./utils/emailTemplates');
@@ -119,7 +120,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
             return i.seller?.toString();
           }).filter(Boolean))];
           // Fallback: derive sellers from products
-          let resolvedSellerIds = sellerIds;
+          resolvedSellerIds = sellerIds;
           if (resolvedSellerIds.length === 0) {
             const productIds = (order.orderItems || []).map(i => i.productId).filter(Boolean);
             const products = await Product.find({ _id: { $in: productIds } }).select('seller');
@@ -139,6 +140,48 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
           }
         } catch (notifyErr) {
           console.error('Failed to send post-payment seller notifications:', notifyErr.message);
+        }
+
+        // ── Buyer WhatsApp info notification (post-payment only) ──
+        // Online-paid orders auto-confirm at payment time, so we send the
+        // buyer an INFO message (no Yes/No poll) listing items + stores +
+        // total. Same entitlement gate as COD: WhatsApp must be connected
+        // AND at least one seller in the order must have the WhatsApp bonus.
+        try {
+          const WhatsAppConfig = require('./models/WhatsAppConfig');
+          const { nVerify } = require('./controllers/subscriptionController');
+          const { enqueueOrderPlacedInfo } = require('./services/whatsapp/queue');
+
+          const cfg = await WhatsAppConfig.findOne({ singletonKey: 'main' });
+          if (!cfg || cfg.status !== 'connected') {
+            if (order.confirmation) {
+              order.confirmation.whatsappSentAt = new Date();
+              order.confirmation.whatsappSentSuccess = false;
+              order.confirmation.whatsappError = cfg
+                ? `WhatsApp status: ${cfg.status} (not connected)`
+                : 'WhatsApp not configured';
+              await order.save();
+            }
+          } else {
+            let entitled = false;
+            for (const sid of resolvedSellerIds) {
+              if (await nVerify(sid)) { entitled = true; break; }
+            }
+            if (!entitled) {
+              if (order.confirmation) {
+                order.confirmation.whatsappSentAt = new Date();
+                order.confirmation.whatsappSentSuccess = false;
+                order.confirmation.whatsappError =
+                  'No seller in this order has the WhatsApp verification bonus enabled';
+                await order.save();
+              }
+            } else {
+              await enqueueOrderPlacedInfo(order);
+              console.log(`[whatsapp] info enqueued for paid order ${order.orderId}`);
+            }
+          }
+        } catch (waErr) {
+          console.error('Failed to enqueue buyer WhatsApp info:', waErr.message);
         }
       }
 

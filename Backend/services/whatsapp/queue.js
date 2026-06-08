@@ -8,6 +8,7 @@ const {
     buildOrderButtonsPayload,
     buildOrderListPayload,
     buildOrderConfirmationMessage,
+    buildOrderPlacedInfoMessage,
     normalizePhone,
 } = require('./messageBuilder');
 const Order = require('../../models/Order');
@@ -95,6 +96,41 @@ exports.enqueueOrderConfirmation = async (order) => {
     }
 };
 
+// Enqueue an info-only message (post-Stripe payment). No confirm/cancel poll.
+exports.enqueueOrderPlacedInfo = async (order) => {
+    try {
+        const phone = normalizePhone(order.shippingInfo?.phone);
+        if (!phone || phone.length < 8) {
+            console.warn('[whatsapp] skip info enqueue — invalid phone', order.orderId);
+            return null;
+        }
+
+        // Avoid duplicate info enqueue for the same order
+        const existing = await WhatsAppPendingMessage.findOne({
+            order: order._id,
+            messageType: 'info',
+        });
+        if (existing) return existing;
+
+        const pending = await WhatsAppPendingMessage.create({
+            order: order._id,
+            orderId: order.orderId,
+            confirmationToken: order.confirmation?.token || 'n/a',
+            messageType: 'info',
+            phone,
+            buyerName: order.shippingInfo?.fullName || '',
+            status: 'queued',
+            nextAttemptAt: hasOpenConversationWindow(phone)
+                ? new Date()
+                : new Date(Date.now() + randomDelay()),
+        });
+        return pending;
+    } catch (err) {
+        console.error('[whatsapp] info enqueue failed:', err.message);
+        return null;
+    }
+};
+
 const processOne = async () => {
     if (!evolution.isConfigured()) return;
 
@@ -130,8 +166,12 @@ const processOne = async () => {
             return;
         }
 
-        // Skip if order was already confirmed/declined via another channel
-        if (order.confirmation?.confirmedAt || order.confirmation?.declinedAt) {
+        // Skip if order was already confirmed/declined via another channel.
+        // Info-type messages (post-payment notifications) are an exception —
+        // those are SENT precisely because the order was just auto-confirmed
+        // by the Stripe webhook, so we never skip them on this guard.
+        if (job.messageType !== 'info' &&
+            (order.confirmation?.confirmedAt || order.confirmation?.declinedAt)) {
             job.status = 'expired';
             await job.save();
             return;
@@ -174,27 +214,36 @@ const processOne = async () => {
         // all handled by webhookHandler.extractDecision, keyed on the
         // confirm_ORD-xxx / cancel_ORD-xxx id scheme.
 
-        const buttonsPayload = buildOrderButtonsPayload(order);
         let sendRes;
-        let strategy = 'buttons';
+        let strategy;
 
-        try {
-            sendRes = await evolution.sendButtons(job.phone, buttonsPayload);
-        } catch (btnErr) {
-            console.warn(
-                `[whatsapp] sendButtons failed for order ${order.orderId}, trying list:`,
-                btnErr.response?.data || btnErr.message
-            );
-            strategy = 'list';
+        if (job.messageType === 'info') {
+            // Online-paid orders: just an info text. Buyer already committed by
+            // paying — no confirm/cancel buttons.
+            strategy = 'info-text';
+            sendRes = await evolution.sendText(job.phone, buildOrderPlacedInfoMessage(order));
+        } else {
+            // COD: tiered confirm/cancel send (buttons → list → text fallback).
+            const buttonsPayload = buildOrderButtonsPayload(order);
+            strategy = 'buttons';
             try {
-                sendRes = await evolution.sendList(job.phone, buildOrderListPayload(order));
-            } catch (listErr) {
+                sendRes = await evolution.sendButtons(job.phone, buttonsPayload);
+            } catch (btnErr) {
                 console.warn(
-                    `[whatsapp] sendList also failed for order ${order.orderId}, falling back to text:`,
-                    listErr.response?.data || listErr.message
+                    `[whatsapp] sendButtons failed for order ${order.orderId}, trying list:`,
+                    btnErr.response?.data || btnErr.message
                 );
-                strategy = 'text';
-                sendRes = await evolution.sendText(job.phone, buildOrderConfirmationMessage(order));
+                strategy = 'list';
+                try {
+                    sendRes = await evolution.sendList(job.phone, buildOrderListPayload(order));
+                } catch (listErr) {
+                    console.warn(
+                        `[whatsapp] sendList also failed for order ${order.orderId}, falling back to text:`,
+                        listErr.response?.data || listErr.message
+                    );
+                    strategy = 'text';
+                    sendRes = await evolution.sendText(job.phone, buildOrderConfirmationMessage(order));
+                }
             }
         }
         await incrementSentCounter();
@@ -299,6 +348,7 @@ exports.stopQueueProcessor = () => {
 exports.findPendingJobByPhone = async (phone) => {
     return WhatsAppPendingMessage.findOne({
         phone,
+        messageType: { $ne: 'info' }, // info messages have no Yes/No vote
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     }).sort({ createdAt: -1 });
 };
@@ -307,6 +357,7 @@ exports.findPendingJobByPhone = async (phone) => {
 exports.findPendingJobByOrderId = async (orderId) => {
     return WhatsAppPendingMessage.findOne({
         orderId,
+        messageType: { $ne: 'info' },
         status: { $in: ['sent', 'sending', 'voted_yes', 'voted_no'] },
     });
 };

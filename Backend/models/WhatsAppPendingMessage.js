@@ -5,6 +5,10 @@ const whatsAppPendingMessageSchema = new mongoose.Schema({
     orderId: { type: String, required: true, index: true }, // human-readable ORD-xxxx
     confirmationToken: { type: String, required: true }, // mirror of order.confirmation.token
 
+    // 'confirmation' = COD confirm/cancel poll (Yes/No buttons)
+    // 'info'         = post-payment buyer notification (text only, no buttons)
+    messageType: { type: String, enum: ['confirmation', 'info'], default: 'confirmation', index: true },
+
     phone: { type: String, required: true, index: true }, // normalized E.164 digits, e.g. 9230012345678
     buyerName: { type: String, default: '' },
 
