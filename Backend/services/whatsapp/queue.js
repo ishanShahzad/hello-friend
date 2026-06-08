@@ -166,8 +166,12 @@ const processOne = async () => {
             return;
         }
 
-        // Skip if order was already confirmed/declined via another channel
-        if (order.confirmation?.confirmedAt || order.confirmation?.declinedAt) {
+        // Skip if order was already confirmed/declined via another channel.
+        // Info-type messages (post-payment notifications) are an exception —
+        // those are SENT precisely because the order was just auto-confirmed
+        // by the Stripe webhook, so we never skip them on this guard.
+        if (job.messageType !== 'info' &&
+            (order.confirmation?.confirmedAt || order.confirmation?.declinedAt)) {
             job.status = 'expired';
             await job.save();
             return;
