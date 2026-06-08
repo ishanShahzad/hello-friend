@@ -320,6 +320,40 @@ exports.buildPollPayload = (order) => ({
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// Info-only message for online-paid (Stripe) orders. The buyer already
+// committed by paying, so we DON'T ask them to confirm again — we just let
+// them know the order is placed, list the items + stores, and thank them.
+// ──────────────────────────────────────────────────────────────────────────
+exports.buildOrderPlacedInfoMessage = (order) => {
+    const buyerName = order.shippingInfo?.fullName?.split(' ')[0] || 'there';
+    const itemCount = order.orderItems?.length || 0;
+    const currency = orderCurrency(order);
+    const total = formatMoney(order.orderSummary?.totalAmount, currency);
+    const city = order.shippingInfo?.city || 'your location';
+
+    const productLines = (order.orderItems || []).map(it => buildProductLine(it, currency)).slice(0, 5);
+    if (itemCount > 5) productLines.push(`  _...and ${itemCount - 5} more_`);
+    const storesLine = buildStoresLine(order);
+
+    return [
+        `Hey ${buyerName}! 👋`,
+        ``,
+        `Your payment was successful — your order is confirmed! 🎉`,
+        ``,
+        `📦 *Order #${order.orderId}*`,
+        ``,
+        ...productLines,
+        ``,
+        ...(storesLine ? [storesLine] : []),
+        `💰 Total paid: *${total}*`,
+        `📍 Shipping to ${city}`,
+        ``,
+        `We'll keep you posted as your order is prepared and shipped.`,
+        `Thank you for shopping with Rozare! 💜`,
+    ].join('\n');
+};
+
+// ──────────────────────────────────────────────────────────────────────────
 // Re-confirm buttons payload — sent when buyer taps confirm on a cancelled order
 // ──────────────────────────────────────────────────────────────────────────
 exports.buildReconfirmButtonsPayload = (order, contextMessage) => {
