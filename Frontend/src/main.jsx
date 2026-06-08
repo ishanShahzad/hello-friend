@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { GlobalProvider } from './contexts/GlobalContext.jsx'
 import { CurrencyProvider } from './contexts/CurrencyContext.jsx'
+import { BuyerLocationProvider } from './contexts/BuyerLocationContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { installHttpResilience } from './utils/httpResilience.js'
 import { captureTikTokClickId } from './utils/tiktokPixel.js'
@@ -19,11 +20,13 @@ createRoot(document.getElementById('root')).render(
     <ThemeProvider>
       <AuthProvider>
         <CurrencyProvider>
-          <GlobalProvider>
-            <AppErrorBoundary>
-              <App />
-            </AppErrorBoundary>
-          </GlobalProvider>
+          <BuyerLocationProvider>
+            <GlobalProvider>
+              <AppErrorBoundary>
+                <App />
+              </AppErrorBoundary>
+            </GlobalProvider>
+          </BuyerLocationProvider>
         </CurrencyProvider>
       </AuthProvider>
     </ThemeProvider>

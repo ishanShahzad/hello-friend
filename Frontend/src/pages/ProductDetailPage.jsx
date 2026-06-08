@@ -10,12 +10,14 @@ import ProductCard from '../components/common/ProductCard';
 import { toast } from 'react-toastify';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useBuyerLocation } from '../contexts/BuyerLocationContext';
 import { getAuthToken } from "../utils/cookieHelper";
 import { trackProductView } from '../utils/tiktokPixel';
 
 function ProductDetailPage() {
     const { id } = useParams();
     const { formatPrice } = useCurrency();
+    const { appendLocationParams, locationQueryString } = useBuyerLocation();
     const {
         wishlistItems,
         handleAddToWishlist,
@@ -108,8 +110,11 @@ function ProductDetailPage() {
     const fetchProduct = async () => {
         setLoading(true);
         try {
+            const params = new URLSearchParams();
+            appendLocationParams(params);
+            const suffix = params.toString();
             const res = await axios.get(
-                `${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}`
+                `${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}${suffix ? `?${suffix}` : ''}`
             );
             setProduct(res.data.product);
             setMainImg(res.data.product.image);
@@ -128,8 +133,11 @@ function ProductDetailPage() {
             }
             if (res.data.product.seller) {
                 try {
+                    const storeParams = new URLSearchParams();
+                    appendLocationParams(storeParams);
+                    const storeSuffix = storeParams.toString();
                     const storeRes = await axios.get(
-                        `${import.meta.env.VITE_API_URL}api/stores/seller/${res.data.product.seller}`
+                        `${import.meta.env.VITE_API_URL}api/stores/seller/${res.data.product.seller}${storeSuffix ? `?${storeSuffix}` : ''}`
                     );
                     setStoreData(storeRes.data.store);
                 } catch (error) {
@@ -143,7 +151,7 @@ function ProductDetailPage() {
         }
     };
 
-    useEffect(() => { fetchProduct(); fetchProductCoupons(); }, [id]);
+    useEffect(() => { fetchProduct(); fetchProductCoupons(); }, [id, locationQueryString]);
 
     useEffect(() => {
         if (product?._id) trackProductView(product);
@@ -155,8 +163,10 @@ function ProductDetailPage() {
         let cancelled = false;
         (async () => {
             try {
+                const params = new URLSearchParams({ categories: product.category });
+                appendLocationParams(params);
                 const res = await axios.get(
-                    `${import.meta.env.VITE_API_URL}api/products/get-products?category=${encodeURIComponent(product.category)}`
+                    `${import.meta.env.VITE_API_URL}api/products/get-products?${params.toString()}`
                 );
                 if (cancelled) return;
                 const list = (res.data.products || [])

@@ -1,4 +1,5 @@
 // const { default: Fuse } = require("fuse.js")
+const mongoose = require('mongoose')
 const Product = require("../models/Product")
 const Order = require("../models/Order")
 const Fuse = require('fuse.js')
@@ -16,6 +17,11 @@ const {
 } = require('../services/productPricingService')
 const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService')
 const { sanitizeProductPayload } = require('../services/productTextService')
+const {
+    buyerLocationFromRequest,
+    findVisibleStores,
+    isStoreVisibleToBuyer,
+} = require('../services/storeVisibilityService')
 
 const OTHER_BRANDS_FILTER = '__other_brands__';
 const POPULAR_BRAND_MIN_PRODUCTS = Math.max(2, parseInt(process.env.POPULAR_BRAND_MIN_PRODUCTS || '3', 10) || 3);
@@ -351,13 +357,14 @@ exports.getProducts = async (req, res) => {
         if (categories) query.category = Array.isArray(categories) ? { $in: categories } : categories
         const requestedCurrency = normalizeCurrency(currency || req.user?.currency || 'USD');
         const parsedPriceRange = parsePriceRange(priceRange);
+        const buyerLocation = buyerLocationFromRequest(req);
 
         // Only show products from active stores (hides blocked/expired seller products)
         const Store = require('../models/Store');
-        const activeStores = await Store.find({ isActive: true })
-            .select('seller verification')
-            .populate('seller', '_id')
-            .lean();
+        const activeStores = await findVisibleStores(Store, { isActive: true }, buyerLocation, {
+            select: 'seller verification visibility',
+            populate: { path: 'seller', select: '_id' },
+        });
         const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
 
         // Count total active sellers for diversity calculation
@@ -461,6 +468,9 @@ exports.getSingleProduct = async (req, res) => {
             if (!store) {
                 return res.status(404).json({ msg: 'Product not available' });
             }
+            if (!isStoreVisibleToBuyer(store, buyerLocationFromRequest(req))) {
+                return res.status(404).json({ msg: 'Product is not available in your selected area.' });
+            }
         }
 
         await singleProduct.populate({
@@ -478,10 +488,11 @@ exports.getSingleProduct = async (req, res) => {
 exports.getFilters = async (req, res) => {
     try {
         const Store = require('../models/Store');
-        const activeStores = await Store.find({ isActive: true })
-            .select('seller')
-            .populate('seller', '_id')
-            .lean();
+        const buyerLocation = buyerLocationFromRequest(req);
+        const activeStores = await findVisibleStores(Store, { isActive: true }, buyerLocation, {
+            select: 'seller visibility',
+            populate: { path: 'seller', select: '_id' },
+        });
         const activeSellerIds = activeStores.map(s => s.seller?._id || s.seller).filter(Boolean);
         const productScope = publicProductFilter({
             $or: [
@@ -630,6 +641,52 @@ const FEATURED_LIMITS = {
     starter: 6,
     elite: 12,
 };
+
+exports.bulkDeleteProducts = async (req, res) => {
+    const { role, id: userId } = req.user
+    const { productIds } = req.body
+
+    if (role !== 'admin' && role !== 'seller') {
+        return res.status(403).json({ msg: 'Unauthorized to delete products' })
+    }
+
+    try {
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ msg: 'Select at least one product to delete.' })
+        }
+
+        const uniqueIds = [...new Set(productIds.map(id => String(id || '').trim()))]
+        const validIds = uniqueIds.filter(id => mongoose.Types.ObjectId.isValid(id))
+
+        if (validIds.length === 0) {
+            return res.status(400).json({ msg: 'No valid product IDs were provided.' })
+        }
+        if (validIds.length > 250) {
+            return res.status(400).json({ msg: 'You can delete up to 250 products at a time.' })
+        }
+
+        const query = { _id: { $in: validIds } }
+        if (role === 'seller') query.seller = userId
+
+        const products = await Product.find(query).select('_id name')
+        if (products.length === 0) {
+            return res.status(404).json({ msg: 'No products found or you do not have permission to delete them.' })
+        }
+
+        const idsToDelete = products.map(product => product._id)
+        const result = await Product.deleteMany({ _id: { $in: idsToDelete } })
+        const deletedCount = result.deletedCount || products.length
+
+        res.status(200).json({
+            msg: `Deleted ${deletedCount} product${deletedCount === 1 ? '' : 's'} successfully.`,
+            deletedCount,
+            skippedCount: uniqueIds.length - products.length,
+        })
+    } catch (error) {
+        console.error('Error while bulk deleting products:::', error.message);
+        res.status(500).json({ msg: 'Server error while deleting selected products.' })
+    }
+}
 
 /**
  * Check if a seller can feature a product. Returns:

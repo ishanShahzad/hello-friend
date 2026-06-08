@@ -309,6 +309,29 @@ const SellerDashboard = () => {
         setDeleteConfirm(null);
     };
 
+    const handleBulkDeleteProducts = async (productIds = []) => {
+        try {
+            const ids = Array.isArray(productIds) ? productIds.filter(Boolean) : [];
+            if (ids.length === 0) {
+                toast.error('Select at least one product to delete.');
+                return false;
+            }
+            const token = getAuthToken();
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}api/products/bulk-delete`,
+                { productIds: ids },
+                { headers: { Authorization: `Bearer ${token}` } });
+            toast.success(res.data.msg || 'Selected products deleted');
+            fetchProducts();
+            fetchFilters();
+            fetchFeaturedStats();
+            fetchProductCurrencyState();
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.msg || 'Failed to delete selected products');
+            return false;
+        }
+    };
+
     const fetchOrders = async () => {
         const token = getAuthToken();
         try {
@@ -326,7 +349,7 @@ const SellerDashboard = () => {
     const outletContext = useMemo(() => ({
         products, orders, categories, searchTerm, setSearchTerm,
         selectedCategory, setSelectedCategory, deleteConfirm, setDeleteConfirm,
-        handleEditProduct, handleCreateProduct, handleDeleteProduct, loading, fetchProducts,
+        handleEditProduct, handleCreateProduct, handleDeleteProduct, handleBulkDeleteProducts, loading, fetchProducts,
         isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages,
         closeForm: () => { setIsFormOpen(false); setEditingProduct(null); },
         canFeature: subscriptionData?.status === 'trial' || subscriptionData?.bonusFeaturesActive === true || ['active', 'free_period'].includes(subscriptionData?.status),

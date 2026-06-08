@@ -12,6 +12,7 @@ import SEOHead from '../components/common/SEOHead';
 import { navigateToMainDomainPath, isSubdomain } from '../utils/subdomainHelper';
 import { getAuthToken } from "../utils/cookieHelper";
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useBuyerLocation } from '../contexts/BuyerLocationContext';
 import { buildStoreThemeStyle, getStoreTheme, isDefaultStoreTheme } from '../utils/storeThemes';
 
 const getEntityId = (value) => {
@@ -35,6 +36,7 @@ const StorePage = ({ slugOverride = null }) => {
     const slug = slugOverride || slugFromParams;
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
+    const { appendLocationParams, locationQueryString } = useBuyerLocation();
     const [store, setStore] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ const StorePage = ({ slugOverride = null }) => {
         fetchStore();
         fetchProducts();
         incrementViewCount();
-    }, [slug]);
+    }, [slug, locationQueryString]);
 
     useEffect(() => {
         if (store?._id) {
@@ -130,7 +132,10 @@ const StorePage = ({ slugOverride = null }) => {
     const fetchStore = async () => {
         try {
             setLoading(true);
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/${slug}`);
+            const params = new URLSearchParams();
+            appendLocationParams(params);
+            const suffix = params.toString();
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/${slug}${suffix ? `?${suffix}` : ''}`);
             setStore(res.data.store);
             setNotFound(false);
         } catch (error) {
@@ -148,7 +153,10 @@ const StorePage = ({ slugOverride = null }) => {
     const fetchProducts = async () => {
         try {
             setProductsLoading(true);
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/${slug}/products`);
+            const params = new URLSearchParams();
+            appendLocationParams(params);
+            const suffix = params.toString();
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}api/stores/${slug}/products${suffix ? `?${suffix}` : ''}`);
             setProducts(res.data.products);
         } catch (error) {
             console.error('Error fetching products:', error);

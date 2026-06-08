@@ -26,6 +26,13 @@ const {
     sellerCanUseCustomStoreTheme,
     ensureStoreThemeEntitlement,
 } = require('../services/storeThemeService');
+const {
+    buyerLocationFromRequest,
+    ensureStoreVisibilityInitialized,
+    findVisibleStores,
+    isStoreVisibleToBuyer,
+    normalizeStoreVisibility,
+} = require('../services/storeVisibilityService');
 
 const comparablePriceUSD = (product) =>
     convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
@@ -186,7 +193,7 @@ exports.checkSubdomainAvailability = async (req, res) => {
 // Create a new store
 exports.createStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme, visibility } = req.body;
         const sellerId = req.user.id;
 
         // Check if seller already has a store
@@ -232,7 +239,9 @@ exports.createStore = async (req, res) => {
             finalSlug = await generateUniqueSlug(storeName);
         }
 
-        const seller = await User.findById(sellerId).select('currency').lean();
+        const seller = await User.findById(sellerId)
+            .select('currency sellerInfo.country savedShippingInfo.country')
+            .lean();
         const initialAddress = address || {
             street: '',
             city: '',
@@ -255,6 +264,10 @@ exports.createStore = async (req, res) => {
             productCurrency: normalizeProductCurrency(req.body.productCurrency || sellerDefaultProductCurrency({ address: initialAddress }, seller)),
             productCurrencyStatus: 'active',
             storeTheme: normalizedStoreTheme,
+            visibility: normalizeStoreVisibility(visibility, {
+                store: { address: initialAddress },
+                seller,
+            }),
             logo: logo || '',
             banner: banner || '',
             socialLinks: normalizeSocialLinks(socialLinks),
@@ -340,6 +353,11 @@ exports.getMyStore = async (req, res) => {
             await store.save();
         }
 
+        const seller = await User.findById(sellerId)
+            .select('currency sellerInfo.country savedShippingInfo.country')
+            .lean();
+
+        await ensureStoreVisibilityInitialized(store, seller);
         await ensureStoreProductCurrencyInitialized(sellerId, { store });
         await ensureStoreThemeEntitlement(sellerId, store);
 
@@ -417,7 +435,7 @@ exports.cancelProductCurrencyChange = async (req, res) => {
 // Update store
 exports.updateStore = async (req, res) => {
     try {
-        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme } = req.body;
+        const { storeName, storeSlug, description, logo, banner, socialLinks, address, returnPolicy, sellerType, storeTheme, visibility } = req.body;
         const sellerId = req.user.id;
 
         // Find seller's store
@@ -434,9 +452,10 @@ exports.updateStore = async (req, res) => {
             (sellerType === 'store' || sellerType === 'brand') &&
             sellerType !== (store.sellerType || 'store');
         const wantsThemeChange = storeTheme !== undefined;
+        const wantsVisibilityChange = visibility !== undefined;
 
         // Block changes while the store is blocked (subscription ended)
-        if ((wantsNameChange || wantsSlugChange || wantsTypeChange || wantsThemeChange) && store.isActive === false) {
+        if ((wantsNameChange || wantsSlugChange || wantsTypeChange || wantsThemeChange || wantsVisibilityChange) && store.isActive === false) {
             return res.status(423).json({
                 msg: 'Your store is blocked. Reactivate your subscription before changing this.',
                 blocked: true,
@@ -585,6 +604,19 @@ exports.updateStore = async (req, res) => {
             await ensureStoreThemeEntitlement(sellerId, store);
         }
 
+        if (visibility !== undefined) {
+            const seller = await User.findById(sellerId)
+                .select('currency sellerInfo.country savedShippingInfo.country')
+                .lean();
+            store.visibility = normalizeStoreVisibility(visibility, { store, seller });
+            store.markModified('visibility');
+        } else {
+            const seller = await User.findById(sellerId)
+                .select('currency sellerInfo.country savedShippingInfo.country')
+                .lean();
+            await ensureStoreVisibilityInitialized(store, seller);
+        }
+
         await store.save();
         console.log('Store saved with socialLinks:', store.socialLinks);
 
@@ -622,24 +654,28 @@ exports.deleteStore = async (req, res) => {
 exports.searchStores = async (req, res) => {
     try {
         const { q } = req.query;
+        const buyerLocation = buyerLocationFromRequest(req);
 
         if (!q || q.trim().length === 0) {
             return res.status(400).json({ msg: 'Search query is required' });
         }
 
-        // Text search on storeName and description
-        const stores = await Store.find(
-            { $text: { $search: q }, isActive: true },
-            { score: { $meta: 'textScore' } }
-        )
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(20)
-        .populate('seller', 'username email');
+        const safeSearch = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const stores = await findVisibleStores(Store, {
+            isActive: true,
+            $or: [
+                { storeName: { $regex: safeSearch, $options: 'i' } },
+                { storeSlug: { $regex: safeSearch, $options: 'i' } },
+                { description: { $regex: safeSearch, $options: 'i' } },
+            ],
+        }, buyerLocation, {
+            populate: { path: 'seller', select: 'username email' },
+        });
 
         res.status(200).json({
             msg: 'Stores fetched successfully',
-            stores,
-            count: stores.length
+            stores: stores.slice(0, 20),
+            count: Math.min(stores.length, 20)
         });
     } catch (error) {
         console.error('Search stores error:', error);
@@ -651,21 +687,22 @@ exports.searchStores = async (req, res) => {
 exports.getStoreSuggestions = async (req, res) => {
     try {
         const { q } = req.query;
+        const buyerLocation = buyerLocationFromRequest(req);
 
         if (!q || q.trim().length === 0) {
             return res.status(200).json({ suggestions: [] });
         }
 
         // Use regex for partial matching
-        const stores = await Store.find({
+        const stores = await findVisibleStores(Store, {
             storeName: { $regex: q, $options: 'i' },
             isActive: true
-        })
-        .select('storeName storeSlug logo trustCount verification sellerType')
-        .limit(5);
+        }, buyerLocation, {
+            select: 'storeName storeSlug logo trustCount verification sellerType visibility',
+        });
 
         res.status(200).json({
-            suggestions: stores
+            suggestions: stores.slice(0, 5)
         });
     } catch (error) {
         console.error('Get store suggestions error:', error);
@@ -677,12 +714,16 @@ exports.getStoreSuggestions = async (req, res) => {
 exports.getStoreBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
+        const buyerLocation = buyerLocationFromRequest(req);
 
         const store = await Store.findOne({ storeSlug: slug, isActive: true })
             .populate('seller', 'username email avatar');
 
         if (!store) {
             return res.status(404).json({ msg: 'Store not found' });
+        }
+        if (!isStoreVisibleToBuyer(store, buyerLocation)) {
+            return res.status(404).json({ msg: 'Store is not available in your selected area.' });
         }
 
         await ensureStoreThemeEntitlement(store.seller?._id || store.seller, store);
@@ -701,6 +742,7 @@ exports.getStoreBySlug = async (req, res) => {
 exports.getStoreBySellerId = async (req, res) => {
     try {
         const { id } = req.params;
+        const buyerLocation = buyerLocationFromRequest(req);
 
         const store = await Store.findOne({ seller: id, isActive: true })
             .select('+verification')
@@ -708,6 +750,9 @@ exports.getStoreBySellerId = async (req, res) => {
 
         if (!store) {
             return res.status(404).json({ msg: 'Store not found for this seller' });
+        }
+        if (!isStoreVisibleToBuyer(store, buyerLocation)) {
+            return res.status(404).json({ msg: 'Store is not available in your selected area.' });
         }
 
         await ensureStoreThemeEntitlement(store.seller?._id || id, store);
@@ -727,12 +772,16 @@ exports.getStoreProducts = async (req, res) => {
     try {
         const { slug } = req.params;
         const { categories, brands, priceRange, search, page = 1, limit = 20 } = req.query;
+        const buyerLocation = buyerLocationFromRequest(req);
 
         // Find store
         const store = await Store.findOne({ storeSlug: slug, isActive: true });
 
         if (!store) {
             return res.status(404).json({ msg: 'Store not found' });
+        }
+        if (!isStoreVisibleToBuyer(store, buyerLocation)) {
+            return res.status(404).json({ msg: 'Store products are not available in your selected area.' });
         }
 
         // Build query for products
@@ -803,23 +852,26 @@ exports.getStoreProducts = async (req, res) => {
 exports.getAllStores = async (req, res) => {
     try {
         const { page = 1, limit = 12, sort = 'newest', type, search } = req.query;
+        const buyerLocation = buyerLocationFromRequest(req);
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const limitNum = Math.min(48, Math.max(1, parseInt(limit, 10) || 12));
 
-        let sortOption = {};
-        switch (sort) {
-            case 'newest':
-                sortOption = { createdAt: -1 };
-                break;
-            case 'views':
-                sortOption = { views: -1 };
-                break;
-            case 'name':
-                sortOption = { storeName: 1 };
-                break;
-            default:
-                sortOption = { createdAt: -1 };
-        }
+        const sortStores = (items) => {
+            const sorted = [...items];
+            switch (sort) {
+                case 'views':
+                    sorted.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+                    break;
+                case 'name':
+                    sorted.sort((a, b) => String(a.storeName || '').localeCompare(String(b.storeName || '')));
+                    break;
+                case 'newest':
+                default:
+                    sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                    break;
+            }
+            return sorted;
+        };
 
         const filter = { isActive: true };
         const searchText = String(search || '').trim();
@@ -835,34 +887,42 @@ exports.getAllStores = async (req, res) => {
 
         const skip = (pageNum - 1) * limitNum;
 
-        const stores = await Store.find(filter)
-            .populate('seller', 'username email')
-            .select('+verification')
-            .sort(sortOption)
-            .limit(limitNum)
-            .skip(skip);
-
         const countBaseFilter = { isActive: true };
         if (searchText && filter.$or) countBaseFilter.$or = filter.$or;
 
-        const [total, allCount, brandCount, storeCount] = await Promise.all([
-            Store.countDocuments(filter),
-            Store.countDocuments(countBaseFilter),
-            Store.countDocuments({ ...countBaseFilter, sellerType: 'brand' }),
-            Store.countDocuments({ ...countBaseFilter, sellerType: 'store' }),
+        const [allFilteredStores, visibleCountStores] = await Promise.all([
+            findVisibleStores(Store, filter, buyerLocation, {
+                populate: { path: 'seller', select: 'username email' },
+                select: '+verification',
+            }),
+            findVisibleStores(Store, countBaseFilter, buyerLocation, {
+                select: 'seller sellerType visibility storeName storeSlug createdAt views',
+            }),
         ]);
+
+        const sortedStores = sortStores(allFilteredStores);
+        const stores = sortedStores.slice(skip, skip + limitNum);
+        const total = sortedStores.length;
+        const allCount = visibleCountStores.length;
+        const brandCount = visibleCountStores.filter(store => store.sellerType === 'brand').length;
+        const storeCount = visibleCountStores.filter(store => (store.sellerType || 'store') === 'store').length;
 
         // Get product count for each store
         const Product = require('../models/Product');
+        const sellerIds = stores.map(store => store.seller?._id || store.seller).filter(Boolean);
+        const productCounts = sellerIds.length
+            ? await Product.aggregate([
+                { $match: publicProductFilter({ seller: { $in: sellerIds } }) },
+                { $group: { _id: '$seller', count: { $sum: 1 } } },
+            ])
+            : [];
+        const productCountBySeller = new Map(productCounts.map(row => [String(row._id), row.count]));
         const storesWithProductCount = await Promise.all(
             stores.map(async (store) => {
                 const sellerId = store.seller?._id || store.seller;
-                const productCount = sellerId
-                    ? await Product.countDocuments(publicProductFilter({ seller: sellerId }))
-                    : 0;
                 return {
-                    ...store.toObject(),
-                    productCount
+                    ...store,
+                    productCount: sellerId ? productCountBySeller.get(String(sellerId)) || 0 : 0
                 };
             })
         );

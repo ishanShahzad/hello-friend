@@ -7,6 +7,8 @@ import axios from 'axios';
 import StoreCard from '../components/common/StoreCard';
 import Loader from '../components/common/Loader';
 import SEOHead from '../components/common/SEOHead';
+import BuyerLocationSelector from '../components/common/BuyerLocationSelector';
+import { useBuyerLocation } from '../contexts/BuyerLocationContext';
 
 const STORES_PER_PAGE = 12;
 
@@ -25,6 +27,7 @@ const StoresListing = () => {
     const [totalStores, setTotalStores] = useState(0);
     const [storeCounts, setStoreCounts] = useState({ all: 0, brand: 0, store: 0 });
     const sortRef = useRef(null);
+    const { appendLocationParams, locationQueryString } = useBuyerLocation();
 
     // Sync typeFilter -> URL
     useEffect(() => {
@@ -105,7 +108,7 @@ const StoresListing = () => {
     useEffect(() => {
         fetchStores();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sortBy, typeFilter, currentPage, debouncedSearch]);
+    }, [sortBy, typeFilter, currentPage, debouncedSearch, locationQueryString]);
 
     const fetchStores = async () => {
         try {
@@ -117,6 +120,7 @@ const StoresListing = () => {
             });
             if (typeFilter !== 'all') params.set('type', typeFilter);
             if (debouncedSearch) params.set('search', debouncedSearch);
+            appendLocationParams(params);
             const res = await axios.get(
                 `${import.meta.env.VITE_API_URL}api/stores/all?${params.toString()}`
             );
@@ -275,7 +279,8 @@ const StoresListing = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                    <div className="flex flex-col sm:grid gap-3 sm:gap-3" style={{ gridTemplateColumns: '1fr auto' }}>
+                    <BuyerLocationSelector compact />
+                    <div className="flex flex-col sm:grid gap-3 sm:gap-3 mt-3" style={{ gridTemplateColumns: '1fr auto' }}>
                         <div className="search-input-wrapper">
                             <div className="search-input-icon" style={{ left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }}>
                                 <Search size={17} />

@@ -17,15 +17,30 @@ const { notifySeller } = require('../services/whatsapp/sellerNotificationService
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
 const { trackOrderEvent } = require('../services/tiktokEventsApi');
 const { publicProductFilter } = require('../services/productModerationService');
-const { normalizeCurrency, convertAmount } = require('../services/currencyService');
+const { CURRENCIES, normalizeCurrency, convertAmount } = require('../services/currencyService');
 const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
+const { isStoreVisibleToBuyer, normalizeBuyerLocation } = require('../services/storeVisibilityService');
 
 const toId = (value) => value?.toString?.() || String(value || '');
 const STRIPE_SUPPORTED_CURRENCIES = new Set(
-    String(process.env.STRIPE_SUPPORTED_CURRENCIES || 'USD,EUR,GBP')
+    [
+        ...Object.keys(CURRENCIES),
+        ...String(process.env.STRIPE_SUPPORTED_CURRENCIES || '')
         .split(',')
-        .map(code => normalizeCurrency(code))
+        .map(code => normalizeCurrency(code)),
+    ]
 );
+const STRIPE_ZERO_DECIMAL_CURRENCIES = new Set([
+    'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA',
+    'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+]);
+
+const toStripeMinorUnits = (amount, currency) => {
+    const value = Math.max(0, Number(amount) || 0);
+    return STRIPE_ZERO_DECIMAL_CURRENCIES.has(String(currency || '').toUpperCase())
+        ? Math.round(value)
+        : Math.round(value * 100);
+};
 
 const getSellerProductIds = async (sellerId) => {
     const ids = await Product.find({ seller: sellerId }).distinct('_id');
@@ -238,6 +253,29 @@ exports.placeOrder = async (req, res) => {
             return res.status(400).json({ msg: 'One or more products in this order are no longer available.' });
         }
         const productById = new Map(orderItems.map(product => [toId(product._id), product]));
+        const sellerIdsInOrder = [...new Set(orderItems.map(product => toId(product.seller)).filter(Boolean))];
+        if (sellerIdsInOrder.length > 0) {
+            const Store = require('../models/Store');
+            const stores = await Store.find({ seller: { $in: sellerIdsInOrder }, isActive: true }).select('seller storeName visibility');
+            const storeBySeller = new Map(stores.map(store => [toId(store.seller), store]));
+            const buyerLocation = normalizeBuyerLocation({
+                ...(order.buyerLocation || {}),
+                country: order.buyerLocation?.country || order.shippingInfo?.country,
+                region: order.buyerLocation?.region || order.shippingInfo?.state,
+                city: order.buyerLocation?.city || order.shippingInfo?.city,
+                town: order.buyerLocation?.town,
+                lat: order.buyerLocation?.lat,
+                lng: order.buyerLocation?.lng,
+            });
+            for (const sellerId of sellerIdsInOrder) {
+                const store = storeBySeller.get(sellerId);
+                if (!store || !isStoreVisibleToBuyer(store, buyerLocation)) {
+                    return res.status(400).json({
+                        msg: 'One or more products in this order are not available in your selected delivery area.',
+                    });
+                }
+            }
+        }
 
         const normalizedOrderItems = await Promise.all(order.orderItems.map(async (item) => {
             const product = productById.get(toId(item.id));
@@ -481,7 +519,7 @@ exports.placeOrder = async (req, res) => {
                         name: item.name,
                         images: item.image ? [item.image] : undefined
                     },
-                    unit_amount: Math.round(item.price * 100)
+                    unit_amount: toStripeMinorUnits(item.price, newOrder.currency)
                 },
                 quantity: item.quantity
             })),
@@ -494,7 +532,7 @@ exports.placeOrder = async (req, res) => {
                     product_data: {
                         name: `${newOrder.shippingMethod.name} Shipping`,
                     },
-                    unit_amount: Math.round(newOrder.shippingMethod.price * 100)
+                    unit_amount: toStripeMinorUnits(newOrder.shippingMethod.price, newOrder.currency)
                 },
                 quantity: 1
             },
@@ -508,7 +546,7 @@ exports.placeOrder = async (req, res) => {
                             ? `Tax (${taxConfig.value}%)`
                             : 'Tax',
                     },
-                    unit_amount: Math.round(newOrder.orderSummary.tax * 100)
+                    unit_amount: toStripeMinorUnits(newOrder.orderSummary.tax, newOrder.currency)
                 },
                 quantity: 1
             }] : [])
@@ -536,7 +574,7 @@ exports.placeOrder = async (req, res) => {
         const couponDiscountAmount = Number(newOrder.orderSummary.couponDiscount) || 0;
         if (couponDiscountAmount > 0) {
             try {
-                const amountOff = Math.round(couponDiscountAmount * 100);
+                const amountOff = toStripeMinorUnits(couponDiscountAmount, newOrder.currency);
                 if (amountOff > 0) {
                     const stripeCoupon = await stripe.coupons.create({
                         amount_off: amountOff,
@@ -1391,4 +1429,3 @@ exports.getInvoice = async (req, res) => {
         res.status(500).json({ msg: 'Server error while generating invoice' });
     }
 };
-

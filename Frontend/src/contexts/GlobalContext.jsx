@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, us
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
+import { useBuyerLocation } from "./BuyerLocationContext";
 import { setCrossDomainCookie, getCookie, deleteCookie, migrateLocalStorageToCookie, getAuthToken } from "../utils/cookieHelper";
 import { trackAddToCart, trackAddToWishlist } from "../utils/tiktokPixel";
 
@@ -68,6 +69,7 @@ export const GlobalProvider = ({ children }) => {
     const {
         currentUser
     } = useAuth()
+    const { appendLocationParams } = useBuyerLocation()
 
 
     const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -194,7 +196,10 @@ export const GlobalProvider = ({ children }) => {
 
             if (!currentUser) {
                 try {
-                    const pRes = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}`);
+                    const params = new URLSearchParams();
+                    appendLocationParams(params);
+                    const suffix = params.toString();
+                    const pRes = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-single-product/${id}${suffix ? `?${suffix}` : ''}`);
                     const pData = pRes.data.product || pRes.data;
                     const gc = getGuestCart();
                     gc.push({ product: pData, qty: 1, selectedColor, selectedOptions: selectedOptions || undefined, _id: `guest_${Date.now()}` });

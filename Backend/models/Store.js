@@ -49,6 +49,38 @@ const storeThemeSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const storeVisibilitySchema = new mongoose.Schema({
+  mode: {
+    type: String,
+    enum: ['global', 'country', 'region', 'city', 'town', 'radius'],
+    default: 'country',
+    index: true
+  },
+  country: { type: String, default: '' },
+  countryCode: { type: String, default: '' },
+  countryKey: { type: String, default: '', index: true },
+  region: { type: String, default: '' },
+  regionKey: { type: String, default: '', index: true },
+  city: { type: String, default: '' },
+  cityKey: { type: String, default: '', index: true },
+  town: { type: String, default: '' },
+  townKey: { type: String, default: '', index: true },
+  radiusKm: { type: Number, default: null, min: 0.1, max: 500 },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: undefined
+    },
+    coordinates: {
+      type: [Number],
+      default: undefined
+    }
+  },
+  label: { type: String, default: '' },
+  updatedAt: { type: Date, default: null }
+}, { _id: false });
+
 const storeSchema = new mongoose.Schema({
   seller: {
     type: mongoose.Schema.Types.ObjectId,
@@ -111,6 +143,10 @@ const storeSchema = new mongoose.Schema({
       customTheme: null,
       updatedAt: null
     })
+  },
+  visibility: {
+    type: storeVisibilitySchema,
+    default: undefined
   },
   address: {
     street: {
@@ -284,6 +320,15 @@ const storeSchema = new mongoose.Schema({
 storeSchema.index({ storeName: 'text', description: 'text' }); // Text search
 storeSchema.index({ storeSlug: 1 }, { unique: true }); // Fast slug lookup with uniqueness
 storeSchema.index({ seller: 1 }, { unique: true }); // Fast seller lookup with uniqueness (one store per seller)
+storeSchema.index({ 'visibility.location': '2dsphere' });
+storeSchema.index({
+  isActive: 1,
+  'visibility.mode': 1,
+  'visibility.countryKey': 1,
+  'visibility.regionKey': 1,
+  'visibility.cityKey': 1,
+  'visibility.townKey': 1
+});
 
 // Pre-save middleware to generate slug if not provided
 storeSchema.pre('save', function(next) {

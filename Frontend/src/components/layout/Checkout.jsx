@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useGlobal } from "../../contexts/GlobalContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBuyerLocation } from "../../contexts/BuyerLocationContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,7 @@ export default function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { buyerLocation } = useBuyerLocation();
 
   // Tax and Shipping state
   const [taxConfig, setTaxConfig] = useState(null);
@@ -560,6 +562,15 @@ export default function Checkout() {
         state: data.state,
         postalCode: data.postalCode,
         country: data.country || "Pakistan",
+      },
+      buyerLocation: {
+        country: buyerLocation.country || data.country || "Pakistan",
+        countryCode: buyerLocation.countryCode || "",
+        region: buyerLocation.region || data.state || "",
+        city: buyerLocation.city || data.city || "",
+        town: buyerLocation.town || "",
+        lat: buyerLocation.lat || "",
+        lng: buyerLocation.lng || "",
       },
 
       shippingMethod: {

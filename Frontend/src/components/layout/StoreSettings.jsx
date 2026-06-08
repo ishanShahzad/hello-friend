@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle, Sparkles, Palette } from 'lucide-react';
+import { Store, Upload, X, Eye, Trash2, Loader2, ExternalLink, BarChart3, ShoppingBag, Heart, DollarSign, CheckCircle, Clock, AlertTriangle, Info, Mail, Phone, Globe, Lock, AlertCircle, Sparkles, Palette, MapPin, Crosshair, Save } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { uploadImageToCloudinary } from '../../utils/uploadToCloudinary';
@@ -11,6 +11,173 @@ import PhoneField, { isValidPhone } from '../common/PhoneField';
 import { getAuthToken } from "../../utils/cookieHelper";
 import StoreThemeSettings from './StoreThemeSettings';
 import { DEFAULT_STORE_THEME_ID, normalizeThemeSelection } from '../../utils/storeThemes';
+
+const DEFAULT_VISIBILITY = {
+    mode: 'country',
+    country: '',
+    countryCode: '',
+    region: '',
+    city: '',
+    town: '',
+    radiusKm: 1,
+    lat: '',
+    lng: '',
+    label: '',
+};
+
+const normalizeVisibilityForm = (visibility = {}, address = {}) => {
+    const coordinates = visibility?.location?.coordinates;
+    return {
+        ...DEFAULT_VISIBILITY,
+        ...visibility,
+        country: visibility.country || address.country || '',
+        region: visibility.region || address.state || '',
+        city: visibility.city || address.city || '',
+        radiusKm: visibility.radiusKm || 1,
+        lng: Array.isArray(coordinates) && coordinates[0] !== undefined ? String(coordinates[0]) : String(visibility.lng || ''),
+        lat: Array.isArray(coordinates) && coordinates[1] !== undefined ? String(coordinates[1]) : String(visibility.lat || ''),
+    };
+};
+
+const visibilityModes = [
+    { mode: 'global', label: 'Global', desc: 'Visible to every buyer' },
+    { mode: 'country', label: 'Country', desc: 'Visible in one country' },
+    { mode: 'region', label: 'State', desc: 'Visible in one province or state' },
+    { mode: 'city', label: 'City', desc: 'Visible in one city' },
+    { mode: 'town', label: 'Town', desc: 'Visible in one town or area' },
+    { mode: 'radius', label: 'Radius', desc: 'Visible near your chosen map point' },
+];
+
+const StoreVisibilitySettings = ({
+    storeData,
+    handleVisibilityChange,
+    useSellerCurrentPosition,
+    saveVisibility,
+    visibilitySaving,
+    hasStore,
+    blockedInfo,
+}) => {
+    const visibility = storeData.visibility || DEFAULT_VISIBILITY;
+    const inputClass = "glass-input";
+    const disabled = visibilitySaving || blockedInfo.blocked || !hasStore;
+
+    return (
+        <div className="glass-panel p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+                        <MapPin size={22} style={{ color: 'hsl(150, 60%, 45%)' }} />
+                        Store Visibility
+                    </h2>
+                    <p className="text-sm mt-1 max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Control where your store and products appear. Buyers outside this area will not see your store in Home, Marketplace, product detail, or checkout.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={saveVisibility}
+                    disabled={disabled}
+                    className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{ background: 'linear-gradient(135deg, hsl(150, 60%, 45%), hsl(190, 70%, 45%))' }}
+                >
+                    {visibilitySaving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : <><Save size={16} /> Save Visibility</>}
+                </button>
+            </div>
+
+            {!hasStore && (
+                <div className="rounded-xl p-4 mb-5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                    <p className="text-sm font-semibold" style={{ color: 'hsl(45, 80%, 40%)' }}>Create your store first, then visibility can be saved.</p>
+                </div>
+            )}
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                {visibilityModes.map(item => {
+                    const active = visibility.mode === item.mode;
+                    return (
+                        <button
+                            key={item.mode}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => handleVisibilityChange('mode', item.mode)}
+                            className="p-4 rounded-2xl text-left border transition-all disabled:opacity-60"
+                            style={{
+                                background: active ? 'linear-gradient(135deg, hsla(150,60%,45%,0.16), hsla(200,80%,50%,0.12))' : 'var(--glass-inner)',
+                                borderColor: active ? 'hsl(150, 60%, 45%)' : 'var(--glass-border)',
+                            }}
+                        >
+                            <p className="text-sm font-bold" style={{ color: active ? 'hsl(150, 60%, 38%)' : 'hsl(var(--foreground))' }}>{item.label}</p>
+                            <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{item.desc}</p>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {visibility.mode !== 'global' && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Country</label>
+                            <input type="text" value={visibility.country} onChange={(e) => handleVisibilityChange('country', e.target.value)} className={inputClass} placeholder="Pakistan" disabled={disabled} />
+                        </div>
+                        {(visibility.mode === 'region' || visibility.mode === 'city' || visibility.mode === 'town' || visibility.mode === 'radius') && (
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>State/Province</label>
+                                <input type="text" value={visibility.region} onChange={(e) => handleVisibilityChange('region', e.target.value)} className={inputClass} placeholder="Punjab" disabled={disabled} />
+                            </div>
+                        )}
+                        {(visibility.mode === 'city' || visibility.mode === 'town' || visibility.mode === 'radius') && (
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>City</label>
+                                <input type="text" value={visibility.city} onChange={(e) => handleVisibilityChange('city', e.target.value)} className={inputClass} placeholder="Lahore" disabled={disabled} />
+                            </div>
+                        )}
+                        {visibility.mode === 'town' && (
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Town/Area</label>
+                                <input type="text" value={visibility.town} onChange={(e) => handleVisibilityChange('town', e.target.value)} className={inputClass} placeholder="Gulberg" disabled={disabled} />
+                            </div>
+                        )}
+                    </div>
+
+                    {visibility.mode === 'radius' && (
+                        <div className="rounded-2xl p-4 space-y-4" style={{ background: 'var(--glass-inner)', border: '1px solid var(--glass-border)' }}>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>Radius Center</p>
+                                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Use your current location or enter coordinates manually.</p>
+                                </div>
+                                <button type="button" onClick={useSellerCurrentPosition} disabled={disabled}
+                                    className="glass-button px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-60">
+                                    <Crosshair size={14} /> Use Current Location
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Radius KM</label>
+                                    <input type="number" min="0.1" max="500" step="0.1" value={visibility.radiusKm} onChange={(e) => handleVisibilityChange('radiusKm', e.target.value)} className={inputClass} disabled={disabled} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Latitude</label>
+                                    <input type="number" step="0.000001" value={visibility.lat} onChange={(e) => handleVisibilityChange('lat', e.target.value)} className={inputClass} placeholder="31.5204" disabled={disabled} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Longitude</label>
+                                    <input type="number" step="0.000001" value={visibility.lng} onChange={(e) => handleVisibilityChange('lng', e.target.value)} className={inputClass} placeholder="74.3587" disabled={disabled} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {visibility.mode === 'global' && (
+                <div className="rounded-2xl p-5" style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.22)' }}>
+                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Your store will be visible globally.</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const StoreSettings = () => {
     const { formatPrice, currency, currencies } = useCurrency();
@@ -37,6 +204,7 @@ const StoreSettings = () => {
     const [productCurrencyDraft, setProductCurrencyDraft] = useState(currency || 'USD');
     const [productCurrencySaving, setProductCurrencySaving] = useState(false);
     const [productCurrencyConfirm, setProductCurrencyConfirm] = useState(null);
+    const [visibilitySaving, setVisibilitySaving] = useState(false);
     
     // Subdomain state
     const [customSubdomain, setCustomSubdomain] = useState('');
@@ -58,6 +226,7 @@ const StoreSettings = () => {
     const [storeData, setStoreData] = useState({
         storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
         storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
+        visibility: DEFAULT_VISIBILITY,
         address: { street: '', city: '', state: '', country: '', postalCode: '' },
         socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
         returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
@@ -98,12 +267,14 @@ const StoreSettings = () => {
             const slug = res.data.store.storeSlug || '';
             const sName = res.data.store.storeName || '';
             const sType = res.data.store.sellerType || 'store';
+            const address = { ...defaultAddress, ...(res.data.store.address || {}) };
             setStoreData({
                 storeName: sName, description: res.data.store.description || '',
                 logo: res.data.store.logo || '', banner: res.data.store.banner || '', storeSlug: slug,
                 sellerType: sType,
                 storeTheme: normalizeThemeSelection(res.data.store.storeTheme),
-                address: { ...defaultAddress, ...(res.data.store.address || {}) },
+                visibility: normalizeVisibilityForm(res.data.store.visibility, address),
+                address,
                 socialLinks: { ...defaultSocialLinks, ...(res.data.store.socialLinks || {}) },
                 returnPolicy: { ...defaultReturnPolicy, ...(res.data.store.returnPolicy || {}) }
             });
@@ -167,6 +338,71 @@ const StoreSettings = () => {
     const handleInputChange = (e) => { const { name, value } = e.target; setStoreData(prev => ({ ...prev, [name]: value })); };
     const handleSocialLinkChange = (platform, value) => { setStoreData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [platform]: value } })); };
     const handleAddressChange = (field, value) => { setStoreData(prev => ({ ...prev, address: { ...prev.address, [field]: value } })); };
+    const handleVisibilityChange = (field, value) => { setStoreData(prev => ({ ...prev, visibility: { ...prev.visibility, [field]: value } })); };
+
+    const useSellerCurrentPosition = () => {
+        if (!navigator.geolocation) {
+            toast.error('Location is not available in this browser.');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setStoreData(prev => ({
+                    ...prev,
+                    visibility: {
+                        ...prev.visibility,
+                        lat: String(position.coords.latitude),
+                        lng: String(position.coords.longitude),
+                    },
+                }));
+                toast.success('Radius center updated');
+            },
+            (error) => toast.error(error.message || 'Could not get your current location.'),
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 5 * 60 * 1000 }
+        );
+    };
+
+    const validateVisibility = () => {
+        const v = storeData.visibility || DEFAULT_VISIBILITY;
+        if (v.mode !== 'global' && !String(v.country || '').trim()) return 'Country is required for this visibility mode.';
+        if (v.mode === 'region' && !String(v.region || '').trim()) return 'State or province is required.';
+        if (v.mode === 'city' && !String(v.city || '').trim()) return 'City is required.';
+        if (v.mode === 'town' && !String(v.town || '').trim()) return 'Town or area is required.';
+        if (v.mode === 'radius' && (!String(v.lat || '').trim() || !String(v.lng || '').trim())) return 'Use GPS or enter latitude and longitude for radius visibility.';
+        return null;
+    };
+
+    const saveVisibility = async () => {
+        if (!hasStore) {
+            toast.error('Create your store before changing visibility.');
+            return;
+        }
+        if (blockedInfo.blocked) {
+            toast.error('Reactivate your subscription before changing visibility.');
+            return;
+        }
+        const validationError = validateVisibility();
+        if (validationError) {
+            toast.error(validationError);
+            return;
+        }
+        try {
+            setVisibilitySaving(true);
+            const token = getAuthToken();
+            const res = await axios.put(`${import.meta.env.VITE_API_URL}api/stores/update`,
+                { visibility: storeData.visibility },
+                { headers: { Authorization: `Bearer ${token}` } });
+            setStoreData(prev => ({
+                ...prev,
+                visibility: normalizeVisibilityForm(res.data.store?.visibility, prev.address),
+            }));
+            toast.success('Store visibility updated');
+        } catch (error) {
+            toast.error(error.response?.data?.msg || 'Failed to update store visibility');
+        } finally {
+            setVisibilitySaving(false);
+        }
+    };
 
     const requestProductCurrencyChange = async (nextCurrency, confirm = false) => {
         try {
@@ -350,6 +586,7 @@ const StoreSettings = () => {
             setStoreData({
                 storeName: '', description: '', logo: '', banner: '', storeSlug: '', sellerType: 'store',
                 storeTheme: { themeId: DEFAULT_STORE_THEME_ID, customTheme: null },
+                visibility: DEFAULT_VISIBILITY,
                 address: { street: '', city: '', state: '', country: '', postalCode: '' },
                 socialLinks: { website: '', facebook: '', instagram: '', twitter: '', youtube: '', tiktok: '' },
                 returnPolicy: { returnsEnabled: false, returnDuration: 0, refundType: 'none', warrantyEnabled: false, warrantyDuration: 0, warrantyDescription: '', policyDescription: '' }
@@ -472,6 +709,7 @@ const StoreSettings = () => {
             <div className="glass-panel p-2 mb-6 flex flex-col sm:flex-row gap-2">
                 {[
                     { id: 'details', label: 'Store Details', Icon: Store },
+                    { id: 'visibility', label: 'Visibility', Icon: MapPin },
                     { id: 'themes', label: 'Themes', Icon: Palette },
                 ].map(tab => {
                     const active = activeSettingsTab === tab.id;
@@ -497,6 +735,16 @@ const StoreSettings = () => {
                 <StoreThemeSettings
                     storeData={storeData}
                     setStoreData={setStoreData}
+                    hasStore={hasStore}
+                    blockedInfo={blockedInfo}
+                />
+            ) : activeSettingsTab === 'visibility' ? (
+                <StoreVisibilitySettings
+                    storeData={storeData}
+                    handleVisibilityChange={handleVisibilityChange}
+                    useSellerCurrentPosition={useSellerCurrentPosition}
+                    saveVisibility={saveVisibility}
+                    visibilitySaving={visibilitySaving}
                     hasStore={hasStore}
                     blockedInfo={blockedInfo}
                 />

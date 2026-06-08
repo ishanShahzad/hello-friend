@@ -11,9 +11,11 @@ import PersonalizedSections from './common/PersonalizedSections'
 import { useAuth } from '../contexts/AuthContext'
 import CurrencySelector from './common/CurrencySelector'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useBuyerLocation } from '../contexts/BuyerLocationContext'
 import SEOHead from './common/SEOHead'
 import { PRESET_CATEGORIES, isPresetCategory } from '../utils/categories'
 import { trackSearch } from '../utils/tiktokPixel'
+import BuyerLocationSelector from './common/BuyerLocationSelector'
 
 const PRODUCTS_PER_PAGE = 24
 const PRODUCTS_CACHE_KEY = 'rozare:last-products-response'
@@ -51,6 +53,7 @@ function Products() {
   const location = useLocation()
   const { currentUser } = useAuth()
   const { formatPrice } = useCurrency()
+  const { appendLocationParams, locationQueryString } = useBuyerLocation()
 
   const { register, reset, watch, setValue } = useForm({
     defaultValues: { categories: [], brands: [], priceRange: ["0", "5000"] }
@@ -93,8 +96,9 @@ function Products() {
     params.append('limit', PRODUCTS_PER_PAGE)
     params.append('sortBy', sortByRef.current)
     params.append('sortOrder', sortOrderRef.current)
+    appendLocationParams(params)
     return params.toString()
-  }, [])
+  }, [appendLocationParams])
 
   const fetchProducts = useCallback(async () => {
     setLoading(true); setError(null)
@@ -129,6 +133,19 @@ function Products() {
     finally { setLoading(false) }
   }, [serializeFilters, navigate, location.pathname])
 
+  const fetchFilters = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      appendLocationParams(params)
+      const suffix = params.toString()
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-filters${suffix ? `?${suffix}` : ''}`)
+      setCategories(res.data.categories || [])
+      setBrands(res.data.brands || [])
+      setOtherBrandsCount(res.data.otherBrandsCount || 0)
+      setOtherBrandsValue(res.data.brandFilter?.otherValue || DEFAULT_OTHER_BRANDS_FILTER)
+    } catch (error) { setCategories([]); setBrands([]); setOtherBrandsCount(0) }
+  }, [appendLocationParams])
+
   useEffect(() => {
     const prev = JSON.stringify(filtersRef.current)
     filtersRef.current = filters
@@ -149,15 +166,6 @@ function Products() {
   }, [currentPage, sortBy, sortOrder])
 
   useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}api/products/get-filters`)
-        setCategories(res.data.categories || [])
-        setBrands(res.data.brands || [])
-        setOtherBrandsCount(res.data.otherBrandsCount || 0)
-        setOtherBrandsValue(res.data.brandFilter?.otherValue || DEFAULT_OTHER_BRANDS_FILTER)
-      } catch (error) { setCategories([]); setBrands([]); setOtherBrandsCount(0) }
-    }
     fetchFilters()
     const parsedFilters = parseQueryParams(location.search)
     const params = new URLSearchParams(location.search)
@@ -177,6 +185,14 @@ function Products() {
     initialFetchDone.current = true
     fetchProducts()
   }, [])
+
+  useEffect(() => {
+    if (!initialFetchDone.current) return
+    setCurrentPage(1)
+    currentPageRef.current = 1
+    fetchFilters()
+    fetchProducts()
+  }, [locationQueryString])
 
   const parseQueryParams = (search) => {
     const params = new URLSearchParams(search)
@@ -552,6 +568,7 @@ function Products() {
           </form>
 
           <StoreSearch />
+          <BuyerLocationSelector compact />
           <div className='flex flex-col sm:flex-row justify-between items-center gap-3'>
             <div className='flex items-center gap-3'>
               <h1 className='text-2xl lg:text-3xl font-extrabold tracking-tight'>All Products</h1>

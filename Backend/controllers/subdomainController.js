@@ -11,6 +11,10 @@ const {
     convertOrderTotal,
     roundMoney,
 } = require('../services/orderMoneyService');
+const {
+    buyerLocationFromRequest,
+    isStoreVisibleToBuyer,
+} = require('../services/storeVisibilityService');
 
 const comparablePriceUSD = (product) =>
     convertAmountSync(getProductEffectivePrice(product), getProductCurrency(product), 'USD');
@@ -31,6 +35,9 @@ exports.getSubdomainStore = async (req, res) => {
             return res.status(404).json({ msg: 'Store not found' });
         }
         const store = req.subdomainStore;
+        if (!isStoreVisibleToBuyer(store, buyerLocationFromRequest(req))) {
+            return res.status(404).json({ msg: 'Store is not available in your selected area.' });
+        }
         res.status(200).json({
             msg: 'Store fetched successfully',
             store,
@@ -51,6 +58,9 @@ exports.getSubdomainProducts = async (req, res) => {
 
         const { categories, brands, priceRange, search, page = 1, limit = 20 } = req.query;
         const store = req.subdomainStore;
+        if (!isStoreVisibleToBuyer(store, buyerLocationFromRequest(req))) {
+            return res.status(404).json({ msg: 'Store products are not available in your selected area.' });
+        }
 
         // Build query for products
         let query = publicProductFilter({ seller: store.seller });

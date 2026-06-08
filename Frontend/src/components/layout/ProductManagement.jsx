@@ -12,11 +12,12 @@ import { getAuthToken } from "../../utils/cookieHelper";
 
 const ProductManagement = () => {
     const context = useOutletContext() || {};
-    const { products = [], loading, categories = [], searchTerm = '', setSearchTerm, selectedCategory = 'all', setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats, productCurrencyState, handleConvertProductCurrency, handleCancelProductCurrencyChange } = context;
+    const { products = [], loading, categories = [], searchTerm = '', setSearchTerm, selectedCategory = 'all', setSelectedCategory, deleteConfirm, setDeleteConfirm, handleEditProduct, handleCreateProduct, handleDeleteProduct, handleBulkDeleteProducts, fetchProducts, isFormOpen, editingProduct, setEditingProduct, handleSaveProduct, uploadingImages, closeForm, canFeature, featuredStats, productCurrencyState, handleConvertProductCurrency, handleCancelProductCurrencyChange } = context;
     const safeProducts = Array.isArray(products) ? products : [];
     const safeCategories = Array.isArray(categories) ? categories : [];
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
     const [hasStore, setHasStore] = useState(true);
     const [storeLoading, setStoreLoading] = useState(true);
@@ -68,6 +69,15 @@ const ProductManagement = () => {
     const handleSelectProduct = (product) => { setSelectedProducts(prev => prev.find(p => p._id === product._id) ? prev.filter(p => p._id !== product._id) : [...prev, product]); };
     const handleSelectAll = () => { selectedProducts.length === safeProducts.length ? setSelectedProducts([]) : setSelectedProducts([...safeProducts]); };
     const handleBulkOperationSuccess = () => { setSelectedProducts([]); setSelectMode(false); fetchProducts?.(); };
+    const confirmBulkDelete = async () => {
+        if (!handleBulkDeleteProducts) return;
+        const deleted = await handleBulkDeleteProducts(selectedProducts.map(product => product._id));
+        if (deleted) {
+            setBulkDeleteConfirm(false);
+            setSelectedProducts([]);
+            setSelectMode(false);
+        }
+    };
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className='p-3 sm:p-4 lg:p-6'>
@@ -136,12 +146,20 @@ const ProductManagement = () => {
                 <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>Product Management</h2>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     {selectMode && selectedProducts.length > 0 && (
-                        <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                            onClick={() => setIsBulkModalOpen(true)}
-                            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white"
-                            style={{ background: 'hsl(150, 60%, 45%)' }}>
-                            <Tag size={16} className="sm:w-5 sm:h-5" /> <span className="hidden xs:inline">Bulk</span> ({selectedProducts.length})
-                        </motion.button>
+                        <>
+                            <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                onClick={() => setIsBulkModalOpen(true)}
+                                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white"
+                                style={{ background: 'hsl(150, 60%, 45%)' }}>
+                                <Tag size={16} className="sm:w-5 sm:h-5" /> <span className="hidden xs:inline">Bulk</span> ({selectedProducts.length})
+                            </motion.button>
+                            <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                onClick={() => setBulkDeleteConfirm(true)}
+                                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold text-white"
+                                style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(340, 65%, 50%))' }}>
+                                <Trash2 size={16} className="sm:w-5 sm:h-5" /> <span className="hidden xs:inline">Delete</span> ({selectedProducts.length})
+                            </motion.button>
+                        </>
                     )}
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleToggleSelectMode}
                         className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-semibold"
@@ -246,6 +264,35 @@ const ProductManagement = () => {
             )}
 
             <BulkDiscountModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} selectedProducts={selectedProducts} onSuccess={handleBulkOperationSuccess} />
+            {createPortal(
+                <AnimatePresence>
+                    {bulkDeleteConfirm && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[110]">
+                            <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                className="max-w-md w-full p-6 glass-panel-strong"
+                                style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}>
+                                <div className="text-center mb-5">
+                                    <div className="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(239,68,68,0.12)' }}>
+                                        <Trash2 size={24} style={{ color: 'hsl(0, 72%, 55%)' }} />
+                                    </div>
+                                    <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--foreground))' }}>Delete Selected Products?</h3>
+                                    <p className="text-sm mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                        {selectedProducts.length} product{selectedProducts.length === 1 ? '' : 's'} will be permanently removed. This action cannot be undone.
+                                    </p>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setBulkDeleteConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl font-medium text-sm"
+                                        style={{ background: 'rgba(0,0,0,0.05)', color: 'hsl(var(--foreground))' }}>Cancel</button>
+                                    <motion.button whileTap={{ scale: 0.95 }} onClick={confirmBulkDelete} className="flex-1 px-4 py-2.5 rounded-xl text-white font-semibold text-sm"
+                                        style={{ background: 'linear-gradient(135deg, hsl(0, 72%, 55%), hsl(340, 65%, 50%))', boxShadow: '0 4px 16px rgba(239,68,68,0.3)' }}>Delete</motion.button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
             </>)}
         </motion.div>
     );
