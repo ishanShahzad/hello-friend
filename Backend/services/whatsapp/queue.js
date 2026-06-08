@@ -214,27 +214,36 @@ const processOne = async () => {
         // all handled by webhookHandler.extractDecision, keyed on the
         // confirm_ORD-xxx / cancel_ORD-xxx id scheme.
 
-        const buttonsPayload = buildOrderButtonsPayload(order);
         let sendRes;
-        let strategy = 'buttons';
+        let strategy;
 
-        try {
-            sendRes = await evolution.sendButtons(job.phone, buttonsPayload);
-        } catch (btnErr) {
-            console.warn(
-                `[whatsapp] sendButtons failed for order ${order.orderId}, trying list:`,
-                btnErr.response?.data || btnErr.message
-            );
-            strategy = 'list';
+        if (job.messageType === 'info') {
+            // Online-paid orders: just an info text. Buyer already committed by
+            // paying — no confirm/cancel buttons.
+            strategy = 'info-text';
+            sendRes = await evolution.sendText(job.phone, buildOrderPlacedInfoMessage(order));
+        } else {
+            // COD: tiered confirm/cancel send (buttons → list → text fallback).
+            const buttonsPayload = buildOrderButtonsPayload(order);
+            strategy = 'buttons';
             try {
-                sendRes = await evolution.sendList(job.phone, buildOrderListPayload(order));
-            } catch (listErr) {
+                sendRes = await evolution.sendButtons(job.phone, buttonsPayload);
+            } catch (btnErr) {
                 console.warn(
-                    `[whatsapp] sendList also failed for order ${order.orderId}, falling back to text:`,
-                    listErr.response?.data || listErr.message
+                    `[whatsapp] sendButtons failed for order ${order.orderId}, trying list:`,
+                    btnErr.response?.data || btnErr.message
                 );
-                strategy = 'text';
-                sendRes = await evolution.sendText(job.phone, buildOrderConfirmationMessage(order));
+                strategy = 'list';
+                try {
+                    sendRes = await evolution.sendList(job.phone, buildOrderListPayload(order));
+                } catch (listErr) {
+                    console.warn(
+                        `[whatsapp] sendList also failed for order ${order.orderId}, falling back to text:`,
+                        listErr.response?.data || listErr.message
+                    );
+                    strategy = 'text';
+                    sendRes = await evolution.sendText(job.phone, buildOrderConfirmationMessage(order));
+                }
             }
         }
         await incrementSentCounter();
