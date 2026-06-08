@@ -96,6 +96,41 @@ exports.enqueueOrderConfirmation = async (order) => {
     }
 };
 
+// Enqueue an info-only message (post-Stripe payment). No confirm/cancel poll.
+exports.enqueueOrderPlacedInfo = async (order) => {
+    try {
+        const phone = normalizePhone(order.shippingInfo?.phone);
+        if (!phone || phone.length < 8) {
+            console.warn('[whatsapp] skip info enqueue — invalid phone', order.orderId);
+            return null;
+        }
+
+        // Avoid duplicate info enqueue for the same order
+        const existing = await WhatsAppPendingMessage.findOne({
+            order: order._id,
+            messageType: 'info',
+        });
+        if (existing) return existing;
+
+        const pending = await WhatsAppPendingMessage.create({
+            order: order._id,
+            orderId: order.orderId,
+            confirmationToken: order.confirmation?.token || 'n/a',
+            messageType: 'info',
+            phone,
+            buyerName: order.shippingInfo?.fullName || '',
+            status: 'queued',
+            nextAttemptAt: hasOpenConversationWindow(phone)
+                ? new Date()
+                : new Date(Date.now() + randomDelay()),
+        });
+        return pending;
+    } catch (err) {
+        console.error('[whatsapp] info enqueue failed:', err.message);
+        return null;
+    }
+};
+
 const processOne = async () => {
     if (!evolution.isConfigured()) return;
 
