@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Clock, ShieldCheck, Loader2, Package, MapPin, Me
 import axios from 'axios';
 import SEOHead from '../components/common/SEOHead';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { formatOrderItemOptions } from '../utils/orderItems';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -316,7 +317,10 @@ export default function OrderConfirmationPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{it.name}</p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {it.quantity} x ${Number(it.price).toFixed(2)}</p>
+                      {formatOrderItemOptions(it) && (
+                        <p className="text-xs leading-snug" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatOrderItemOptions(it)}</p>
+                      )}
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {it.quantity} x {orderMoney(it.price)}</p>
                     </div>
                     <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(it.price * it.quantity)}</p>
                   </div>
@@ -379,7 +383,12 @@ export default function OrderConfirmationPage() {
                         <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
                           {it.image ? <img src={it.image} alt={it.name} className="w-full h-full object-cover" /> : <Package size={12} style={{ color: 'hsl(var(--muted-foreground))' }} />}
                         </div>
-                        <span className="text-xs flex-1 truncate" style={{ color: 'hsl(var(--foreground))' }}>{it.name} x{it.quantity}</span>
+                        <span className="text-xs flex-1 min-w-0" style={{ color: 'hsl(var(--foreground))' }}>
+                          <span className="block truncate">{it.name} x{it.quantity}</span>
+                          {formatOrderItemOptions(it) && (
+                            <span className="block truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatOrderItemOptions(it)}</span>
+                          )}
+                        </span>
                         <span className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(it.price * it.quantity)}</span>
                       </div>
                     ))}

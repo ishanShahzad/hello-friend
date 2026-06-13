@@ -1,9 +1,22 @@
 /**
- * Email HTML templates for order-related notifications
+ * Email HTML templates for order-related notifications.
  */
 
 const brandColor = '#6366f1';
 const bgColor = '#f8fafc';
+
+const {
+  escapeHtml,
+  formatOrderMoney,
+  getOrderCurrency,
+  orderItemName,
+  orderItemOptionsHtml,
+  paymentMethodLabel,
+} = require('./orderPresentation');
+
+const frontendUrl = () => process.env.FRONTEND_URL || 'https://rozare.com';
+
+const itemLineTotal = (item) => (Number(item?.price) || 0) * (Number(item?.quantity) || 0);
 
 const wrapper = (content) => `
 <!DOCTYPE html>
@@ -24,252 +37,225 @@ const wrapper = (content) => `
 </body>
 </html>`;
 
-exports.orderConfirmationEmail = (order) => {
-  const items = order.orderItems.map(item => 
-    `<tr>
-      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
-        <strong style="color:#1e293b;">${item.name}</strong><br/>
-        <span style="color:#94a3b8;font-size:13px;">Qty: ${item.quantity} × $${item.price.toFixed(2)}</span>
-      </td>
-      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-weight:600;">$${(item.price * item.quantity).toFixed(2)}</td>
-    </tr>`
-  ).join('');
-
-  return {
-    subject: `Order Confirmed - ${order.orderId}`,
-    html: wrapper(`
-      <h2 style="color:#1e293b;margin:0 0 8px;">Order Confirmed! 🎉</h2>
-      <p style="color:#64748b;margin:0 0 24px;">Thank you for your order. Here are your order details:</p>
-      
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;">
-        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
-        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
-      </div>
-
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
-        <tbody>${items}</tbody>
-      </table>
-
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;">
-        <table style="width:100%;">
-          <tr><td style="padding:4px 0;color:#64748b;">Subtotal</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.subtotal.toFixed(2)}</td></tr>
-          <tr><td style="padding:4px 0;color:#64748b;">Shipping</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.shippingCost.toFixed(2)}</td></tr>
-          ${order.orderSummary.tax > 0 ? `<tr><td style="padding:4px 0;color:#64748b;">Tax</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.tax.toFixed(2)}</td></tr>` : ''}
-          ${order.orderSummary.couponDiscount > 0 ? `<tr><td style="padding:4px 0;color:#22c55e;">Discount</td><td style="text-align:right;color:#22c55e;">-$${order.orderSummary.couponDiscount.toFixed(2)}</td></tr>` : ''}
-          <tr><td style="padding:8px 0 0;font-weight:700;color:#1e293b;border-top:2px solid #e2e8f0;">Total</td><td style="text-align:right;padding:8px 0 0;font-weight:700;color:${brandColor};font-size:18px;border-top:2px solid #e2e8f0;">$${order.orderSummary.totalAmount.toFixed(2)}</td></tr>
-        </table>
-      </div>
-
-      <div style="margin-top:24px;">
-        <h3 style="color:#1e293b;margin:0 0 8px;font-size:15px;">Shipping To</h3>
-        <p style="color:#64748b;margin:0;line-height:1.6;">
-          ${order.shippingInfo.fullName}<br/>
-          ${order.shippingInfo.address}<br/>
-          ${order.shippingInfo.city}, ${order.shippingInfo.state} ${order.shippingInfo.postalCode}<br/>
-          ${order.shippingInfo.country}
-        </p>
-      </div>
-
-      <p style="color:#64748b;margin:24px 0 0;font-size:13px;">Payment Method: <strong>${order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Stripe (Online)'}</strong></p>
-    `)
-  };
+const orderMoneyForEmail = (order) => {
+  const currency = getOrderCurrency(order);
+  return (amount) => formatOrderMoney(amount, currency);
 };
+
+const renderEmailItemRows = (order) => {
+  const money = orderMoneyForEmail(order);
+  return (order.orderItems || []).map(item => `
+    <tr>
+      <td style="padding:9px 0;border-bottom:1px solid #f1f5f9;">
+        <strong style="color:#1e293b;">${escapeHtml(orderItemName(item))}</strong>${orderItemOptionsHtml(item)}<br/>
+        <span style="color:#94a3b8;font-size:13px;">Qty: ${Number(item.quantity) || 1} x ${money(item.price)}</span>
+      </td>
+      <td style="padding:9px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-weight:600;">${money(itemLineTotal(item))}</td>
+    </tr>
+  `).join('');
+};
+
+const renderOrderSummaryRows = (order, { includeDiscount = true } = {}) => {
+  const money = orderMoneyForEmail(order);
+  const summary = order.orderSummary || {};
+  return `
+    <tr><td style="padding:4px 0;color:#64748b;">Subtotal</td><td style="text-align:right;color:#1e293b;">${money(summary.subtotal)}</td></tr>
+    <tr><td style="padding:4px 0;color:#64748b;">Shipping</td><td style="text-align:right;color:#1e293b;">${money(summary.shippingCost)}</td></tr>
+    ${Number(summary.tax) > 0 ? `<tr><td style="padding:4px 0;color:#64748b;">Tax</td><td style="text-align:right;color:#1e293b;">${money(summary.tax)}</td></tr>` : ''}
+    ${includeDiscount && Number(summary.couponDiscount) > 0 ? `<tr><td style="padding:4px 0;color:#22c55e;">Discount</td><td style="text-align:right;color:#22c55e;">-${money(summary.couponDiscount)}</td></tr>` : ''}
+    <tr><td style="padding:8px 0 0;font-weight:700;color:#1e293b;border-top:2px solid #e2e8f0;">Total</td><td style="text-align:right;padding:8px 0 0;font-weight:700;color:${brandColor};font-size:18px;border-top:2px solid #e2e8f0;">${money(summary.totalAmount)}</td></tr>
+  `;
+};
+
+const renderItemsTable = (order) => `
+  <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+    <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
+    <tbody>${renderEmailItemRows(order)}</tbody>
+  </table>
+`;
+
+const shippingAddressHtml = (shippingInfo = {}) => `
+  ${escapeHtml(shippingInfo.fullName)}<br/>
+  ${escapeHtml(shippingInfo.address)}<br/>
+  ${escapeHtml(shippingInfo.city)}, ${escapeHtml(shippingInfo.state)} ${escapeHtml(shippingInfo.postalCode)}<br/>
+  ${escapeHtml(shippingInfo.country)}
+`;
+
+exports.orderConfirmationEmail = (order) => ({
+  subject: `Order Confirmed - ${order.orderId}`,
+  html: wrapper(`
+    <h2 style="color:#1e293b;margin:0 0 8px;">Order Confirmed</h2>
+    <p style="color:#64748b;margin:0 0 24px;">Thank you for your order. Here are your order details:</p>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+      <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${escapeHtml(order.orderId)}</p>
+    </div>
+    ${renderItemsTable(order)}
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;">
+      <table style="width:100%;">${renderOrderSummaryRows(order)}</table>
+    </div>
+    <div style="margin-top:24px;">
+      <h3 style="color:#1e293b;margin:0 0 8px;font-size:15px;">Shipping To</h3>
+      <p style="color:#64748b;margin:0;line-height:1.6;">${shippingAddressHtml(order.shippingInfo)}</p>
+    </div>
+    <p style="color:#64748b;margin:24px 0 0;font-size:13px;">Payment Method: <strong>${paymentMethodLabel(order.paymentMethod)}</strong></p>
+  `),
+});
 
 exports.orderStatusUpdateEmail = (order, newStatus) => {
   const statusLabels = {
-    confirmed: { label: 'Confirmed', emoji: '✅', color: '#22c55e', msg: 'Your order has been confirmed and is being prepared.' },
-    processing: { label: 'Processing', emoji: '⚙️', color: '#f59e0b', msg: 'Your order is now being processed.' },
-    shipped: { label: 'Shipped', emoji: '🚚', color: '#3b82f6', msg: 'Your order has been shipped and is on its way!' },
-    delivered: { label: 'Delivered', emoji: '📦', color: '#22c55e', msg: 'Your order has been delivered successfully!' },
-    cancelled: { label: 'Cancelled', emoji: '❌', color: '#ef4444', msg: 'Your order has been cancelled.' },
+    confirmed: { label: 'Confirmed', color: '#22c55e', msg: 'Your order has been confirmed and is being prepared.' },
+    processing: { label: 'Processing', color: '#f59e0b', msg: 'Your order is now being processed.' },
+    shipped: { label: 'Shipped', color: '#3b82f6', msg: 'Your order has been shipped and is on its way.' },
+    delivered: { label: 'Delivered', color: '#22c55e', msg: 'Your order has been delivered successfully.' },
+    cancelled: { label: 'Cancelled', color: '#ef4444', msg: 'Your order has been cancelled.' },
   };
 
-  const info = statusLabels[newStatus] || { label: newStatus, emoji: '📋', color: brandColor, msg: `Your order status has been updated to ${newStatus}.` };
+  const info = statusLabels[newStatus] || {
+    label: escapeHtml(newStatus || 'Updated'),
+    color: brandColor,
+    msg: `Your order status has been updated to ${escapeHtml(newStatus || 'updated')}.`,
+  };
 
   return {
     subject: `Order ${info.label} - ${order.orderId}`,
     html: wrapper(`
       <div style="text-align:center;margin-bottom:24px;">
-        <span style="font-size:48px;">${info.emoji}</span>
         <h2 style="color:#1e293b;margin:12px 0 8px;">Order ${info.label}</h2>
         <p style="color:#64748b;margin:0;">${info.msg}</p>
       </div>
-
       <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;">
         <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
-        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
+        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${escapeHtml(order.orderId)}</p>
         <div style="margin-top:12px;display:inline-block;background:${info.color};color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;">${info.label}</div>
       </div>
-
       <p style="color:#64748b;margin:24px 0 0;font-size:13px;text-align:center;">If you have any questions, please contact our support team.</p>
-    `)
+    `),
   };
 };
 
-exports.newOrderSellerEmail = (order, sellerName) => {
-  const items = order.orderItems.map(item =>
-    `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#1e293b;">${item.name} × ${item.quantity}</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #f1f5f9;color:#1e293b;font-weight:600;">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
-  ).join('');
+exports.newOrderSellerEmail = (order, sellerName) => ({
+  subject: `New Order Received - ${order.orderId}`,
+  html: wrapper(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="color:#1e293b;margin:12px 0 8px;">New Order Received</h2>
+      <p style="color:#64748b;margin:0;">Hey ${escapeHtml(sellerName || 'Seller')}, you have a new order.</p>
+    </div>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+      <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${escapeHtml(order.orderId)}</p>
+    </div>
+    ${renderItemsTable(order)}
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;">
+      <table style="width:100%;">${renderOrderSummaryRows(order)}</table>
+    </div>
+    <div style="margin-top:20px;">
+      <h3 style="color:#1e293b;margin:0 0 8px;font-size:15px;">Ship To</h3>
+      <p style="color:#64748b;margin:0;line-height:1.6;">${shippingAddressHtml(order.shippingInfo)}</p>
+    </div>
+    <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">Log in to your seller dashboard to manage this order.</p>
+  `),
+});
 
-  return {
-    subject: `New Order Received - ${order.orderId}`,
-    html: wrapper(`
-      <div style="text-align:center;margin-bottom:24px;">
-        <span style="font-size:48px;">🛒</span>
-        <h2 style="color:#1e293b;margin:12px 0 8px;">New Order Received!</h2>
-        <p style="color:#64748b;margin:0;">Hey ${sellerName}, you have a new order.</p>
-      </div>
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
-        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
-        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
-      </div>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
-        <tbody>${items}</tbody>
-      </table>
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;">
-        <p style="margin:0;color:#1e293b;font-weight:700;font-size:16px;">Total: $${order.orderSummary.totalAmount.toFixed(2)}</p>
-      </div>
-      <div style="margin-top:20px;">
-        <h3 style="color:#1e293b;margin:0 0 8px;font-size:15px;">Ship To</h3>
-        <p style="color:#64748b;margin:0;line-height:1.6;">${order.shippingInfo.fullName}<br/>${order.shippingInfo.address}<br/>${order.shippingInfo.city}, ${order.shippingInfo.state} ${order.shippingInfo.postalCode}</p>
-      </div>
-      <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">Log in to your seller dashboard to manage this order.</p>
-    `)
-  };
-};
+exports.sellerAccountCreatedEmail = (userName) => ({
+  subject: 'Your Seller Account is Ready!',
+  html: wrapper(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="color:#1e293b;margin:12px 0 8px;">Welcome, Seller ${escapeHtml(userName)}!</h2>
+      <p style="color:#64748b;margin:0 0 24px;">Your seller account has been successfully created on Rozare.</p>
+    </div>
+    <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">What's Next?</h3>
+      <ul style="color:#64748b;margin:0;padding-left:20px;line-height:2;">
+        <li>Set up your store from the Seller Dashboard</li>
+        <li>Add your first products</li>
+        <li>Configure shipping methods</li>
+        <li>Start receiving orders</li>
+      </ul>
+    </div>
+    <div style="text-align:center;">
+      <a href="${escapeHtml(`${frontendUrl()}/seller-dashboard`)}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Go to Seller Dashboard</a>
+    </div>
+  `),
+});
 
-exports.sellerAccountCreatedEmail = (userName) => {
-  return {
-    subject: 'Your Seller Account is Ready! 🎉',
-    html: wrapper(`
-      <div style="text-align:center;margin-bottom:24px;">
-        <span style="font-size:48px;">🏪</span>
-        <h2 style="color:#1e293b;margin:12px 0 8px;">Welcome, Seller ${userName}!</h2>
-        <p style="color:#64748b;margin:0 0 24px;">Your seller account has been successfully created on Rozare.</p>
-      </div>
-      <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">What's Next?</h3>
-        <ul style="color:#64748b;margin:0;padding-left:20px;line-height:2;">
-          <li>Set up your store from the Seller Dashboard</li>
-          <li>Add your first products</li>
-          <li>Configure shipping methods</li>
-          <li>Start receiving orders!</li>
-        </ul>
-      </div>
-      <div style="text-align:center;">
-        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}/seller-dashboard" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Go to Seller Dashboard</a>
-      </div>
-    `)
-  };
-};
+exports.buyerOrderConfirmationRequestEmail = (order, confirmUrl) => ({
+  subject: `Please confirm your order ${order.orderId}`,
+  html: wrapper(`
+    <h2 style="color:#1e293b;margin:0 0 8px;">Confirm your order</h2>
+    <p style="color:#64748b;margin:0 0 24px;">Hi ${escapeHtml(order.shippingInfo?.fullName)}, please confirm you'd like to proceed with your Cash on Delivery order. The link expires in 48 hours.</p>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+      <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${escapeHtml(order.orderId)}</p>
+    </div>
+    ${renderItemsTable(order)}
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;">
+      <table style="width:100%;">${renderOrderSummaryRows(order)}</table>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${escapeHtml(confirmUrl)}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;">Review &amp; Confirm Order</a>
+    </div>
+    <p style="color:#94a3b8;margin:24px 0 0;font-size:12px;text-align:center;">If you didn't place this order, you can safely ignore this email or click the link to decline it.</p>
+  `),
+});
 
-exports.buyerOrderConfirmationRequestEmail = (order, confirmUrl) => {
-  const items = order.orderItems.map(item =>
-    `<tr>
-      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
-        <strong style="color:#1e293b;">${item.name}</strong><br/>
-        <span style="color:#94a3b8;font-size:13px;">Qty: ${item.quantity} × $${item.price.toFixed(2)}</span>
-      </td>
-      <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-weight:600;">$${(item.price * item.quantity).toFixed(2)}</td>
-    </tr>`
-  ).join('');
+exports.sellerOrderConfirmedByBuyerEmail = (order, sellerName) => ({
+  subject: `Buyer confirmed order ${order.orderId}`,
+  html: wrapper(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="color:#1e293b;margin:12px 0 8px;">Buyer Confirmed Order</h2>
+      <p style="color:#64748b;margin:0;">Hi ${escapeHtml(sellerName || 'Seller')}, the buyer confirmed their order.</p>
+    </div>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
+      <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${escapeHtml(order.orderId)}</p>
+      <div style="margin-top:12px;display:inline-block;background:#22c55e;color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;">Confirmed by Buyer</div>
+    </div>
+    ${renderItemsTable(order)}
+    <p style="color:#64748b;margin:0;line-height:1.6;">
+      <strong style="color:#1e293b;">Customer:</strong> ${escapeHtml(order.shippingInfo?.fullName)}<br/>
+      <strong style="color:#1e293b;">Total:</strong> ${orderMoneyForEmail(order)(order.orderSummary?.totalAmount)}<br/>
+      <strong style="color:#1e293b;">Confirmed at:</strong> ${escapeHtml(new Date(order.confirmation?.confirmedAt || Date.now()).toLocaleString())}
+    </p>
+    <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">The order status is now <strong>Confirmed</strong>. You can begin processing it.</p>
+  `),
+});
 
-  return {
-    subject: `Please confirm your order ${order.orderId}`,
-    html: wrapper(`
-      <h2 style="color:#1e293b;margin:0 0 8px;">Confirm your order</h2>
-      <p style="color:#64748b;margin:0 0 24px;">Hi ${order.shippingInfo.fullName}, please confirm you'd like to proceed with your Cash on Delivery order. The link expires in 48 hours.</p>
-
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
-        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
-        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
-      </div>
-
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Item</th><th style="text-align:right;padding:8px 0;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:13px;">Total</th></tr></thead>
-        <tbody>${items}</tbody>
-      </table>
-
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;">
-        <table style="width:100%;">
-          <tr><td style="padding:4px 0;color:#64748b;">Subtotal</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.subtotal.toFixed(2)}</td></tr>
-          <tr><td style="padding:4px 0;color:#64748b;">Shipping</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.shippingCost.toFixed(2)}</td></tr>
-          ${order.orderSummary.tax > 0 ? `<tr><td style="padding:4px 0;color:#64748b;">Tax</td><td style="text-align:right;color:#1e293b;">$${order.orderSummary.tax.toFixed(2)}</td></tr>` : ''}
-          <tr><td style="padding:8px 0 0;font-weight:700;color:#1e293b;border-top:2px solid #e2e8f0;">Total</td><td style="text-align:right;padding:8px 0 0;font-weight:700;color:${brandColor};font-size:18px;border-top:2px solid #e2e8f0;">$${order.orderSummary.totalAmount.toFixed(2)}</td></tr>
-        </table>
-      </div>
-
-      <div style="text-align:center;margin:24px 0;">
-        <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;">Review &amp; Confirm Order</a>
-      </div>
-
-      <p style="color:#94a3b8;margin:24px 0 0;font-size:12px;text-align:center;">If you didn't place this order, you can safely ignore this email or click the link to decline it.</p>
-    `)
-  };
-};
-
-exports.sellerOrderConfirmedByBuyerEmail = (order, sellerName) => {
-  return {
-    subject: `Buyer confirmed order ${order.orderId} ✅`,
-    html: wrapper(`
-      <div style="text-align:center;margin-bottom:24px;">
-        <span style="font-size:48px;">✅</span>
-        <h2 style="color:#1e293b;margin:12px 0 8px;">Buyer Confirmed Order</h2>
-        <p style="color:#64748b;margin:0;">Hi ${sellerName || 'Seller'}, the buyer confirmed their order via email — no manual verification needed.</p>
-      </div>
-      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;">
-        <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;">Order ID</p>
-        <p style="margin:0;color:${brandColor};font-weight:700;font-size:18px;">${order.orderId}</p>
-        <div style="margin-top:12px;display:inline-block;background:#22c55e;color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;">Confirmed via Email</div>
-      </div>
-      <p style="color:#64748b;margin:0;line-height:1.6;">
-        <strong style="color:#1e293b;">Customer:</strong> ${order.shippingInfo.fullName}<br/>
-        <strong style="color:#1e293b;">Total:</strong> $${order.orderSummary.totalAmount.toFixed(2)}<br/>
-        <strong style="color:#1e293b;">Confirmed at:</strong> ${new Date(order.confirmation?.confirmedAt || Date.now()).toLocaleString()}
-      </p>
-      <p style="color:#64748b;margin:20px 0 0;font-size:13px;text-align:center;">The order status is now <strong>Confirmed</strong>. You can begin processing it.</p>
-    `)
-  };
-};
-
-exports.welcomeEmail = (userName) => {
-  return {
-    subject: 'Welcome to Rozare! 🎉',
-    html: wrapper(`
-      <h2 style="color:#1e293b;margin:0 0 8px;">Welcome, ${userName}! 👋</h2>
-      <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Rozare. We're excited to have you on board!</p>
-      <p style="color:#64748b;margin:0 0 24px;">Browse products from independent sellers and brands, with secure checkout and helpful order updates.</p>
-      <div style="text-align:center;">
-        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
-      </div>
-    `)
-  };
-};
+exports.welcomeEmail = (userName) => ({
+  subject: 'Welcome to Rozare!',
+  html: wrapper(`
+    <h2 style="color:#1e293b;margin:0 0 8px;">Welcome, ${escapeHtml(userName)}!</h2>
+    <p style="color:#64748b;margin:0 0 24px;">Thanks for joining Rozare. We're excited to have you on board.</p>
+    <p style="color:#64748b;margin:0 0 24px;">Browse products from independent sellers and brands, with secure checkout and helpful order updates.</p>
+    <div style="text-align:center;">
+      <a href="${escapeHtml(frontendUrl())}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">Start Shopping</a>
+    </div>
+  `),
+});
 
 exports.broadcastEmail = (title, body, category, linkTo) => {
-  const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const emojiMap = {
-    announcement: '📢',
-    promo: '🎉',
-    system: '⚙️',
+  const labelMap = {
+    announcement: 'Announcement',
+    promo: 'Promotion',
+    system: 'System Update',
   };
-  const emoji = emojiMap[category] || '📣';
   const safeTitle = escapeHtml(title);
   const safeBody = escapeHtml(body).replace(/\n/g, '<br/>');
-  const ctaButton = linkTo
+  const label = labelMap[category] || 'Message';
+  const href = linkTo ? `${frontendUrl()}${linkTo}` : '';
+  const ctaButton = href
     ? `<div style="text-align:center;margin-top:24px;">
-        <a href="${process.env.FRONTEND_URL || 'https://rozare.com'}${linkTo}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">View Details</a>
+        <a href="${escapeHtml(href)}" style="display:inline-block;background:linear-gradient(135deg,${brandColor},#8b5cf6);color:#fff;padding:12px 32px;border-radius:10px;text-decoration:none;font-weight:600;">View Details</a>
       </div>`
     : '';
 
   return {
     subject: title,
     html: wrapper(`
-      <h2 style="color:#1e293b;margin:0 0 16px;">${emoji} ${safeTitle}</h2>
+      <p style="color:#94a3b8;margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;">${label}</p>
+      <h2 style="color:#1e293b;margin:0 0 16px;">${safeTitle}</h2>
       <p style="color:#64748b;margin:0 0 24px;line-height:1.6;">${safeBody}</p>
       ${ctaButton}
-    `)
+    `),
   };
 };

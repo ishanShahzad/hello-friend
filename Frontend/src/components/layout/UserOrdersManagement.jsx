@@ -6,6 +6,7 @@ import Loader from '../common/Loader';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { getAuthToken } from "../../utils/cookieHelper";
+import { formatOrderItemOptions } from "../../utils/orderItems";
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } };
@@ -106,6 +107,11 @@ const UserOrdersManagement = () => {
                                         <h3 className="font-semibold text-sm" style={{ color: 'hsl(var(--foreground))' }}>
                                             {order.orderItems[0].name}{order.orderItems.length > 1 && ` + ${order.orderItems.length - 1} more`}
                                         </h3>
+                                        {formatOrderItemOptions(order.orderItems[0]) && (
+                                            <p className="text-xs leading-snug" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                                {formatOrderItemOptions(order.orderItems[0])}
+                                            </p>
+                                        )}
                                         <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Order ID: {order.orderId}</p>
                                         <p className="text-xs flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                                             <Calendar className="h-3 w-3" />{formatDate(order.createdAt)}

@@ -45,7 +45,7 @@ const LocationAutocomplete = ({
   onSelect,
   onClear,
   className = '',
-  inputClassName = 'glass-input',
+  inputClassName = 'glass-input w-full',
 }) => {
   const [query, setQuery] = useState(() => selectedLabel(value, code));
   const [options, setOptions] = useState([]);
@@ -111,19 +111,19 @@ const LocationAutocomplete = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+        <label className="block text-xs font-semibold uppercase tracking-wider mb-2 truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
           {label}{required ? ' *' : ''}
         </label>
       )}
-      <div className="relative">
+      <div className="relative min-w-0">
         <input
           value={query}
           disabled={disabled}
           required={required}
           placeholder={placeholder}
-          className={`${inputClassName} pr-16`}
+          className={`${inputClassName} pr-16 min-w-0`}
           autoComplete="off"
           onFocus={() => setOpen(true)}
           onChange={(event) => {
@@ -161,7 +161,7 @@ const LocationAutocomplete = ({
 
       {open && !disabled && (
         <div
-          className="absolute z-50 mt-2 w-full max-h-64 overflow-y-auto rounded-xl p-1"
+          className="absolute z-50 mt-2 w-full max-w-full max-h-64 overflow-y-auto rounded-xl p-1"
           style={{
             background: 'var(--glass-bg-strong)',
             border: '1px solid var(--glass-border)',

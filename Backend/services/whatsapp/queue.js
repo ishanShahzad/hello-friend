@@ -155,9 +155,8 @@ const processOne = async () => {
     try {
         // Re-read order for fresh data
         const order = await Order.findById(job.order).populate({
-            path: 'orderItems.product',
-            select: 'name store',
-            populate: { path: 'store', select: 'storeName' },
+            path: 'orderItems.productId',
+            select: 'name seller',
         });
         if (!order) {
             job.status = 'failed';

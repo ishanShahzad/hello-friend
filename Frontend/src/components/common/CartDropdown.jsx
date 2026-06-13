@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Loader from '../common/Loader'
 import { getMainDomainUrl, isSubdomain } from "../../utils/subdomainHelper";
+import { formatOrderItemOptions } from "../../utils/orderItems";
 
 const CartDropdown = () => {
   const { cartItems, handleQtyInc, handleQtyDec, isOpen, dropdownRef, toggleCart, handleRemoveCartItem, isCartLoading, qtyUpdateId } = useGlobal()
@@ -118,6 +119,11 @@ const CartDropdown = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm leading-snug truncate pr-6" style={{ color: 'hsl(var(--foreground))' }}>{name}</h4>
+                            {formatOrderItemOptions(item) && (
+                              <p className="text-[11px] mt-0.5 leading-snug" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {formatOrderItemOptions(item)}
+                              </p>
+                            )}
                             <div className="flex items-baseline gap-1.5 mt-1">
                               <span className="font-bold text-sm" style={{ color: 'hsl(var(--primary))' }}>{formatPrice(displayPrice, { sourceCurrency: productCurrency })}</span>
                               {hasDiscount && <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatPrice(price, { sourceCurrency: productCurrency })}</span>}

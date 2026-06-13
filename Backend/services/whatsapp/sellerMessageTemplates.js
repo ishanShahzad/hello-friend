@@ -1,101 +1,124 @@
 /**
  * WhatsApp message templates for seller notifications.
- * Uses plain text for seller-facing notifications.
- * Keep messages concise — WhatsApp has a ~65K char limit but shorter is better.
+ * Keep these concise because WhatsApp delivery is more reliable with short text.
  */
 
-const { formatMoneySync, normalizeCurrency } = require('../currencyService');
+const { normalizeCurrency } = require('../currencyService');
+const {
+    formatOrderMoney,
+    orderItemLineText,
+    paymentMethodLabel,
+} = require('../../utils/orderPresentation');
+
+const orderCurrency = (order) => normalizeCurrency(order?.currency || order?.displayCurrency || 'USD');
+
+const orderNumber = (order) => order?.orderId || order?._id || 'Unknown';
+
+const orderTotal = (order) => {
+    const currency = orderCurrency(order);
+    const total = Number(order?.orderSummary?.totalAmount ?? order?.totalAmount ?? order?.total ?? 0);
+    return formatOrderMoney(Number.isFinite(total) ? total : 0, currency);
+};
+
+const itemLines = (order, limit = 8) => {
+    const items = order?.orderItems || [];
+    const lines = items
+        .slice(0, limit)
+        .map(item => orderItemLineText(item, orderCurrency(order)));
+    if (items.length > limit) {
+        const remaining = items.length - limit;
+        lines.push(`...and ${remaining} more item${remaining !== 1 ? 's' : ''}`);
+    }
+    return lines;
+};
+
+const orderLinesBlock = (order) => {
+    const lines = itemLines(order);
+    return lines.length ? ['Items:', ...lines].join('\n') : 'Items: Not available';
+};
 
 const templates = {
     seller_welcome: (storeName) => {
         const liveLine = storeName
             ? `Your seller account is created and "${storeName}" is live.`
             : 'Your seller account is created.';
-        return `Congratulations!\n\n${liveLine}\n\nYou can manage your store directly from the seller dashboard, or you can chat with me here. I'm your AI business assistant, and I can help with anything you need for your store.\n\nWhenever you need help, just send me a message and tell me what to do. I can add products, update prices and stock, improve descriptions, create coupons, check orders, manage store details, and more.\n\nYou can chat with me here on WhatsApp or on the Rozare website. I'm here for you anytime, ready to help you manage and grow your store quickly.`;
+        return [
+            'Congratulations!',
+            '',
+            liveLine,
+            '',
+            'You can manage your store directly from the seller dashboard, or chat with me here. I can help add products, update prices and stock, improve descriptions, create coupons, check orders, manage store details, and more.',
+        ].join('\n');
     },
 
-    // ── Orders ──
     new_order: (order) => {
-        const itemCount = order.orderItems?.length || 0;
-        // Order.totalAmount is nested under orderSummary.totalAmount per the schema.
-        const total = Number(
-            order.orderSummary?.totalAmount ??
-            order.totalAmount ??
-            order.total ??
-            0
-        );
-        const currency = normalizeCurrency(order.currency || order.displayCurrency || 'USD');
-        const totalStr = Number.isFinite(total) ? formatMoneySync(total, currency) : formatMoneySync(0, currency);
-        // paymentMethod enum is ['cash_on_delivery', 'stripe'] — NOT 'cod'.
-        const paymentLabel = order.paymentMethod === 'cash_on_delivery'
-            ? 'Cash on Delivery'
-            : order.paymentMethod === 'stripe'
-                ? 'Card (Stripe)'
-                : (order.paymentMethod || 'Unknown');
-        return `🛒 *New Order Received!*\n\nOrder: *#${order.orderId || order._id}*\nItems: ${itemCount} item${itemCount !== 1 ? 's' : ''}\nTotal: *${totalStr}*\nPayment: ${paymentLabel}\n\nCheck your dashboard to process this order.`;
+        const count = order?.orderItems?.length || 0;
+        return [
+            'New Order Received',
+            '',
+            `Order: #${orderNumber(order)}`,
+            `Item count: ${count}`,
+            orderLinesBlock(order),
+            `Total: ${orderTotal(order)}`,
+            `Payment: ${paymentMethodLabel(order?.paymentMethod)}`,
+            '',
+            'Check your dashboard to process this order.',
+        ].join('\n');
     },
 
-    order_confirmed: (order) => {
-        return `✅ *Order Confirmed*\n\nOrder *#${order.orderId || order._id}* has been confirmed by the buyer.\n\nPlease prepare the order for shipping.`;
-    },
+    order_confirmed: (order) => [
+        'Order Confirmed',
+        '',
+        `Order #${orderNumber(order)} has been confirmed by the buyer.`,
+        orderLinesBlock(order),
+        '',
+        'Please prepare the order for shipping.',
+    ].join('\n'),
 
-    order_cancelled: (order) => {
-        return `❌ *Order Cancelled*\n\nOrder *#${order.orderId || order._id}* has been cancelled by the buyer.`;
-    },
+    order_cancelled: (order) => [
+        'Order Cancelled',
+        '',
+        `Order #${orderNumber(order)} has been cancelled by the buyer.`,
+        orderLinesBlock(order),
+    ].join('\n'),
 
-    // ── Subscription ──
     subscription_activated: (planName, freePeriodDays) => {
         const freeStr = freePeriodDays > 0 ? `\nFree period: ${freePeriodDays} days` : '';
-        return `🎉 *${planName} Activated!*\n\nYour seller subscription is now active.${freeStr}\n\nYour store is live and visible to customers.`;
+        return `${planName} Activated\n\nYour seller subscription is now active.${freeStr}\n\nYour store is live and visible to customers.`;
     },
 
-    subscription_ending_soon: (daysLeft) => {
-        return `⚠️ *Subscription Ending Soon*\n\nYour subscription ends in *${daysLeft} day${daysLeft !== 1 ? 's' : ''}*.\n\nPlease ensure your payment method is up to date to avoid service interruption.`;
-    },
+    subscription_ending_soon: (daysLeft) =>
+        `Subscription Ending Soon\n\nYour subscription ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.\n\nPlease ensure your payment method is up to date to avoid service interruption.`,
 
-    payment_failed: () => {
-        return `🚨 *Payment Failed*\n\nWe couldn't process your subscription payment. Your store may be blocked if payment isn't resolved soon.\n\nPlease update your payment method in the dashboard.`;
-    },
+    payment_failed: () =>
+        "Payment Failed\n\nWe couldn't process your subscription payment. Your store may be blocked if payment isn't resolved soon.\n\nPlease update your payment method in the dashboard.",
 
-    payment_recovered: () => {
-        return `✅ *Payment Successful*\n\nYour subscription payment has been processed successfully. Your account is now in good standing.`;
-    },
+    payment_recovered: () =>
+        'Payment Successful\n\nYour subscription payment has been processed successfully. Your account is now in good standing.',
 
-    // ── Critical (always sent) ──
-    trial_expiring: (daysLeft) => {
-        return `⚠️ *Trial Expiring*\n\nYour free trial ends in *${daysLeft} day${daysLeft !== 1 ? 's' : ''}*.\n\nSubscribe to keep your store active and visible to customers.`;
-    },
+    trial_expiring: (daysLeft) =>
+        `Trial Expiring\n\nYour free trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.\n\nSubscribe to keep your store active and visible to customers.`,
 
-    account_blocked: (reason) => {
-        return `🚫 *Store Blocked*\n\nYour store has been blocked${reason ? `: ${reason}` : ''}.\n\nCustomers can no longer see your products. Subscribe or contact support to reactivate.`;
-    },
+    account_blocked: (reason) =>
+        `Store Blocked\n\nYour store has been blocked${reason ? `: ${reason}` : ''}.\n\nCustomers can no longer see your products. Subscribe or contact support to reactivate.`,
 
-    product_blocked: (productName, reason) => {
-        return `*Product Blocked*\n\n"${productName || 'Your product'}" was blocked because ${reason || 'it looks like test or placeholder content'}.\n\nIt is saved in your Products tab as blocked, but customers cannot see it. Edit it with a real product name and description to make it available again.`;
-    },
+    product_blocked: (productName, reason) =>
+        `Product Blocked\n\n"${productName || 'Your product'}" was blocked because ${reason || 'it looks like test or placeholder content'}.\n\nIt is saved in your Products tab as blocked, but customers cannot see it. Edit it with a real product name and description to make it available again.`,
 
-    // ── Bonus ──
-    bonus_expiring: (daysLeft) => {
-        return `⏳ *Bonus Features Expiring*\n\nYour bonus features expire in *${daysLeft} day${daysLeft !== 1 ? 's' : ''}*.\n\nUpgrade to Rozare Elite ($12.99/mo) to keep them permanently.`;
-    },
+    bonus_expiring: (daysLeft) =>
+        `Bonus Features Expiring\n\nYour bonus features expire in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.\n\nUpgrade to Rozare Elite to keep them permanently.`,
 
-    bonus_expired: () => {
-        return `⏰ *Bonus Features Expired*\n\nYour bonus features period has ended. Your Starter plan features remain active.\n\nUpgrade to Rozare Elite for permanent bonus features.`;
-    },
+    bonus_expired: () =>
+        'Bonus Features Expired\n\nYour bonus features period has ended. Your Starter plan features remain active.\n\nUpgrade to Rozare Elite for permanent bonus features.',
 
-    // ── Downgrade/Upgrade ──
-    downgrade_scheduled: () => {
-        return `📋 *Downgrade Scheduled*\n\nYour plan will switch to Rozare Starter at the end of your current billing period.`;
-    },
+    downgrade_scheduled: () =>
+        'Downgrade Scheduled\n\nYour plan will switch to Rozare Starter at the end of your current billing period.',
 
-    upgrade_completed: () => {
-        return `🚀 *Upgraded to Rozare Elite!*\n\nYou now have access to all Elite features including permanent bonus features.`;
-    },
+    upgrade_completed: () =>
+        'Upgraded to Rozare Elite\n\nYou now have access to all Elite features including permanent bonus features.',
 
-    // ── Store ──
-    store_verified: () => {
-        return `✅ *Store Verified*\n\nYour store verification has been approved! Your store now has the verified badge.`;
-    },
+    store_verified: () =>
+        'Store Verified\n\nYour store verification has been approved. Your store now has the verified badge.',
 };
 
 module.exports = templates;

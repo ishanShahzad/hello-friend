@@ -187,6 +187,8 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       try {
         const user = await User.findById(order.user);
+        const { formatOrderMoney } = require('./utils/orderPresentation');
+        const paidAmount = formatOrderMoney(order.orderSummary?.totalAmount || 0, order.currency || 'USD');
         const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -209,7 +211,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       <div class="header">🎉 Payment Successful!</div>
       <div style="padding:1.5rem 0;">
         <p>Hello ${user?.username || 'Customer'},</p>
-        <p>We have successfully received your payment of <strong>USD ${order.orderSummary.totalAmount}</strong> for your order <strong>#${order.orderId}</strong>.</p>
+        <p>We have successfully received your payment of <strong>${paidAmount}</strong> for your order <strong>#${order.orderId}</strong>.</p>
         <p>Your order is now confirmed and will be delivered to you shortly.</p>
         <p style="text-align:center;">
           <a href="${process.env.FRONTEND_URL}/user-dashboard/order/detail/${order._id}" class="button">View Your Order</a>
@@ -226,7 +228,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
         await sendEmail({
           to: email,
           subject: `Your Order #${order.orderId} is Confirmed 🎉`,
-          text: `We've received your payment of USD ${order.orderSummary.totalAmount}. Your order will be delivered soon.`,
+          text: `We've received your payment of ${paidAmount}. Your order will be delivered soon.`,
           html: html,
         });
       } catch (emailErr) {

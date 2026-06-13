@@ -22,22 +22,29 @@
 //      still human-readable — "Please tap a button OR reply YES / NO" — so
 //      no buyer is ever stuck.
 
-const { formatMoneySync, normalizeCurrency } = require('../currencyService');
+const { normalizeCurrency } = require('../currencyService');
+const {
+    formatOrderMoney,
+    formatItemOptionsText,
+    orderItemName,
+} = require('../../utils/orderPresentation');
 
 const orderCurrency = (order) => normalizeCurrency(order?.currency || order?.displayCurrency || 'USD');
-const formatMoney = (n, currency) => formatMoneySync(n, currency || 'USD');
+const formatMoney = (n, currency) => formatOrderMoney(n, currency || 'USD');
 
 const itemStoreName = (it) =>
     it?.store?.storeName ||
+    it?.productId?.store?.storeName ||
     it?.product?.store?.storeName ||
     it?.storeName ||
     '';
 
 const buildProductLine = (it, currency) => {
-    const qty = it.quantity || 1;
-    const price = formatMoney(it.price * qty, currency);
+    const qty = Number(it.quantity || it.qty || 1) || 1;
+    const price = formatOrderMoney((Number(it.price) || 0) * qty, currency);
     const store = itemStoreName(it);
-    return `• ${it.name} x${qty} — ${price}${store ? ` _(from ${store})_` : ''}`;
+    const options = formatItemOptionsText(it);
+    return `- ${orderItemName(it)}${options ? ` (${options})` : ''} x${qty} - ${price}${store ? ` _(from ${store})_` : ''}`;
 };
 
 const buildStoresLine = (order) => {

@@ -7,6 +7,7 @@ import { Link, useParams } from "react-router-dom";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import Loader from "../common/Loader";
 import { getAuthToken } from "../../utils/cookieHelper";
+import { getOrderItemOptionPairs } from "../../utils/orderItems";
 
 const OrderDetail = () => {
     const { formatPrice } = useCurrency();
@@ -318,10 +319,14 @@ const OrderDetail = () => {
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-sm sm:text-base font-semibold break-words" style={{ color: 'hsl(var(--foreground))' }}>{item.name}</h3>
                                         <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Quantity: {item.quantity}</p>
-                                        {item.selectedColor && (
-                                            <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                                Color: <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }}>{item.selectedColor}</span>
-                                            </p>
+                                        {getOrderItemOptionPairs(item).length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {getOrderItemOptionPairs(item).map((option) => (
+                                                    <span key={`${option.name}:${option.value}`} className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ background: 'rgba(99, 102, 241, 0.12)', color: 'hsl(220, 70%, 55%)' }}>
+                                                        {option.name}: {option.value}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
                                         <div className="mt-2 sm:hidden">
                                             <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{orderMoney(item.price)}</p>

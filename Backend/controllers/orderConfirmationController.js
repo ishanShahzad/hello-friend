@@ -7,6 +7,7 @@ const { sellerOrderConfirmedByBuyerEmail } = require('../utils/emailTemplates');
 const { sendPushToUser } = require('../utils/expoPush');
 const { notifySeller } = require('../services/whatsapp/sellerNotificationService');
 const sellerTemplates = require('../services/whatsapp/sellerMessageTemplates');
+const { toPlainOptions } = require('../utils/orderPresentation');
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
@@ -20,6 +21,7 @@ const sanitizeOrderForPublic = (order) => ({
     orderItems: order.orderItems.map(i => ({
         name: i.name, image: i.image, price: i.price, quantity: i.quantity,
         selectedColor: i.selectedColor || null,
+        selectedOptions: toPlainOptions(i.selectedOptions),
     })),
     currency: order.currency || 'USD',
     shippingInfo: {

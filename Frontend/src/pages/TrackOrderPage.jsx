@@ -5,6 +5,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useCurrency } from "../contexts/CurrencyContext";
 import SEOHead from "../components/common/SEOHead";
+import { formatOrderItemOptions } from "../utils/orderItems";
 
 const statusSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 const statusConfig = {
@@ -228,6 +229,9 @@ function TrackOrderContent() {
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate" style={{ color: "hsl(var(--foreground))" }}>{item.name}</p>
+                              {formatOrderItemOptions(item) && (
+                                <p className="text-xs leading-snug" style={{ color: "hsl(var(--muted-foreground))" }}>{formatOrderItemOptions(item)}</p>
+                              )}
                               <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                                 Qty: {item.quantity} × {orderMoney(item.price)}
                               </p>

@@ -1,3 +1,5 @@
+import { formatOrderItemOptions } from './orderItems';
+
 /**
  * WhatsApp order verification helper.
  * Generates a wa.me link with a pre-filled verification message.
@@ -32,11 +34,22 @@ export const sanitizePhone = (rawPhone) => {
   return digits;
 };
 
-const formatMoney = (n, formatPrice) => {
+const formatMoney = (n, formatPrice, sourceCurrency = 'USD') => {
+  const amount = Number(n || 0);
+  const currency = sourceCurrency || 'USD';
   if (typeof formatPrice === 'function') {
-    try { return formatPrice(n || 0); } catch { /* noop */ }
+    try { return formatPrice(amount, { sourceCurrency: currency }); } catch { /* noop */ }
   }
-  return `$${Number(n || 0).toFixed(2)}`;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
 };
 
 export const buildVerifyMessage = (order, formatPrice) => {
@@ -50,8 +63,9 @@ export const buildVerifyMessage = (order, formatPrice) => {
   const lines = (order?.orderItems || []).map((it) => {
     const name = it?.product?.name || it?.name || 'Item';
     const qty = it?.qty || it?.quantity || 1;
-    const price = formatMoney((it?.price || 0) * qty, formatPrice);
-    return `• ${name} x${qty} — ${price}`;
+    const price = formatMoney((it?.price || 0) * qty, formatPrice, order?.currency || 'USD');
+    const options = formatOrderItemOptions(it);
+    return `- ${name}${options ? ` (${options})` : ''} x${qty} - ${price}`;
   });
 
   const subtotal = order?.orderSummary?.subtotal || 0;
@@ -71,7 +85,7 @@ export const buildVerifyMessage = (order, formatPrice) => {
     `We're verifying your order #${orderId}:`,
     ...lines,
     '',
-    `Total: ${formatMoney(total, formatPrice)}`,
+    `Total: ${formatMoney(total, formatPrice, order?.currency || 'USD')}`,
     '',
     'Please reply YES to confirm, or let us know if anything needs to change. Thank you!',
   ].join('\n');

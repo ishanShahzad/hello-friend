@@ -21,6 +21,7 @@ import {
   trackInitiateCheckout,
   trackPlaceAnOrder
 } from "../../utils/tiktokPixel";
+import { formatOrderItemOptions } from "../../utils/orderItems";
 
 export default function Checkout() {
 
@@ -1143,6 +1144,11 @@ export default function Checkout() {
                                                         : `${sellerProducts.length} items`
                                                       }
                                                     </p>
+                                                    {sellerProducts.length === 1 && formatOrderItemOptions(sellerProducts[0]) && (
+                                                      <p className="text-xs text-gray-500 leading-snug">
+                                                        {formatOrderItemOptions(sellerProducts[0])}
+                                                      </p>
+                                                    )}
                                                     <p className="text-xs text-gray-500">
                                                       Total: {currentMoney(sellerProducts.reduce((sum, item) =>
                                                         sum + (productPriceInCheckoutCurrency(item.product) * item.qty), 0
@@ -1189,6 +1195,9 @@ export default function Checkout() {
                                                         />
                                                         <div className="flex-1">
                                                           <p className="font-medium text-sm text-gray-900">{item.product.name}</p>
+                                                          {formatOrderItemOptions(item) && (
+                                                            <p className="text-xs text-gray-500 leading-snug">{formatOrderItemOptions(item)}</p>
+                                                          )}
                                                           <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                                                         </div>
                                                         <div className="text-right">
@@ -1564,6 +1573,9 @@ export default function Checkout() {
                         />
                         <div>
                           <p className="font-medium text-xs sm:text-sm" style={{ color: 'hsl(var(--foreground))' }}>{item.product.name}</p>
+                          {formatOrderItemOptions(item) && (
+                            <p className="text-xs leading-snug" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatOrderItemOptions(item)}</p>
+                          )}
                           <p className="text-xs sm:text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Qty: {item.qty}</p>
                           {/* SPIN WHEEL DISABLED - spin discount badge removed */}
                           {/* {hasSpinDiscount && (<p className="text-xs text-green-600 font-semibold">🎉 Spin Discount Applied!</p>)} */}

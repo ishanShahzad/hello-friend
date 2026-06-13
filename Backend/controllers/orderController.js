@@ -20,8 +20,17 @@ const { publicProductFilter } = require('../services/productModerationService');
 const { CURRENCIES, normalizeCurrency, convertAmount } = require('../services/currencyService');
 const { getProductCurrency, getProductEffectivePrice } = require('../services/productPricingService');
 const { isStoreVisibleToBuyer, normalizeBuyerLocation } = require('../services/storeVisibilityService');
+const { formatItemOptionsText, orderItemName, toPlainOptions } = require('../utils/orderPresentation');
 
 const toId = (value) => value?.toString?.() || String(value || '');
+const optionsKey = (opts) => {
+    const plain = toPlainOptions(opts);
+    return Object.keys(plain)
+        .filter(key => plain[key])
+        .sort()
+        .map(key => `${key}:${plain[key]}`)
+        .join('|');
+};
 const STRIPE_SUPPORTED_CURRENCIES = new Set(
     [
         ...Object.keys(CURRENCIES),
@@ -757,7 +766,10 @@ exports.exportOrders = async (req, res) => {
                 status: (o.orderStatus || '').charAt(0).toUpperCase() + (o.orderStatus || '').slice(1),
                 payment: o.isPaid ? 'Paid' : 'Unpaid',
                 paymentMethod: o.paymentMethod === 'cash_on_delivery' ? 'COD' : 'Stripe',
-                items: (o.orderItems || []).map(i => `${i.name} x${i.quantity}`).join(', '),
+                items: (o.orderItems || []).map(i => {
+                    const options = formatItemOptionsText(i);
+                    return `${orderItemName(i)}${options ? ` (${options})` : ''} x${i.quantity}`;
+                }).join(', '),
                 itemCount: (o.orderItems || []).reduce((sum, i) => sum + i.quantity, 0),
                 subtotal: o.orderSummary?.subtotal?.toFixed(2) || '0.00',
                 shipping: o.orderSummary?.shippingCost?.toFixed(2) || '0.00',
@@ -1308,14 +1320,22 @@ exports.reorder = async (req, res) => {
             const product = await Product.findById(item.productId);
             if (!product || product.stock <= 0) { unavailable++; continue; }
             const qty = Math.min(item.quantity || 1, product.stock);
+            const selectedOptions = toPlainOptions(item.selectedOptions);
+            const itemOptionsKey = optionsKey(selectedOptions);
             const existing = cart.cartItems.find(
                 (p) => p.product?.toString() === item.productId.toString() &&
-                       (p.selectedColor || null) === (item.selectedColor || null)
+                       (p.selectedColor || null) === (item.selectedColor || null) &&
+                       optionsKey(p.selectedOptions) === itemOptionsKey
             );
             if (existing) {
                 existing.qty = Math.min((existing.qty || 1) + qty, product.stock);
             } else {
-                cart.cartItems.push({ product: item.productId, qty, selectedColor: item.selectedColor || null });
+                cart.cartItems.push({
+                    product: item.productId,
+                    qty,
+                    selectedColor: item.selectedColor || null,
+                    selectedOptions: Object.keys(selectedOptions).length ? selectedOptions : undefined,
+                });
             }
             added++;
         }

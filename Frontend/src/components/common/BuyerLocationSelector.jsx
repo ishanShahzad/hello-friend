@@ -20,6 +20,10 @@ const BuyerLocationSelector = ({ compact = false }) => {
     || buyerLocation.region
     || buyerLocation.country
     || 'Select area';
+  const fieldInputClass = 'block w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl text-sm outline-none glass-input';
+  const fieldsClass = compact
+    ? 'space-y-3 mt-4'
+    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4';
 
   const handleCurrentPosition = async () => {
     try {
@@ -35,14 +39,14 @@ const BuyerLocationSelector = ({ compact = false }) => {
 
   return (
     <div
-      className="rounded-2xl p-3 sm:p-4"
+      className={`rounded-2xl p-3 sm:p-4 min-w-0 ${compact ? 'w-full max-w-full overflow-visible' : ''}`}
       style={{
         background: 'var(--glass-bg)',
         border: '1px solid var(--glass-border)',
         boxShadow: 'var(--glass-shadow-soft)',
       }}
     >
-      <div className={`flex flex-col ${compact ? '' : 'sm:flex-row sm:items-center'} gap-3`}>
+      <div className={`flex flex-col ${compact ? '' : 'sm:flex-row sm:items-center'} gap-3 min-w-0`}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="glass-inner p-2 rounded-xl shrink-0">
             <MapPin size={17} style={{ color: 'hsl(var(--primary))' }} />
@@ -56,36 +60,37 @@ const BuyerLocationSelector = ({ compact = false }) => {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className={compact ? 'grid grid-cols-2 gap-2 w-full' : 'flex gap-2'}>
           <button
             type="button"
             onClick={handleCurrentPosition}
             disabled={locating}
-            className="glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60"
+            className="glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-60 min-w-0"
           >
             <Crosshair size={14} />
-            {locating ? 'Locating...' : 'Use GPS'}
+            <span className="truncate">{locating ? 'Locating...' : 'Use GPS'}</span>
           </button>
           <button
             type="button"
             onClick={() => setOpen(prev => !prev)}
-            className="glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+            className="glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 min-w-0"
           >
             {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {open ? 'Close' : 'Change'}
+            <span className="truncate">{open ? 'Close' : 'Change'}</span>
           </button>
         </div>
       </div>
 
       {open && (
-        <div className={`grid ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} gap-3 mt-4`}>
+        <div className={fieldsClass}>
           <LocationAutocomplete
             type="country"
             label="Country"
             value={buyerLocation.country}
             code={buyerLocation.countryCode}
             placeholder="Select country"
-            inputClassName="w-full px-3 py-2.5 rounded-xl text-sm outline-none glass-input"
+            className="w-full min-w-0"
+            inputClassName={fieldInputClass}
             onSelect={(option) => updateBuyerLocation({
               country: option.name,
               countryCode: option.isoCode,
@@ -115,7 +120,8 @@ const BuyerLocationSelector = ({ compact = false }) => {
             countryCode={buyerLocation.countryCode}
             countryName={buyerLocation.country}
             placeholder="Select state"
-            inputClassName="w-full px-3 py-2.5 rounded-xl text-sm outline-none glass-input"
+            className="w-full min-w-0"
+            inputClassName={fieldInputClass}
             disabled={!buyerLocation.country && !buyerLocation.countryCode}
             onSelect={(option) => updateBuyerLocation({
               region: option.name,
@@ -137,7 +143,8 @@ const BuyerLocationSelector = ({ compact = false }) => {
             stateCode={buyerLocation.regionCode}
             stateName={buyerLocation.region}
             placeholder="Select city"
-            inputClassName="w-full px-3 py-2.5 rounded-xl text-sm outline-none glass-input"
+            className="w-full min-w-0"
+            inputClassName={fieldInputClass}
             disabled={!buyerLocation.country && !buyerLocation.countryCode}
             onSelect={(option) => updateBuyerLocation({
               city: option.name,
@@ -159,7 +166,8 @@ const BuyerLocationSelector = ({ compact = false }) => {
             stateCode={buyerLocation.regionCode || buyerLocation.cityStateCode}
             stateName={buyerLocation.region}
             placeholder="Select town or area"
-            inputClassName="w-full px-3 py-2.5 rounded-xl text-sm outline-none glass-input"
+            className="w-full min-w-0"
+            inputClassName={fieldInputClass}
             disabled={!buyerLocation.country && !buyerLocation.countryCode}
             onSelect={(option) => updateBuyerLocation({
               town: option.name,
@@ -169,14 +177,14 @@ const BuyerLocationSelector = ({ compact = false }) => {
             })}
             onClear={() => updateBuyerLocation({ town: '', townStateCode: '' })}
           />
-          <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <div className={compact ? 'flex flex-col gap-2 pt-1' : 'sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 pt-1'}>
+            <span className="text-xs leading-snug" style={{ color: 'hsl(var(--muted-foreground))' }}>
               GPS is only needed for sellers who use a custom radius.
             </span>
             <button
               type="button"
               onClick={resetBuyerLocation}
-              className="ml-auto glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+              className={`${compact ? 'w-full justify-center' : 'ml-auto'} glass-button px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5`}
             >
               <RotateCcw size={13} /> Reset
             </button>
