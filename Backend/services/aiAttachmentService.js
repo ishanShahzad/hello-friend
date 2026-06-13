@@ -5,6 +5,7 @@ const axios = require('axios');
 const ExcelJS = require('exceljs');
 const mammoth = require('mammoth');
 const { cloudinary } = require('../utils/cloudinary');
+const { getMediaFromMessage } = require('./whatsapp/evolutionMediaService');
 
 const MAX_ATTACHMENT_BYTES = Number(process.env.AI_CHAT_ATTACHMENT_MAX_BYTES || 15 * 1024 * 1024);
 const MAX_CONTEXT_CHARS = Number(process.env.AI_CHAT_ATTACHMENT_CONTEXT_CHARS || 30000);
@@ -142,6 +143,55 @@ function parseDelimited(text, delimiter = ',') {
   });
 }
 
+function decodeTextBuffer(buffer) {
+  if (!Buffer.isBuffer(buffer)) return String(buffer || '');
+  if (buffer.length >= 2) {
+    if (buffer[0] === 0xFF && buffer[1] === 0xFE) return buffer.subarray(2).toString('utf16le');
+    if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+      const swapped = Buffer.alloc(Math.max(0, buffer.length - 2));
+      for (let i = 2; i + 1 < buffer.length; i += 2) {
+        swapped[i - 2] = buffer[i + 1];
+        swapped[i - 1] = buffer[i];
+      }
+      return swapped.toString('utf16le');
+    }
+  }
+
+  const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
+  let nulEven = 0;
+  let nulOdd = 0;
+  for (let i = 0; i < sample.length; i += 1) {
+    if (sample[i] === 0 && i % 2 === 0) nulEven += 1;
+    if (sample[i] === 0 && i % 2 === 1) nulOdd += 1;
+  }
+  if (nulOdd > sample.length / 8 && nulOdd > nulEven * 4) return buffer.toString('utf16le');
+  return buffer.toString('utf8');
+}
+
+function parseBestDelimited(text, preferredDelimiter = ',') {
+  const candidates = [preferredDelimiter, ',', ';', '\t']
+    .filter((value, index, arr) => value && arr.indexOf(value) === index);
+  let best = [];
+  let bestScore = -1;
+  for (const delimiter of candidates) {
+    const rows = parseDelimited(text, delimiter);
+    const score = rows.reduce((sum, row) => sum + Object.keys(row || {}).length, 0);
+    if (rows.length && score > bestScore) {
+      best = rows;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function normalizedProductRows(rows = []) {
+  return rows.map(normalizeProductRow).filter(Boolean);
+}
+
+function hasProductSignal(rows = []) {
+  return rows.some(row => row?.name || row?.price !== undefined || row?.description || row?.image || row?.category);
+}
+
 async function parseSpreadsheet(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
@@ -172,23 +222,41 @@ async function parseProductFile(buffer, { filename = '', mimetype = '' } = {}) {
   const type = String(mimetype || '').toLowerCase();
 
   if (ext === 'json' || type.includes('json')) {
-    const json = JSON.parse(buffer.toString('utf8'));
-    return findProductArray(json).map(normalizeProductRow).filter(Boolean);
+    const json = JSON.parse(decodeTextBuffer(buffer).replace(/^\uFEFF/, ''));
+    return normalizedProductRows(findProductArray(json));
   }
 
   if (ext === 'csv' || type.includes('csv')) {
-    return parseDelimited(buffer.toString('utf8'), ',').map(normalizeProductRow).filter(Boolean);
+    return normalizedProductRows(parseBestDelimited(decodeTextBuffer(buffer), ','));
   }
 
   if (ext === 'tsv' || type.includes('tab-separated')) {
-    return parseDelimited(buffer.toString('utf8'), '\t').map(normalizeProductRow).filter(Boolean);
+    return normalizedProductRows(parseBestDelimited(decodeTextBuffer(buffer), '\t'));
   }
 
   if (SPREADSHEET_EXTENSIONS.has(ext) || type.includes('spreadsheet') || type.includes('excel')) {
-    return (await parseSpreadsheet(buffer)).map(normalizeProductRow).filter(Boolean);
+    return normalizedProductRows(await parseSpreadsheet(buffer));
   }
 
-  return [];
+  const text = decodeTextBuffer(buffer).replace(/\u0000/g, '').trim();
+  if (!text) return [];
+  if (/^[\[{]/.test(text)) {
+    try {
+      const rows = normalizedProductRows(findProductArray(JSON.parse(text.replace(/^\uFEFF/, ''))));
+      if (hasProductSignal(rows)) return rows;
+    } catch { /* not JSON */ }
+  }
+
+  const rows = normalizedProductRows(parseBestDelimited(text, ','));
+  return hasProductSignal(rows) ? rows : [];
+}
+
+function sniffMimetype(buffer, fallback = '') {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 4) return fallback;
+  const head = buffer.subarray(0, 8);
+  if (head.subarray(0, 4).toString('ascii') === '%PDF') return 'application/pdf';
+  if (head[0] === 0x50 && head[1] === 0x4B) return fallback || 'application/zip';
+  return fallback;
 }
 
 function isImageAttachment(att) {
@@ -206,7 +274,8 @@ function isAudioAttachment(att) {
 function isLikelyTextAttachment(att) {
   const type = String(att.mimetype || att.type || '').toLowerCase();
   const ext = extensionFromName(att.originalname || att.filename || att.name || att.url);
-  return type.startsWith('text/') || TEXT_EXTENSIONS.has(ext) || SPREADSHEET_EXTENSIONS.has(ext) ||
+  return att.kind === 'document' ||
+    type.startsWith('text/') || TEXT_EXTENSIONS.has(ext) || SPREADSHEET_EXTENSIONS.has(ext) ||
     DOCUMENT_TEXT_EXTENSIONS.has(ext) ||
     type.includes('json') || type.includes('csv') || type.includes('spreadsheet') || type.includes('excel') ||
     type.includes('pdf') || type.includes('wordprocessingml.document');
@@ -226,13 +295,41 @@ function isDocumentTextAttachment(att) {
 
 function bufferFromBase64(value = '') {
   if (!value) return null;
-  const raw = String(value).replace(/^data:[^;]+;base64,/, '');
+  const raw = String(value).replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '');
   if (!raw) return null;
+  if (!/^[A-Za-z0-9+/]+=*$/.test(raw)) return null;
   return Buffer.from(raw, 'base64');
+}
+
+function isWhatsAppAttachment(att = {}) {
+  return att.source === 'whatsapp' || att.evolutionInstance || att.messageKey || att.messageId;
+}
+
+async function getEvolutionAttachmentBuffer(att) {
+  if (!isWhatsAppAttachment(att)) return null;
+  const media = await getMediaFromMessage({
+    instanceName: att.evolutionInstance,
+    messageKey: att.messageKey,
+    messageId: att.messageId,
+    convertToMp4: att.kind === 'video',
+  });
+  if (media?.mimetype && !att.mimetype) att.mimetype = media.mimetype;
+  return media.buffer;
 }
 
 async function getAttachmentBuffer(att) {
   if (Buffer.isBuffer(att.buffer)) return att.buffer;
+
+  if (isWhatsAppAttachment(att)) {
+    try {
+      const fromEvolution = await getEvolutionAttachmentBuffer(att);
+      if (fromEvolution) return fromEvolution;
+    } catch (error) {
+      att._evolutionMediaError = error.message;
+    }
+    const fromWebhookBase64 = bufferFromBase64(att.base64 || att.mediaBase64);
+    if (fromWebhookBase64) return fromWebhookBase64;
+  }
 
   const url = att.url || att.mediaUrl || att.downloadUrl;
   if (url && /^https?:\/\//i.test(url)) {
@@ -247,6 +344,15 @@ async function getAttachmentBuffer(att) {
 
   const fromBase64 = bufferFromBase64(att.base64 || att.mediaBase64);
   if (fromBase64) return fromBase64;
+
+  if (!isWhatsAppAttachment(att)) {
+    try {
+      const fromEvolution = await getEvolutionAttachmentBuffer(att);
+      if (fromEvolution) return fromEvolution;
+    } catch (error) {
+      att._evolutionMediaError = error.message;
+    }
+  }
 
   return null;
 }
@@ -304,8 +410,10 @@ async function transcribeAudioBuffer(buffer, { filename = 'voice-message.ogg', m
   const ext = extensionFromName(filename);
   const type = String(mimetype || '').toLowerCase();
   let format = ext || type.split('/')[1] || 'ogg';
+  format = String(format).split(';')[0].trim().toLowerCase();
   if (format === 'oga' || format === 'opus') format = 'ogg';
   if (format === 'mpeg' || format === 'mpga') format = 'mp3';
+  if (format === 'mp4' && type.startsWith('audio/')) format = 'm4a';
 
   const body = {
     input_audio: {
@@ -379,7 +487,7 @@ async function processChatAttachments(inputAttachments = []) {
 
   for (const att of attachments) {
     const name = getDisplayName(att);
-    const mimetype = att.mimetype || att.type || 'application/octet-stream';
+    let mimetype = att.mimetype || att.type || 'application/octet-stream';
 
     try {
       const buffer = await getAttachmentBuffer(att);
@@ -387,13 +495,15 @@ async function processChatAttachments(inputAttachments = []) {
         processed.push({ name, success: false, error: 'No attachment data found.' });
         continue;
       }
+      mimetype = sniffMimetype(buffer, att.mimetype || att.type || mimetype);
       if (buffer.length > MAX_ATTACHMENT_BYTES) {
         processed.push({ name, success: false, error: 'Attachment is too large.' });
         continue;
       }
 
       if (isImageAttachment({ ...att, mimetype })) {
-        const url = att.url && /^https?:\/\//i.test(att.url) ? att.url : await uploadImageBuffer(buffer, { filename: name, mimetype });
+        const reusableUrl = !isWhatsAppAttachment(att) && att.url && /^https?:\/\//i.test(att.url);
+        const url = reusableUrl ? att.url : await uploadImageBuffer(buffer, { filename: name, mimetype });
         visibleAttachments.push({ type: 'image', url, name });
         contextParts.push(`[Attached product image: ${url}]`);
         processed.push({ name, type: 'image', success: true, url });
@@ -419,7 +529,7 @@ async function processChatAttachments(inputAttachments = []) {
         const documentText = isDocumentTextAttachment(attachmentMeta)
           ? await extractDocumentText(buffer, { filename: name, mimetype }).catch(() => '')
           : '';
-        const rawText = documentText || (canReadRawText ? buffer.toString('utf8').replace(/\u0000/g, '').trim() : '');
+        const rawText = documentText || (canReadRawText ? decodeTextBuffer(buffer).replace(/\u0000/g, '').trim() : '');
         contextParts.push([
           `[Attached product file: name="${name}" type="${mimetype}"]`,
           rows.length ? `Parsed product rows JSON:\n${JSON.stringify(rows.slice(0, 50), null, 2)}` : '',
@@ -480,4 +590,8 @@ module.exports = {
   parseProductFile,
   extractDocumentText,
   normalizeProductRow,
+  __private: {
+    decodeTextBuffer,
+    parseBestDelimited,
+  },
 };

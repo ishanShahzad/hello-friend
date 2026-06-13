@@ -56,6 +56,12 @@ const {
   sanitizeProductName,
   sanitizeProductDescription,
 } = require('./productTextService');
+const {
+  activeStoreQuery,
+  applyActiveSellerProductFilter,
+  getActiveSellerIds,
+  isProductSellerPubliclyActive,
+} = require('./publicCatalogService');
 
 // ─── Client-side tools: rendered by frontend, not executed here ───
 const CLIENT_SIDE_TOOLS = new Set([
@@ -912,7 +918,7 @@ function shippingMissingFields(shipping = {}) {
 async function hydrateStoresForProducts(products = []) {
   const sellerIds = [...new Set(products.map(p => normalizeObjectIdString(p.seller)).filter(Boolean))];
   if (!sellerIds.length) return products;
-  const stores = await Store.find({ seller: { $in: sellerIds } })
+  const stores = await Store.find(activeStoreQuery({ seller: { $in: sellerIds } }))
     .select('seller storeName storeSlug verification.isVerified trustCount')
     .lean();
   const storeBySeller = new Map(stores.map(store => [normalizeObjectIdString(store.seller), store]));
@@ -935,14 +941,14 @@ async function resolveStoreScope(args = {}) {
   const storeName = String(args.storeName || args.store || '').trim();
 
   if (sellerId) {
-    const store = await Store.findOne({ seller: sellerId, isActive: { $ne: false } })
+    const store = await Store.findOne(activeStoreQuery({ seller: sellerId }))
       .select('_id seller storeName storeSlug verification.isVerified')
       .lean();
     return store ? { store, filter: { seller: store.seller } } : { notFound: true };
   }
 
   if (storeId) {
-    const store = await Store.findOne({ _id: storeId, isActive: { $ne: false } })
+    const store = await Store.findOne(activeStoreQuery({ _id: storeId }))
       .select('_id seller storeName storeSlug verification.isVerified')
       .lean();
     return store ? { store, filter: { seller: store.seller } } : { notFound: true };
@@ -959,7 +965,7 @@ async function resolveStoreScope(args = {}) {
     storeQueries.push({ storeSlug: { $regex: safeName.replace(/\s+/g, '-'), $options: 'i' } });
   }
 
-  const matches = await Store.find({ isActive: { $ne: false }, $or: storeQueries })
+  const matches = await Store.find(activeStoreQuery({ $or: storeQueries }))
     .limit(5)
     .select('_id seller storeName storeSlug verification.isVerified')
     .lean();
@@ -1088,8 +1094,13 @@ async function executeToolCall(toolName, args = {}, user) {
           return next.slice(0, safeLimit(limit, 20, 50));
         };
 
+        const activeSellerIds = await getActiveSellerIds();
+
         // Use smart search with synonym expansion
-        const filter = publicProductFilter(buildSmartSearchFilter(query, category));
+        let filter = applyActiveSellerProductFilter(
+          publicProductFilter(buildSmartSearchFilter(query, category)),
+          activeSellerIds
+        );
         const storeScope = await resolveStoreScope(args);
         if (storeScope.notFound) {
           return {
@@ -1133,7 +1144,10 @@ async function executeToolCall(toolName, args = {}, user) {
         products = await finalizeProductSearch(products);
 
         if (products.length === 0 && query) {
-          const fuzzyFilter = publicProductFilter({ ...(storeScope.filter || {}) });
+          const fuzzyFilter = applyActiveSellerProductFilter(
+            publicProductFilter({ ...(storeScope.filter || {}) }),
+            activeSellerIds
+          );
           if (category) fuzzyFilter.category = { $regex: escapeRegExp(category), $options: 'i' };
           if (brand) fuzzyFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fuzzyFilter.stock = { $gt: 0 };
@@ -1152,7 +1166,10 @@ async function executeToolCall(toolName, args = {}, user) {
         // If no results and we have a query, try a broader fallback: sort by popularity
         if (products.length === 0 && query) {
           // Fallback: return popular/recent products when search yields nothing
-          const fallbackFilter = publicProductFilter({ ...(storeScope.filter || {}) });
+          const fallbackFilter = applyActiveSellerProductFilter(
+            publicProductFilter({ ...(storeScope.filter || {}) }),
+            activeSellerIds
+          );
           if (category) fallbackFilter.category = { $regex: category, $options: 'i' };
           if (brand) fallbackFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
           if (isTruthy(args.inStockOnly) || isTruthy(args.availableOnly)) fallbackFilter.stock = { $gt: 0 };
@@ -1405,11 +1422,12 @@ async function executeToolCall(toolName, args = {}, user) {
 
       case 'get_wishlist': {
         if (!userId) return { success: false, error: 'Authentication required.' };
+        const activeSellerIds = await getActiveSellerIds();
         const user = await User.findById(userId)
           .populate({
             path: 'wishlist',
-            match: publicProductFilter(),
-            select: 'name price discountedPrice image category rating stock',
+            match: applyActiveSellerProductFilter(publicProductFilter(), activeSellerIds),
+            select: 'name price discountedPrice image category rating stock seller',
           })
           .lean();
 
@@ -1437,8 +1455,11 @@ async function executeToolCall(toolName, args = {}, user) {
         const { productId } = args;
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
-        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name').lean();
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name seller').lean();
         if (!product) return { success: false, error: 'Product not found.' };
+        if (!(await isProductSellerPubliclyActive(product.seller))) {
+          return { success: false, error: 'Product not found.' };
+        }
 
         await User.findByIdAndUpdate(userId, { $addToSet: { wishlist: productId } });
         return { success: true, message: `"${product.name}" added to your wishlist! ❤️` };
@@ -1585,8 +1606,11 @@ async function executeToolCall(toolName, args = {}, user) {
           .populate('seller', 'username')
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
+        if (!(await isProductSellerPubliclyActive(product.seller?._id || product.seller))) {
+          return { success: false, error: 'Product not found.' };
+        }
 
-        const store = await Store.findOne({ seller: product.seller?._id }).select('storeName storeSlug verification.isVerified').lean();
+        const store = await Store.findOne(activeStoreQuery({ seller: product.seller?._id })).select('storeName storeSlug verification.isVerified').lean();
 
         return {
           success: true,
@@ -1623,9 +1647,12 @@ async function executeToolCall(toolName, args = {}, user) {
         if (!productId) return { success: false, error: 'Please provide a product ID.' };
 
         const product = await Product.findOne(publicProductFilter({ _id: toId(productId) }))
-          .select('name image images price discountedPrice currency priceCurrency stock')
+          .select('name image images price discountedPrice currency priceCurrency stock seller')
           .lean();
         if (!product) return { success: false, error: 'Product not found.' };
+        if (!(await isProductSellerPubliclyActive(product.seller))) {
+          return { success: false, error: 'Product not found.' };
+        }
 
         const imageUrl = product.image || product.images?.[0]?.url || product.images?.[0];
         if (!imageUrl) return { success: false, error: `No image is available for "${product.name}".` };
@@ -1679,8 +1706,11 @@ async function executeToolCall(toolName, args = {}, user) {
         const quantity = parseQuantity(args.quantity, 1);
         if (!quantity) return { success: false, error: 'Please provide a valid quantity of at least 1.' };
 
-        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name price discountedPrice currency priceCurrency stock image colors optionGroups').lean();
+        const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).select('name price discountedPrice currency priceCurrency stock image colors optionGroups seller').lean();
         if (!product) return { success: false, error: 'Product not found.' };
+        if (!(await isProductSellerPubliclyActive(product.seller))) {
+          return { success: false, error: 'Product not found.' };
+        }
         if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
         if (quantity > product.stock) return { success: false, error: `Only ${product.stock} unit${product.stock !== 1 ? 's' : ''} of "${product.name}" are available.` };
 
@@ -1746,7 +1776,12 @@ async function executeToolCall(toolName, args = {}, user) {
           return { success: true, data: { items: [], total: 0 }, message: 'Your cart is empty. Start shopping! 🛍️' };
         }
 
-        const items = await Promise.all(cart.cartItems.filter(i => i.product && !isProductBlocked(i.product)).map(async item => {
+        const activeSellerSet = new Set((await getActiveSellerIds()).map(normalizeObjectIdString));
+        const items = await Promise.all(cart.cartItems.filter(i => (
+          i.product
+          && !isProductBlocked(i.product)
+          && (!normalizeObjectIdString(i.product.seller) || activeSellerSet.has(normalizeObjectIdString(i.product.seller)))
+        )).map(async item => {
           const p = item.product;
           const sourceCurrency = getProductCurrency(p, preferredCurrency);
           const sourcePrice = getProductEffectivePrice(p);
@@ -1870,6 +1905,9 @@ async function executeToolCall(toolName, args = {}, user) {
           // Single product order
           const product = await Product.findOne(publicProductFilter({ _id: toId(productId) })).lean();
           if (!product) return { success: false, error: 'Product not found.' };
+          if (!(await isProductSellerPubliclyActive(product.seller))) {
+            return { success: false, error: 'Product not found.' };
+          }
           if (product.stock <= 0) return { success: false, error: `"${product.name}" is out of stock.` };
           productItems = [product];
           const quantity = parseQuantity(args.quantity, 1);
@@ -1914,7 +1952,12 @@ async function executeToolCall(toolName, args = {}, user) {
           if (!cart || !cart.cartItems?.length) {
             return { success: false, error: 'Cart is empty. Add products first or specify a productId.' };
           }
-          const unavailableItems = cart.cartItems.filter(i => !i.product || isProductBlocked(i.product));
+          const activeSellerSet = new Set((await getActiveSellerIds()).map(normalizeObjectIdString));
+          const unavailableItems = cart.cartItems.filter(i => (
+            !i.product
+            || isProductBlocked(i.product)
+            || (normalizeObjectIdString(i.product.seller) && !activeSellerSet.has(normalizeObjectIdString(i.product.seller)))
+          ));
           if (unavailableItems.length) {
             return { success: false, error: 'Some items in your cart are no longer available. Please refresh your cart before placing the order.' };
           }
@@ -4034,7 +4077,7 @@ async function executeToolCall(toolName, args = {}, user) {
       }
 
       case 'get_verified_stores': {
-        const stores = await Store.find({ 'verification.isVerified': true })
+        const stores = await Store.find(activeStoreQuery({ 'verification.isVerified': true }))
           .populate('seller', 'username')
           .select('storeName storeSlug description views trustCount verification')
           .lean();
@@ -4062,8 +4105,9 @@ async function executeToolCall(toolName, args = {}, user) {
         const { storeId, slug } = args;
         if (!storeId && !slug) return { success: false, error: 'Please provide storeId or slug.' };
 
-        const filter = storeId ? { _id: toId(storeId) } : { storeSlug: slug };
-        const store = await Store.findOne(filter)
+        const baseFilter = storeId ? { _id: toId(storeId) } : { storeSlug: slug };
+        const storeFilter = role === 'admin' ? baseFilter : activeStoreQuery(baseFilter);
+        const store = await Store.findOne(storeFilter)
           .populate('seller', 'username email status role')
           .lean();
 
@@ -4113,20 +4157,20 @@ async function executeToolCall(toolName, args = {}, user) {
         const { query, limit, category, brand } = args;
         if (!query) return { success: false, error: 'Please provide a search query.' };
         const safeQuery = escapeRegExp(query);
+        const activeSellerIds = await getActiveSellerIds();
 
-        const storeMatches = await Store.find({
-          isActive: { $ne: false },
+        const storeMatches = await Store.find(activeStoreQuery({
           $or: [
             { storeName: { $regex: safeQuery, $options: 'i' } },
             { storeSlug: { $regex: safeQuery, $options: 'i' } },
             { description: { $regex: safeQuery, $options: 'i' } },
           ],
-        })
+        }))
           .limit(safeLimit(limit, 10, 20))
           .select('_id seller storeName storeSlug description views trustCount verification.isVerified')
           .lean();
 
-        const productFilter = publicProductFilter(buildSmartSearchFilter(query, category));
+        const productFilter = applyActiveSellerProductFilter(publicProductFilter(buildSmartSearchFilter(query, category)), activeSellerIds);
         if (brand) productFilter.brand = { $regex: escapeRegExp(brand), $options: 'i' };
         productFilter.stock = { $gt: 0 };
         const matchingProducts = await Product.find(productFilter)
@@ -4154,7 +4198,7 @@ async function executeToolCall(toolName, args = {}, user) {
         }
 
         const productStores = sellerProductMap.size
-          ? await Store.find({ isActive: { $ne: false }, seller: { $in: [...sellerProductMap.keys()] } })
+          ? await Store.find(activeStoreQuery({ seller: { $in: [...sellerProductMap.keys()] } }))
             .limit(20)
             .select('_id seller storeName storeSlug description views trustCount verification.isVerified')
             .lean()

@@ -17,6 +17,11 @@ const { getProductCurrency, getProductEffectivePrice, normalizeNativeProductPric
 const { assertProductCreationAllowed } = require('../services/storeProductCurrencyService');
 const { sanitizeProductPayload } = require('../services/productTextService');
 const {
+    applyActiveSellerProductFilter,
+    getActiveSellerIds,
+    isProductSellerPubliclyActive,
+} = require('../services/publicCatalogService');
+const {
     resolveRequestedCurrency,
     convertOrderAmount,
     convertOrderTotal,
@@ -967,7 +972,8 @@ exports.getTaxConfig = async (req, res) => {
 exports.searchProducts = async (req, res) => {
     const { query: searchQuery, category, maxPrice, minPrice, limit = 10 } = req.query;
     try {
-        let query = {};
+        const activeSellerIds = await getActiveSellerIds();
+        let query = applyActiveSellerProductFilter(publicProductFilter(), activeSellerIds);
         if (category) query.category = category;
         // maxPrice/minPrice are interpreted as USD for this legacy endpoint.
         const maxPriceUSD = maxPrice ? parseFloat(maxPrice) : null;
@@ -1006,9 +1012,10 @@ exports.searchProducts = async (req, res) => {
 
 exports.getWishlist = async (req, res) => {
     try {
+        const activeSellerIds = await getActiveSellerIds();
         const user = await User.findById(req.user.id).populate({
             path: 'wishlist',
-            match: publicProductFilter(),
+            match: applyActiveSellerProductFilter(publicProductFilter(), activeSellerIds),
             select: 'name price discountedPrice currency priceCurrency image category brand stock',
         });
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -1031,8 +1038,11 @@ exports.getWishlist = async (req, res) => {
 exports.addToWishlist = async (req, res) => {
     const { productId } = req.body;
     try {
-        const product = await Product.findOne(publicProductFilter({ _id: productId }));
+        const product = await Product.findOne(publicProductFilter({ _id: productId })).select('name seller');
         if (!product) return res.status(404).json({ msg: 'Product not found' });
+        if (!(await isProductSellerPubliclyActive(product.seller))) {
+            return res.status(404).json({ msg: 'Product not found' });
+        }
 
         const user = await User.findById(req.user.id);
         if (user.wishlist.includes(productId)) {

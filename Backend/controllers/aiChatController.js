@@ -24,6 +24,7 @@ const { publicProductFilter } = require('../services/productModerationService');
 const { processChatAttachments, appendAttachmentContextToMessages } = require('../services/aiAttachmentService');
 const { formatMoneySync } = require('../services/currencyService');
 const { getProductCurrency } = require('../services/productPricingService');
+const { isProductSellerPubliclyActive } = require('../services/publicCatalogService');
 
 // ─── OpenRouter Config ───────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -1895,6 +1896,7 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
     .map(m => ({
       role: m.role,
       content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      ...(Array.isArray(m.attachments) ? { attachments: m.attachments } : {}),
       ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
       ...(m.name ? { name: m.name } : {}),
       ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
@@ -1967,9 +1969,17 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       // Special handling for send_product_image in WhatsApp mode
       if (toolName === 'send_product_image' && isWhatsApp) {
         try {
-          const product = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice currency priceCurrency stock').lean();
+          const product = await Product.findOne(publicProductFilter({ _id: args.productId })).select('name image images price discountedPrice currency priceCurrency stock seller').lean();
           const imageUrl = product?.image || product?.images?.[0]?.url || product?.images?.[0];
-          if (!product || !imageUrl) {
+          if (!product || !(await isProductSellerPubliclyActive(product.seller))) {
+            const toolResult = { success: false, error: 'Product not found.' };
+            conversationMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify(toolResult),
+            });
+            toolResults.push({ tool: toolName, result: toolResult, id: tc.id });
+          } else if (!imageUrl) {
             conversationMessages.push({
               role: 'tool',
               tool_call_id: tc.id,
@@ -2078,7 +2088,11 @@ async function processAIChatMessage(userObj, incomingMessages, options = {}) {
       const lastUserMsg = incomingMessages.filter(m => m.role === 'user').pop();
       const newMessages = [];
       if (lastUserMsg?.content) {
-        newMessages.push({ role: 'user', content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '' });
+        newMessages.push({
+          role: 'user',
+          content: typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '',
+          ...(Array.isArray(lastUserMsg.attachments) ? { attachments: lastUserMsg.attachments } : {}),
+        });
       }
       if (responseText) {
         const toolEvents = [

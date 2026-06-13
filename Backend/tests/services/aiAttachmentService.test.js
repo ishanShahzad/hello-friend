@@ -61,6 +61,53 @@ describe('aiAttachmentService product parsing', () => {
     });
   });
 
+  test('parses semicolon CSV exports from spreadsheet apps', async () => {
+    const csv = [
+      'product name;price;currency;category;stock',
+      'Human Made Shirt;650;PKR;Apparel;200',
+    ].join('\n');
+
+    const rows = await parseProductFile(Buffer.from(csv), {
+      filename: 'products.csv',
+      mimetype: 'text/csv',
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        name: 'Human Made Shirt',
+        price: '650',
+        currency: 'PKR',
+        category: 'Apparel',
+        stock: '200',
+      }),
+    ]);
+  });
+
+  test('parses UTF-16 CSV files without garbled text', async () => {
+    const csv = [
+      'name,price,currency,stock',
+      'Toy Horse,1200,PKR,9',
+    ].join('\n');
+    const buffer = Buffer.concat([
+      Buffer.from([0xFF, 0xFE]),
+      Buffer.from(csv, 'utf16le'),
+    ]);
+
+    const rows = await parseProductFile(buffer, {
+      filename: 'products.csv',
+      mimetype: 'text/csv',
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        name: 'Toy Horse',
+        price: '1200',
+        currency: 'PKR',
+        stock: '9',
+      }),
+    ]);
+  });
+
   test('extracts products from JSON wrapper objects', async () => {
     const json = {
       products: [

@@ -538,7 +538,11 @@ async function processIncomingWhatsAppMessage(phone, messageText, instanceType, 
         // 5. Build messages array (history + new message)
         const messages = [
             ...conversationHistory,
-            { role: 'user', content: userContent },
+            {
+                role: 'user',
+                content: userContent,
+                attachments: attachmentResult.attachments || [],
+            },
         ];
 
         // 6. Process through AI pipeline

@@ -339,7 +339,7 @@ const findWebhookBase64 = (msg, media) => (
     ''
 );
 
-const extractMediaAttachments = (msg) => {
+const extractMediaAttachments = (msg, options = {}) => {
     const m = msg?.message || {};
     const candidates = [
         { kind: 'image', media: m.imageMessage },
@@ -367,6 +367,12 @@ const extractMediaAttachments = (msg) => {
             caption: media.caption || '',
             base64: findWebhookBase64(msg, media),
             url: media.url || media.mediaUrl || media.downloadUrl || '',
+            mediaKey: media.mediaKey || '',
+            messageId: msg?.key?.id || msg?.id || '',
+            messageKey: msg?.key || (msg?.key?.id ? { id: msg.key.id } : null),
+            source: 'whatsapp',
+            evolutionInstance: options.instanceName || '',
+            instanceType: options.instanceType || '',
         };
     });
 };
@@ -439,7 +445,10 @@ exports.handleEvolutionWebhook = async (req, res) => {
 
                     // Extract text from the message
                     const text = extractMessageText(msg);
-                    const attachments = extractMediaAttachments(msg);
+                    const attachments = extractMediaAttachments(msg, {
+                        instanceName: incomingInstance || sellerInstanceName,
+                        instanceType: 'seller',
+                    });
                     if ((!text || !text.trim()) && attachments.length === 0) continue;
 
                     // Route to AI chat (fire-and-forget — don't block webhook response)
@@ -465,7 +474,10 @@ exports.handleEvolutionWebhook = async (req, res) => {
                 if (!phone) continue;
                 markInboundConversationWindowOpen(phone);
                 const mediaText = extractMessageText(msg);
-                const attachments = extractMediaAttachments(msg);
+                const attachments = extractMediaAttachments(msg, {
+                    instanceName: incomingInstance || mainInstanceName,
+                    instanceType: 'main',
+                });
 
                 // 1) Try the rich extractor — recognises button clicks and text
                 //    replies in any of the 5 WhatsApp payload shapes.
